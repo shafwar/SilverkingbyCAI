@@ -10,17 +10,18 @@ Folder ini khusus untuk video background di Hero Section (landing page).
 
 ### **Video Hero Background Ideal:**
 
-| Property | Value | Alasan |
-|----------|-------|--------|
-| **Format** | MP4 (H.264) | Compatible semua browser |
-| **Resolusi** | 1920x1080 (1080p) | Full HD, tidak blur |
-| **Durasi** | 10-20 detik | Loop seamless |
-| **File Size** | Max 10MB | Loading cepat |
-| **FPS** | 30 fps | Smooth motion |
-| **Audio** | Tidak ada (remove) | Background tidak perlu audio |
-| **Bitrate** | 2-3 Mbps | Balance quality & size |
+| Property      | Value              | Alasan                       |
+| ------------- | ------------------ | ---------------------------- |
+| **Format**    | MP4 (H.264)        | Compatible semua browser     |
+| **Resolusi**  | 1920x1080 (1080p)  | Full HD, tidak blur          |
+| **Durasi**    | 10-20 detik        | Loop seamless                |
+| **File Size** | Max 10MB           | Loading cepat                |
+| **FPS**       | 30 fps             | Smooth motion                |
+| **Audio**     | Tidak ada (remove) | Background tidak perlu audio |
+| **Bitrate**   | 2-3 Mbps           | Balance quality & size       |
 
 ### **Nama File Contoh:**
+
 - ✅ `hero-background.mp4` (main video)
 - ✅ `hero-background-mobile.mp4` (optimized untuk mobile)
 - ✅ `hero-fallback.jpg` (fallback image jika video gagal)
@@ -30,21 +31,21 @@ Folder ini khusus untuk video background di Hero Section (landing page).
 File yang sudah saya buat: `src/components/layout/HeroWithVideo.tsx`
 
 ```tsx
-import HeroWithVideo from '@/components/layout/HeroWithVideo'
+import HeroWithVideo from "@/components/layout/HeroWithVideo";
 
 export default function HomePage() {
   return (
     <div>
-      <HeroWithVideo 
+      <HeroWithVideo
         videoSrc="/videos/hero/hero-background.mp4"
         fallbackImage="/images/hero-fallback.jpg"
         title="Silver King by CAI"
         subtitle="The Art of Precious Metal Perfection"
       />
-      
+
       {/* Content lainnya */}
     </div>
-  )
+  );
 }
 ```
 
@@ -102,6 +103,7 @@ ffmpeg -i input.mp4 \
 ```
 
 **Penjelasan:**
+
 - `-vf "scale=1920:1080"` - Resize ke 1080p
 - `-c:v libx264` - Codec H.264
 - `-crf 28` - Quality (23=high, 28=good, 30=lower)
@@ -143,6 +145,7 @@ ffmpeg -i input.mp4 \
 ## 📱 Mobile Optimization:
 
 Untuk mobile, lebih baik pakai:
+
 - Image static (lebih ringan)
 - Video compressed lebih kecil (720p, 5MB max)
 - Atau disable video di mobile
@@ -176,11 +179,13 @@ Component `HeroWithVideo` sudah handle ini otomatis!
 ## 🔗 Resources Video Stock (Jika Perlu):
 
 **Gratis:**
+
 - Pexels Videos: https://www.pexels.com/videos/
 - Pixabay: https://pixabay.com/videos/
 - Coverr: https://coverr.co/
 
 **Search keywords:**
+
 - "gold metal background"
 - "silver texture"
 - "luxury abstract"
@@ -201,4 +206,3 @@ Setelah upload, test di:
 **Sekarang tinggal upload video Anda ke folder ini!** 🚀
 
 Path: `public/videos/hero/hero-background.mp4`
-
