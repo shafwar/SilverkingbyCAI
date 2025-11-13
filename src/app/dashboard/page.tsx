@@ -110,7 +110,7 @@ export default function DashboardPage() {
             Dashboard
           </h1>
           <p className="text-luxury-silver mb-8">
-            Welcome back! Here's an overview of your products.
+            Welcome back! Here&apos;s an overview of your products.
           </p>
 
           {/* Stats Grid */}

@@ -214,7 +214,7 @@ export default function ProductsPage() {
           {products.length === 0 ? (
             <div className="luxury-card text-center py-12">
               <p className="text-luxury-silver text-lg">
-                No products yet. Click "Add Product" to create your first product.
+                No products yet. Click &quot;Add Product&quot; to create your first product.
               </p>
             </div>
           ) : (
@@ -228,11 +228,12 @@ export default function ProductsPage() {
                   className="luxury-card"
                 >
                   <div className="flex gap-4">
-                    <img
-                      src={product.qrCode}
-                      alt={`QR Code for ${product.name}`}
-                      className="w-32 h-32 rounded-lg bg-white p-2"
-                    />
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={product.qrCode}
+                        alt={`QR Code for ${product.name}`}
+                        className="w-32 h-32 rounded-lg bg-white p-2"
+                      />
                     <div className="flex-1">
                       <h3 className="text-xl font-serif font-bold text-luxury-gold mb-2">
                         {product.name}

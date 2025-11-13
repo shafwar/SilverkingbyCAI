@@ -20,8 +20,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ["Inter", "sans-serif"],
-        serif: ["Playfair Display", "serif"],
+        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
+        serif: ["var(--font-playfair)", "Playfair Display", "serif"],
       },
       backgroundImage: {
         "gradient-luxury": "linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%)",
@@ -34,4 +34,3 @@ const config: Config = {
 };
 
 export default config;
-

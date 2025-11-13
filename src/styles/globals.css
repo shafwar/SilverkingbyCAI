@@ -2,16 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700;800&display=swap');
-
 @layer base {
-  body {
-    background-color: #0a0a0a;
-    color: #E8E8E8;
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Playfair Display', serif;
+  body {
+    background-color: #0a0a0a;
+    color: #e8e8e8;
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    font-weight: 400;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-weight: 450;
+    letter-spacing: -0.02em;
+  }
+
+  p {
+    font-weight: 300;
+    letter-spacing: 0.01em;
   }
 }
 
@@ -26,13 +45,13 @@
 
   .luxury-button {
     padding: 0.75rem 1.5rem;
-    background: linear-gradient(135deg, #B8960E 0%, #D4AF37 50%, #FFD700 100%);
+    background: linear-gradient(135deg, #b8960e 0%, #d4af37 50%, #ffd700 100%);
     color: #0a0a0a;
     font-weight: 600;
     border-radius: 0.5rem;
     transition: all 0.3s;
   }
-  
+
   .luxury-button:hover {
     transform: scale(1.05);
     box-shadow: 0 25px 50px -12px rgba(212, 175, 55, 0.5);
@@ -44,20 +63,20 @@
     background-color: rgba(10, 10, 10, 0.5);
     border: 1px solid rgba(192, 192, 192, 0.3);
     border-radius: 0.5rem;
-    color: #E8E8E8;
+    color: #e8e8e8;
     transition: all 0.3s;
   }
-  
+
   .luxury-input:focus {
     outline: none;
-    border-color: #D4AF37;
+    border-color: #d4af37;
     box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
   }
 
   .luxury-heading {
     font-size: 3.75rem;
     font-weight: 700;
-    background: linear-gradient(135deg, #B8960E 0%, #D4AF37 50%, #FFD700 100%);
+    background: linear-gradient(135deg, #b8960e 0%, #d4af37 50%, #ffd700 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -76,4 +95,3 @@
     text-wrap: balance;
   }
 }
-

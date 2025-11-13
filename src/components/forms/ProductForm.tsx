@@ -17,8 +17,8 @@ const productSchema = z.object({
     "TWO_FIFTY_GR",
     "FIVE_HUNDRED_GR",
   ]),
-  purity: z.number().min(0).max(100).default(99.99),
-  uniqueCode: z.string().default("Be part of this kingdom"),
+  purity: z.number().min(0).max(100),
+  uniqueCode: z.string(),
 });
 
 type ProductFormData = z.infer<typeof productSchema>;

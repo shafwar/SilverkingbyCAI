@@ -69,25 +69,24 @@ export default function HomePage() {
               >
                 <div className="relative h-full rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] p-8 backdrop-blur-sm transition-all duration-500 hover:border-white/20 hover:bg-white/10">
                   {/* Glow Effect */}
-                  <div className="absolute -inset-px rounded-2xl bg-gradient-to-br opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-20" 
+                  <div
+                    className="absolute -inset-px rounded-2xl bg-gradient-to-br opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-20"
                     style={{
                       background: `linear-gradient(to bottom right, var(--tw-gradient-stops))`,
                     }}
                   />
-                  
+
                   <div className="relative z-10">
                     {/* Icon */}
-                    <div className={`mb-6 inline-flex rounded-2xl bg-gradient-to-br ${feature.gradient} p-4 shadow-lg`}>
+                    <div
+                      className={`mb-6 inline-flex rounded-2xl bg-gradient-to-br ${feature.gradient} p-4 shadow-lg`}
+                    >
                       <feature.icon className="h-6 w-6 text-white" />
                     </div>
 
                     {/* Content */}
-                    <h3 className="mb-3 text-2xl font-semibold text-white">
-                      {feature.title}
-                    </h3>
-                    <p className="text-luxury-silver/80 leading-relaxed">
-                      {feature.description}
-                    </p>
+                    <h3 className="mb-3 text-2xl font-semibold text-white">{feature.title}</h3>
+                    <p className="text-luxury-silver/80 leading-relaxed">{feature.description}</p>
                   </div>
                 </div>
               </motion.div>
@@ -112,7 +111,7 @@ export default function HomePage() {
               </span>
             </h2>
             <p className="text-lg md:text-xl text-luxury-silver/70 max-w-2xl mx-auto">
-              Three steps to verify your precious metal's authenticity
+              Three steps to verify your precious metal&apos;s authenticity
             </p>
           </motion.div>
 
@@ -122,19 +121,22 @@ export default function HomePage() {
                 number: "01",
                 icon: QrCode,
                 title: "Scan QR Code",
-                description: "Simply scan the unique QR code on your product using your smartphone camera.",
+                description:
+                  "Simply scan the unique QR code on your product using your smartphone camera.",
               },
               {
                 number: "02",
                 icon: Eye,
                 title: "Instant Verification",
-                description: "Our system instantly verifies the product's authenticity and displays detailed information.",
+                description:
+                  "Our system instantly verifies the product's authenticity and displays detailed information.",
               },
               {
                 number: "03",
                 icon: Shield,
                 title: "Guaranteed Authentic",
-                description: "Receive confirmation that your precious metal is 100% genuine and certified.",
+                description:
+                  "Receive confirmation that your precious metal is 100% genuine and certified.",
               },
             ].map((step, index) => (
               <motion.div
@@ -164,12 +166,8 @@ export default function HomePage() {
                   </div>
 
                   {/* Content */}
-                  <h3 className="mb-3 text-xl font-semibold text-white">
-                    {step.title}
-                  </h3>
-                  <p className="text-luxury-silver/70 leading-relaxed">
-                    {step.description}
-                  </p>
+                  <h3 className="mb-3 text-xl font-semibold text-white">{step.title}</h3>
+                  <p className="text-luxury-silver/70 leading-relaxed">{step.description}</p>
                 </div>
               </motion.div>
             ))}
@@ -189,10 +187,13 @@ export default function HomePage() {
           >
             {/* Background Pattern */}
             <div className="absolute inset-0 opacity-5">
-              <div className="absolute inset-0" style={{
-                backgroundImage: `radial-gradient(circle at 1px 1px, rgba(212,175,55,0.3) 1px, transparent 0)`,
-                backgroundSize: '40px 40px'
-              }} />
+              <div
+                className="absolute inset-0"
+                style={{
+                  backgroundImage: `radial-gradient(circle at 1px 1px, rgba(212,175,55,0.3) 1px, transparent 0)`,
+                  backgroundSize: "40px 40px",
+                }}
+              />
             </div>
 
             <div className="relative z-10 text-center">
@@ -204,7 +205,8 @@ export default function HomePage() {
                 </span>
               </h2>
               <p className="mx-auto mb-10 max-w-2xl text-lg md:text-xl text-luxury-silver/80">
-                Join thousands of satisfied customers who trust Silver King for authentic, verified precious metals.
+                Join thousands of satisfied customers who trust Silver King for authentic, verified
+                precious metals.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -235,9 +237,7 @@ export default function HomePage() {
           <p className="text-sm text-luxury-silver/60">
             © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
           </p>
-          <p className="mt-2 text-xs text-luxury-silver/40">
-            The Art of Precious Metal Perfection
-          </p>
+          <p className="mt-2 text-xs text-luxury-silver/40">The Art of Precious Metal Perfection</p>
         </div>
       </footer>
     </main>
