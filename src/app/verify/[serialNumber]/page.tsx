@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Shield, CheckCircle2, XCircle, ArrowLeft, Sparkles } from "lucide-react";
-import { APP_NAME } from "@/utils/constants";
+import Navbar from "@/components/layout/Navbar";
+import { Shield, CheckCircle2, XCircle } from "lucide-react";
 
 interface VerificationResult {
   verified: boolean;
@@ -63,26 +63,8 @@ export default function VerifyPage() {
 
   return (
     <div className="min-h-screen bg-luxury-black">
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-luxury-black/80 backdrop-blur-lg border-b border-luxury-silver/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <Link href="/" className="flex items-center space-x-2">
-              <Sparkles className="w-8 h-8 text-luxury-gold" />
-              <span className="text-2xl font-serif font-bold text-luxury-gold">
-                {APP_NAME}
-              </span>
-            </Link>
-            <Link
-              href="/"
-              className="flex items-center gap-2 text-luxury-silver hover:text-luxury-gold transition-colors duration-300"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              Back to Home
-            </Link>
-          </div>
-        </div>
-      </nav>
+      {/* Navbar */}
+      <Navbar />
 
       {/* Content */}
       <div className="pt-32 pb-20 px-4">

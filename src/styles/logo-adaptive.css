@@ -1,0 +1,21 @@
+/* Adaptive Logo Styles */
+.logo-adaptive {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+/* Dark background (default - navbar over video) */
+.logo-adaptive img {
+  filter: brightness(0) invert(1) drop-shadow(0 0 10px rgba(255, 255, 255, 0.15));
+}
+
+/* Light background (when on normal pages) */
+.bg-light .logo-adaptive img {
+  filter: brightness(1) invert(0) drop-shadow(0 0 8px rgba(212, 175, 55, 0.2));
+}
+
+/* Hover effect */
+.logo-adaptive:hover img {
+  filter: brightness(0) invert(1) drop-shadow(0 0 15px rgba(212, 175, 55, 0.4));
+}
+
