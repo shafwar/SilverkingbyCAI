@@ -1,14 +1,32 @@
-import { auth } from "@/lib/auth";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export default auth((req) => {
-  const isLoggedIn = !!req.auth;
-  const isOnDashboard = req.nextUrl.pathname.startsWith("/dashboard");
-
-  if (isOnDashboard && !isLoggedIn) {
-    return Response.redirect(new URL("/dashboard/login", req.nextUrl));
+export function middleware(request: NextRequest) {
+  // Skip middleware for static files and API routes
+  const { pathname } = request.nextUrl;
+  
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/static") ||
+    pathname.includes(".")
+  ) {
+    return NextResponse.next();
   }
-});
+
+  // For dashboard routes, let the page handle auth check
+  return NextResponse.next();
+}
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+  ],
 };
