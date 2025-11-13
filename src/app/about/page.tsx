@@ -1,298 +1,673 @@
 "use client";
 
 import Navbar from "@/components/layout/Navbar";
-import { motion } from "framer-motion";
+import {
+  AnimatePresence,
+  motion,
+  useInView,
+  type TargetAndTransition,
+  type Variants,
+} from "framer-motion";
 import Link from "next/link";
-import { Shield, Award, Target, Sparkles, Eye, QrCode, ArrowRight } from "lucide-react";
+import {
+  Shield,
+  Award,
+  Target,
+  Sparkles,
+  Eye,
+  QrCode,
+  ArrowRight,
+  Instagram,
+  Linkedin,
+  Facebook,
+  Youtube,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { APP_NAME } from "@/utils/constants";
+import { useEffect, useMemo, useRef, type CSSProperties } from "react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useGSAP } from "@gsap/react";
+
+gsap.registerPlugin(ScrollTrigger);
+
+const revealVariants: Variants = {
+  initial: { opacity: 0, y: 40 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: "easeOut", staggerChildren: 0.15 },
+  },
+  exit: { opacity: 0, y: -40, transition: { duration: 0.4, ease: "easeIn" } },
+};
+
+const presenceVariants: Variants = {
+  initial: { opacity: 0, y: 32, scale: 0.96, filter: "blur(8px)" },
+  animate: (index = 0) => ({
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    filter: "blur(0px)",
+    transition: {
+      duration: 0.6,
+      ease: [0.22, 1, 0.36, 1],
+      delay: Number(index) * 0.08,
+    },
+  }),
+  exit: () => ({
+    opacity: 0,
+    y: -32,
+    scale: 0.95,
+    filter: "blur(10px)",
+    transition: { duration: 0.4, ease: [0.64, 0, 0.78, 0] },
+  }),
+};
+
+const glassPanelVariants: Variants = {
+  initial: { opacity: 0, scale: 0.94, y: 28, filter: "blur(10px)" },
+  animate: (index = 0) => ({
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: Number(index) * 0.08 },
+  }),
+  exit: () => ({
+    opacity: 0,
+    scale: 0.92,
+    y: -24,
+    filter: "blur(12px)",
+    transition: { duration: 0.45, ease: [0.55, 0, 0.7, 0] },
+  }),
+};
+
+const hoverSpring = {
+  scale: 1.02,
+  transition: {
+    type: "spring",
+    stiffness: 220,
+    damping: 18,
+  },
+} satisfies TargetAndTransition;
+
+type FeatureItem = {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  gradient: string;
+};
+
+type StepItem = {
+  number: string;
+  icon: LucideIcon;
+  title: string;
+  description: string;
+};
+
+type ValueItem = {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+};
+
+const FeatureCard = ({ feature, index }: { feature: FeatureItem; index: number }) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const isInView = useInView(containerRef, { amount: 0.45, margin: "-15% 0px" });
+
+  return (
+    <div ref={containerRef} className="group relative min-h-[360px]">
+      <AnimatePresence mode="sync">
+        {isInView && (
+          <motion.div
+            key={`${feature.title}-card`}
+            variants={glassPanelVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            custom={index}
+            whileHover={hoverSpring}
+            className="relative flex h-full flex-col rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] p-10 backdrop-blur-xl transition-all duration-500 hover:border-luxury-gold/40 hover:shadow-[0px_30px_80px_-40px_rgba(212,175,55,0.6)]"
+          >
+            <div
+              className="absolute -inset-px rounded-3xl bg-gradient-to-br opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-20"
+              style={{ background: `linear-gradient(to bottom right, var(--tw-gradient-stops))` }}
+            />
+
+            <div className="relative z-10">
+              <div
+                className={`mb-6 inline-flex rounded-2xl bg-gradient-to-br ${feature.gradient} p-4 shadow-lg`}
+              >
+                <feature.icon className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="mb-3 text-2xl font-semibold text-white">{feature.title}</h3>
+              <p className="text-luxury-silver/80 leading-relaxed">{feature.description}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const StepCard = ({ step, index }: { step: StepItem; index: number }) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const isInView = useInView(containerRef, { amount: 0.45, margin: "-25% 0px" });
+
+  return (
+    <div ref={containerRef} className="relative min-h-[340px]">
+      <AnimatePresence mode="sync">
+        {isInView && (
+          <motion.div
+            key={`${step.number}-step`}
+            variants={presenceVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            custom={index}
+            className="relative flex h-full flex-col items-center text-center"
+          >
+            {index < 2 && (
+              <motion.div
+                className="absolute left-full top-12 hidden h-0.5 w-12 bg-gradient-to-r from-luxury-gold/50 to-transparent md:block"
+                initial={{ opacity: 0, scaleX: 0 }}
+                animate={{
+                  opacity: 1,
+                  scaleX: 1,
+                  originX: 0,
+                  transition: { duration: 0.5, ease: "easeOut", delay: 0.2 },
+                }}
+                exit={{ opacity: 0, scaleX: 0, transition: { duration: 0.3, ease: "easeIn" } }}
+              />
+            )}
+
+            <div className="mx-auto mb-6 inline-flex h-24 w-24 items-center justify-center rounded-full border border-luxury-gold/40 bg-gradient-to-br from-luxury-gold/15 to-luxury-silver/10 shadow-[0_20px_40px_-30px_rgba(212,175,55,0.6)]">
+              <span className="bg-gradient-to-br from-luxury-gold to-luxury-lightGold bg-clip-text text-3xl font-bold text-transparent">
+                {step.number}
+              </span>
+            </div>
+
+            <div className="mb-4 flex justify-center">
+              <step.icon className="h-12 w-12 text-luxury-gold drop-shadow-[0_10px_30px_rgba(212,175,55,0.24)]" />
+            </div>
+
+            <h3 className="mb-3 text-xl font-semibold text-white">{step.title}</h3>
+            <p className="text-luxury-silver/70 leading-relaxed">{step.description}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const ValueCard = ({ value, index }: { value: ValueItem; index: number }) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const isInView = useInView(containerRef, { amount: 0.5, margin: "-25% 0px" });
+
+  return (
+    <div ref={containerRef} className="min-h-[220px]">
+      <AnimatePresence mode="sync">
+        {isInView && (
+          <motion.div
+            key={`${value.title}-value`}
+            variants={presenceVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            custom={index}
+            whileHover={hoverSpring}
+            className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 via-white/[0.03] to-transparent p-8 text-center backdrop-blur-xl shadow-[0_20px_70px_-30px_rgba(0,0,0,0.7)]"
+          >
+            <value.icon className="mx-auto mb-4 h-10 w-10 text-luxury-gold" />
+            <h3 className="mb-2 text-lg font-semibold text-luxury-gold">{value.title}</h3>
+            <p className="text-sm text-luxury-silver/70">{value.description}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 export default function AboutPage() {
+  const pageRef = useRef<HTMLDivElement | null>(null);
+  const heroRef = useRef<HTMLDivElement | null>(null);
+  const noiseOverlay = useRef<HTMLDivElement | null>(null);
+  const gradientOverlay = useRef<HTMLDivElement | null>(null);
+  const sectionsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const parallaxRef = useRef<(HTMLDivElement | null)[]>([]);
+  const magneticButtonsRef = useRef<(HTMLAnchorElement | null)[]>([]);
+
+  const featureItems = useMemo<FeatureItem[]>(
+    () => [
+      {
+        icon: Shield,
+        title: "Verified Authenticity",
+        description:
+          "Each product comes with a unique QR code for instant verification and authenticity confirmation.",
+        gradient: "from-emerald-500 to-teal-600",
+      },
+      {
+        icon: Sparkles,
+        title: "Premium Quality",
+        description:
+          "99.99% purity guarantee on all our precious metal products, crafted with meticulous attention to detail.",
+        gradient: "from-luxury-gold to-luxury-lightGold",
+      },
+      {
+        icon: Award,
+        title: "Luxury Craftsmanship",
+        description:
+          "Custom designs and precision manufacturing make every piece a work of art worthy of your collection.",
+        gradient: "from-luxury-silver to-white",
+      },
+    ],
+    []
+  );
+
+  const stepItems = useMemo<StepItem[]>(
+    () => [
+      {
+        number: "01",
+        icon: QrCode,
+        title: "Scan QR Code",
+        description: "Simply scan the unique QR code on your product using your smartphone camera.",
+      },
+      {
+        number: "02",
+        icon: Eye,
+        title: "Instant Verification",
+        description:
+          "Our system instantly verifies the product's authenticity and displays detailed information.",
+      },
+      {
+        number: "03",
+        icon: Shield,
+        title: "Guaranteed Authentic",
+        description: "Receive confirmation that your precious metal is 100% genuine and certified.",
+      },
+    ],
+    []
+  );
+
+  const valueItems = useMemo<ValueItem[]>(
+    () => [
+      {
+        icon: Shield,
+        title: "Authenticity",
+        description: "Every product verified and certified",
+      },
+      {
+        icon: Award,
+        title: "Excellence",
+        description: "99.99% purity guarantee",
+      },
+      {
+        icon: Target,
+        title: "Precision",
+        description: "Meticulous attention to detail",
+      },
+    ],
+    []
+  );
+
+  const socialLinks = useMemo(
+    () => [
+      { icon: Instagram, href: "https://instagram.com", label: "Instagram" },
+      { icon: Linkedin, href: "https://linkedin.com", label: "LinkedIn" },
+      { icon: Facebook, href: "https://facebook.com", label: "Facebook" },
+      { icon: Youtube, href: "https://youtube.com", label: "YouTube" },
+    ],
+    []
+  );
+
+  const premiumGradient = useMemo(
+    () =>
+      "linear-gradient(160deg, rgba(18,18,18,0.94) 0%, rgba(10,10,10,0.98) 55%, rgba(6,6,6,1) 100%)",
+    []
+  );
+
+  useGSAP(
+    () => {
+      if (!pageRef.current) return;
+
+      const ctx = gsap.context(() => {
+        gsap.set("[data-reveal]", { autoAlpha: 0, y: 40 });
+
+        sectionsRef.current.forEach((section) => {
+          if (!section) return;
+          const targets = section.querySelectorAll("[data-reveal]");
+
+          ScrollTrigger.batch(targets, {
+            start: "top 80%",
+            onEnter: (batch) =>
+              gsap.to(batch, {
+                autoAlpha: 1,
+                y: 0,
+                duration: 0.6,
+                stagger: 0.12,
+                ease: "power3.out",
+              }),
+            once: true,
+          });
+        });
+
+        parallaxRef.current.forEach((element) => {
+          if (!element) return;
+          const depth = Number(element.dataset.speed || 0.2);
+          gsap.to(element, {
+            yPercent: depth * -20,
+            ease: "none",
+            scrollTrigger: {
+              trigger: element,
+              start: "top bottom",
+              scrub: true,
+            },
+          });
+        });
+
+        if (heroRef.current) {
+          const heroTimeline = gsap.timeline({ defaults: { ease: "power3.out" } });
+          heroTimeline
+            .fromTo(
+              heroRef.current.querySelectorAll("[data-hero]") || [],
+              { autoAlpha: 0, y: 40 },
+              { autoAlpha: 1, y: 0, duration: 0.8, stagger: 0.15 }
+            )
+            .fromTo(
+              heroRef.current.querySelectorAll("[data-hero-glow]") || [],
+              { scale: 0.9, autoAlpha: 0 },
+              { scale: 1, autoAlpha: 1, duration: 0.8, ease: "power2.out" },
+              "<"
+            );
+        }
+
+        magneticButtonsRef.current.forEach((button) => {
+          if (!button) return;
+          const xTo = gsap.quickTo(button, "x", { duration: 0.5, ease: "power3" });
+          const yTo = gsap.quickTo(button, "y", { duration: 0.5, ease: "power3" });
+
+          const handlePointerMove = (event: MouseEvent) => {
+            const rect = button.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const deltaX = (event.clientX - centerX) * 0.2;
+            const deltaY = (event.clientY - centerY) * 0.2;
+            xTo(deltaX);
+            yTo(deltaY);
+          };
+
+          const reset = () => {
+            xTo(0);
+            yTo(0);
+          };
+
+          button.addEventListener("pointermove", handlePointerMove);
+          button.addEventListener("pointerleave", reset);
+
+          ScrollTrigger.create({
+            trigger: button,
+            start: "top bottom",
+            once: true,
+            onLeave: reset,
+          });
+        });
+      }, pageRef);
+
+      return () => ctx.revert();
+    },
+    { scope: pageRef }
+  );
+
+  useEffect(() => {
+    if (!noiseOverlay.current) return;
+
+    noiseOverlay.current.style.backgroundImage =
+      'url(\'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" preserveAspectRatio="none"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.15"/></svg>\')';
+  }, []);
+
   return (
-    <div className="min-h-screen bg-luxury-black">
+    <div
+      ref={pageRef}
+      className="min-h-screen bg-luxury-black text-white selection:bg-luxury-gold/20 selection:text-white"
+      style={{ backgroundImage: premiumGradient }}
+    >
+      <div
+        ref={noiseOverlay}
+        className="pointer-events-none fixed inset-0 z-0 opacity-60 mix-blend-soft-light"
+      />
+      <div
+        ref={gradientOverlay}
+        className="pointer-events-none fixed inset-0 z-0 opacity-90"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(18,18,18,0.7) 0%, rgba(10,10,10,0.85) 45%, rgba(4,4,4,0.95) 100%)",
+        }}
+      />
       {/* Navbar */}
       <Navbar />
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6">
-        <div className="max-w-[1440px] mx-auto">
+      <section
+        ref={(element) => {
+          sectionsRef.current[0] = element;
+        }}
+        className="relative flex min-h-[100vh] items-center px-6 pb-24 pt-24 md:pt-32"
+      >
+        {/* Fullscreen Video Background */}
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          <video
+            className="absolute inset-0 h-full w-full object-cover brightness-[0.85] scale-105"
+            src="/videos/hero/gold-footage.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="metadata"
+          />
+          {/* Smooth Multi-layer Gradients */}
+          <div className="absolute inset-0 bg-gradient-to-b from-luxury-black/40 via-luxury-black/60 to-luxury-black" />
+          <div className="absolute inset-0 bg-gradient-to-t from-luxury-black via-luxury-black/80 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-luxury-black/50 via-transparent to-luxury-black/30" />
+          <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-luxury-black via-luxury-black/95 to-transparent" />
+          {/* Subtle vignette effect */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(10,10,10,0.4)_100%)]" />
+        </div>
+
+        {/* Subtle light overlay */}
+        <div className="absolute inset-0 z-0 bg-gradient-to-b from-white/5 via-transparent to-transparent" />
+
+        <div
+          className="relative z-10 mx-auto flex w-full max-w-[1200px] flex-col items-center text-center"
+          ref={heroRef}
+        >
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-16"
+            variants={revealVariants}
+            initial="initial"
+            animate="animate"
+            className="space-y-10 md:max-w-[680px]"
           >
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-normal tracking-tight mb-6">
-              <span className="text-white">About</span>{" "}
-              <span className="bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text text-transparent">
-                Silver King
+            <motion.div
+              className="inline-flex items-center justify-center gap-3 rounded-full border border-white/10 bg-white/5 px-6 py-2 text-[12px] uppercase tracking-[0.45em] text-luxury-silver/60 backdrop-blur"
+              data-hero
+            >
+              <span className="h-1 w-1 rounded-full bg-luxury-gold" data-hero-glow />
+              Est. 2024
+              <span className="h-1 w-1 rounded-full bg-luxury-gold" data-hero-glow />
+            </motion.div>
+            <motion.h1
+              className="text-[40px] font-semibold leading-tight tracking-[0.01em] text-white md:text-[68px] lg:text-[88px]"
+              data-hero
+            >
+              <span className="block text-base uppercase tracking-[0.75em] text-luxury-silver/70 md:text-3xl">
+                The Legacy
               </span>
-            </h1>
-            <p className="text-xl text-luxury-silver/70 max-w-2xl mx-auto">
-              Crafting excellence in precious metals since 2024
-            </p>
+             
+            </motion.h1>
+            <motion.p
+              className="mx-auto max-w-3xl text-sm font-light leading-relaxed text-luxury-silver/70 md:text-base"
+              data-hero
+            >
+              Crafting excellence in precious metals since 2024 with uncompromising precision and
+              ground-breaking verification technology.
+            </motion.p>
           </motion.div>
+
+          <div
+            ref={(element) => {
+              parallaxRef.current[0] = element;
+            }}
+            data-speed="0.3"
+            className="pointer-events-none absolute left-1/2 top-full z-0 h-45 w-[70%] -translate-x-1/2 -translate-y-20 rounded-full bg-gradient-to-r from-white/10 via-transparent to-transparent blur-xl"
+          />
         </div>
       </section>
 
       {/* Why Choose Us Section */}
-      <section className="relative py-24 md:py-32 px-6 overflow-hidden">
-        <div className="mx-auto max-w-[1440px]">
-          {/* Section Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="mb-16 text-center"
-          >
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-light tracking-tight mb-4">
+      <section
+        ref={(element) => {
+          sectionsRef.current[1] = element;
+        }}
+        className="relative overflow-hidden py-28 md:py-36 px-6"
+      >
+        <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#171717] via-[#0f0f0f] to-[#060606]" />
+        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-luxury-black via-transparent to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-luxury-black via-transparent to-transparent" />
+
+        <div className="relative z-10 mx-auto max-w-[1320px]">
+          <motion.div className="mb-20 text-center" data-reveal>
+            <h2 className="mb-5 text-4xl md:text-5xl lg:text-6xl font-light tracking-tight">
               <span className="text-white">Why Choose</span>{" "}
               <span className="bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text text-transparent">
                 Silver King
               </span>
             </h2>
-            <p className="text-lg md:text-xl text-luxury-silver/70 max-w-2xl mx-auto">
-              Experience the pinnacle of precious metal authentication
+            <p className="mx-auto max-w-3xl text-lg md:text-xl text-luxury-silver/70">
+              Experience the pinnacle of precious metal authentication with a heritage of trust and
+              modern innovation.
             </p>
           </motion.div>
 
-          {/* Features Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
-            {[
-              {
-                icon: Shield,
-                title: "Verified Authenticity",
-                description:
-                  "Each product comes with a unique QR code for instant verification and authenticity confirmation.",
-                gradient: "from-emerald-500 to-teal-600",
-              },
-              {
-                icon: Sparkles,
-                title: "Premium Quality",
-                description:
-                  "99.99% purity guarantee on all our precious metal products, crafted with meticulous attention to detail.",
-                gradient: "from-luxury-gold to-luxury-lightGold",
-              },
-              {
-                icon: Award,
-                title: "Luxury Craftsmanship",
-                description:
-                  "Custom designs and precision manufacturing make every piece a work of art worthy of your collection.",
-                gradient: "from-luxury-silver to-white",
-              },
-            ].map((feature, index) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: index * 0.2 }}
-                className="group relative"
-              >
-                <div className="relative h-full rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] p-8 backdrop-blur-sm transition-all duration-500 hover:border-white/20 hover:bg-white/10">
-                  {/* Glow Effect */}
-                  <div
-                    className="absolute -inset-px rounded-2xl bg-gradient-to-br opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-20"
-                    style={{
-                      background: `linear-gradient(to bottom right, var(--tw-gradient-stops))`,
-                    }}
-                  />
-
-                  <div className="relative z-10">
-                    {/* Icon */}
-                    <div
-                      className={`mb-6 inline-flex rounded-2xl bg-gradient-to-br ${feature.gradient} p-4 shadow-lg`}
-                    >
-                      <feature.icon className="h-6 w-6 text-white" />
-                    </div>
-
-                    {/* Content */}
-                    <h3 className="mb-3 text-2xl font-semibold text-white">{feature.title}</h3>
-                    <p className="text-luxury-silver/80 leading-relaxed">{feature.description}</p>
-                  </div>
-                </div>
-              </motion.div>
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-12">
+            {featureItems.map((feature, index) => (
+              <FeatureCard key={feature.title} feature={feature} index={index} />
             ))}
           </div>
         </div>
       </section>
 
       {/* How It Works Section */}
-      <section className="relative py-24 md:py-32 px-6">
-        <div className="mx-auto max-w-[1440px]">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mb-20 text-center"
-          >
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-light tracking-tight mb-4">
+      <section
+        ref={(element) => {
+          sectionsRef.current[2] = element;
+        }}
+        className="relative py-28 md:py-36 px-6"
+      >
+        <div className="absolute inset-0 bg-gradient-to-b from-[#151515] via-[#0e0e0e] to-[#050505]" />
+        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-luxury-black via-transparent to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-luxury-black via-transparent to-transparent" />
+
+        <div className="relative mx-auto max-w-[1320px]">
+          <div className="mb-20 text-center space-y-5" data-reveal>
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-light tracking-tight">
               <span className="text-white">Simple. Secure.</span>{" "}
               <span className="bg-gradient-to-r from-luxury-gold to-luxury-silver bg-clip-text text-transparent">
                 Verified.
               </span>
             </h2>
-            <p className="text-lg md:text-xl text-luxury-silver/70 max-w-2xl mx-auto">
-              Three steps to verify your precious metal&apos;s authenticity
+            <p className="mx-auto max-w-3xl text-lg md:text-xl text-luxury-silver/70">
+              Three effortless steps to authenticate your investment with confidence.
             </p>
-          </motion.div>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
-            {[
-              {
-                number: "01",
-                icon: QrCode,
-                title: "Scan QR Code",
-                description:
-                  "Simply scan the unique QR code on your product using your smartphone camera.",
-              },
-              {
-                number: "02",
-                icon: Eye,
-                title: "Instant Verification",
-                description:
-                  "Our system instantly verifies the product's authenticity and displays detailed information.",
-              },
-              {
-                number: "03",
-                icon: Shield,
-                title: "Guaranteed Authentic",
-                description:
-                  "Receive confirmation that your precious metal is 100% genuine and certified.",
-              },
-            ].map((step, index) => (
-              <motion.div
-                key={step.number}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: index * 0.2 }}
-                className="relative"
-              >
-                {/* Connection Line (desktop only) */}
-                {index < 2 && (
-                  <div className="absolute left-full top-12 hidden h-0.5 w-12 bg-gradient-to-r from-luxury-gold/50 to-transparent md:block" />
-                )}
-
-                <div className="text-center">
-                  {/* Number Badge */}
-                  <div className="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-luxury-gold/20 to-luxury-silver/20 border border-luxury-gold/30">
-                    <span className="bg-gradient-to-br from-luxury-gold to-luxury-lightGold bg-clip-text text-3xl font-bold text-transparent">
-                      {step.number}
-                    </span>
-                  </div>
-
-                  {/* Icon */}
-                  <div className="mb-4 flex justify-center">
-                    <step.icon className="h-12 w-12 text-luxury-gold" />
-                  </div>
-
-                  {/* Content */}
-                  <h3 className="mb-3 text-xl font-semibold text-white">{step.title}</h3>
-                  <p className="text-luxury-silver/70 leading-relaxed">{step.description}</p>
-                </div>
-              </motion.div>
+          <div className="grid grid-cols-1 gap-12 md:grid-cols-3 md:gap-10">
+            {stepItems.map((step, index) => (
+              <StepCard key={step.number} step={step} index={index} />
             ))}
           </div>
         </div>
       </section>
 
       {/* Story Section */}
-      <section className="py-24 md:py-32 px-6">
-        <div className="max-w-[1440px] mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8 }}
-            >
-              <h2 className="text-4xl md:text-5xl font-light tracking-tight text-luxury-gold mb-6">
-                Our Story
-              </h2>
-              <div className="space-y-4 text-luxury-silver/80 leading-relaxed text-base">
-                <p>
-                  Silver King by CAI represents the pinnacle of precious metal manufacturing. We
-                  specialize in creating luxury gold, silver, palladium, and custom silver bars that
-                  embody perfection in every detail.
-                </p>
-                <p>
-                  Our commitment to excellence is reflected in every product we create. With a
-                  purity guarantee of 99.99% on all our precious metals, we ensure that each piece
-                  meets the highest standards of quality and craftsmanship.
-                </p>
-                <p>
-                  Every Silver King product comes with a unique QR code verification system,
-                  allowing our customers to instantly verify the authenticity of their investment.
-                  This innovative approach combines traditional craftsmanship with modern
-                  technology.
-                </p>
-              </div>
-            </motion.div>
+      <section
+        ref={(element) => {
+          sectionsRef.current[3] = element;
+        }}
+        className="relative py-28 md:py-36 px-6"
+      >
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-[#141414] via-[#0c0c0c] to-[#050505]" />
+          <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-luxury-black via-transparent to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-luxury-black via-transparent to-transparent" />
+        </div>
 
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8 }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-6"
-            >
-              {[
-                {
-                  icon: Shield,
-                  title: "Authenticity",
-                  description: "Every product verified and certified",
-                },
-                {
-                  icon: Award,
-                  title: "Excellence",
-                  description: "99.99% purity guarantee",
-                },
-                {
-                  icon: Target,
-                  title: "Precision",
-                  description: "Meticulous attention to detail",
-                },
-              ].map((value, index) => (
-                <motion.div
-                  key={value.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-sm"
-                >
-                  <value.icon className="w-10 h-10 text-luxury-gold mx-auto mb-3" />
-                  <h3 className="text-lg font-semibold text-luxury-gold mb-2">{value.title}</h3>
-                  <p className="text-sm text-luxury-silver/70">{value.description}</p>
-                </motion.div>
-              ))}
-            </motion.div>
+        <div className="relative mx-auto grid max-w-[1320px] grid-cols-1 items-center gap-16 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-8" data-reveal>
+            <h2 className="text-4xl md:text-5xl font-light tracking-tight text-luxury-gold">
+              Our Story
+            </h2>
+            <div className="space-y-5 text-base leading-relaxed text-luxury-silver/80">
+              <p>
+                Silver King by CAI represents the pinnacle of precious metal manufacturing. We
+                specialize in creating luxury gold, silver, palladium, and custom silver bars that
+                embody perfection in every detail.
+              </p>
+              <p>
+                Our commitment to excellence is reflected in every product we create. With a purity
+                guarantee of 99.99% on all our precious metals, we ensure that each piece meets the
+                highest standards of quality and craftsmanship.
+              </p>
+              <p>
+                Every Silver King product comes with a unique QR code verification system, allowing
+                our customers to instantly verify the authenticity of their investment. This
+                innovative approach combines traditional craftsmanship with modern technology.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            {valueItems.map((value, index) => (
+              <ValueCard key={value.title} value={value} index={index} />
+            ))}
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="relative py-24 md:py-32 px-6">
-        <div className="mx-auto max-w-[1440px]">
+      <section
+        ref={(element) => {
+          sectionsRef.current[4] = element;
+        }}
+        className="relative py-32 md:py-40 px-6"
+      >
+        <div className="mx-auto max-w-[1320px]">
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="relative overflow-hidden rounded-3xl border border-luxury-gold/20 bg-gradient-to-br from-luxury-gold/10 via-transparent to-luxury-silver/10 p-12 md:p-16 lg:p-20"
+            className="group relative overflow-hidden rounded-[44px] border border-white/8 bg-[#090909] p-[1.5px] shadow-[0_70px_140px_-60px_rgba(0,0,0,0.85)]"
+            variants={glassPanelVariants}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true, amount: 0.6 }}
+            data-reveal
           >
-            {/* Background Pattern */}
-            <div className="absolute inset-0 opacity-5">
+            <div
+              className="absolute inset-0 rounded-[44px] opacity-80 transition-opacity duration-700 group-hover:opacity-100"
+              style={{
+                background:
+                  "linear-gradient(135deg, rgba(212,175,55,0.22) 0%, rgba(212,175,55,0.05) 38%, rgba(192,192,192,0.08) 62%, transparent 100%)",
+              }}
+            />
+            <div className="absolute inset-[1.5px] rounded-[42px] bg-gradient-to-b from-[#161616] via-[#0f0f0f] to-[#050505] backdrop-blur-[18px]" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-white/10 via-transparent to-transparent opacity-50" />
+            <div className="pointer-events-none absolute inset-x-16 bottom-0 h-56 bg-[radial-gradient(ellipse_at_center,rgba(212,175,55,0.18)0%,transparent70%)] opacity-40" />
+            <div className="pointer-events-none absolute inset-0 opacity-[0.05]">
               <div
                 className="absolute inset-0"
                 style={{
-                  backgroundImage: `radial-gradient(circle at 1px 1px, rgba(212,175,55,0.3) 1px, transparent 0)`,
-                  backgroundSize: "40px 40px",
+                  backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.12) 1px, transparent 0)`,
+                  backgroundSize: "46px 46px",
                 }}
               />
             </div>
 
-            <div className="relative z-10 text-center">
+            <div className="relative z-10 px-10 py-14 text-center md:px-16 md:py-16 lg:px-24 lg:py-20">
               <h2 className="mb-6 text-4xl md:text-5xl lg:text-6xl font-light tracking-tight">
                 <span className="text-white">Ready to verify</span>
                 <br />
@@ -300,24 +675,36 @@ export default function AboutPage() {
                   your precious metals?
                 </span>
               </h2>
-              <p className="mx-auto mb-10 max-w-2xl text-lg md:text-xl text-luxury-silver/80">
+              <p className="mx-auto mb-12 max-w-2xl text-lg md:text-xl text-luxury-silver/75">
                 Join thousands of satisfied customers who trust Silver King for authentic, verified
                 precious metals.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-center">
                 <Link
                   href="/verify"
-                  className="group inline-flex items-center justify-center gap-3 rounded-full bg-gradient-to-r from-luxury-gold to-luxury-lightGold px-8 py-4 text-base font-semibold text-black transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_20px_60px_-15px_rgba(212,175,55,0.5)]"
+                  ref={(element) => {
+                    magneticButtonsRef.current[0] = element;
+                  }}
+                  className="group relative inline-flex items-center justify-center gap-3 overflow-hidden rounded-full bg-gradient-to-r from-luxury-gold to-luxury-lightGold px-9 py-4 text-base font-semibold text-black transition-all duration-300 hover:shadow-[0_35px_90px_-35px_rgba(212,175,55,0.8)]"
                 >
                   <Shield className="h-5 w-5" />
                   <span>Start Verification</span>
                   <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
+                  <motion.span
+                    className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 opacity-0"
+                    initial={{ opacity: 0 }}
+                    whileHover={{ opacity: 0.25 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                  />
                 </Link>
 
                 <Link
                   href="/"
-                  className="inline-flex items-center justify-center gap-3 rounded-full border-2 border-luxury-silver/30 bg-white/5 px-8 py-4 text-base font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:border-luxury-silver hover:bg-white/10"
+                  ref={(element) => {
+                    magneticButtonsRef.current[1] = element;
+                  }}
+                  className="inline-flex items-center justify-center gap-3 rounded-full border border-white/20 bg-white/[0.04] px-8 py-4 text-base font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:border-white/40 hover:bg-white/10"
                 >
                   Back to Home
                 </Link>
@@ -329,11 +716,38 @@ export default function AboutPage() {
 
       {/* Footer */}
       <footer className="relative border-t border-white/10 py-12 px-6">
-        <div className="mx-auto max-w-[1440px] text-center">
-          <p className="text-sm text-luxury-silver/60">
+        <div className="absolute inset-x-0 bottom-0 z-0 h-32 bg-gradient-to-t from-[#111111] via-[#080808] to-transparent" />
+        <div className="relative z-10 mx-auto flex max-w-[1320px] flex-col items-center gap-6 text-center">
+          <p className="text-sm text-luxury-silver/60" data-reveal>
             © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
           </p>
-          <p className="mt-2 text-xs text-luxury-silver/40">The Art of Precious Metal Perfection</p>
+          <div
+            className="h-px w-full max-w-xl bg-gradient-to-r from-transparent via-white/10 to-transparent"
+            data-reveal
+          />
+          <motion.div
+            className="flex items-center justify-center gap-3"
+            variants={revealVariants}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true, amount: 0.6 }}
+          >
+            {socialLinks.map((social, index) => (
+              <motion.div key={social.label} variants={presenceVariants} custom={index}>
+                <Link
+                  href={social.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/5 bg-white/[0.03] backdrop-blur transition-all duration-300 hover:border-luxury-gold/60 hover:bg-white/10"
+                >
+                  <social.icon className="h-5 w-5 text-luxury-silver transition-colors duration-300 group-hover:text-luxury-gold" />
+                </Link>
+              </motion.div>
+            ))}
+          </motion.div>
+          <p className="text-xs uppercase tracking-[0.3em] text-luxury-silver/35" data-reveal>
+            Crafted for timeless confidence
+          </p>
         </div>
       </footer>
     </div>
