@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, type Variants } from "framer-motion";
 import { gsap } from "gsap";
+import { QrCode } from "lucide-react";
 
 interface HeroSectionProps {
   shouldAnimate?: boolean;
@@ -450,6 +451,38 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
           </div>
         </div>
       </div>
+
+      {/* QR verification feature card */}
+      <motion.div
+        initial={{ opacity: 0, y: 35, scale: 0.97 }}
+        animate={{
+          opacity: shouldAnimate ? 1 : 0,
+          y: shouldAnimate ? 0 : 35,
+          scale: shouldAnimate ? 1 : 0.97,
+        }}
+        transition={{ duration: 1, delay: 1.1, ease: "easeOut" }}
+        className="absolute bottom-8 inset-x-0 z-30 flex justify-center px-4"
+      >
+        <a
+          href="/verify"
+          className="group inline-flex items-center gap-3 text-left w-[min(360px,calc(100vw-48px))]"
+        >
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-black/40">
+            <QrCode className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex-1">
+            <p className="text-[0.5rem] uppercase tracking-[0.45em] text-white/55">
+              Scan & Verify
+            </p>
+            <p className="mt-0.5 text-[0.95rem] font-semibold text-white tracking-tight">
+              Tap to launch Silver King QR scanner
+            </p>
+            <p className="mt-0.5 text-[0.65rem] text-white/60 leading-relaxed">
+              Capture the QR seal to view purity & provenance. “Product authenticated” badge appears once functionality is live.
+            </p>
+          </div>
+        </a>
+      </motion.div>
 
       {/* Bottom Fade */}
       <motion.div
