@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { gsap } from "gsap";
 
@@ -12,7 +12,8 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  // USE useLayoutEffect for INSTANT initial state (no flash, no delay)
+  useLayoutEffect(() => {
     const ctx = gsap.context(() => {
       const tl = gsap.timeline();
 
@@ -20,7 +21,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
       const letters = textRef.current?.querySelectorAll(".letter");
 
       if (letters) {
-        // Initial state - all hidden and blurred
+        // Initial state - all hidden and blurred (SET IMMEDIATELY)
         gsap.set(letters, {
           opacity: 0,
           y: 30,
@@ -28,7 +29,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
           scale: 0.9,
         });
 
-        // Animate letters one by one
+        // Animate letters one by one - FASTER & SMOOTHER
         tl.to(
           letters,
           {
@@ -36,53 +37,53 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
             y: 0,
             filter: "blur(0px)",
             scale: 1,
-            duration: 0.8,
+            duration: 0.7,
             stagger: {
-              amount: 2,
+              amount: 1.6, // Reduced from 2 for faster stagger
               ease: "power2.inOut",
             },
             ease: "expo.out",
           },
-          0.3
+          0.1 // Start almost immediately (reduced from 0.3)
         );
 
-        // Pulse effect at the end
+        // Pulse effect at the end - SUBTLER & FASTER
         tl.to(
           textRef.current,
           {
-            scale: 1.02,
-            duration: 0.4,
+            scale: 1.015, // More subtle (was 1.02)
+            duration: 0.3,
             ease: "power2.out",
           },
-          "-=0.5"
+          "-=0.4"
         );
 
         tl.to(
           textRef.current,
           {
             scale: 1,
-            duration: 0.4,
+            duration: 0.3,
             ease: "power2.inOut",
           },
-          "-=0.2"
+          "-=0.15"
         );
 
-        // Hold for a moment
-        tl.to({}, { duration: 0.5 });
+        // Shorter hold
+        tl.to({}, { duration: 0.3 });
 
-        // Fade out entire splash
+        // Fade out entire splash - FASTER & SMOOTHER
         tl.to(
           containerRef.current,
           {
             opacity: 0,
-            duration: 0.8,
-            ease: "power2.inOut",
+            duration: 0.6, // Faster fade (was 0.8)
+            ease: "power3.inOut",
             onComplete: () => {
               // Call parent's onComplete after fade out
               onComplete();
             },
           },
-          "+=0.3"
+          "+=0.2" // Shorter delay before fade (was 0.3)
         );
       }
     });

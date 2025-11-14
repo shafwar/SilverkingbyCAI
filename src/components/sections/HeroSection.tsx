@@ -1,23 +1,117 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { motion, useScroll, useTransform, type Variants } from "framer-motion";
 import { gsap } from "gsap";
 
 interface HeroSectionProps {
   shouldAnimate?: boolean;
 }
 
+const videoIntroVariants: Variants = {
+  hidden: { opacity: 0, scale: 1.12, filter: "blur(16px)", rotateX: -8 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    filter: "blur(0px)",
+    rotateX: 0,
+    transition: { duration: 1.6, ease: [0.16, 1, 0.3, 1] },
+  },
+};
+
+const gradientIntroVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { duration: 1.2, delay: 0.4, ease: "easeOut" },
+  },
+};
+
+const secondaryGradientVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { duration: 1.4, delay: 0.6, ease: "easeOut" },
+  },
+};
+
+const bubbleLayerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { duration: 1.1, delay: 0.8, ease: "easeOut" },
+  },
+};
+
+const bubbleVariants: Variants = {
+  hidden: { opacity: 0, scale: 0.6, y: 12, filter: "blur(18px)" },
+  visible: (custom?: { delay?: number; duration?: number }) => {
+    const delay = custom?.delay ?? 0;
+    const duration = custom?.duration ?? 8;
+    return {
+      opacity: [0.15, 0.4, 0.18],
+      scale: [0.85, 1.05, 0.92],
+      y: [0, -16, 0],
+      transition: {
+        delay: 0.6 + delay,
+        duration,
+        ease: "easeInOut",
+        repeat: Infinity,
+      },
+    };
+  },
+};
+
+const bubbleOrbs = [
+  {
+    id: "orb-1",
+    size: 220,
+    top: "4%",
+    left: "10%",
+    delay: 0,
+    duration: 9,
+    gradient:
+      "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.45), rgba(255,255,255,0.05) 65%)",
+  },
+  {
+    id: "orb-2",
+    size: 180,
+    top: "28%",
+    left: "5%",
+    delay: 0.3,
+    duration: 7.5,
+    gradient:
+      "radial-gradient(circle at 60% 40%, rgba(255,215,0,0.35), rgba(255,215,0,0.05) 70%)",
+  },
+  {
+    id: "orb-3",
+    size: 260,
+    top: "36%",
+    left: "32%",
+    delay: 0.5,
+    duration: 8.5,
+    gradient:
+      "radial-gradient(circle at 40% 40%, rgba(255,255,255,0.35), rgba(255,255,255,0.05) 70%)",
+  },
+  {
+    id: "orb-4",
+    size: 140,
+    top: "62%",
+    left: "18%",
+    delay: 0.2,
+    duration: 7,
+    gradient:
+      "radial-gradient(circle at 50% 50%, rgba(255,215,0,0.25), rgba(255,215,0,0.04) 70%)",
+  },
+];
+
 export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const headlineRef = useRef<HTMLHeadingElement>(null);
   const subtitleRef = useRef<HTMLParagraphElement>(null);
-  const ctaRef = useRef<HTMLDivElement>(null);
   const statsRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [hasAnimated, setHasAnimated] = useState(false);
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -32,30 +126,62 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
     setIsLoaded(true);
   }, []);
 
+  const animationState = shouldAnimate ? "visible" : "hidden";
+
+  // SET INITIAL STATES IMMEDIATELY - NO FLICKER (useLayoutEffect runs BEFORE browser paint)
+  useLayoutEffect(() => {
+    const ctx = gsap.context(() => {
+      // Headline words - hidden initially
+      if (headlineRef.current) {
+        const words = headlineRef.current.querySelectorAll(".word");
+        gsap.set(words, {
+          opacity: 0,
+          y: 100,
+          rotationX: -25,
+          scale: 0.8,
+          filter: "blur(10px)",
+        });
+      }
+
+      // Subtitle - hidden initially
+      if (subtitleRef.current) {
+        gsap.set(subtitleRef.current, {
+          opacity: 0,
+          y: 50,
+          clipPath: "polygon(0 0, 100% 0, 100% 0, 0 0)",
+          filter: "blur(8px)",
+        });
+      }
+
+      // Insight stack - hidden initially
+      if (statsRef.current) {
+        gsap.set(statsRef.current, { opacity: 0, x: 40 });
+        
+        const statItems = statsRef.current.querySelectorAll(".stat-item");
+        gsap.set(statItems, { 
+          opacity: 0, 
+          x: 20, 
+          y: 10,
+          filter: "blur(4px)"
+        });
+      }
+    });
+
+    return () => ctx.revert();
+  }, []); // Run once on mount
+
+  // ANIMATE WHEN shouldAnimate becomes true
   useEffect(() => {
-    if (!shouldAnimate || hasAnimated) return;
+    if (!shouldAnimate) return;
 
     const ctx = gsap.context(() => {
       const masterTL = gsap.timeline({
         defaults: {
           ease: "power4.out",
         },
-        onComplete: () => {
-          setHasAnimated(true);
-        },
       });
 
-      // Video fade in
-      if (videoRef.current) {
-        masterTL.fromTo(
-          videoRef.current,
-          { scale: 1.15, opacity: 0 },
-          { scale: 1, opacity: 1, duration: 2.5, ease: "power3.out" },
-          0
-        );
-      }
-
-      // Headline words animation
+      // Headline words animation - START ALMOST IMMEDIATELY
       if (headlineRef.current) {
         const words = headlineRef.current.querySelectorAll(".word");
         masterTL.fromTo(
@@ -73,16 +199,16 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             rotationX: 0,
             scale: 1,
             filter: "blur(0px)",
-            duration: 1.8,
-            stagger: { amount: 1.2, from: "start", ease: "power3.inOut" },
+            duration: 1.6, // Slightly faster (was 1.8)
+            stagger: { amount: 1.0, from: "start", ease: "power3.inOut" }, // Faster stagger (was 1.2)
             ease: "expo.out",
             transformOrigin: "center bottom",
           },
-          0.3
+          0.1 // Start almost immediately (was 0.3)
         );
       }
 
-      // Subtitle
+      // Subtitle - FASTER
       masterTL.fromTo(
         subtitleRef.current,
         {
@@ -96,155 +222,122 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
           y: 0,
           clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%)",
           filter: "blur(0px)",
-          duration: 1.6,
+          duration: 1.4, // Faster (was 1.6)
           ease: "expo.out",
         },
-        1.2
+        1.0 // Start earlier (was 1.2)
       );
 
-      // CTA Buttons
-      masterTL.fromTo(
-        ".cta-button",
-        { opacity: 0, y: 60, scale: 0.7, filter: "blur(6px)" },
-        {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          filter: "blur(0px)",
-          duration: 1.4,
-          stagger: 0.2,
-          ease: "elastic.out(1.2, 0.6)",
-        },
-        1.6
-      );
-
-      // Stats container
+      // Insight container entrance
       masterTL.fromTo(
         statsRef.current,
-        { opacity: 0, x: 60 },
-        { opacity: 1, x: 0, duration: 1.8, ease: "expo.out" },
-        0.8
+        { opacity: 0, x: 40 },
+        { 
+          opacity: 1, 
+          x: 0, 
+          duration: 1.4, 
+          ease: "power3.out" 
+        },
+        0.5
       );
 
-      // Stat items cascade
+      // Insight rows cascade
       const statItems = statsRef.current?.querySelectorAll(".stat-item");
       if (statItems) {
         masterTL.fromTo(
           statItems,
-          { opacity: 0, x: 30, scale: 0.95 },
+          { 
+            opacity: 0, 
+            x: 20, 
+            y: 10,
+            filter: "blur(4px)"
+          },
           {
             opacity: 1,
             x: 0,
-            scale: 1,
-            duration: 1.2,
-            stagger: { amount: 0.4, ease: "power2.out" },
-            ease: "back.out(1.4)",
-          },
-          1.4
-        );
-
-        // Number counter animation
-        statItems.forEach((item, index) => {
-          const number = item.querySelector(".stat-number");
-          if (number && number.textContent) {
-            const text = number.textContent.trim();
-            const hasPlus = text.includes("+");
-            const hasPercent = text.includes("%");
-
-            const numMatch = text.match(/[\d.]+/);
-            if (!numMatch) return;
-
-            const numValue = parseFloat(numMatch[0]);
-            if (isNaN(numValue)) return;
-
-            masterTL.fromTo(
-              number,
-              { innerText: 0 },
-              {
-                innerText: numValue,
-                duration: 2,
-                ease: "power2.out",
-                snap: { innerText: numValue > 100 ? 1 : 0.01 },
-                onUpdate: function () {
-                  const elem = this.targets()[0] as HTMLElement;
-                  let current = parseFloat(elem.innerText);
-
-                  let formatted;
-                  if (numValue >= 1000) {
-                    formatted = Math.floor(current).toString();
-                  } else if (numValue > 10) {
-                    formatted = current.toFixed(2);
-                  } else {
-                    formatted = current.toFixed(2);
-                  }
-
-                  if (hasPlus) formatted += "+";
-                  if (hasPercent) formatted += "%";
-                  elem.innerText = formatted;
-                },
-              },
-              1.8 + index * 0.2
-            );
-          }
-        });
-
-        // Hover interactions
-        statItems.forEach((item) => {
-          const element = item as HTMLElement;
-
-          element.addEventListener("mouseenter", () => {
-            gsap.to(element, {
-              x: -8,
-              duration: 0.4,
+            y: 0,
+            filter: "blur(0px)",
+            duration: 1,
+            stagger: { 
+              amount: 0.4, 
               ease: "power2.out",
-            });
-          });
-
-          element.addEventListener("mouseleave", () => {
-            gsap.to(element, {
-              x: 0,
-              duration: 0.4,
-              ease: "elastic.out(1, 0.5)",
-            });
-          });
-        });
+              from: "start"
+            },
+            ease: "power3.out",
+          },
+          1.0
+        );
       }
     });
 
     return () => ctx.revert();
-  }, [shouldAnimate, hasAnimated]);
+  }, [shouldAnimate]);
 
   return (
     <section ref={containerRef} className="relative min-h-screen w-full overflow-hidden bg-black">
       {/* Video Background */}
       <motion.div
         style={{ opacity: isLoaded ? videoOpacity : 0, scale }}
-        className="absolute inset-0 z-0 will-change-transform"
+        className="absolute inset-0 z-0 will-change-transform overflow-hidden"
       >
-        <video
-          ref={videoRef}
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          className="absolute inset-0 h-full w-full object-cover"
+        <motion.div
+          className="absolute inset-0"
+          variants={videoIntroVariants}
+          initial="hidden"
+          animate={animationState}
         >
-          <source src="/videos/hero/hero-background.mp4" type="video/mp4" />
-        </video>
+          <video
+            ref={videoRef}
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+            className="absolute inset-0 h-full w-full object-cover"
+          >
+            <source src="/videos/hero/hero-background.mp4" type="video/mp4" />
+          </video>
+        </motion.div>
 
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1.5, ease: "easeOut" }}
-          className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/35 to-black/55"
+          className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/60"
+          variants={gradientIntroVariants}
+          initial="hidden"
+          animate={animationState}
         />
+
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1.5, delay: 0.3, ease: "easeOut" }}
-          className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-black/35"
+          className="absolute inset-0 bg-gradient-to-r from-black/65 via-transparent to-black/40"
+          variants={secondaryGradientVariants}
+          initial="hidden"
+          animate={animationState}
         />
+
+        <motion.div
+          className="absolute inset-0 pointer-events-none z-[1]"
+          variants={bubbleLayerVariants}
+          initial="hidden"
+          animate={animationState}
+        >
+          {bubbleOrbs.map((orb) => (
+            <motion.span
+              key={orb.id}
+              className="absolute rounded-full blur-3xl opacity-70"
+              style={{
+                width: orb.size,
+                height: orb.size,
+                top: orb.top,
+                left: orb.left,
+                background: orb.gradient,
+                mixBlendMode: "screen",
+              }}
+              variants={bubbleVariants}
+              custom={{ delay: orb.delay, duration: orb.duration }}
+              initial="hidden"
+              animate={animationState}
+            />
+          ))}
+        </motion.div>
       </motion.div>
 
       {/* Content */}
@@ -252,50 +345,49 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         <div className="mx-auto w-full max-w-[1600px] px-6 md:px-10 lg:px-14 xl:px-20">
           {/* Main content - left side */}
           <div className="max-w-[900px]">
-            {/* Headline */}
+            {/* Headline - Fragmented & Powerful */}
             <h1
               ref={headlineRef}
-              className="mb-6 font-sans text-[2.25rem] sm:text-[2.75rem] md:text-[3.5rem] lg:text-[4rem] xl:text-[4.75rem] 2xl:text-[5.25rem] font-light tracking-[-0.025em] leading-[1.15] text-white"
+              className="mb-6 font-sans text-[2rem] sm:text-[2.5rem] md:text-[3rem] lg:text-[3.5rem] xl:text-[4rem] 2xl:text-[4.5rem] font-semibold tracking-[-0.03em] leading-[1.25] text-white"
               style={{ perspective: "1000px" }}
             >
-              <span className="word inline-block" style={{ transformStyle: "preserve-3d" }}>
-                Where
-              </span>{" "}
+              {/* Fragment 1 - Precious metals */}
               <span
-                className="word inline-block font-semibold bg-gradient-to-r from-[#FFD700] via-[#FDB931] to-[#FFD700] bg-clip-text text-transparent"
+                className="word inline-block bg-gradient-to-r from-[#FFD700] via-[#FDB931] to-[#FFD700] bg-clip-text text-transparent"
                 style={{ transformStyle: "preserve-3d" }}
               >
-                rare
+                Precious
               </span>{" "}
               <span
-                className="word inline-block font-semibold bg-gradient-to-r from-[#FFD700] via-[#FDB931] to-[#FFD700] bg-clip-text text-transparent"
+                className="word inline-block bg-gradient-to-r from-[#FFD700] via-[#FDB931] to-[#FFD700] bg-clip-text text-transparent"
                 style={{ transformStyle: "preserve-3d" }}
               >
-                metals
+                metals.
               </span>{" "}
-              <span className="word inline-block" style={{ transformStyle: "preserve-3d" }}>
-                become
-              </span>{" "}
+              
+              {/* Fragment 2 - Timeless value */}
               <span
-                className="word inline-block font-semibold"
+                className="word inline-block"
                 style={{ transformStyle: "preserve-3d" }}
               >
-                timeless
+                Timeless
               </span>{" "}
               <span
-                className="word inline-block font-semibold"
+                className="word inline-block bg-gradient-to-r from-white via-[#E8E8E8] to-white bg-clip-text text-transparent"
                 style={{ transformStyle: "preserve-3d" }}
               >
-                value,
+                value.
               </span>{" "}
-              <span className="word inline-block" style={{ transformStyle: "preserve-3d" }}>
-                forged
-              </span>{" "}
-              <span className="word inline-block" style={{ transformStyle: "preserve-3d" }}>
-                with
+              
+              {/* Fragment 3 - Pure precision */}
+              <span
+                className="word inline-block"
+                style={{ transformStyle: "preserve-3d" }}
+              >
+                Pure
               </span>{" "}
               <span
-                className="word inline-block font-semibold bg-gradient-to-r from-white via-[#E8E8E8] to-white bg-clip-text text-transparent"
+                className="word inline-block bg-gradient-to-r from-[#C0C0C0] via-[#E8E8E8] to-[#C0C0C0] bg-clip-text text-transparent"
                 style={{ transformStyle: "preserve-3d" }}
               >
                 precision.
@@ -305,7 +397,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             {/* Subtitle */}
             <p
               ref={subtitleRef}
-              className="mb-10 max-w-[85%] font-sans text-[1rem] md:text-[1.0625rem] leading-[1.7] font-light text-white/75"
+              className="max-w-[85%] font-sans text-[1rem] md:text-[1.0625rem] leading-[1.7] font-light text-white/75"
             >
               Expert manufacturing of{" "}
               <span className="font-medium text-white/90">gold, silver, and palladium</span>{" "}
@@ -314,61 +406,46 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
               <span className="font-medium text-white/90">QR-verified authenticity</span>
               —redefining trust in precious metals.
             </p>
-
-            {/* CTA Buttons */}
-            <div ref={ctaRef} className="flex flex-col sm:flex-row gap-3.5">
-              <a
-                href="/about"
-                className="cta-button group inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 font-sans text-[0.875rem] font-medium text-black transition-all duration-300 hover:shadow-[0_20px_50px_-10px_rgba(255,255,255,0.3)]"
-              >
-                <span>Explore Products</span>
-                <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-              </a>
-
-              <a
-                href="/verify"
-                className="cta-button inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 font-sans text-[0.875rem] font-medium text-white backdrop-blur-sm transition-all duration-300 hover:border-white/30 hover:bg-white/10"
-              >
-                Verify Authenticity
-              </a>
-            </div>
           </div>
 
-          {/* Stats - Simple & Clean - Only 3 items - NO CONTAINER */}
-          <div className="hidden md:flex absolute right-6 lg:right-14 xl:right-20 top-1/2 -translate-y-1/2 pointer-events-auto">
-            <div ref={statsRef} className="flex flex-col gap-8 relative">
-              {/* Decorative line */}
-              <div className="absolute -left-4 top-0 bottom-0 w-[1px] bg-gradient-to-b from-transparent via-[#FFD700]/20 to-transparent" />
-
-              {/* Stat 1 - Products Verified */}
-              <div className="stat-item text-right cursor-pointer">
-                <p className="stat-number font-sans text-[3rem] font-bold leading-none text-white tracking-tight">
-                  10000+
-                </p>
-                <p className="mt-2 font-sans text-[0.7rem] font-light leading-tight text-white/40 uppercase tracking-widest">
-                  Products Verified
-                </p>
-              </div>
-
-              {/* Stat 2 - Purity Guaranteed */}
-              <div className="stat-item text-right cursor-pointer">
-                <p className="stat-number font-sans text-[3rem] font-bold leading-none bg-gradient-to-r from-[#FFD700] via-[#FDB931] to-[#FFD700] bg-clip-text text-transparent tracking-tight">
-                  99.99%
-                </p>
-                <p className="mt-2 font-sans text-[0.7rem] font-light leading-tight text-white/40 uppercase tracking-widest">
-                  Purity Guaranteed
-                </p>
-              </div>
-
-              {/* Stat 3 - ISO Certified */}
-              <div className="stat-item text-right cursor-pointer">
-                <p className="font-sans text-[2rem] font-bold leading-none text-white tracking-tight">
-                  ISO 9001
-                </p>
-                <p className="mt-2 font-sans text-[0.7rem] font-light leading-tight text-white/40 uppercase tracking-widest">
-                  Certified Excellence
-                </p>
-              </div>
+          {/* Insight stack - minimal + precise */}
+          <div className="hidden md:flex absolute right-3 lg:right-8 xl:right-12 top-1/2 -translate-y-1/2 pointer-events-auto z-20">
+            <div
+              ref={statsRef}
+              className="flex flex-col gap-5 text-right items-end max-w-[360px]"
+            >
+              {[
+                {
+                  label: "Chain-of-Custody",
+                  title: "Ledger-locked traceability",
+                  body: "Every gram is recorded with encrypted QR seals and mirrored audit trails.",
+                },
+                {
+                  label: "Purity Lab",
+                  title: "Spectrometry-backed assurance",
+                  body: "In-house molecular testing calibrates bullion batches to bespoke tolerances.",
+                },
+                {
+                  label: "Global Trust",
+                  title: "ISO 9001 & LBMA-ready",
+                  body: "Audited facilities, transparent compliance, concierge-level documentation.",
+                },
+              ].map((item, index) => (
+                <div key={item.label} className="stat-item relative pl-6">
+                  <div className="absolute left-0 top-0 bottom-0 w-[1.5px] bg-gradient-to-b from-transparent via-white/25 to-transparent">
+                    <div className="absolute -left-[2.5px] top-1.5 h-1.5 w-1.5 rounded-full bg-gradient-to-r from-white/60 to-white/20" />
+                  </div>
+                  <p className="font-sans text-[0.52rem] uppercase tracking-[0.45em] text-white/45">
+                    {item.label}
+                  </p>
+                  <p className="mt-1 font-sans text-[1.05rem] font-semibold bg-gradient-to-r from-white via-white/80 to-white/60 bg-clip-text text-transparent tracking-tight leading-snug">
+                    {item.title}
+                  </p>
+                  <p className="mt-1 font-sans text-[0.75rem] text-white/55 leading-relaxed">
+                    {item.body}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
