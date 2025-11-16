@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { MouseEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigationTransition } from "./NavigationTransitionProvider";
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { beginTransition } = useNavigationTransition();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -20,11 +22,22 @@ export default function Navbar() {
   }, []);
 
   const navLinks = [
-    { name: "What we do", href: "/#products" },
-    { name: "Verify", href: "/verify" },
+    { name: "What we do", href: "/what-we-do" },
+    { name: "Authenticity", href: "/authenticity" },
+    { name: "Products", href: "/products" },
     { name: "About us", href: "/about" },
-    { name: "Dashboard", href: "/dashboard" },
   ];
+
+  const handleNavClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+      return;
+    }
+    const isHashLink = href.startsWith("#") || href.includes("#");
+    if (isHashLink) {
+      return;
+    }
+    beginTransition(href);
+  };
 
   return (
     <header
@@ -55,16 +68,16 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Navigation - Bold */}
-          <div className="hidden lg:flex items-center gap-10 xl:gap-12">
-            {navLinks.map((link, index) => (
+          <div className="hidden lg:flex items-center gap-12 xl:gap-14 translate-x-6 group" role="menubar">
+            {navLinks.map((link) => (
               <Link
                 key={link.name}
                 href={link.href}
-                className="group relative font-sans text-[0.9375rem] font-medium text-white/80 transition-all duration-300 hover:text-white"
+                className="relative font-sans text-[0.9375rem] font-medium text-white/70 transition-all duration-300 hover:text-white focus-visible:text-white group-hover:text-white/40 group-hover:hover:text-white"
+                onClick={(event) => handleNavClick(event, link.href)}
+                role="menuitem"
               >
                 <span className="relative z-10">{link.name}</span>
-                {/* Underline effect */}
-                <span className="absolute -bottom-1 left-0 h-[2px] w-0 bg-gradient-to-r from-luxury-gold to-luxury-lightGold transition-all duration-300 group-hover:w-full" />
               </Link>
             ))}
           </div>
@@ -72,7 +85,7 @@ export default function Navbar() {
           {/* CTA Button - Powerful & Bold */}
           <div className="hidden md:flex items-center">
             <Link
-              href="/dashboard/login"
+              href="/admin/login"
               className="group relative overflow-hidden inline-flex items-center gap-2.5 rounded-full bg-gradient-to-r from-white/[0.12] to-white/[0.08] backdrop-blur-xl border border-white/[0.15] px-6 py-3 font-sans text-[0.9375rem] font-semibold text-white shadow-[0_8px_32px_rgba(0,0,0,0.12)] transition-all duration-500 hover:shadow-[0_8px_32px_rgba(212,175,55,0.25)] hover:scale-105 hover:border-luxury-gold/30"
             >
               <span className="relative z-10 transition-colors duration-300 group-hover:text-luxury-gold">
@@ -125,7 +138,10 @@ export default function Navbar() {
                   >
                     <Link
                       href={link.href}
-                      onClick={() => setIsMobileMenuOpen(false)}
+                      onClick={(event) => {
+                        handleNavClick(event, link.href);
+                        setIsMobileMenuOpen(false);
+                      }}
                       className="block font-sans text-lg font-semibold text-white/80 transition-all duration-300 hover:text-white hover:translate-x-2 py-3 px-2"
                     >
                       {link.name}
@@ -139,7 +155,7 @@ export default function Navbar() {
                   className="pt-4"
                 >
                   <Link
-                    href="/dashboard/login"
+                    href="/admin/login"
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-luxury-gold to-luxury-lightGold px-6 py-3.5 font-sans text-base font-bold text-black shadow-lg transition-all duration-300 hover:shadow-[0_8px_30px_rgba(212,175,55,0.4)] hover:scale-105"
                   >

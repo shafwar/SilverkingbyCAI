@@ -4,6 +4,8 @@ import { Playfair_Display } from "next/font/google";
 import "@/styles/globals.css";
 import { APP_NAME, APP_DESCRIPTION } from "@/utils/constants";
 import { Providers } from "./providers";
+import { NavigationTransitionProvider } from "@/components/layout/NavigationTransitionProvider";
+import { PageTransitionOverlay } from "@/components/layout/PageTransitionOverlay";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -22,7 +24,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${GeistSans.variable} ${playfair.variable}`}>
       <body className={`${GeistSans.className} antialiased`}>
+        <NavigationTransitionProvider>
         <Providers>{children}</Providers>
+          <PageTransitionOverlay />
+        </NavigationTransitionProvider>
       </body>
     </html>
   );
