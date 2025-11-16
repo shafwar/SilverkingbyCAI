@@ -11,10 +11,11 @@ interface VerificationResult {
   verified: boolean;
   product?: {
     name: string;
-    weight: string;
-    purity: number;
-    serialNumber: string;
-    uniqueCode: string;
+    weight: number;
+    serialCode: string;
+    price?: number | null;
+    stock?: number | null;
+    qrImageUrl?: string;
     createdAt: string;
   };
   error?: string;
@@ -29,7 +30,7 @@ export default function VerifyPage() {
   useEffect(() => {
     async function verifyProduct() {
       try {
-        const response = await fetch(`/api/products/verify/${serialNumber}`);
+        const response = await fetch(`/api/verify/${serialNumber}`);
         const data = await response.json();
         setResult(data);
       } catch (error) {
@@ -48,17 +49,9 @@ export default function VerifyPage() {
     }
   }, [serialNumber]);
 
-  const getWeightLabel = (weight: string) => {
-    const weightMap: { [key: string]: string } = {
-      FIVE_GR: "5gr",
-      TEN_GR: "10gr",
-      TWENTY_FIVE_GR: "25gr",
-      FIFTY_GR: "50gr",
-      HUNDRED_GR: "100gr",
-      TWO_FIFTY_GR: "250gr",
-      FIVE_HUNDRED_GR: "500gr",
-    };
-    return weightMap[weight] || weight;
+  const getWeightLabel = (weight?: number) => {
+    if (!weight) return "—";
+    return `${weight} gr`;
   };
 
   return (
@@ -110,19 +103,13 @@ export default function VerifyPage() {
                   <div className="flex justify-between py-3 border-b border-luxury-silver/10">
                     <span className="text-luxury-silver">Weight</span>
                     <span className="text-luxury-lightSilver font-semibold">
-                      {getWeightLabel(result.product?.weight || "")}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                    <span className="text-luxury-silver">Purity</span>
-                    <span className="text-luxury-lightSilver font-semibold">
-                      {result.product?.purity}%
+                      {getWeightLabel(result.product?.weight)}
                     </span>
                   </div>
                   <div className="flex justify-between py-3 border-b border-luxury-silver/10">
                     <span className="text-luxury-silver">Serial Number</span>
                     <span className="text-luxury-lightSilver font-mono font-semibold text-sm">
-                      {result.product?.serialNumber}
+                      {result.product?.serialCode}
                     </span>
                   </div>
                   <div className="flex justify-between py-3 border-b border-luxury-silver/10">
@@ -131,11 +118,22 @@ export default function VerifyPage() {
                       {new Date(result.product?.createdAt || "").toLocaleDateString()}
                     </span>
                   </div>
-                  <div className="pt-4">
-                    <p className="text-center text-luxury-gold italic font-serif text-lg">
-                      "{result.product?.uniqueCode}"
-                    </p>
-                  </div>
+                  {typeof result.product?.price === "number" && (
+                    <div className="flex justify-between py-3 border-b border-luxury-silver/10">
+                      <span className="text-luxury-silver">Price</span>
+                      <span className="text-luxury-lightSilver font-semibold">
+                        Rp {result.product.price.toLocaleString("id-ID")}
+                      </span>
+                    </div>
+                  )}
+                  {typeof result.product?.stock === "number" && (
+                    <div className="flex justify-between py-3 border-b border-luxury-silver/10">
+                      <span className="text-luxury-silver">Stock</span>
+                      <span className="text-luxury-lightSilver font-semibold">
+                        {result.product.stock} pcs
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 

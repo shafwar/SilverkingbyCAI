@@ -1,0 +1,90 @@
+"use client";
+
+import useSWR from "swr";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from "recharts";
+import { AnimatedCard } from "./AnimatedCard";
+import { fetcher } from "@/lib/fetcher";
+import { LoadingSkeleton } from "./LoadingSkeleton";
+import { DASHBOARD_USE_MOCKS, mockTopProducts } from "@/lib/dashboard-mocks";
+
+type TopProductsResponse = {
+  products: { name: string; scans: number }[];
+};
+
+export function BarChartTopProducts() {
+  const useMocks = DASHBOARD_USE_MOCKS;
+  const { data, error, isLoading } = useSWR<TopProductsResponse>(
+    useMocks ? null : "/api/admin/scans/top-products",
+    fetcher,
+    { refreshInterval: 120000 }
+  );
+
+  const chartData = useMocks ? mockTopProducts : data?.products ?? [];
+  const loading = useMocks ? false : isLoading;
+  const hasError = useMocks ? false : error;
+
+  return (
+    <AnimatedCard>
+      <div className="mb-6">
+        <p className="text-xs uppercase tracking-[0.35em] text-white/50">Most trusted pieces</p>
+        <h3 className="mt-2 text-2xl font-semibold text-white">Top scanned products</h3>
+      </div>
+
+      {loading && <LoadingSkeleton className="h-64 w-full" />}
+
+      {hasError && (
+        <p className="text-sm text-red-400">
+          Unable to load top products right now.
+        </p>
+      )}
+
+      {!!chartData.length && (
+        <div className="h-64 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+              <XAxis
+                dataKey="name"
+                stroke="#ffffff65"
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis stroke="#ffffff65" tickLine={false} axisLine={false} />
+              <Tooltip
+                cursor={{ fill: "#ffffff05" }}
+                contentStyle={{
+                  backgroundColor: "#050505",
+                  borderRadius: "12px",
+                  border: "1px solid #ffffff20",
+                  color: "#fff",
+                }}
+              />
+              <Bar
+                dataKey="scans"
+                fill="url(#goldGradient)"
+                radius={[12, 12, 4, 4]}
+                barSize={32}
+              />
+              <defs>
+                <linearGradient id="goldGradient" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="#FFD700" stopOpacity={0.9} />
+                  <stop offset="100%" stopColor="#B8860B" stopOpacity={0.6} />
+                </linearGradient>
+              </defs>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </AnimatedCard>
+  );
+}
+
+

@@ -81,8 +81,7 @@ const bubbleOrbs = [
     left: "5%",
     delay: 0.3,
     duration: 7.5,
-    gradient:
-      "radial-gradient(circle at 60% 40%, rgba(255,215,0,0.35), rgba(255,215,0,0.05) 70%)",
+    gradient: "radial-gradient(circle at 60% 40%, rgba(255,215,0,0.35), rgba(255,215,0,0.05) 70%)",
   },
   {
     id: "orb-3",
@@ -101,8 +100,7 @@ const bubbleOrbs = [
     left: "18%",
     delay: 0.2,
     duration: 7,
-    gradient:
-      "radial-gradient(circle at 50% 50%, rgba(255,215,0,0.25), rgba(255,215,0,0.04) 70%)",
+    gradient: "radial-gradient(circle at 50% 50%, rgba(255,215,0,0.25), rgba(255,215,0,0.04) 70%)",
   },
 ];
 
@@ -163,7 +161,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
           opacity: 0, 
           x: 20, 
           y: 10,
-          filter: "blur(4px)"
+          filter: "blur(4px)",
         });
       }
     });
@@ -237,7 +235,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
           opacity: 1, 
           x: 0, 
           duration: 1.4, 
-          ease: "power3.out" 
+          ease: "power3.out",
         },
         0.5
       );
@@ -251,7 +249,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             opacity: 0, 
             x: 20, 
             y: 10,
-            filter: "blur(4px)"
+            filter: "blur(4px)",
           },
           {
             opacity: 1,
@@ -262,7 +260,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             stagger: { 
               amount: 0.4, 
               ease: "power2.out",
-              from: "start"
+              from: "start",
             },
             ease: "power3.out",
           },
@@ -354,23 +352,19 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             >
               {/* Fragment 1 - Precious metals */}
               <span
-                className="word inline-block bg-gradient-to-r from-[#FFD700] via-[#FDB931] to-[#FFD700] bg-clip-text text-transparent"
+                className="word inline-block bg-[radial-gradient(circle_at_top,_#fff7c0,_#FFD700,_#AC7A00)] bg-clip-text text-transparent"
                 style={{ transformStyle: "preserve-3d" }}
               >
                 Precious
               </span>{" "}
               <span
-                className="word inline-block bg-gradient-to-r from-[#FFD700] via-[#FDB931] to-[#FFD700] bg-clip-text text-transparent"
+                className="word inline-block bg-[radial-gradient(circle_at_bottom,_#fff7c0,_#FFD700,_#AC7A00)] bg-clip-text text-transparent"
                 style={{ transformStyle: "preserve-3d" }}
               >
                 metals.
               </span>{" "}
-              
               {/* Fragment 2 - Timeless value */}
-              <span
-                className="word inline-block"
-                style={{ transformStyle: "preserve-3d" }}
-              >
+              <span className="word inline-block" style={{ transformStyle: "preserve-3d" }}>
                 Timeless
               </span>{" "}
               <span
@@ -379,12 +373,8 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
               >
                 value.
               </span>{" "}
-              
               {/* Fragment 3 - Pure precision */}
-              <span
-                className="word inline-block"
-                style={{ transformStyle: "preserve-3d" }}
-              >
+              <span className="word inline-block" style={{ transformStyle: "preserve-3d" }}>
                 Pure
               </span>{" "}
               <span
@@ -411,10 +401,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
 
           {/* Insight stack - minimal + precise */}
           <div className="hidden md:flex absolute right-3 lg:right-8 xl:right-12 top-1/2 -translate-y-1/2 pointer-events-auto z-20">
-            <div
-              ref={statsRef}
-              className="flex flex-col gap-5 text-right items-end max-w-[360px]"
-            >
+            <div ref={statsRef} className="flex flex-col gap-5 text-right items-end max-w-[360px]">
               {[
                 {
                   label: "Chain-of-Custody",
@@ -464,21 +451,20 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         className="absolute bottom-8 inset-x-0 z-30 flex justify-center px-4"
       >
         <a
-          href="/verify"
+          href="/authenticity"
           className="group inline-flex items-center gap-3 text-left w-[min(360px,calc(100vw-48px))]"
         >
           <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-black/40">
             <QrCode className="h-5 w-5 text-white" />
           </div>
           <div className="flex-1">
-            <p className="text-[0.5rem] uppercase tracking-[0.45em] text-white/55">
-              Scan & Verify
-            </p>
+            <p className="text-[0.5rem] uppercase tracking-[0.45em] text-white/55">Scan & Verify</p>
             <p className="mt-0.5 text-[0.95rem] font-semibold text-white tracking-tight">
               Tap to launch Silver King QR scanner
             </p>
             <p className="mt-0.5 text-[0.65rem] text-white/60 leading-relaxed">
-              Capture the QR seal to view purity & provenance. “Product authenticated” badge appears once functionality is live.
+              Capture the QR seal to view purity & provenance. “Product authenticated” badge appears
+              once functionality is live.
             </p>
           </div>
         </a>

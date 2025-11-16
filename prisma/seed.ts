@@ -1,69 +1,70 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
+import { generateAndStoreQR } from "../src/lib/qr";
 
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL || "mysql://root:@localhost:3306/silverkingbycai"
-    }
-  }
-});
+const prisma = new PrismaClient();
+
+const products = [
+  { name: "Silver King Bar 250gr", weight: 250, serialCode: "SKA000001" },
+  { name: "Silver King Bar 100gr", weight: 100, serialCode: "SKP000001" },
+  { name: "Silver King Bar 50gr", weight: 50, serialCode: "SKN000001" },
+  { name: "Silver King Bar 25gr", weight: 25, serialCode: "SKC000001" },
+  { name: "Silver King Bar 10gr", weight: 10, serialCode: "SKI000001" },
+  { name: "Silver King Bar 5gr", weight: 5, serialCode: "SKT000001" },
+];
 
 async function main() {
-  console.log("🌱 Starting database seed...");
+  console.log("🌱 Starting Silver King seed…");
 
-  // Create admin user
-  const hashedPassword = await bcrypt.hash("admin123", 10);
-  
-  const admin = await prisma.user.upsert({
-    where: { email: "admin@silverking.com" },
-    update: {},
-    create: {
-      name: "Admin User",
+  await prisma.qRScanLog.deleteMany();
+  await prisma.qrRecord.deleteMany();
+  await prisma.product.deleteMany();
+  await prisma.user.deleteMany();
+
+  const hashedPassword = await bcrypt.hash("admin123", 12);
+
+  await prisma.user.create({
+    data: {
       email: "admin@silverking.com",
       password: hashedPassword,
       role: "ADMIN",
     },
   });
 
-  console.log("✅ Admin user created:", admin.email);
+  console.log("✅ Admin account ready: admin@silverking.com / admin123");
 
-  // Create staff user
-  const staffPassword = await bcrypt.hash("staff123", 10);
-  
-  const staff = await prisma.user.upsert({
-    where: { email: "staff@silverking.com" },
-    update: {},
-    create: {
-      name: "Staff User",
-      email: "staff@silverking.com",
-      password: staffPassword,
-      role: "STAFF",
-    },
-  });
+  for (const item of products) {
+    const product = await prisma.product.create({
+      data: {
+        name: item.name,
+        weight: item.weight,
+        serialCode: item.serialCode,
+      },
+    });
 
-  console.log("✅ Staff user created:", staff.email);
-  
-  console.log("\n📋 Login Credentials:");
-  console.log("════════════════════════════════════════");
-  console.log("Admin:");
-  console.log("  Email: admin@silverking.com");
-  console.log("  Password: admin123");
-  console.log("\nStaff:");
-  console.log("  Email: staff@silverking.com");
-  console.log("  Password: staff123");
-  console.log("════════════════════════════════════════\n");
+    const verifyUrl = `https://silverkingbycai.com/verify/${item.serialCode}`;
+    const { url } = await generateAndStoreQR(item.serialCode, verifyUrl);
 
-  console.log("🎉 Database seeding completed!");
+    await prisma.qrRecord.create({
+      data: {
+        productId: product.id,
+        serialCode: item.serialCode,
+        qrImageUrl: url,
+      },
+    });
+
+    console.log(`✨ Seeded product ${item.serialCode}`);
+  }
+
+  console.log("🎉 Seed completed successfully.");
 }
 
 main()
-  .catch((e) => {
-    console.error("❌ Error seeding database:", e);
+  .catch((error) => {
+    console.error("❌ Seed failed:", error);
     process.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();
   });
-

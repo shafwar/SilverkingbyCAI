@@ -10,44 +10,44 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  ADMIN
-  STAFF
-}
-
-enum Weight {
-  FIVE_GR    @map("5gr")
-  TEN_GR     @map("10gr")
-  TWENTY_FIVE_GR @map("25gr")
-  FIFTY_GR   @map("50gr")
-  HUNDRED_GR @map("100gr")
-  TWO_FIFTY_GR @map("250gr")
-  FIVE_HUNDRED_GR @map("500gr")
-}
-
 model User {
   id        Int      @id @default(autoincrement())
-  name      String
   email     String   @unique
   password  String
-  role      Role     @default(STAFF)
+  role      String   @default("ADMIN")
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("users")
 }
 
 model Product {
-  id          Int      @id @default(autoincrement())
-  name        String
-  weight      Weight
-  purity      Float    @default(99.99)
-  serialNumber String  @unique
-  uniqueCode  String   @default("Be part of this kingdom")
-  qrCode      String   @db.Text
-  scannedCount Int     @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         Int       @id @default(autoincrement())
+  name       String
+  weight     Int
+  serialCode String    @unique
+  price      Float?
+  stock      Int?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  qrRecord   QrRecord?
+}
 
-  @@map("products")
+model QrRecord {
+  id            Int          @id @default(autoincrement())
+  productId     Int          @unique
+  serialCode    String       @unique
+  qrImageUrl    String
+  scanCount     Int          @default(0)
+  lastScannedAt DateTime?
+  createdAt     DateTime     @default(now())
+  product       Product      @relation(fields: [productId], references: [id])
+  scanLogs      QRScanLog[]
+}
+
+model QRScanLog {
+  id         Int       @id @default(autoincrement())
+  qrRecordId Int
+  scannedAt  DateTime  @default(now())
+  ip         String?
+  userAgent  String?
+  location   String?
+  qrRecord   QrRecord  @relation(fields: [qrRecordId], references: [id])
 }

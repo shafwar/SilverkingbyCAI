@@ -26,10 +26,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        const isPasswordValid = await bcrypt.compare(
-          credentials.password as string,
-          user.password
-        );
+        const isPasswordValid = await bcrypt.compare(credentials.password as string, user.password);
 
         if (!isPasswordValid) {
           return null;
@@ -38,7 +35,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return {
           id: user.id.toString(),
           email: user.email,
-          name: user.name,
+          name: user.email,
           role: user.role,
         };
       },
@@ -61,7 +58,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
   },
   pages: {
-    signIn: "/dashboard/login",
+    signIn: "/admin/login",
   },
   session: {
     strategy: "jwt",
