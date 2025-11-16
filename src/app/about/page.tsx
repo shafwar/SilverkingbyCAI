@@ -232,7 +232,7 @@ export default function AboutPage() {
   const heroRef = useRef<HTMLDivElement | null>(null);
   const noiseOverlay = useRef<HTMLDivElement | null>(null);
   const gradientOverlay = useRef<HTMLDivElement | null>(null);
-  const sectionsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const sectionsRef = useRef<(HTMLElement | null)[]>([]);
   const parallaxRef = useRef<(HTMLDivElement | null)[]>([]);
   const magneticButtonsRef = useRef<(HTMLAnchorElement | null)[]>([]);
 
@@ -497,10 +497,9 @@ export default function AboutPage() {
               className="text-[40px] font-semibold leading-tight tracking-[0.01em] text-white md:text-[68px] lg:text-[88px]"
               data-hero
             >
-              <span className="block text-base uppercase tracking-[0.75em] text-luxury-silver/70 md:text-3xl">
+              <span className="block text-base uppercase ml-5 tracking-[0.75em] text-luxury-silver/70 md:text-3xl">
                 The Legacy
               </span>
-             
             </motion.h1>
             <motion.p
               className="mx-auto max-w-3xl text-sm font-light leading-relaxed text-luxury-silver/70 md:text-base"
