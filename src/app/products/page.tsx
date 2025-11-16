@@ -1,331 +1,973 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { useGSAP } from "@gsap/react";
+import Navbar from "@/components/layout/Navbar";
+import { motion, type Variants } from "framer-motion";
+import Link from "next/link";
+import { Sparkles, Gem, ArrowRight, Shield, ArrowDown } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { APP_NAME } from "@/utils/constants";
+import { useRef, useState, useEffect } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { motion } from "framer-motion";
-import { QrCode, ArrowRight, Package, Eye } from "lucide-react";
-import { MotionFadeIn } from "@/components/shared/MotionFadeIn";
-import { ProductDrawer } from "@/components/shared/ProductDrawer";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useGSAP } from "@gsap/react";
+import ProductModal, { type Product } from "@/components/ui/ProductModal";
 
-if (typeof window !== "undefined") {
-  gsap.registerPlugin(ScrollTrigger);
-}
+gsap.registerPlugin(ScrollTrigger);
 
-interface Product {
-  id: string;
-  name: string;
-  weight: string;
-  purity: string;
-  serialPrefix: string;
-  imageUrl?: string;
-  description?: string;
-}
+const revealVariants: Variants = {
+  initial: { opacity: 0, y: 40 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: "easeOut", staggerChildren: 0.15 },
+  },
+};
 
-const products: Product[] = [
+const cardVariants: Variants = {
+  initial: { opacity: 0, y: 32, scale: 0.96 },
+  animate: (index = 0) => ({
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.6,
+      ease: [0.22, 1, 0.36, 1],
+      delay: Number(index) * 0.1,
+    },
+  }),
+};
+
+type ProductCategory = {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  gradient: string;
+  products: Product[];
+};
+
+const productCategories: ProductCategory[] = [
   {
-    id: "1",
-    name: "Silver King 5gr Bar",
-    weight: "5gr",
-    purity: "99.99%",
-    serialPrefix: "SKT",
-    description: "Premium 5-gram silver bar, perfect for collectors and first-time investors.",
+    icon: Gem,
+    title: "250 Gram",
+    description:
+      "Premium precious metal bar with 99.99% purity. Large size perfect for serious investors and long-term portfolio building.",
+    gradient: "from-luxury-gold to-luxury-lightGold",
+    products: [
+      {
+        id: "250gr-1",
+        name: "Precious Metal Bar 250gr",
+        image: "/images/silverking-gold.jpeg",
+        purity: "99.99%",
+        weight: "250gr",
+        description:
+          "Premium 250 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKA000001",
+        category: "250 Gram",
+      },
+      {
+        id: "250gr-2",
+        name: "Precious Metal Bar 250gr",
+        image: "/images/silverking-gold.jpeg",
+        purity: "99.99%",
+        weight: "250gr",
+        description: "Premium 250 gram precious metal bar with certification. SKU: SKA000002",
+        category: "250 Gram",
+      },
+      {
+        id: "250gr-3",
+        name: "Precious Metal Bar 250gr",
+        image: "/images/silverking-gold.jpeg",
+        purity: "99.99%",
+        weight: "250gr",
+        description: "Premium 250 gram precious metal bar with certification. SKU: SKA000003",
+        category: "250 Gram",
+      },
+    ],
   },
   {
-    id: "2",
-    name: "Silver King 10gr Bar",
-    weight: "10gr",
-    purity: "99.99%",
-    serialPrefix: "SKI",
-    description: "Elegant 10-gram silver bar with exceptional purity and craftsmanship.",
+    icon: Gem,
+    title: "100 Gram",
+    description:
+      "Premium precious metal bar with 99.99% purity. Ideal size for balanced investment portfolios and collection purposes.",
+    gradient: "from-luxury-gold via-luxury-lightGold to-luxury-gold",
+    products: [
+      {
+        id: "100gr-1",
+        name: "Precious Metal Bar 100gr",
+        image: "/images/silverking-gold.jpeg",
+        purity: "99.99%",
+        weight: "100gr",
+        description:
+          "Premium 100 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKP000001",
+        category: "100 Gram",
+      },
+      {
+        id: "100gr-2",
+        name: "Precious Metal Bar 100gr",
+        image: "/images/silverking-gold.jpeg",
+        purity: "99.99%",
+        weight: "100gr",
+        description: "Premium 100 gram precious metal bar with certification. SKU: SKP000002",
+        category: "100 Gram",
+      },
+      {
+        id: "100gr-3",
+        name: "Precious Metal Bar 100gr",
+        image: "/images/silverking-gold.jpeg",
+        purity: "99.99%",
+        weight: "100gr",
+        description: "Premium 100 gram precious metal bar with certification. SKU: SKP000003",
+        category: "100 Gram",
+      },
+    ],
   },
   {
-    id: "3",
-    name: "Silver King 25gr Bar",
-    weight: "25gr",
-    purity: "99.99%",
-    serialPrefix: "SKC",
-    description: "Handcrafted 25-gram silver bar meeting LBMA standards.",
+    icon: Gem,
+    title: "50 Gram",
+    description:
+      "Premium precious metal bar with 99.99% purity. Versatile size suitable for both investment and gifting purposes.",
+    gradient: "from-luxury-gold to-luxury-silver",
+    products: [
+      {
+        id: "50gr-1",
+        name: "Precious Metal Bar 50gr",
+        image: "/images/silverking-gold.jpeg",
+        purity: "99.99%",
+        weight: "50gr",
+        description:
+          "Premium 50 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKN000001",
+        category: "50 Gram",
+      },
+      {
+        id: "50gr-2",
+        name: "Precious Metal Bar 50gr",
+        image: "/images/silverking-gold.jpeg",
+        purity: "99.99%",
+        weight: "50gr",
+        description: "Premium 50 gram precious metal bar with certification. SKU: SKN000002",
+        category: "50 Gram",
+      },
+      {
+        id: "50gr-3",
+        name: "Precious Metal Bar 50gr",
+        image: "/images/silverking-gold.jpeg",
+        purity: "99.99%",
+        weight: "50gr",
+        description: "Premium 50 gram precious metal bar with certification. SKU: SKN000003",
+        category: "50 Gram",
+      },
+    ],
   },
   {
-    id: "4",
-    name: "Silver King 50gr Bar",
-    weight: "50gr",
-    purity: "99.99%",
-    serialPrefix: "SKN",
-    description: "Premium 50-gram silver bar with QR-authenticated traceability.",
+    icon: Gem,
+    title: "25 Gram",
+    description:
+      "Premium precious metal bar with 99.99% purity. Compact size perfect for starting your precious metal investment journey.",
+    gradient: "from-luxury-silver to-luxury-lightSilver",
+    products: [
+      {
+        id: "25gr-1",
+        name: "Precious Metal Bar 25gr",
+        image: "/images/silverking-gold.jpeg",
+        purity: "99.99%",
+        weight: "25gr",
+        description:
+          "Premium 25 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKC000001",
+        category: "25 Gram",
+      },
+      {
+        id: "25gr-2",
+        name: "Precious Metal Bar 25gr",
+        image: "/images/silverking-gold.jpeg",
+        purity: "99.99%",
+        weight: "25gr",
+        description: "Premium 25 gram precious metal bar with certification. SKU: SKC000002",
+        category: "25 Gram",
+      },
+      {
+        id: "25gr-3",
+        name: "Precious Metal Bar 25gr",
+        image: "/images/silverking-gold.jpeg",
+        purity: "99.99%",
+        weight: "25gr",
+        description: "Premium 25 gram precious metal bar with certification. SKU: SKC000003",
+        category: "25 Gram",
+      },
+    ],
   },
   {
-    id: "5",
-    name: "Silver King 100gr Bar",
-    weight: "100gr",
-    purity: "99.99%",
-    serialPrefix: "SKP",
-    description: "Investment-grade 100-gram silver bar, ISO 9001 certified.",
+    icon: Gem,
+    title: "10 Gram",
+    description:
+      "Premium precious metal bar with 99.99% purity. Entry-level size ideal for new investors and collectors.",
+    gradient: "from-luxury-lightSilver to-luxury-silver",
+    products: [
+      {
+        id: "10gr-1",
+        name: "Precious Metal Bar 10gr",
+        image: "/images/silverking-gold.jpeg",
+        purity: "99.99%",
+        weight: "10gr",
+        description:
+          "Premium 10 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKI000001",
+        category: "10 Gram",
+      },
+      {
+        id: "10gr-2",
+        name: "Precious Metal Bar 10gr",
+        image: "/images/silverking-gold.jpeg",
+        purity: "99.99%",
+        weight: "10gr",
+        description: "Premium 10 gram precious metal bar with certification. SKU: SKI000002",
+        category: "10 Gram",
+      },
+      {
+        id: "10gr-3",
+        name: "Precious Metal Bar 10gr",
+        image: "/images/silverking-gold.jpeg",
+        purity: "99.99%",
+        weight: "10gr",
+        description: "Premium 10 gram precious metal bar with certification. SKU: SKI000003",
+        category: "10 Gram",
+      },
+    ],
   },
   {
-    id: "6",
-    name: "Silver King 250gr Bar",
-    weight: "250gr",
-    purity: "99.99%",
-    serialPrefix: "SKA",
-    description: "Luxury 250-gram silver bar with complete provenance documentation.",
-  },
-  {
-    id: "7",
-    name: "Silver King 500gr Bar",
-    weight: "500gr",
-    purity: "99.99%",
-    serialPrefix: "SKA",
-    description: "Premium 500-gram silver bar, the pinnacle of precious metal craftsmanship.",
+    icon: Gem,
+    title: "5 Gram",
+    description:
+      "Premium precious metal bar with 99.99% purity. Smallest size perfect for gifts and starter collections.",
+    gradient: "from-luxury-silver via-luxury-gold to-luxury-lightSilver",
+    products: [
+      {
+        id: "5gr-1",
+        name: "Precious Metal Bar 5gr",
+        image: "/images/silverking-gold.jpeg",
+        purity: "99.99%",
+        weight: "5gr",
+        description:
+          "Premium 5 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKT000001",
+        category: "5 Gram",
+      },
+      {
+        id: "5gr-2",
+        name: "Precious Metal Bar 5gr",
+        image: "/images/silverking-gold.jpeg",
+        purity: "99.99%",
+        weight: "5gr",
+        description: "Premium 5 gram precious metal bar with certification. SKU: SKT000002",
+        category: "5 Gram",
+      },
+      {
+        id: "5gr-3",
+        name: "Precious Metal Bar 5gr",
+        image: "/images/silverking-gold.jpeg",
+        purity: "99.99%",
+        weight: "5gr",
+        description: "Premium 5 gram precious metal bar with certification. SKU: SKT000003",
+        category: "5 Gram",
+      },
+    ],
   },
 ];
 
-export default function ProductsPage() {
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const heroRef = useRef<HTMLDivElement>(null);
-  const gridRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
+// Product Category Grid Item with Hover Slideshow
+const CategoryGridItem = ({
+  category,
+  index,
+  onProductSelect,
+}: {
+  category: ProductCategory;
+  index: number;
+  onProductSelect: (product: Product) => void;
+}) => {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const slideIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  useGSAP(
-    () => {
-      if (!heroRef.current) return;
+  useEffect(() => {
+    if (isHovered && category.products.length > 1) {
+      slideIntervalRef.current = setInterval(() => {
+        setCurrentSlide((prev) => (prev + 1) % category.products.length);
+      }, 2000);
+    } else {
+      if (slideIntervalRef.current) {
+        clearInterval(slideIntervalRef.current);
+      }
+    }
 
-      const ctx = gsap.context(() => {
-        // Hero animation
-        gsap.fromTo(
-          heroRef.current?.querySelectorAll("[data-hero]") || [],
-          { opacity: 0, y: 60 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 1.2,
-            stagger: 0.15,
-            ease: "power3.out",
-          }
-        );
+    return () => {
+      if (slideIntervalRef.current) {
+        clearInterval(slideIntervalRef.current);
+      }
+    };
+  }, [isHovered, category.products.length]);
 
-        // Grid stagger animation
-        if (gridRef.current) {
-          ScrollTrigger.batch("[data-product]", {
-            start: "top 80%",
-            onEnter: (batch) =>
-              gsap.to(batch, {
-                opacity: 1,
-                y: 0,
-                scale: 1,
-                duration: 0.6,
-                stagger: 0.08,
-                ease: "power2.out",
-              }),
-            once: true,
-          });
-        }
-      }, heroRef);
-
-      return () => ctx.revert();
-    },
-    { scope: heroRef }
-  );
-
-  const handleProductClick = (product: Product) => {
-    setSelectedProduct(product);
-    setIsDrawerOpen(true);
+  const handleMouseEnter = () => {
+    setIsHovered(true);
   };
 
-  const handleVerify = () => {
-    if (selectedProduct) {
-      setIsDrawerOpen(false);
-      router.push(`/authenticity`);
-    }
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    setCurrentSlide(0);
   };
 
   return (
-    <div className="min-h-screen bg-luxury-black text-white selection:bg-luxury-gold/20 selection:text-white">
-      {/* Hero Section */}
-      <section
-        ref={heroRef}
-        className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-b from-black via-[#0a0a0a] to-black"
-      >
-        {/* Animated Background */}
-        <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-gradient-to-b from-black/90 via-black/60 to-black/90" />
-          
-          {/* Metallic Gradient Overlays */}
-          <div className="absolute inset-0 bg-gradient-to-br from-luxury-gold/5 via-transparent to-luxury-silver/5" />
-          <div className="absolute inset-0 bg-gradient-to-tl from-transparent via-transparent to-luxury-gold/5" />
-        </div>
+    <motion.div
+      variants={cardVariants}
+      initial="initial"
+      whileInView="animate"
+      viewport={{ once: true, amount: 0.3 }}
+      custom={index}
+      className="group relative flex flex-col h-full p-6 md:p-8"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {/* Product Name - Top Section - FIXED HEIGHT */}
+      <div className="mb-8 min-h-[140px] flex flex-col">
+        <h3 className="text-2xl font-light tracking-tight text-white transition-colors duration-300 group-hover:text-luxury-gold/90 md:text-3xl">
+          {category.title}
+        </h3>
+        <p className="mt-3 text-sm font-light leading-relaxed text-white/60 md:text-base line-clamp-3">
+          {category.description}
+        </p>
+      </div>
 
-        {/* Content */}
-        <div className="relative z-10 mx-auto w-full max-w-6xl px-6 py-24 text-center">
-          <MotionFadeIn direction="up">
-            <motion.div data-hero className="mb-6">
-              <motion.div
-                animate={{ rotate: [0, 5, -5, 0] }}
-                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-                className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-full border-2 border-luxury-gold/30 bg-gradient-to-br from-luxury-gold/10 to-transparent"
-              >
-                <Package className="h-12 w-12 text-luxury-gold" />
-              </motion.div>
-            </motion.div>
-          </MotionFadeIn>
-
-          <MotionFadeIn direction="up" delay={0.2}>
-            <motion.h1
-              data-hero
-              className="mb-6 font-sans text-5xl font-bold leading-tight sm:text-6xl md:text-7xl"
+      {/* Slideshow - Bottom Section - FLEX GROW */}
+      <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-gradient-to-br from-luxury-black/80 to-luxury-black transition-all duration-500">
+        {/* Image Slideshow */}
+        <div className="relative h-full w-full">
+          {category.products.map((product, idx) => (
+            <motion.div
+              key={product.id}
+              className="absolute inset-0 cursor-pointer"
+              initial={false}
+              animate={{
+                opacity: idx === currentSlide ? 1 : 0,
+                scale: idx === currentSlide ? 1 : 1.05,
+              }}
+              transition={{ duration: 0.6, ease: "easeInOut" }}
+              onClick={() => onProductSelect(product)}
             >
-              <span className="bg-gradient-to-r from-luxury-gold via-luxury-lightGold to-luxury-gold bg-clip-text text-transparent">
-                Our Precious Metal
-              </span>
-              <br />
-              <span className="text-white">Collection</span>
-            </motion.h1>
-          </MotionFadeIn>
+              {/* Fallback gradient background */}
+              <div
+                className={`absolute inset-0 bg-gradient-to-br ${category.gradient} opacity-20`}
+              />
 
-          <MotionFadeIn direction="up" delay={0.4}>
-            <motion.p
-              data-hero
-              className="mx-auto mb-12 max-w-3xl text-lg leading-relaxed text-white/80 sm:text-xl md:text-2xl"
-            >
-              Crafted for purity, trust, and investment-grade value. Each bar comes with
-              QR-verified authenticity and complete traceability.
-            </motion.p>
-          </MotionFadeIn>
-        </div>
-      </section>
-
-      {/* Products Grid */}
-      <section className="relative border-t border-white/10 bg-gradient-to-b from-black via-[#0a0a0a] to-black py-24 px-6">
-        <div className="mx-auto max-w-7xl">
-          <MotionFadeIn className="mb-16 text-center">
-            <h2 className="mb-4 font-sans text-4xl font-bold sm:text-5xl">
-              <span className="text-white">Explore Our</span>{" "}
-              <span className="bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text text-transparent">
-                Products
-              </span>
-            </h2>
-            <p className="mx-auto max-w-2xl text-lg text-white/60">
-              Select any product to view detailed specifications
-            </p>
-          </MotionFadeIn>
-
-          <div
-            ref={gridRef}
-            className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-          >
-            {products.map((product, index) => (
-              <motion.div
-                key={product.id}
-                data-product
-                initial={{ opacity: 0, y: 40, scale: 0.95 }}
-                className="group relative cursor-pointer"
-                onClick={() => handleProductClick(product)}
-              >
-                <div className="relative h-full overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 via-white/[0.02] to-transparent p-8 backdrop-blur-xl transition-all duration-500 hover:border-luxury-gold/40 hover:bg-white/10 hover:shadow-[0px_30px_80px_-40px_rgba(212,175,55,0.6)]">
-                  {/* Metallic Shine Effect */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-luxury-gold/10 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-
-                  {/* Product Image Placeholder */}
-                  <div className="mb-6 aspect-square w-full overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-luxury-gold/10 to-transparent">
-                    <div className="flex h-full items-center justify-center">
-                      <QrCode className="h-16 w-16 text-luxury-gold/30" />
-                    </div>
-                  </div>
-
-                  {/* Product Info */}
-                  <div className="relative z-10">
-                    <div className="mb-2 flex items-center justify-between">
-                      <span className="rounded-full bg-luxury-gold/20 px-3 py-1 text-xs font-semibold text-luxury-gold">
-                        {product.serialPrefix}
-                      </span>
-                      <span className="text-sm font-semibold text-white/80">{product.weight}</span>
-                    </div>
-
-                    <h3 className="mb-2 font-sans text-xl font-bold text-white">{product.name}</h3>
-                    <p className="mb-4 text-sm text-white/60">{product.purity} Pure</p>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-2">
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="flex-1 rounded-lg border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/10"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleProductClick(product);
-                        }}
-                      >
-                        <div className="flex items-center justify-center gap-2">
-                          <Eye className="h-4 w-4" />
-                          <span>View</span>
-                        </div>
-                      </motion.button>
-
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="flex-1 rounded-lg bg-gradient-to-r from-luxury-gold to-luxury-lightGold px-4 py-2 text-sm font-semibold text-black transition-all hover:shadow-lg hover:shadow-luxury-gold/30"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push("/authenticity");
-                        }}
-                      >
-                        <div className="flex items-center justify-center gap-2">
-                          <QrCode className="h-4 w-4" />
-                          <span>Verify</span>
-                        </div>
-                      </motion.button>
-                    </div>
-                  </div>
-
-                  {/* Hover Glow */}
-                  <div className="absolute -bottom-1 left-0 h-[2px] w-0 bg-gradient-to-r from-luxury-gold to-transparent transition-all duration-500 group-hover:w-full" />
+              {/* Product Image or Icon */}
+              {product.image ? (
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  className="h-full w-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center">
+                  {(() => {
+                    const IconComponent = category.icon;
+                    return (
+                      <IconComponent className="h-24 w-24 text-white/30 transition-all duration-500 group-hover:text-white/50 group-hover:scale-110" />
+                    );
+                  })()}
                 </div>
-              </motion.div>
-            ))}
+              )}
+
+              {/* Overlay gradient */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+
+              {/* Product info overlay */}
+              <div className="absolute bottom-0 left-0 right-0 p-6">
+                <h4 className="mb-1 text-lg font-medium text-white">{product.name}</h4>
+                <div className="flex items-center gap-3 text-xs text-white/70">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-1">
+                    <Sparkles className="h-3 w-3" />
+                    {product.purity}
+                  </span>
+                  <span>•</span>
+                  <span>{product.weight}</span>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+
+          {/* Slide indicators */}
+          {category.products.length > 1 && isHovered && (
+            <div className="absolute bottom-4 right-4 flex gap-2">
+              {category.products.map((_, idx) => (
+                <div
+                  key={idx}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    idx === currentSlide ? "w-6 bg-white" : "w-1.5 bg-white/30"
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Hover overlay hint */}
+        {!isHovered && category.products.length > 1 && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+            <div className="rounded-full bg-white/10 px-4 py-2 text-xs text-white/80 backdrop-blur-sm">
+              Hover to view products
+            </div>
           </div>
-        </div>
-      </section>
+        )}
+      </div>
+    </motion.div>
+  );
+};
 
-      {/* CTA Section */}
-      <section className="relative border-t border-white/10 bg-gradient-to-b from-black via-[#0a0a0a] to-black py-24 px-6">
-        <div className="mx-auto max-w-4xl text-center">
-          <MotionFadeIn>
-            <h2 className="mb-6 font-sans text-4xl font-bold sm:text-5xl">
-              Ready to Authenticate?
-            </h2>
-            <p className="mb-10 text-lg text-white/70">
-              Verify your Silver King bar to view complete provenance details
-            </p>
-            <Link
-              href="/authenticity"
-              className="group relative inline-flex items-center justify-center gap-3 overflow-hidden rounded-full bg-gradient-to-r from-luxury-gold to-luxury-lightGold px-9 py-4 text-base font-semibold text-black transition-all duration-300 hover:shadow-[0_35px_90px_-35px_rgba(212,175,55,0.8)]"
+export default function ProductsPage() {
+  const pageRef = useRef<HTMLDivElement | null>(null);
+  const heroRef = useRef<HTMLDivElement | null>(null);
+  const sectionsRef = useRef<(HTMLElement | null)[]>([]);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const fadeOverlayRef = useRef<HTMLDivElement | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  const handleProductSelect = (product: Product) => {
+    setSelectedProduct(product);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setTimeout(() => setSelectedProduct(null), 300);
+  };
+
+  // Handle video load - more robust loading
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleCanPlay = () => {
+      setIsVideoLoaded(true);
+    };
+
+    const handleLoadedData = () => {
+      setIsVideoLoaded(true);
+    };
+
+    const handleError = () => {
+      setIsVideoLoaded(false);
+    };
+
+    // Check if video is already loaded
+    if (video.readyState >= 2) {
+      setIsVideoLoaded(true);
+    }
+
+    video.addEventListener("canplay", handleCanPlay);
+    video.addEventListener("loadeddata", handleLoadedData);
+    video.addEventListener("error", handleError);
+
+    // Force load
+    video.load();
+
+    return () => {
+      video.removeEventListener("canplay", handleCanPlay);
+      video.removeEventListener("loadeddata", handleLoadedData);
+      video.removeEventListener("error", handleError);
+    };
+  }, []);
+
+  useGSAP(
+    () => {
+      if (!pageRef.current) return;
+
+      const ctx = gsap.context(() => {
+        // Video zoom in animation
+        if (videoRef.current && isVideoLoaded) {
+          gsap.fromTo(
+            videoRef.current,
+            { scale: 1 },
+            {
+              scale: 1.1,
+              duration: 20,
+              ease: "none",
+              repeat: -1,
+              yoyo: true,
+            }
+          );
+        }
+
+        // Hero animation with stagger
+        if (heroRef.current) {
+          const heroElements = heroRef.current.querySelectorAll("[data-hero]");
+          const heroAccentElements = heroRef.current.querySelectorAll("[data-hero-accent]");
+
+          if (heroElements.length > 0 || heroAccentElements.length > 0) {
+            const heroTimeline = gsap.timeline({ defaults: { ease: "power3.out" } });
+
+            if (heroElements.length > 0) {
+              heroTimeline.fromTo(
+                heroElements,
+                { autoAlpha: 0, y: 60, scale: 0.95 },
+                { autoAlpha: 1, y: 0, scale: 1, duration: 1, stagger: 0.2 }
+              );
+            }
+
+            if (heroAccentElements.length > 0) {
+              heroTimeline.fromTo(
+                heroAccentElements,
+                { scale: 0, rotate: -180 },
+                { scale: 1, rotate: 0, duration: 0.8, ease: "back.out(1.7)" },
+                "<0.3"
+              );
+            }
+          }
+        }
+
+        // Fade to black effect when scrolling from hero to product section
+        if (fadeOverlayRef.current && sectionsRef.current[0] && sectionsRef.current[1]) {
+          const heroSection = sectionsRef.current[0];
+          const productSection = sectionsRef.current[1];
+
+          // Initialize overlay opacity
+          gsap.set(fadeOverlayRef.current, { opacity: 0 });
+
+          ScrollTrigger.create({
+            trigger: heroSection,
+            start: "bottom center",
+            end: "bottom top",
+            scrub: 0.5,
+            onUpdate: (self) => {
+              const progress = self.progress;
+              // Fade overlay to black
+              if (fadeOverlayRef.current) {
+                gsap.to(fadeOverlayRef.current, {
+                  opacity: progress,
+                  duration: 0.1,
+                  ease: "none",
+                });
+              }
+              // Also fade video opacity gradually
+              if (videoRef.current) {
+                const videoOpacity = Math.max(0.1, 1 - progress * 0.9);
+                gsap.to(videoRef.current, {
+                  opacity: videoOpacity,
+                  duration: 0.1,
+                  ease: "none",
+                });
+              }
+            },
+          });
+
+          // Additional fade when product section comes into view
+          ScrollTrigger.create({
+            trigger: productSection,
+            start: "top center",
+            end: "top top",
+            scrub: 0.5,
+            onUpdate: (self) => {
+              const progress = self.progress;
+              // Complete fade to black
+              if (fadeOverlayRef.current) {
+                gsap.to(fadeOverlayRef.current, {
+                  opacity: Math.min(1, 0.5 + progress * 0.5),
+                  duration: 0.1,
+                  ease: "none",
+                });
+              }
+              // Fade video completely
+              if (videoRef.current) {
+                const videoOpacity = Math.max(0.05, 0.1 - progress * 0.05);
+                gsap.to(videoRef.current, {
+                  opacity: videoOpacity,
+                  duration: 0.1,
+                  ease: "none",
+                });
+              }
+            },
+          });
+        }
+
+        // Section reveal with ScrollTrigger
+        sectionsRef.current.forEach((section) => {
+          if (!section) return;
+          const targets = section.querySelectorAll("[data-reveal]");
+
+          if (targets.length > 0) {
+            ScrollTrigger.batch(targets, {
+              start: "top 85%",
+              onEnter: (batch) =>
+                gsap.to(batch, {
+                  autoAlpha: 1,
+                  y: 0,
+                  duration: 0.8,
+                  stagger: 0.15,
+                  ease: "power3.out",
+                }),
+              once: true,
+            });
+          }
+        });
+
+        // Floating animation for accents
+        const floatElements = document.querySelectorAll("[data-float]");
+        if (floatElements.length > 0) {
+          gsap.to(floatElements, {
+            y: "random(-20, 20)",
+            duration: "random(2, 4)",
+            repeat: -1,
+            yoyo: true,
+            ease: "power1.inOut",
+            stagger: {
+              each: 0.2,
+              from: "random",
+            },
+          });
+        }
+      }, pageRef);
+
+      return () => ctx.revert();
+    },
+    { scope: pageRef, dependencies: [isVideoLoaded] }
+  );
+
+  return (
+    <div
+      ref={pageRef}
+      className="min-h-screen bg-luxury-black text-white selection:bg-luxury-gold/20 selection:text-white"
+    >
+      {/* Video Background with Zoom In Effect */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div className="absolute inset-0">
+          {/* Fallback gradient background - always visible */}
+          <div className="absolute inset-0 bg-gradient-to-br from-luxury-black via-luxury-black/95 to-luxury-black z-0" />
+
+          <video
+            ref={videoRef}
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 will-change-transform z-10 ${
+              isVideoLoaded ? "opacity-100" : "opacity-0"
+            }`}
+            style={{
+              transform: "scale(1.05)",
+              transformOrigin: "center center",
+            }}
+            onError={() => {
+              setIsVideoLoaded(false);
+            }}
+            onCanPlay={() => {
+              setIsVideoLoaded(true);
+            }}
+            onLoadedData={() => {
+              setIsVideoLoaded(true);
+            }}
+          >
+            <source src="/videos/hero/gold-stone.mp4" type="video/mp4" />
+          </video>
+
+          {/* Dark overlay for better text readability */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/60 z-20" />
+
+          {/* Vignette Effect */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(10,10,10,0.6)_100%)] z-20" />
+
+          {/* Soft Fading at Bottom - Enhanced for better transition */}
+          <div className="absolute inset-x-0 bottom-0 h-[40vh] bg-gradient-to-t from-luxury-black via-luxury-black/60 to-transparent pointer-events-none z-20" />
+          <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-luxury-black/90 to-transparent pointer-events-none z-20" />
+
+          {/* Fade to Black Overlay - Controlled by ScrollTrigger */}
+          <div
+            ref={fadeOverlayRef}
+            className="absolute inset-0 bg-luxury-black pointer-events-none z-30"
+            style={{ opacity: 0 }}
+          />
+        </div>
+      </div>
+
+      <Navbar />
+
+      {/* Hero Section - Minimalist Design like pixelmatters */}
+      <section
+        ref={(element) => {
+          sectionsRef.current[0] = element;
+        }}
+        className="relative px-6 md:px-8 lg:px-12 pt-32 pb-24 md:pt-40 md:pb-32 lg:pt-48 lg:pb-40 min-h-[60vh] md:min-h-[70vh] lg:min-h-[80vh] flex items-center"
+      >
+        <div className="relative z-10 w-full max-w-[1400px] mx-auto">
+          <motion.div
+            ref={heroRef}
+            variants={revealVariants}
+            initial="initial"
+            animate="animate"
+            className="text-left max-w-4xl"
+          >
+            {/* Main Heading - Minimalist Typography like pixelmatters */}
+            <motion.h1
+              className="text-[1.5rem] md:text-[3.5rem] lg:text-[2.5rem] xl:text-[3.5rem] 2xl:text-[4rem] font-light leading-[1.15] tracking-[-0.02em] md:tracking-[-0.03em] text-white"
+              data-hero
             >
-              Verify Now
-              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-            </Link>
-          </MotionFadeIn>
+              More than a decade crafting
+              <br />
+              <span className="font-normal">future-proof precious metals.</span>
+            </motion.h1>
+          </motion.div>
         </div>
       </section>
 
-      {/* Product Drawer */}
-      {selectedProduct && (
-        <ProductDrawer
-          isOpen={isDrawerOpen}
-          onClose={() => {
-            setIsDrawerOpen(false);
-            setTimeout(() => setSelectedProduct(null), 300);
-          }}
-          product={selectedProduct}
-          onVerify={handleVerify}
-        />
-      )}
+      {/* CTA Section - Scroll to Browse */}
+      <section className="relative px-6 md:px-8 lg:px-12 py-16 md:py-20">
+        <div className="relative z-10 mx-auto max-w-[1400px]">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="text-center"
+          >
+            <motion.button
+              onClick={() => {
+                const productsSection = document.getElementById("products-section");
+                productsSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              className="group inline-flex flex-col items-center gap-2 text-white/60 hover:text-white transition-all duration-300"
+              animate={{
+                y: [0, -8, 0],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+            >
+              <span className="text-sm md:text-base font-light tracking-wide">
+                Explore our collection
+              </span>
+              <ArrowDown className="h-4 w-4 md:h-5 md:w-5 transition-transform duration-300 group-hover:translate-y-1" />
+            </motion.button>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Product Categories Grid - 3 Columns - FIXED ALIGNMENT */}
+      <section
+        id="products-section"
+        ref={(element) => {
+          sectionsRef.current[1] = element;
+        }}
+        className="relative overflow-hidden pt-8 pb-12 md:pt-12 md:pb-20 lg:pt-16 px-6"
+      >
+        <div className="relative z-10 mx-auto max-w-[1400px]">
+          {/* Filter Section - Minimalist */}
+          <div className="mb-8 md:mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <h2 className="text-2xl md:text-3xl font-light text-white">Our Products</h2>
+            <div className="flex flex-wrap gap-2 md:gap-3">
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className={`px-4 py-2 text-sm font-light rounded-full border transition-all duration-300 ${
+                  selectedCategory === null
+                    ? "border-white/30 bg-white/5 text-white"
+                    : "border-white/10 text-white/60 hover:border-white/20 hover:text-white/80"
+                }`}
+              >
+                All
+              </button>
+              {productCategories.map((category) => (
+                <button
+                  key={category.title}
+                  onClick={() => setSelectedCategory(category.title)}
+                  className={`px-4 py-2 text-sm font-light rounded-full border transition-all duration-300 ${
+                    selectedCategory === category.title
+                      ? "border-white/30 bg-white/5 text-white"
+                      : "border-white/10 text-white/60 hover:border-white/20 hover:text-white/80"
+                  }`}
+                >
+                  {category.title}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Filtered Categories */}
+          {(() => {
+            const filteredCategories = selectedCategory
+              ? productCategories.filter((cat) => cat.title === selectedCategory)
+              : productCategories;
+
+            if (filteredCategories.length === 0) {
+              return (
+                <div className="text-center py-20">
+                  <p className="text-white/60">No products found in this category.</p>
+                </div>
+              );
+            }
+
+            return (
+              <>
+                {/* Top 3 Items - Horizontal Scroll on Mobile */}
+                <div className="md:hidden mb-12">
+                  <div className="flex gap-6 overflow-x-auto pb-4 -mx-6 px-6 scrollbar-hide snap-x snap-mandatory scroll-smooth">
+                    {filteredCategories.slice(0, 3).map((category, index) => (
+                      <div
+                        key={category.title}
+                        className="flex-shrink-0 w-[85vw] max-w-[380px] snap-center"
+                      >
+                        <CategoryGridItem
+                          category={category}
+                          index={index}
+                          onProductSelect={handleProductSelect}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* All Items - Grid Layout (Desktop) */}
+                <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-0 items-stretch overflow-hidden rounded-2xl border border-white/5">
+                  {filteredCategories.map((category, index) => {
+                    const totalItems = filteredCategories.length;
+                    const colsLg = 3;
+                    const colsMd = 2;
+
+                    // Calculate position for lg (3 cols)
+                    const rowLg = Math.floor(index / colsLg);
+                    const colLg = index % colsLg;
+                    const lastRowLg = Math.floor((totalItems - 1) / colsLg);
+
+                    // Calculate position for md (2 cols)
+                    const rowMd = Math.floor(index / colsMd);
+                    const colMd = index % colsMd;
+                    const lastRowMd = Math.floor((totalItems - 1) / colsMd);
+
+                    // Determine rounded corners
+                    const roundedClasses = [];
+
+                    // Top-left corner
+                    if ((rowLg === 0 && colLg === 0) || (rowMd === 0 && colMd === 0)) {
+                      roundedClasses.push("md:rounded-tl-2xl lg:rounded-tl-2xl");
+                    }
+
+                    // Top-right corner
+                    if (
+                      (rowLg === 0 && colLg === colsLg - 1) ||
+                      (rowMd === 0 && colMd === colsMd - 1)
+                    ) {
+                      roundedClasses.push("md:rounded-tr-2xl lg:rounded-tr-2xl");
+                    }
+
+                    // Bottom-left corner
+                    if (
+                      (rowLg === lastRowLg && colLg === 0) ||
+                      (rowMd === lastRowMd && colMd === 0)
+                    ) {
+                      roundedClasses.push("md:rounded-bl-2xl lg:rounded-bl-2xl");
+                    }
+
+                    // Bottom-right corner
+                    if (
+                      (rowLg === lastRowLg && colLg === colsLg - 1) ||
+                      (rowMd === lastRowMd && colMd === colsMd - 1)
+                    ) {
+                      roundedClasses.push("md:rounded-br-2xl lg:rounded-br-2xl");
+                    }
+
+                    return (
+                      <div key={category.title} className={roundedClasses.join(" ")}>
+                        <CategoryGridItem
+                          category={category}
+                          index={index}
+                          onProductSelect={handleProductSelect}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Remaining Items - Grid Layout (Mobile) */}
+                <div className="md:hidden grid grid-cols-1 gap-12">
+                  {filteredCategories.slice(3).map((category, index) => (
+                    <CategoryGridItem
+                      key={category.title}
+                      category={category}
+                      index={index + 3}
+                      onProductSelect={handleProductSelect}
+                    />
+                  ))}
+                </div>
+              </>
+            );
+          })()}
+        </div>
+      </section>
+
+      {/* CTA Section - Minimalist Modern */}
+      <section
+        ref={(element) => {
+          sectionsRef.current[2] = element;
+        }}
+        className="relative py-32 md:py-40 px-6"
+      >
+        <div className="relative z-10 mx-auto max-w-[900px] text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            data-reveal
+          >
+            <h2 className="mb-8 text-4xl font-light leading-[1.1] tracking-tight text-white md:text-5xl lg:text-6xl">
+              <span>Ready to start</span>
+              <br />
+              <span className="font-normal bg-gradient-to-r from-luxury-gold via-luxury-lightGold to-luxury-gold bg-clip-text text-transparent">
+                investing in precious metals?
+              </span>
+            </h2>
+            <p className="mx-auto mb-12 max-w-xl text-base font-light leading-relaxed text-white/60 md:text-lg">
+              Join thousands of investors who trust {APP_NAME} for authentic and verified precious
+              metals.
+            </p>
+
+            <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <Link
+                href="/verify"
+                className="group relative inline-flex items-center justify-center gap-2 rounded-full bg-luxury-gold px-8 py-3.5 text-sm font-medium text-black transition-all duration-300 hover:bg-luxury-lightGold hover:shadow-[0_20px_50px_-15px_rgba(212,175,55,0.5)]"
+              >
+                <Shield className="h-4 w-4" />
+                <span>Verify Product</span>
+                <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+              </Link>
+
+              <Link
+                href="/contact"
+                className="inline-flex items-center justify-center rounded-full border border-white/20 px-8 py-3.5 text-sm font-medium text-white transition-all duration-300 hover:border-white/40 hover:bg-white/5"
+              >
+                Contact Us
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Footer - Ultra Minimalist */}
+      <footer className="relative border-t border-white/5 py-16 px-6">
+        <div className="relative z-10 mx-auto max-w-[900px] text-center">
+          <motion.p
+            className="text-xs font-light text-white/40"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
+          </motion.p>
+        </div>
+      </footer>
+
+      {/* Product Detail Modal */}
+      <ProductModal product={selectedProduct} isOpen={isModalOpen} onClose={handleCloseModal} />
     </div>
   );
 }
-
