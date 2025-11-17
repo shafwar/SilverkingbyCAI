@@ -977,7 +977,7 @@ export default function ProductsPage() {
         ref={(element) => {
           sectionsRef.current[1] = element;
         }}
-        className="relative overflow-hidden pt-16 pb-12 md:pt-20 md:pb-16 lg:pt-24 lg:pb-20"
+        className="relative overflow-hidden pt-16 pb-0"
       >
         {/* Products Catalog Section - Beige Background */}
         <div className="bg-[#f5f0e8] px-0 md:px-0 lg:px-0 py-8 md:py-12">
@@ -995,7 +995,7 @@ export default function ProductsPage() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.4, ease: "easeOut" }}
-                className="text-xs md:text-sm text-[#8b7355]/70 font-extralight tracking-wide uppercase"
+                className="text-xl md:text-sm text-[#8b7355]/90 font-extralight tracking-wide uppercase"
               >
                 {(() => {
                   const filteredProducts = (() => {
@@ -1035,17 +1035,17 @@ export default function ProductsPage() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
-                className="flex flex-wrap items-center gap-6 md:gap-8"
+                className="flex flex-wrap items-center gap-6 md:gap-8 justify-center"
               >
                 <button
                   onClick={() => {
                     setSelectedFilter("all");
                     setSelectedCategory(null);
                   }}
-                  className={`text-xs md:text-sm font-extralight tracking-wide uppercase transition-colors pb-1 border-b ${
+                  className={`text-md md:text-sm font-extralight tracking-wide uppercase transition-colors pb-1 border-b ${
                     selectedFilter === "all" && !selectedCategory
                       ? "text-[#8b7355] border-[#8b7355]"
-                      : "text-[#8b7355]/50 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
+                      : "text-[#8b7355]/70 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
                   }`}
                 >
                   All Products
@@ -1055,7 +1055,7 @@ export default function ProductsPage() {
                     setSelectedFilter("award-winning");
                     setSelectedCategory(null);
                   }}
-                  className={`text-xs md:text-sm font-extralight tracking-wide uppercase transition-colors pb-1 border-b ${
+                  className={`text-md md:text-sm font-extralight tracking-wide uppercase transition-colors pb-1 border-b ${
                     selectedFilter === "award-winning"
                       ? "text-[#8b7355] border-[#8b7355]"
                       : "text-[#8b7355]/50 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
@@ -1068,7 +1068,7 @@ export default function ProductsPage() {
                     setSelectedFilter("exclusives");
                     setSelectedCategory(null);
                   }}
-                  className={`text-xs md:text-sm font-extralight tracking-wide uppercase transition-colors pb-1 border-b ${
+                  className={`text-md md:text-sm font-extralight tracking-wide uppercase transition-colors pb-1 border-b ${
                     selectedFilter === "exclusives"
                       ? "text-[#8b7355] border-[#8b7355]"
                       : "text-[#8b7355]/50 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
@@ -1081,7 +1081,7 @@ export default function ProductsPage() {
                     setSelectedFilter("large");
                     setSelectedCategory(null);
                   }}
-                  className={`text-xs md:text-sm font-extralight tracking-wide uppercase transition-colors pb-1 border-b ${
+                  className={`text-md md:text-sm font-extralight tracking-wide uppercase transition-colors pb-1 border-b ${
                     selectedFilter === "large"
                       ? "text-[#8b7355] border-[#8b7355]"
                       : "text-[#8b7355]/50 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
@@ -1094,7 +1094,7 @@ export default function ProductsPage() {
                     setSelectedFilter("small");
                     setSelectedCategory(null);
                   }}
-                  className={`text-xs md:text-sm font-extralight tracking-wide uppercase transition-colors pb-1 border-b ${
+                  className={`text-md md:text-sm font-extralight tracking-wide uppercase transition-colors pb-1 border-b ${
                     selectedFilter === "small"
                       ? "text-[#8b7355] border-[#8b7355]"
                       : "text-[#8b7355]/50 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
@@ -1186,6 +1186,72 @@ export default function ProductsPage() {
               );
             })()}
           </div>
+        </div>
+      </section>
+
+      {/* Running Text Promotional Section */}
+      <section className="relative bg-black py-3 md:py-6 overflow-hidden">
+        <div className="relative">
+          {/* Running Text Container */}
+          <div className="flex overflow-hidden">
+            <motion.div
+              className="flex whitespace-nowrap"
+              animate={{
+                x: ["0%", "-100%"],
+              }}
+              transition={{
+                x: {
+                  repeat: Infinity,
+                  repeatType: "loop",
+                  duration: 80,
+                  ease: "linear",
+                },
+              }}
+            >
+              {/* Content duplicated for seamless loop */}
+              {[...Array(2)].map((_, idx) => (
+                <div key={idx} className="flex items-center gap-8 md:gap-12 px-8 flex-shrink-0">
+                  <span className="text-xs md:text-sm font-extralight tracking-[0.3em] uppercase text-white/30">
+                    ✦
+                  </span>
+                  <span className="text-xs md:text-sm font-extralight tracking-[0.2em] uppercase text-white/40">
+                    Premium Quality 99.99% Pure
+                  </span>
+                  <span className="text-xs md:text-sm font-extralight tracking-[0.3em] uppercase text-white/30">
+                    ✦
+                  </span>
+                  <span className="text-xs md:text-sm font-extralight tracking-[0.2em] uppercase text-white/40">
+                    Certified Authenticity Guaranteed
+                  </span>
+                  <span className="text-xs md:text-sm font-extralight tracking-[0.3em] uppercase text-white/30">
+                    ✦
+                  </span>
+                  <span className="text-xs md:text-sm font-extralight tracking-[0.2em] uppercase text-white/40">
+                    Secure Investment Portfolio
+                  </span>
+                  <span className="text-xs md:text-sm font-extralight tracking-[0.3em] uppercase text-white/30">
+                    ✦
+                  </span>
+                  <span className="text-xs md:text-sm font-extralight tracking-[0.2em] uppercase text-white/40">
+                    Trusted by Generations
+                  </span>
+                  <span className="text-xs md:text-sm font-extralight tracking-[0.3em] uppercase text-white/30">
+                    ✦
+                  </span>
+                  <span className="text-xs md:text-sm font-extralight tracking-[0.2em] uppercase text-white/40">
+                    QR Code Verification Available
+                  </span>
+                  <span className="text-xs md:text-sm font-extralight tracking-[0.3em] uppercase text-white/30">
+                    ✦
+                  </span>
+                </div>
+              ))}
+            </motion.div>
+          </div>
+
+          {/* Gradient Fade Edges */}
+          <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-black to-transparent pointer-events-none z-10" />
+          <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-black to-transparent pointer-events-none z-10" />
         </div>
       </section>
 
