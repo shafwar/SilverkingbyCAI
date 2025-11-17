@@ -64,14 +64,46 @@ export async function generateAndStoreQR(serialCode: string, targetUrl: string):
     };
   }
 
-  await fs.mkdir(QR_FOLDER, { recursive: true });
-  const filePath = path.join(QR_FOLDER, `${serialCode}.png`);
-  await fs.writeFile(filePath, pngBuffer);
+  // In production (Railway), public folder is read-only after build
+  // Use API route for QR generation instead of file system
+  const isProduction = process.env.NODE_ENV === "production" || process.env.RAILWAY_ENVIRONMENT;
+  
+  if (isProduction) {
+    // Return API route URL for on-the-fly generation
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.NEXTAUTH_URL ||
+      "http://localhost:3000";
+    
+    return {
+      url: `${baseUrl.replace(/\/$/, "")}/api/qr/${serialCode}`,
+      mode: "LOCAL",
+    };
+  }
 
-  return {
-    url: `/qr/${serialCode}.png`,
-    mode: "LOCAL",
-  };
+  // Local development: save to file system
+  try {
+    await fs.mkdir(QR_FOLDER, { recursive: true });
+    const filePath = path.join(QR_FOLDER, `${serialCode}.png`);
+    await fs.writeFile(filePath, pngBuffer);
+
+    return {
+      url: `/qr/${serialCode}.png`,
+      mode: "LOCAL",
+    };
+  } catch (error) {
+    // If file write fails (e.g., in production), fallback to API route
+    console.warn("Failed to write QR to file system, using API route:", error);
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.NEXTAUTH_URL ||
+      "http://localhost:3000";
+    
+    return {
+      url: `${baseUrl.replace(/\/$/, "")}/api/qr/${serialCode}`,
+      mode: "LOCAL",
+    };
+  }
 }
 
 export async function deleteLocalQR(serialCode: string) {
