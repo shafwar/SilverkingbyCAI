@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 
 export async function GET(request: Request) {
+  try {
+    const session = await auth();
+    if (!session || (session.user as any).role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
   const { searchParams } = new URL(request.url);
   const limitParam = searchParams.get("limit");
   const limit = limitParam ? Number(limitParam) : undefined;
@@ -45,25 +51,32 @@ export async function GET(request: Request) {
     limit ? Promise.resolve(take) : prisma.qRScanLog.count({ where }),
   ]);
 
-  const formatted = logs.map((log) => ({
-    id: log.id,
-    serialCode: log.qrRecord.serialCode,
-    productName: log.qrRecord.product?.name ?? "Unknown",
-    scannedAt: log.scannedAt,
-    ip: log.ip,
-    userAgent: log.userAgent,
-    location: log.location,
-  }));
+    const formatted = logs.map((log) => ({
+      id: log.id,
+      serialCode: log.qrRecord.serialCode,
+      productName: log.qrRecord.product?.name ?? "Unknown",
+      scannedAt: log.scannedAt,
+      ip: log.ip,
+      userAgent: log.userAgent,
+      location: log.location,
+    }));
 
-  return NextResponse.json({
-    logs: formatted,
-    meta: {
-      page,
-      pageSize: take,
-      total,
-      totalPages: limit ? 1 : Math.ceil(total / pageSize),
-    },
-  });
+    return NextResponse.json({
+      logs: formatted,
+      meta: {
+        page,
+        pageSize: take,
+        total,
+        totalPages: limit ? 1 : Math.ceil(total / pageSize),
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching logs:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch logs" },
+      { status: 500 }
+    );
+  }
 }
 
 

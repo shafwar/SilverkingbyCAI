@@ -5,7 +5,17 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { motion, useInView, AnimatePresence, type Variants } from "framer-motion";
-import { Sparkles, FlaskConical, Shield, ArrowRight, Package, Hash, QrCode } from "lucide-react";
+import {
+  Sparkles,
+  FlaskConical,
+  Shield,
+  ArrowRight,
+  Github,
+  Instagram,
+  Twitter,
+  Linkedin,
+  Youtube,
+} from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Link from "next/link";
 import Image from "next/image";
@@ -58,51 +68,6 @@ const hoverSpring = {
   },
 } as const;
 
-const processSteps = [
-  {
-    id: 1,
-    title: "Ore Selection",
-    icon: Package,
-    description: "Premium raw materials sourced from certified refineries worldwide",
-  },
-  {
-    id: 2,
-    title: "Melting & Purification",
-    icon: FlaskConical,
-    description: "Advanced smelting process ensuring 99.99% purity standards",
-  },
-  {
-    id: 3,
-    title: "Casting",
-    icon: Sparkles,
-    description: "Precision casting in controlled environments for consistent quality",
-  },
-  {
-    id: 4,
-    title: "Serial Coding",
-    icon: Hash,
-    description: "Unique serial number assignment for complete traceability",
-  },
-  {
-    id: 5,
-    title: "QR Sealing",
-    icon: QrCode,
-    description: "Encrypted QR code generation and permanent sealing",
-  },
-  {
-    id: 6,
-    title: "Packaging",
-    icon: Package,
-    description: "Premium protective packaging with tamper-evident seals",
-  },
-  {
-    id: 7,
-    title: "Verification-Ready",
-    icon: Shield,
-    description: "Complete audit trail ready for instant verification",
-  },
-];
-
 const FeatureCard = ({
   feature,
   index,
@@ -148,53 +113,6 @@ const FeatureCard = ({
   );
 };
 
-const ProcessStepCard = ({ step, index }: { step: (typeof processSteps)[0]; index: number }) => {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const isInView = useInView(containerRef, { amount: 0.3, margin: "-25% 0px" });
-  const Icon = step.icon;
-
-  return (
-    <div ref={containerRef} className="relative min-h-[280px]">
-      <AnimatePresence mode="sync">
-        {isInView && (
-          <motion.div
-            key={`${step.id}-step`}
-            variants={presenceVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            custom={index}
-            whileHover={hoverSpring}
-            className="relative flex h-full flex-col rounded-2xl border border-white/8 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.06),_transparent_55%),linear-gradient(140deg,#111111,_#050505)] p-6 backdrop-blur-lg transition-all duration-500 hover:border-white/40 hover:shadow-[0_28px_80px_-40px_rgba(0,0,0,0.9)]"
-          >
-            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-[#141414] text-luxury-gold/80">
-              <Icon className="h-5 w-5" />
-            </div>
-            <div className="mb-2 flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-luxury-gold/70" />
-                <span className="text-[11px] font-medium uppercase tracking-[0.25em] text-luxury-silver/60">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-              </div>
-              <h3 className="font-sans text-base md:text-[17px] font-semibold text-white">
-                {step.title}
-              </h3>
-            </div>
-            <p className="mt-1 text-xs md:text-sm leading-relaxed text-luxury-silver/75">
-              {step.description}
-            </p>
-
-            {index < processSteps.length - 1 && (
-              <div className="absolute right-0 top-1/2 hidden h-px w-full translate-x-full translate-y-[-50%] bg-gradient-to-r from-white/20 via-white/5 to-transparent xl:block" />
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
 // Narrative Section with Dynamic Images & Mobile Swipe
 const NarrativeImageSection = forwardRef<
   HTMLDivElement,
@@ -210,21 +128,22 @@ const NarrativeImageSection = forwardRef<
   const [hoveredColumnIndex, setHoveredColumnIndex] = useState<number | null>(null);
   const [imageIndices, setImageIndices] = useState<number[]>([0, 0, 0]);
 
-  // Auto-rotate images on hover for desktop with varied timing
+  // Auto-rotate images on hover for desktop with smooth slide transition
   useEffect(() => {
     if (hoveredColumnIndex === null) return;
 
-    // Varied timing for each column (1.8s, 2.2s, 2.5s)
-    const timings = [1800, 2200, 2500];
-    const timing = timings[hoveredColumnIndex] || 2000;
+    // Varied timing for each column (2s, 2.5s, 3s) for more natural feel
+    const timings = [2000, 2500, 3000];
+    const timing = timings[hoveredColumnIndex] || 2500;
 
     const interval = setInterval(() => {
       setImageIndices((prev) => {
         const newIndices = [...prev];
         const card = cards[hoveredColumnIndex];
         if (card) {
-          // Random selection for more variety
-          const nextIndex = Math.floor(Math.random() * card.images.length);
+          // Sequential rotation for smoother experience
+          const currentIndex = prev[hoveredColumnIndex];
+          const nextIndex = (currentIndex + 1) % card.images.length;
           newIndices[hoveredColumnIndex] = nextIndex;
         }
         return newIndices;
@@ -268,38 +187,42 @@ const NarrativeImageSection = forwardRef<
                   </p>
                 </div>
 
-                {/* Image tile with dynamic image swap on hover - consistent height */}
+                {/* Image tile with dynamic slide transition on hover - Pixelmatters style */}
                 <motion.div
                   whileHover={{ scale: 1.01, y: -2 }}
                   transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                   className="relative w-full overflow-hidden rounded-lg border border-white/10 bg-black/60 flex-shrink-0"
                   style={{ aspectRatio: "3/2" }}
                 >
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={`${idx}-${currentImageIndex}`}
-                      initial={{ opacity: 0, scale: 1.05 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{
-                        duration: 0.8,
-                        ease: [0.22, 1, 0.36, 1],
-                      }}
-                      className="absolute inset-0"
-                    >
-                      <Image
-                        src={currentImage}
-                        alt={card.label}
-                        fill
-                        className="object-cover transition-transform duration-[800ms] ease-out"
-                        sizes="(min-width: 1024px) 33vw, 100vw"
-                        priority={idx === 0}
-                      />
-                    </motion.div>
-                  </AnimatePresence>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
+                  {/* Image container with smooth slide transition - Pixelmatters style */}
+                  <div className="relative w-full h-full overflow-hidden">
+                    <AnimatePresence mode="wait" initial={false}>
+                      <motion.div
+                        key={`${idx}-${currentImageIndex}`}
+                        initial={{ opacity: 0, x: 30, scale: 1.05 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={{ opacity: 0, x: -30, scale: 0.95 }}
+                        transition={{
+                          duration: 0.75,
+                          ease: [0.25, 0.46, 0.45, 0.94],
+                        }}
+                        className="absolute inset-0"
+                        style={{ willChange: "transform, opacity" }}
+                      >
+                        <Image
+                          src={currentImage}
+                          alt={card.label}
+                          fill
+                          className="object-cover"
+                          sizes="(min-width: 1024px) 33vw, 100vw"
+                          priority={idx === 0}
+                        />
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent pointer-events-none" />
 
-                  <div className="absolute inset-x-0 bottom-0 p-4 md:p-5">
+                  <div className="absolute inset-x-0 bottom-0 p-4 md:p-5 pointer-events-none">
                     <p className="text-sm md:text-base font-semibold text-white mb-1">
                       {card.label}
                     </p>
@@ -316,19 +239,17 @@ const NarrativeImageSection = forwardRef<
         {/* Mobile: Pixelmatters-style layout - Text stacked, then single large image */}
         <div className="md:hidden">
           {/* Text sections – stacked vertically like Pixelmatters */}
-          <div className="mb-12 space-y-10" data-reveal>
+          <div className="mb-16 space-y-14" data-reveal>
             {columns.map((item, idx) => (
               <motion.div
                 key={item.title}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.6, delay: idx * 0.08, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.6, delay: idx * 0.1, ease: [0.22, 1, 0.36, 1] }}
                 className="space-y-3"
               >
-                <h3 className="text-[28px] md:text-[32px] font-semibold leading-[1.2] text-white">
-                  {item.title}
-                </h3>
+                <h3 className="text-[32px] font-semibold leading-[1.2] text-white">{item.title}</h3>
                 <p className="text-[15px] leading-[1.6] text-luxury-silver/80">
                   {item.description}
                 </p>
@@ -336,13 +257,13 @@ const NarrativeImageSection = forwardRef<
             ))}
           </div>
 
-          {/* Single large image – Pixelmatters style */}
+          {/* Single large image – Pixelmatters style full-width edge-to-edge */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            className="relative w-full overflow-hidden rounded-lg border border-white/10 bg-black/60 mb-6"
+            className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] overflow-hidden"
             style={{ aspectRatio: "4/3" }}
             data-reveal
           >
@@ -692,45 +613,30 @@ export default function WhatWeDoPage() {
         </div>
       </section>
 
-      {/* Process Timeline */}
+      {/* Footer Section – Pixelmatters style with video background */}
       <section
         ref={(element) => {
           sectionsRef.current[4] = element as HTMLDivElement | null;
         }}
-        className="relative overflow-hidden border-y border-white/10 bg-gradient-to-b from-[#151515] via-[#0e0e0e] to-[#050505] py-20 md:py-28 lg:py-32 px-6"
+        className="relative min-h-[60vh] md:min-h-[70vh] flex flex-col justify-between px-6 md:px-8 lg:px-12 py-16 md:py-20 lg:py-24 overflow-hidden"
       >
-        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-luxury-black via-transparent to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-luxury-black via-transparent to-transparent" />
-
-        <div className="relative mx-auto max-w-[1320px]">
-          <motion.div className="mb-20 text-center" data-reveal>
-            <h2 className="mb-5 text-4xl md:text-5xl lg:text-6xl font-light tracking-tight">
-              <span className="text-white">Our</span>{" "}
-              <span className="bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text text-transparent">
-                Process
-              </span>
-            </h2>
-            <p className="mx-auto max-w-3xl text-lg md:text-xl text-luxury-silver/70">
-              Seven stages of precision manufacturing
-            </p>
-          </motion.div>
-
-          <div className="relative grid gap-6 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-            {processSteps.map((step, index) => (
-              <ProcessStepCard key={step.id} step={step} index={index} />
-            ))}
-          </div>
+        {/* Video Background */}
+        <div className="absolute inset-0 z-0">
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+          >
+            <source src="/videos/hero/molten metal slow motion.mp4" type="video/mp4" />
+          </video>
+          {/* Dark overlay for text readability */}
+          <div className="absolute inset-0 bg-gradient-to-b from-luxury-black/85 via-luxury-black/75 to-luxury-black/85" />
         </div>
-      </section>
 
-      {/* Minimalist Closing Section – inspired by Pixelmatters */}
-      <section
-        ref={(element) => {
-          sectionsRef.current[5] = element as HTMLDivElement | null;
-        }}
-        className="relative min-h-[60vh] md:min-h-[70vh] flex items-center justify-center px-6 py-24 md:py-32 lg:py-36"
-      >
-        <div className="relative z-10 mx-auto max-w-4xl text-center">
+        {/* Main Content - Centered */}
+        <div className="relative z-10 mx-auto max-w-4xl text-center flex-1 flex items-center justify-center">
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -744,6 +650,99 @@ export default function WhatWeDoPage() {
               together.
             </span>
           </motion.h2>
+        </div>
+
+        {/* Footer Navigation & Social - Bottom */}
+        <div className="relative z-10 mx-auto w-full max-w-[1320px] flex flex-col md:flex-row items-start md:items-end justify-between gap-8 md:gap-0">
+          {/* Left: Navigation Links */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            className="flex flex-wrap items-center gap-6 md:gap-8"
+          >
+            <span className="text-white/40 text-sm">×</span>
+            <Link
+              href="/what-we-do"
+              className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
+            >
+              What we do
+            </Link>
+            <Link
+              href="/authenticity"
+              className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
+            >
+              Authenticity
+            </Link>
+            <Link
+              href="/products"
+              className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
+            >
+              Products
+            </Link>
+            <Link
+              href="/about"
+              className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
+            >
+              About us
+            </Link>
+          </motion.div>
+
+          {/* Right: Social Media Icons */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className="flex items-center gap-4 md:gap-5"
+          >
+            <a
+              href="https://github.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/80 hover:text-white transition-colors duration-300"
+              aria-label="GitHub"
+            >
+              <Github className="h-5 w-5 md:h-6 md:w-6" />
+            </a>
+            <a
+              href="https://instagram.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/80 hover:text-white transition-colors duration-300"
+              aria-label="Instagram"
+            >
+              <Instagram className="h-5 w-5 md:h-6 md:w-6" />
+            </a>
+            <a
+              href="https://twitter.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/80 hover:text-white transition-colors duration-300"
+              aria-label="Twitter"
+            >
+              <Twitter className="h-5 w-5 md:h-6 md:w-6" />
+            </a>
+            <a
+              href="https://linkedin.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/80 hover:text-white transition-colors duration-300"
+              aria-label="LinkedIn"
+            >
+              <Linkedin className="h-5 w-5 md:h-6 md:w-6" />
+            </a>
+            <a
+              href="https://youtube.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/80 hover:text-white transition-colors duration-300"
+              aria-label="YouTube"
+            >
+              <Youtube className="h-5 w-5 md:h-6 md:w-6" />
+            </a>
+          </motion.div>
         </div>
       </section>
     </div>

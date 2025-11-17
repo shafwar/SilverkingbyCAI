@@ -13,23 +13,21 @@ import {
 import { AnimatedCard } from "./AnimatedCard";
 import { fetcher } from "@/lib/fetcher";
 import { LoadingSkeleton } from "./LoadingSkeleton";
-import { DASHBOARD_USE_MOCKS, mockTopProducts } from "@/lib/dashboard-mocks";
 
 type TopProductsResponse = {
   products: { name: string; scans: number }[];
 };
 
 export function BarChartTopProducts() {
-  const useMocks = DASHBOARD_USE_MOCKS;
   const { data, error, isLoading } = useSWR<TopProductsResponse>(
-    useMocks ? null : "/api/admin/scans/top-products",
+    "/api/admin/scans/top-products",
     fetcher,
     { refreshInterval: 120000 }
   );
 
-  const chartData = useMocks ? mockTopProducts : data?.products ?? [];
-  const loading = useMocks ? false : isLoading;
-  const hasError = useMocks ? false : error;
+  const chartData = data?.products ?? [];
+  const loading = isLoading;
+  const hasError = error;
 
   return (
     <AnimatedCard>

@@ -57,7 +57,7 @@ DATABASE_URL="mysql://user:password@localhost:3306/silverking"
 NEXTAUTH_SECRET="replace-with-strong-secret"
 NEXTAUTH_URL="http://localhost:3000"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
-NEXT_PUBLIC_ENABLE_DASHBOARD_MOCKS=true
+NEXT_PUBLIC_ENABLE_DASHBOARD_MOCKS=false
 
 # Optional Cloudflare R2 (leave blank for local storage)
 R2_ENDPOINT=""
@@ -67,8 +67,9 @@ R2_ACCESS_KEY_ID=""
 R2_SECRET_ACCESS_KEY=""
 ```
 
-If R2 variables are empty the QR engine automatically stays in local mode.  
-Set `NEXT_PUBLIC_ENABLE_DASHBOARD_MOCKS=false` when you want charts/cards to pull live Prisma data instead of the luxury mock dataset.
+**Note:** All admin dashboard components now use **real-time data** from the database. The `NEXT_PUBLIC_ENABLE_DASHBOARD_MOCKS` flag is set to `false` by default. All mock data has been removed and replaced with live API calls.
+
+If R2 variables are empty the QR engine automatically stays in local mode.
 
 ## Setup
 

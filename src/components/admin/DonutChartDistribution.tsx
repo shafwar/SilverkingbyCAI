@@ -5,7 +5,6 @@ import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from "recha
 import { AnimatedCard } from "./AnimatedCard";
 import { fetcher } from "@/lib/fetcher";
 import { LoadingSkeleton } from "./LoadingSkeleton";
-import { DASHBOARD_USE_MOCKS, mockDistribution } from "@/lib/dashboard-mocks";
 
 type DistributionResponse = {
   distribution: { label: string; value: number }[];
@@ -14,16 +13,15 @@ type DistributionResponse = {
 const COLORS = ["#FFD700", "#E5C100", "#C0C0C0", "#8A8A8A", "#FFB347"];
 
 export function DonutChartDistribution() {
-  const useMocks = DASHBOARD_USE_MOCKS;
   const { data, error, isLoading } = useSWR<DistributionResponse>(
-    useMocks ? null : "/api/admin/scans/top-products?view=distribution",
+    "/api/admin/scans/top-products?view=distribution",
     fetcher,
     { refreshInterval: 120000 }
   );
 
-  const chartData = useMocks ? mockDistribution : data?.distribution ?? [];
-  const loading = useMocks ? false : isLoading;
-  const hasError = useMocks ? false : error;
+  const chartData = data?.distribution ?? [];
+  const loading = isLoading;
+  const hasError = error;
 
   return (
     <AnimatedCard>

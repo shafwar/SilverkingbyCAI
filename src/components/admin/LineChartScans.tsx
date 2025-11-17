@@ -16,7 +16,6 @@ import { motion } from "framer-motion";
 import { fetcher } from "@/lib/fetcher";
 import { AnimatedCard } from "./AnimatedCard";
 import { LoadingSkeleton } from "./LoadingSkeleton";
-import { DASHBOARD_USE_MOCKS, mockTrend7Days, mockTrend30Days } from "@/lib/dashboard-mocks";
 
 type TrendResponse = {
   range: number;
@@ -27,27 +26,20 @@ const ranges: TrendResponse["range"][] = [7, 30];
 
 export function LineChartScans() {
   const [range, setRange] = useState<TrendResponse["range"]>(7);
-  const useMocks = DASHBOARD_USE_MOCKS;
   const { data, error, isLoading, mutate } = useSWR<TrendResponse>(
-    useMocks ? null : `/api/admin/scans/trend?range=${range}`,
+    `/api/admin/scans/trend?range=${range}`,
     fetcher,
     { refreshInterval: 60000, revalidateOnFocus: false }
   );
 
   const handleRangeChange = (value: TrendResponse["range"]) => {
     setRange(value);
-    if (!useMocks) {
-      mutate();
-    }
+    mutate();
   };
 
-  const chartData = useMocks
-    ? range === 7
-      ? mockTrend7Days
-      : mockTrend30Days
-    : data?.data ?? [];
-  const loading = useMocks ? false : isLoading;
-  const hasError = useMocks ? false : error;
+  const chartData = data?.data ?? [];
+  const loading = isLoading;
+  const hasError = error;
 
   return (
     <AnimatedCard>

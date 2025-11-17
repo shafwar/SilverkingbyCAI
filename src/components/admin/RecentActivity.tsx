@@ -7,7 +7,6 @@ import { Clock, MapPin } from "lucide-react";
 import { fetcher } from "@/lib/fetcher";
 import { AnimatedCard } from "./AnimatedCard";
 import { LoadingSkeleton } from "./LoadingSkeleton";
-import { DASHBOARD_USE_MOCKS, mockActivityLogs } from "@/lib/dashboard-mocks";
 
 type ActivityItem = {
   id: number;
@@ -27,16 +26,15 @@ type RecentActivityProps = {
 };
 
 export function RecentActivity({ compact = false }: RecentActivityProps) {
-  const useMocks = DASHBOARD_USE_MOCKS;
   const { data, error, isLoading } = useSWR<ActivityResponse>(
-    useMocks ? null : "/api/admin/logs?limit=6",
+    "/api/admin/logs?limit=6",
     fetcher,
     { refreshInterval: 15000 }
   );
 
-  const logs = useMocks ? mockActivityLogs.logs : data?.logs ?? [];
-  const loading = useMocks ? false : isLoading;
-  const hasError = useMocks ? false : error;
+  const logs = data?.logs ?? [];
+  const loading = isLoading;
+  const hasError = error;
 
   return (
     <AnimatedCard className={compact ? "max-h-[480px] overflow-hidden" : undefined}>

@@ -19,7 +19,6 @@ import { DateRangePicker, DateRangeOption } from "./DateRangePicker";
 import { AnimatedCard } from "./AnimatedCard";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import { DataTable, TableColumn } from "./DataTable";
-import { DASHBOARD_USE_MOCKS, getMockTrend, mockTopProducts } from "@/lib/dashboard-mocks";
 
 type TrendResponse = {
   data: { date: string; count: number }[];
@@ -36,7 +35,6 @@ type LogsResponse = {
 export function AnalyticsPanel() {
   const [range, setRange] = useState<DateRangeOption>("7d");
   const [customDays, setCustomDays] = useState(14);
-  const useMocks = DASHBOARD_USE_MOCKS;
 
   const days = useMemo(() => {
     if (range === "7d") return 7;
@@ -45,13 +43,13 @@ export function AnalyticsPanel() {
   }, [customDays, range]);
 
   const { data: trend, isLoading: trendLoading } = useSWR<TrendResponse>(
-    useMocks ? null : `/api/admin/scans/trend?range=${days}`,
+    `/api/admin/scans/trend?range=${days}`,
     fetcher,
     { refreshInterval: 60000 }
   );
 
   const { data: top, isLoading: topLoading } = useSWR<TopProductsResponse>(
-    useMocks ? null : "/api/admin/scans/top-products",
+    "/api/admin/scans/top-products",
     fetcher,
     { refreshInterval: 120000 }
   );
@@ -60,10 +58,10 @@ export function AnalyticsPanel() {
     refreshInterval: 60000,
   });
 
-  const trendSeries = useMocks ? getMockTrend(days) : trend?.data ?? [];
-  const trendLoadingState = useMocks ? false : trendLoading;
-  const topData = useMocks ? { products: mockTopProducts } : top;
-  const topLoadingState = useMocks ? false : topLoading;
+  const trendSeries = trend?.data ?? [];
+  const trendLoadingState = trendLoading;
+  const topData = top;
+  const topLoadingState = topLoading;
   const logsData = logs;
 
   const heatmap = useMemo(() => {

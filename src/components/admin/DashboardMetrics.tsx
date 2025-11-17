@@ -5,7 +5,6 @@ import { Shield, QrCode, Activity, Zap } from "lucide-react";
 import { DashboardCard } from "./DashboardCard";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import { fetcher } from "@/lib/fetcher";
-import { DASHBOARD_USE_MOCKS, mockDashboardStats } from "@/lib/dashboard-mocks";
 
 type StatsResponse = {
   totalProducts: number;
@@ -22,16 +21,15 @@ const icons = {
 };
 
 export function DashboardMetrics() {
-  const useMocks = DASHBOARD_USE_MOCKS;
   const { data, error, isLoading } = useSWR<StatsResponse>(
-    useMocks ? null : "/api/admin/stats",
+    "/api/admin/stats",
     fetcher,
     { refreshInterval: 45000 }
   );
 
-  const stats = useMocks ? mockDashboardStats : data;
-  const loading = useMocks ? false : isLoading;
-  const hasError = useMocks ? false : error;
+  const stats = data;
+  const loading = isLoading;
+  const hasError = error;
 
   if (loading) {
     return <LoadingSkeleton className="h-32 w-full" />;
