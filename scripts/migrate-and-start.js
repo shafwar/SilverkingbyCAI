@@ -4,6 +4,23 @@ const { createDatabaseIfNotExists } = require('./create-database');
 
 console.log('🚀 Starting application...\n');
 
+// Function to run seed
+async function runSeed() {
+  console.log('🌱 Running database seed...');
+  try {
+    execSync('npm run prisma:seed', {
+      stdio: 'inherit',
+      env: process.env,
+    });
+    console.log('✅ Database seed completed successfully!\n');
+    return true;
+  } catch (error) {
+    console.error('❌ Seed failed:', error.message);
+    console.log('⚠️  Continuing without seed (database may already be seeded)...\n');
+    return false;
+  }
+}
+
 // Function to run migration
 async function runMigration() {
   console.log('📦 Running database migrations...');
@@ -19,6 +36,11 @@ async function runMigration() {
       env: process.env,
     });
     console.log('✅ Database migrations completed successfully!\n');
+    
+    // Run seed after migration
+    console.log('Step 3: Seeding database...\n');
+    await runSeed();
+    
     return true;
   } catch (error) {
     console.error('❌ Migration failed:', error.message);
@@ -33,6 +55,10 @@ async function runMigration() {
         env: process.env,
       });
       console.log('✅ Database schema created successfully!\n');
+      
+      // Try to seed after push
+      await runSeed();
+      
       return true;
     } catch (pushError) {
       console.error('❌ Database push also failed:', pushError.message);

@@ -43,7 +43,9 @@ async function main() {
       },
     });
 
-    const verifyUrl = `https://silverkingbycai.com/verify/${item.serialCode}`;
+    // Use production URL from environment or default to Railway URL
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "https://silverkingbycai-production.up.railway.app";
+    const verifyUrl = `${baseUrl}/verify/${item.serialCode}`;
     const { url } = await generateAndStoreQR(item.serialCode, verifyUrl);
 
     await prisma.qrRecord.create({
