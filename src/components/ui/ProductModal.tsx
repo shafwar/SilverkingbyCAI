@@ -81,19 +81,42 @@ import { X, Shield, Scale, Gem } from "lucide-react";
 const modalVariants: Variants = {
   hidden: {
     opacity: 0,
-    scale: 0.9,
-    transition: { duration: 0.2 },
+    scale: 0.95,
+    y: 20,
+    transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
   },
   visible: {
     opacity: 1,
     scale: 1,
-    transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
+    y: 0,
+    transition: {
+      duration: 0.5,
+      ease: [0.22, 1, 0.36, 1],
+      staggerChildren: 0.1,
+      delayChildren: 0.1,
+    },
   },
   exit: {
     opacity: 0,
-    scale: 0.9,
-    transition: { duration: 0.2 },
+    scale: 0.95,
+    y: 20,
+    transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
   },
+};
+
+const contentVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
+  },
+};
+
+const backdropVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.3 } },
+  exit: { opacity: 0, transition: { duration: 0.2 } },
 };
 
 export type Product = {
@@ -138,14 +161,15 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
         <>
           {/* Backdrop */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            variants={backdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
             onClick={onClose}
-            className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[17px]"
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-md"
           />
 
-          {/* Modal Container - Premium Vertical Card */}
+          {/* Modal Container - Minimalist & Elegant */}
           <motion.div
             variants={modalVariants}
             initial="hidden"
@@ -154,35 +178,43 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
             className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
             onClick={onClose}
           >
-            <div
+            <motion.div
+              variants={contentVariants}
               onClick={(e) => e.stopPropagation()}
-              className="group relative overflow-hidden rounded-[32px] border border-white/10 bg-gradient-to-b from-[#050505] via-[#0a0a0a] to-[#010101] p-6 shadow-[0_30px_70px_rgba(0,0,0,0.65)]"
+              className="group relative w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0a] p-8 md:p-10 shadow-2xl"
             >
-              <div
-                className="pointer-events-none absolute inset-0 opacity-50 mix-blend-screen"
-                style={{
-                  background:
-                    "linear-gradient(120deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.1) 100%)",
-                }}
-              />
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-white/15 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-20" />
+              {/* Subtle gradient overlay */}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.02] via-transparent to-transparent" />
 
-              {/* Close Button */}
-              <button
+              {/* Close Button - Minimalist */}
+              <motion.button
                 onClick={onClose}
-                className="absolute right-4 top-4 z-10 rounded-full border border-white/10 bg-white/5 p-2 text-white transition-all hover:bg-white/10 hover:text-luxury-gold"
+                whileHover={{ scale: 1.1, rotate: 90 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                className="absolute right-4 top-4 z-10 rounded-lg border border-white/10 bg-white/5 p-2 text-white/70 transition-colors hover:bg-white/10 hover:text-white hover:border-white/20"
                 aria-label="Close modal"
               >
                 <X className="h-4 w-4" />
-              </button>
+              </motion.button>
 
-              {/* Premium Vertical Content */}
-              <div className="flex flex-col items-center text-center">
-                <span className="mb-6 inline-flex items-center rounded-full border border-luxury-gold/20 bg-luxury-gold/5 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-luxury-gold/90">
+              {/* Content - Minimalist Layout */}
+              <div className="flex flex-col items-center text-center space-y-6">
+                {/* Category Badge - Minimalist */}
+                <motion.span
+                  variants={contentVariants}
+                  className="inline-block text-[0.7rem] font-extralight tracking-[0.25em] uppercase text-white/40"
+                >
                   {product.category}
-                </span>
+                </motion.span>
 
-                <div className="relative mb-6 flex h-40 w-40 items-center justify-center overflow-hidden rounded-[28px] border border-white/10 bg-gradient-to-br from-luxury-gold/15 via-luxury-silver/10 to-transparent shadow-[0_25px_60px_rgba(0,0,0,0.45)]">
+                {/* Product Image - Clean & Minimalist */}
+                <motion.div
+                  variants={contentVariants}
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                  className="relative flex h-48 w-48 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.03] to-transparent"
+                >
                   {product.image ? (
                     <img
                       src={product.image}
@@ -193,96 +225,82 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
                       }}
                     />
                   ) : (
-                    <Gem className="h-16 w-16 text-luxury-gold/60" />
+                    <Gem className="h-20 w-20 text-white/20" />
                   )}
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-white/10" />
-                </div>
+                </motion.div>
 
-                <h2 className="mb-4 max-w-xs text-3xl font-semibold tracking-tight text-white">
+                {/* Product Name - Minimalist Typography */}
+                <motion.h2
+                  variants={contentVariants}
+                  className="max-w-xs text-2xl md:text-3xl font-extralight leading-[1.2] tracking-[-0.02em] text-white"
+                >
                   {product.name}
-                </h2>
-                <p className="mb-8 text-sm leading-relaxed text-luxury-silver/70">
+                </motion.h2>
+
+                {/* Description - Subtle */}
+                <motion.p
+                  variants={contentVariants}
+                  className="max-w-sm text-sm font-extralight leading-relaxed text-white/50"
+                >
                   {product.description}
-                </p>
+                </motion.p>
 
-                <div className="mb-8 flex w-full flex-col gap-4">
-                  <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <div className="rounded-2xl bg-luxury-gold/10 p-3">
-                      <Shield className="h-5 w-5 text-luxury-gold" />
+                {/* Product Details - Minimalist Cards */}
+                <motion.div variants={contentVariants} className="flex w-full flex-col gap-3">
+                  {/* Purity */}
+                  <motion.div
+                    whileHover={{ scale: 1.02, borderColor: "rgba(255,255,255,0.2)" }}
+                    transition={{ type: "spring", stiffness: 300 }}
+                    className="flex items-center gap-4 rounded-lg border border-white/10 bg-white/[0.02] p-4 backdrop-blur-sm"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/5">
+                      <Shield className="h-4 w-4 text-white/60" />
                     </div>
                     <div className="flex-1 text-left">
-                      <p className="text-[11px] uppercase tracking-[0.3em] text-luxury-silver/50">
-                        Kemurnian
+                      <p className="text-[0.65rem] uppercase tracking-[0.2em] text-white/40 font-extralight">
+                        Purity
                       </p>
-                      <p className="text-lg font-semibold text-white">{product.purity}</p>
+                      <p className="text-base font-extralight text-white/90">{product.purity}</p>
                     </div>
-                  </div>
+                  </motion.div>
 
-                  <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <div className="rounded-2xl bg-luxury-gold/10 p-3">
-                      <Scale className="h-5 w-5 text-luxury-gold" />
+                  {/* Weight */}
+                  <motion.div
+                    whileHover={{ scale: 1.02, borderColor: "rgba(255,255,255,0.2)" }}
+                    transition={{ type: "spring", stiffness: 300 }}
+                    className="flex items-center gap-4 rounded-lg border border-white/10 bg-white/[0.02] p-4 backdrop-blur-sm"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/5">
+                      <Scale className="h-4 w-4 text-white/60" />
                     </div>
                     <div className="flex-1 text-left">
-                      <p className="text-[11px] uppercase tracking-[0.3em] text-luxury-silver/50">
-                        Berat
+                      <p className="text-[0.65rem] uppercase tracking-[0.2em] text-white/40 font-extralight">
+                        Weight
                       </p>
-                      <p className="text-lg font-semibold text-white">{product.weight}</p>
+                      <p className="text-base font-extralight text-white/90">{product.weight}</p>
                     </div>
-                  </div>
+                  </motion.div>
+                </motion.div>
 
-                  {/* Optional: Price Display (uncomment when backend provides price) */}
-                  {/* {product.price && (
-                    <div className="flex items-center gap-2">
-                      <div className="rounded-lg bg-luxury-gold/10 p-2">
-                        <DollarSign className="h-4 w-4 text-luxury-gold" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[10px] uppercase tracking-wide text-luxury-silver/50">
-                          Harga
-                        </p>
-                        <p className="text-sm font-semibold text-white">
-                          {new Intl.NumberFormat("id-ID", {
-                            style: "currency",
-                            currency: "IDR",
-                          }).format(product.price)}
-                        </p>
-                      </div>
-                    </div>
-                  )} */}
-
-                  {/* Optional: Stock Display (uncomment when backend provides stock) */}
-                  {/* {product.stock !== undefined && (
-                    <div className="flex items-center gap-2">
-                      <div className="rounded-lg bg-luxury-gold/10 p-2">
-                        <Package className="h-4 w-4 text-luxury-gold" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[10px] uppercase tracking-wide text-luxury-silver/50">
-                          Stok
-                        </p>
-                        <p className="text-sm font-semibold text-white">
-                          {product.stock > 0 ? `${product.stock} tersedia` : "Habis"}
-                        </p>
-                      </div>
-                    </div>
-                  )} */}
-                </div>
-
-                {/* Action Buttons - Vertical Card */}
-                <div className="flex w-full flex-col gap-3 sm:flex-row">
-                  <Link
-                    href={`/verify${product.qrCode ? `?code=${product.qrCode}` : ""}`}
-                    className="flex-1 rounded-2xl bg-gradient-to-r from-luxury-gold via-luxury-lightGold to-[#f8e0a3] px-6 py-3 text-center text-sm font-semibold uppercase tracking-wide text-black shadow-[0_20px_50px_-20px_rgba(212,175,55,0.7)] transition-transform hover:-translate-y-0.5"
-                  >
-                    Verifikasi Produk
-                  </Link>
-                  <Link
-                    href="/contact"
-                    className="flex-1 rounded-2xl border border-white/15 bg-white/5 px-6 py-3 text-center text-sm font-semibold uppercase tracking-wide text-white transition hover:bg-white/10"
-                  >
-                    Hubungi Kami
-                  </Link>
-                </div>
+                {/* Action Buttons - Minimalist */}
+                <motion.div variants={contentVariants} className="flex w-full flex-col gap-3 pt-2">
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <Link
+                      href={`/verify${product.qrCode ? `?code=${product.qrCode}` : ""}`}
+                      className="block w-full rounded-lg border border-white/20 bg-white/5 px-6 py-3.5 text-center text-sm font-extralight tracking-wide text-white/90 backdrop-blur-sm transition-all hover:border-white/30 hover:bg-white/10 hover:text-white"
+                    >
+                      Verify Product
+                    </Link>
+                  </motion.div>
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <Link
+                      href="/contact"
+                      className="block w-full rounded-lg border border-white/10 bg-white/[0.02] px-6 py-3.5 text-center text-sm font-extralight tracking-wide text-white/60 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white/5 hover:text-white/80"
+                    >
+                      Contact Us
+                    </Link>
+                  </motion.div>
+                </motion.div>
 
                 {/* Optional: QR Code Display (uncomment when backend provides QR code) */}
                 {/* {product.qrCode && (
@@ -295,7 +313,7 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
                   </div>
                 )} */}
               </div>
-            </div>
+            </motion.div>
           </motion.div>
         </>
       )}

@@ -10,6 +10,7 @@ import { useNavigationTransition } from "./NavigationTransitionProvider";
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const { beginTransition } = useNavigationTransition();
 
   useEffect(() => {
@@ -19,6 +20,25 @@ export default function Navbar() {
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Check if modal is open by checking body class
+  useEffect(() => {
+    const checkModalState = () => {
+      setIsModalOpen(document.body.classList.contains("modal-active"));
+    };
+
+    // Initial check
+    checkModalState();
+
+    // Watch for class changes
+    const observer = new MutationObserver(checkModalState);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => observer.disconnect();
   }, []);
 
   const navLinks = [
@@ -40,12 +60,18 @@ export default function Navbar() {
   };
 
   return (
-    <header
+    <motion.header
+      initial={false}
+      animate={{
+        opacity: isModalOpen ? 0 : 1,
+        y: isModalOpen ? -100 : 0,
+      }}
+      transition={{ duration: 0.3, ease: "easeInOut" }}
       className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${
         isScrolled
           ? "bg-black/90 backdrop-blur-2xl border-b border-white/[0.08] shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
           : "bg-transparent"
-      }`}
+      } ${isModalOpen ? "pointer-events-none" : ""}`}
     >
       <nav className="mx-auto max-w-[1440px] px-6 md:px-10 lg:px-16 xl:px-20">
         <div className="flex items-center justify-between h-[5.5rem]">
@@ -168,6 +194,6 @@ export default function Navbar() {
           )}
         </AnimatePresence>
       </nav>
-    </header>
+    </motion.header>
   );
 }

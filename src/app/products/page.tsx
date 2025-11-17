@@ -1,7 +1,7 @@
 "use client";
 
 import Navbar from "@/components/layout/Navbar";
-import { motion, type Variants } from "framer-motion";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 import Link from "next/link";
 import { Sparkles, Gem, ArrowRight, Shield, ArrowDown, QrCode } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -11,6 +11,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import ProductModal, { type Product } from "@/components/ui/ProductModal";
+import ProductCard, { type ProductWithPricing } from "@/components/ui/ProductCard";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -35,6 +36,50 @@ const cardVariants: Variants = {
       delay: Number(index) * 0.1,
     },
   }),
+  exit: {
+    opacity: 0,
+    scale: 0.9,
+    transition: { duration: 0.3, ease: "easeIn" },
+  },
+};
+
+const bottomSectionVariants: Variants = {
+  initial: { opacity: 0, y: 60 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.8,
+      ease: [0.22, 1, 0.36, 1],
+      staggerChildren: 0.2,
+    },
+  },
+};
+
+const textRevealVariants: Variants = {
+  initial: { opacity: 0, y: 40 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.8,
+      ease: [0.22, 1, 0.36, 1],
+    },
+  },
+};
+
+const ctaCardVariants: Variants = {
+  initial: { opacity: 0, y: 50, scale: 0.95 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.8,
+      ease: [0.22, 1, 0.36, 1],
+      delay: 0.4,
+    },
+  },
 };
 
 type ProductCategory = {
@@ -45,6 +90,248 @@ type ProductCategory = {
   products: Product[];
 };
 
+// Flatten all products with pricing and awards
+const allProducts: ProductWithPricing[] = [
+  // 250 Gram products
+  {
+    id: "250gr-1",
+    name: "Precious Metal Bar 250gr",
+    rangeName: "Silver King",
+    image: "/images/silverking-gold.jpeg",
+    purity: "99.99%",
+    weight: "250gr",
+    description:
+      "Premium 250 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKA000001",
+    category: "250 Gram",
+    memberPrice: 18000000,
+    regularPrice: 22000000,
+    awards: ["gold", "trophy"],
+  },
+  {
+    id: "250gr-2",
+    name: "Precious Metal Bar 250gr",
+    rangeName: "Silver King",
+    image: "/images/silverking-gold.jpeg",
+    purity: "99.99%",
+    weight: "250gr",
+    description: "Premium 250 gram precious metal bar with certification. SKU: SKA000002",
+    category: "250 Gram",
+    memberPrice: 18000000,
+    regularPrice: 22000000,
+    awards: ["gold", "silver"],
+  },
+  {
+    id: "250gr-3",
+    name: "Precious Metal Bar 250gr",
+    rangeName: "Silver King",
+    image: "/images/silverking-gold.jpeg",
+    purity: "99.99%",
+    weight: "250gr",
+    description: "Premium 250 gram precious metal bar with certification. SKU: SKA000003",
+    category: "250 Gram",
+    memberPrice: 18000000,
+    regularPrice: 22000000,
+  },
+  // 100 Gram products
+  {
+    id: "100gr-1",
+    name: "Precious Metal Bar 100gr",
+    rangeName: "Silver King",
+    image: "/images/silverking-gold.jpeg",
+    purity: "99.99%",
+    weight: "100gr",
+    description:
+      "Premium 100 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKP000001",
+    category: "100 Gram",
+    memberPrice: 7000000,
+    regularPrice: 7500000,
+    awards: ["gold", "silver", "bronze", "trophy"],
+  },
+  {
+    id: "100gr-2",
+    name: "Precious Metal Bar 100gr",
+    rangeName: "Silver King",
+    image: "/images/silverking-gold.jpeg",
+    purity: "99.99%",
+    weight: "100gr",
+    description: "Premium 100 gram precious metal bar with certification. SKU: SKP000002",
+    category: "100 Gram",
+    memberPrice: 7000000,
+    regularPrice: 7500000,
+    awards: ["gold", "silver"],
+  },
+  {
+    id: "100gr-3",
+    name: "Precious Metal Bar 100gr",
+    rangeName: "Silver King",
+    image: "/images/silverking-gold.jpeg",
+    purity: "99.99%",
+    weight: "100gr",
+    description: "Premium 100 gram precious metal bar with certification. SKU: SKP000003",
+    category: "100 Gram",
+    memberPrice: 7000000,
+    regularPrice: 7500000,
+  },
+  // 50 Gram products
+  {
+    id: "50gr-1",
+    name: "Precious Metal Bar 50gr",
+    rangeName: "Silver King",
+    image: "/images/silverking-gold.jpeg",
+    purity: "99.99%",
+    weight: "50gr",
+    description:
+      "Premium 50 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKN000001",
+    category: "50 Gram",
+    memberPrice: 3500000,
+    regularPrice: 4000000,
+    awards: ["gold", "silver", "bronze"],
+  },
+  {
+    id: "50gr-2",
+    name: "Precious Metal Bar 50gr",
+    rangeName: "Silver King",
+    image: "/images/silverking-gold.jpeg",
+    purity: "99.99%",
+    weight: "50gr",
+    description: "Premium 50 gram precious metal bar with certification. SKU: SKN000002",
+    category: "50 Gram",
+    memberPrice: 3500000,
+    regularPrice: 4000000,
+    awards: ["gold", "silver"],
+  },
+  {
+    id: "50gr-3",
+    name: "Precious Metal Bar 50gr",
+    rangeName: "Silver King",
+    image: "/images/silverking-gold.jpeg",
+    purity: "99.99%",
+    weight: "50gr",
+    description: "Premium 50 gram precious metal bar with certification. SKU: SKN000003",
+    category: "50 Gram",
+    memberPrice: 3500000,
+    regularPrice: 4000000,
+  },
+  // 25 Gram products
+  {
+    id: "25gr-1",
+    name: "Precious Metal Bar 25gr",
+    rangeName: "Silver King",
+    image: "/images/silverking-gold.jpeg",
+    purity: "99.99%",
+    weight: "25gr",
+    description:
+      "Premium 25 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKC000001",
+    category: "25 Gram",
+    memberPrice: 1800000,
+    regularPrice: 2200000,
+    awards: ["gold", "silver"],
+  },
+  {
+    id: "25gr-2",
+    name: "Precious Metal Bar 25gr",
+    rangeName: "Silver King",
+    image: "/images/silverking-gold.jpeg",
+    purity: "99.99%",
+    weight: "25gr",
+    description: "Premium 25 gram precious metal bar with certification. SKU: SKC000002",
+    category: "25 Gram",
+    memberPrice: 1800000,
+    regularPrice: 2200000,
+  },
+  {
+    id: "25gr-3",
+    name: "Precious Metal Bar 25gr",
+    rangeName: "Silver King",
+    image: "/images/silverking-gold.jpeg",
+    purity: "99.99%",
+    weight: "25gr",
+    description: "Premium 25 gram precious metal bar with certification. SKU: SKC000003",
+    category: "25 Gram",
+    memberPrice: 1800000,
+    regularPrice: 2200000,
+  },
+  // 10 Gram products
+  {
+    id: "10gr-1",
+    name: "Precious Metal Bar 10gr",
+    rangeName: "Silver King",
+    image: "/images/silverking-gold.jpeg",
+    purity: "99.99%",
+    weight: "10gr",
+    description:
+      "Premium 10 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKI000001",
+    category: "10 Gram",
+    memberPrice: 700000,
+    regularPrice: 850000,
+    awards: ["gold", "silver"],
+  },
+  {
+    id: "10gr-2",
+    name: "Precious Metal Bar 10gr",
+    rangeName: "Silver King",
+    image: "/images/silverking-gold.jpeg",
+    purity: "99.99%",
+    weight: "10gr",
+    description: "Premium 10 gram precious metal bar with certification. SKU: SKI000002",
+    category: "10 Gram",
+    memberPrice: 700000,
+    regularPrice: 850000,
+  },
+  {
+    id: "10gr-3",
+    name: "Precious Metal Bar 10gr",
+    rangeName: "Silver King",
+    image: "/images/silverking-gold.jpeg",
+    purity: "99.99%",
+    weight: "10gr",
+    description: "Premium 10 gram precious metal bar with certification. SKU: SKI000003",
+    category: "10 Gram",
+    memberPrice: 700000,
+    regularPrice: 850000,
+  },
+  // 5 Gram products
+  {
+    id: "5gr-1",
+    name: "Precious Metal Bar 5gr",
+    rangeName: "Silver King",
+    image: "/images/silverking-gold.jpeg",
+    purity: "99.99%",
+    weight: "5gr",
+    description:
+      "Premium 5 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKT000001",
+    category: "5 Gram",
+    memberPrice: 350000,
+    regularPrice: 420000,
+    awards: ["gold", "silver"],
+  },
+  {
+    id: "5gr-2",
+    name: "Precious Metal Bar 5gr",
+    rangeName: "Silver King",
+    image: "/images/silverking-gold.jpeg",
+    purity: "99.99%",
+    weight: "5gr",
+    description: "Premium 5 gram precious metal bar with certification. SKU: SKT000002",
+    category: "5 Gram",
+    memberPrice: 350000,
+    regularPrice: 420000,
+  },
+  {
+    id: "5gr-3",
+    name: "Precious Metal Bar 5gr",
+    rangeName: "Silver King",
+    image: "/images/silverking-gold.jpeg",
+    purity: "99.99%",
+    weight: "5gr",
+    description: "Premium 5 gram precious metal bar with certification. SKU: SKT000003",
+    category: "5 Gram",
+    memberPrice: 350000,
+    regularPrice: 420000,
+  },
+];
+
+// Category list for filtering
 const productCategories: ProductCategory[] = [
   {
     icon: Gem,
@@ -52,36 +339,7 @@ const productCategories: ProductCategory[] = [
     description:
       "Premium precious metal bar with 99.99% purity. Large size perfect for serious investors and long-term portfolio building.",
     gradient: "from-luxury-gold to-luxury-lightGold",
-    products: [
-      {
-        id: "250gr-1",
-        name: "Precious Metal Bar 250gr",
-        image: "/images/silverking-gold.jpeg",
-        purity: "99.99%",
-        weight: "250gr",
-        description:
-          "Premium 250 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKA000001",
-        category: "250 Gram",
-      },
-      {
-        id: "250gr-2",
-        name: "Precious Metal Bar 250gr",
-        image: "/images/silverking-gold.jpeg",
-        purity: "99.99%",
-        weight: "250gr",
-        description: "Premium 250 gram precious metal bar with certification. SKU: SKA000002",
-        category: "250 Gram",
-      },
-      {
-        id: "250gr-3",
-        name: "Precious Metal Bar 250gr",
-        image: "/images/silverking-gold.jpeg",
-        purity: "99.99%",
-        weight: "250gr",
-        description: "Premium 250 gram precious metal bar with certification. SKU: SKA000003",
-        category: "250 Gram",
-      },
-    ],
+    products: [],
   },
   {
     icon: Gem,
@@ -89,36 +347,7 @@ const productCategories: ProductCategory[] = [
     description:
       "Premium precious metal bar with 99.99% purity. Ideal size for balanced investment portfolios and collection purposes.",
     gradient: "from-luxury-gold via-luxury-lightGold to-luxury-gold",
-    products: [
-      {
-        id: "100gr-1",
-        name: "Precious Metal Bar 100gr",
-        image: "/images/silverking-gold.jpeg",
-        purity: "99.99%",
-        weight: "100gr",
-        description:
-          "Premium 100 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKP000001",
-        category: "100 Gram",
-      },
-      {
-        id: "100gr-2",
-        name: "Precious Metal Bar 100gr",
-        image: "/images/silverking-gold.jpeg",
-        purity: "99.99%",
-        weight: "100gr",
-        description: "Premium 100 gram precious metal bar with certification. SKU: SKP000002",
-        category: "100 Gram",
-      },
-      {
-        id: "100gr-3",
-        name: "Precious Metal Bar 100gr",
-        image: "/images/silverking-gold.jpeg",
-        purity: "99.99%",
-        weight: "100gr",
-        description: "Premium 100 gram precious metal bar with certification. SKU: SKP000003",
-        category: "100 Gram",
-      },
-    ],
+    products: [],
   },
   {
     icon: Gem,
@@ -126,36 +355,7 @@ const productCategories: ProductCategory[] = [
     description:
       "Premium precious metal bar with 99.99% purity. Versatile size suitable for both investment and gifting purposes.",
     gradient: "from-luxury-gold to-luxury-silver",
-    products: [
-      {
-        id: "50gr-1",
-        name: "Precious Metal Bar 50gr",
-        image: "/images/silverking-gold.jpeg",
-        purity: "99.99%",
-        weight: "50gr",
-        description:
-          "Premium 50 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKN000001",
-        category: "50 Gram",
-      },
-      {
-        id: "50gr-2",
-        name: "Precious Metal Bar 50gr",
-        image: "/images/silverking-gold.jpeg",
-        purity: "99.99%",
-        weight: "50gr",
-        description: "Premium 50 gram precious metal bar with certification. SKU: SKN000002",
-        category: "50 Gram",
-      },
-      {
-        id: "50gr-3",
-        name: "Precious Metal Bar 50gr",
-        image: "/images/silverking-gold.jpeg",
-        purity: "99.99%",
-        weight: "50gr",
-        description: "Premium 50 gram precious metal bar with certification. SKU: SKN000003",
-        category: "50 Gram",
-      },
-    ],
+    products: [],
   },
   {
     icon: Gem,
@@ -163,36 +363,7 @@ const productCategories: ProductCategory[] = [
     description:
       "Premium precious metal bar with 99.99% purity. Compact size perfect for starting your precious metal investment journey.",
     gradient: "from-luxury-silver to-luxury-lightSilver",
-    products: [
-      {
-        id: "25gr-1",
-        name: "Precious Metal Bar 25gr",
-        image: "/images/silverking-gold.jpeg",
-        purity: "99.99%",
-        weight: "25gr",
-        description:
-          "Premium 25 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKC000001",
-        category: "25 Gram",
-      },
-      {
-        id: "25gr-2",
-        name: "Precious Metal Bar 25gr",
-        image: "/images/silverking-gold.jpeg",
-        purity: "99.99%",
-        weight: "25gr",
-        description: "Premium 25 gram precious metal bar with certification. SKU: SKC000002",
-        category: "25 Gram",
-      },
-      {
-        id: "25gr-3",
-        name: "Precious Metal Bar 25gr",
-        image: "/images/silverking-gold.jpeg",
-        purity: "99.99%",
-        weight: "25gr",
-        description: "Premium 25 gram precious metal bar with certification. SKU: SKC000003",
-        category: "25 Gram",
-      },
-    ],
+    products: [],
   },
   {
     icon: Gem,
@@ -200,36 +371,7 @@ const productCategories: ProductCategory[] = [
     description:
       "Premium precious metal bar with 99.99% purity. Entry-level size ideal for new investors and collectors.",
     gradient: "from-luxury-lightSilver to-luxury-silver",
-    products: [
-      {
-        id: "10gr-1",
-        name: "Precious Metal Bar 10gr",
-        image: "/images/silverking-gold.jpeg",
-        purity: "99.99%",
-        weight: "10gr",
-        description:
-          "Premium 10 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKI000001",
-        category: "10 Gram",
-      },
-      {
-        id: "10gr-2",
-        name: "Precious Metal Bar 10gr",
-        image: "/images/silverking-gold.jpeg",
-        purity: "99.99%",
-        weight: "10gr",
-        description: "Premium 10 gram precious metal bar with certification. SKU: SKI000002",
-        category: "10 Gram",
-      },
-      {
-        id: "10gr-3",
-        name: "Precious Metal Bar 10gr",
-        image: "/images/silverking-gold.jpeg",
-        purity: "99.99%",
-        weight: "10gr",
-        description: "Premium 10 gram precious metal bar with certification. SKU: SKI000003",
-        category: "10 Gram",
-      },
-    ],
+    products: [],
   },
   {
     icon: Gem,
@@ -237,36 +379,7 @@ const productCategories: ProductCategory[] = [
     description:
       "Premium precious metal bar with 99.99% purity. Smallest size perfect for gifts and starter collections.",
     gradient: "from-luxury-silver via-luxury-gold to-luxury-lightSilver",
-    products: [
-      {
-        id: "5gr-1",
-        name: "Precious Metal Bar 5gr",
-        image: "/images/silverking-gold.jpeg",
-        purity: "99.99%",
-        weight: "5gr",
-        description:
-          "Premium 5 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKT000001",
-        category: "5 Gram",
-      },
-      {
-        id: "5gr-2",
-        name: "Precious Metal Bar 5gr",
-        image: "/images/silverking-gold.jpeg",
-        purity: "99.99%",
-        weight: "5gr",
-        description: "Premium 5 gram precious metal bar with certification. SKU: SKT000002",
-        category: "5 Gram",
-      },
-      {
-        id: "5gr-3",
-        name: "Precious Metal Bar 5gr",
-        image: "/images/silverking-gold.jpeg",
-        purity: "99.99%",
-        weight: "5gr",
-        description: "Premium 5 gram precious metal bar with certification. SKU: SKT000003",
-        category: "5 Gram",
-      },
-    ],
+    products: [],
   },
 ];
 
@@ -432,6 +545,7 @@ export default function ProductsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedFilter, setSelectedFilter] = useState<string>("all");
 
   const handleProductSelect = (product: Product) => {
     setSelectedProduct(product);
@@ -857,154 +971,221 @@ export default function ProductsPage() {
         </div>
       </section>
 
-      {/* Product Categories Grid - 3 Columns - FIXED ALIGNMENT */}
+      {/* Products Section - Minimalist Style */}
       <section
         id="products-section"
         ref={(element) => {
           sectionsRef.current[1] = element;
         }}
-        className="relative overflow-hidden pt-8 pb-12 md:pt-12 md:pb-20 lg:pt-16 px-6"
+        className="relative overflow-hidden pt-16 pb-12 md:pt-20 md:pb-16 lg:pt-24 lg:pb-20"
       >
-        <div className="relative z-10 mx-auto max-w-[1400px]">
-          {/* Filter Section - Minimalist */}
-          <div className="mb-8 md:mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <h2 className="text-2xl md:text-3xl font-light text-white">Our Products</h2>
-            <div className="flex flex-wrap gap-2 md:gap-3">
-              <button
-                onClick={() => setSelectedCategory(null)}
-                className={`px-4 py-2 text-sm font-light rounded-full border transition-all duration-300 ${
-                  selectedCategory === null
-                    ? "border-white/30 bg-white/5 text-white"
-                    : "border-white/10 text-white/60 hover:border-white/20 hover:text-white/80"
-                }`}
+        {/* Products Catalog Section - Beige Background */}
+        <div className="bg-[#f5f0e8] px-0 md:px-0 lg:px-0 py-8 md:py-12">
+          <div className="relative z-10 mx-auto max-w-[1400px] px-6 md:px-8 lg:px-12">
+            {/* Filter Bar - Product Count and Navigation */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              className="mb-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-6 border-b border-[#e8ddd0]/50"
+            >
+              <motion.div
+                key={`count-${selectedFilter}-${selectedCategory}`}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className="text-xs md:text-sm text-[#8b7355]/70 font-extralight tracking-wide uppercase"
               >
-                All
-              </button>
-              {productCategories.map((category) => (
+                {(() => {
+                  const filteredProducts = (() => {
+                    let filtered = allProducts;
+
+                    // Filter by category
+                    if (selectedCategory) {
+                      filtered = filtered.filter((p) => p.category === selectedCategory);
+                    }
+
+                    // Filter by type
+                    if (selectedFilter === "award-winning") {
+                      filtered = filtered.filter((p) => p.awards && p.awards.length > 0);
+                    } else if (selectedFilter === "exclusives") {
+                      // You can define what makes a product "exclusive"
+                      filtered = filtered.filter((p) => p.awards?.includes("trophy"));
+                    } else if (selectedFilter === "large") {
+                      filtered = filtered.filter(
+                        (p) => p.category === "250 Gram" || p.category === "100 Gram"
+                      );
+                    } else if (selectedFilter === "small") {
+                      filtered = filtered.filter(
+                        (p) => p.category === "10 Gram" || p.category === "5 Gram"
+                      );
+                    }
+
+                    return filtered;
+                  })();
+
+                  return `${filteredProducts.length} PRODUCTS`;
+                })()}
+              </motion.div>
+
+              {/* Navigation Tabs */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
+                className="flex flex-wrap items-center gap-6 md:gap-8"
+              >
                 <button
-                  key={category.title}
-                  onClick={() => setSelectedCategory(category.title)}
-                  className={`px-4 py-2 text-sm font-light rounded-full border transition-all duration-300 ${
-                    selectedCategory === category.title
-                      ? "border-white/30 bg-white/5 text-white"
-                      : "border-white/10 text-white/60 hover:border-white/20 hover:text-white/80"
+                  onClick={() => {
+                    setSelectedFilter("all");
+                    setSelectedCategory(null);
+                  }}
+                  className={`text-xs md:text-sm font-extralight tracking-wide uppercase transition-colors pb-1 border-b ${
+                    selectedFilter === "all" && !selectedCategory
+                      ? "text-[#8b7355] border-[#8b7355]"
+                      : "text-[#8b7355]/50 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
                   }`}
                 >
-                  {category.title}
+                  All Products
                 </button>
-              ))}
-            </div>
-          </div>
+                <button
+                  onClick={() => {
+                    setSelectedFilter("award-winning");
+                    setSelectedCategory(null);
+                  }}
+                  className={`text-xs md:text-sm font-extralight tracking-wide uppercase transition-colors pb-1 border-b ${
+                    selectedFilter === "award-winning"
+                      ? "text-[#8b7355] border-[#8b7355]"
+                      : "text-[#8b7355]/50 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
+                  }`}
+                >
+                  Award Winning
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedFilter("exclusives");
+                    setSelectedCategory(null);
+                  }}
+                  className={`text-xs md:text-sm font-extralight tracking-wide uppercase transition-colors pb-1 border-b ${
+                    selectedFilter === "exclusives"
+                      ? "text-[#8b7355] border-[#8b7355]"
+                      : "text-[#8b7355]/50 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
+                  }`}
+                >
+                  Exclusives
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedFilter("large");
+                    setSelectedCategory(null);
+                  }}
+                  className={`text-xs md:text-sm font-extralight tracking-wide uppercase transition-colors pb-1 border-b ${
+                    selectedFilter === "large"
+                      ? "text-[#8b7355] border-[#8b7355]"
+                      : "text-[#8b7355]/50 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
+                  }`}
+                >
+                  Large Bars
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedFilter("small");
+                    setSelectedCategory(null);
+                  }}
+                  className={`text-xs md:text-sm font-extralight tracking-wide uppercase transition-colors pb-1 border-b ${
+                    selectedFilter === "small"
+                      ? "text-[#8b7355] border-[#8b7355]"
+                      : "text-[#8b7355]/50 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
+                  }`}
+                >
+                  Small Bars
+                </button>
+              </motion.div>
+            </motion.div>
 
-          {/* Filtered Categories */}
-          {(() => {
-            const filteredCategories = selectedCategory
-              ? productCategories.filter((cat) => cat.title === selectedCategory)
-              : productCategories;
+            {/* Products Grid */}
+            {(() => {
+              const filteredProducts = (() => {
+                let filtered = allProducts;
 
-            if (filteredCategories.length === 0) {
-              return (
-                <div className="text-center py-20">
-                  <p className="text-white/60">No products found in this category.</p>
-                </div>
-              );
-            }
+                // Filter by category
+                if (selectedCategory) {
+                  filtered = filtered.filter((p) => p.category === selectedCategory);
+                }
 
-            return (
-              <>
-                {/* Top 3 Items - Horizontal Scroll on Mobile */}
-                <div className="md:hidden mb-12">
-                  <div className="flex gap-6 overflow-x-auto pb-4 -mx-6 px-6 scrollbar-hide snap-x snap-mandatory scroll-smooth">
-                    {filteredCategories.slice(0, 3).map((category, index) => (
-                      <div
-                        key={category.title}
-                        className="flex-shrink-0 w-[85vw] max-w-[380px] snap-center"
-                      >
-                        <CategoryGridItem
-                          category={category}
-                          index={index}
-                          onProductSelect={handleProductSelect}
-                        />
-                      </div>
-                    ))}
+                // Filter by type
+                if (selectedFilter === "award-winning") {
+                  filtered = filtered.filter((p) => p.awards && p.awards.length > 0);
+                } else if (selectedFilter === "exclusives") {
+                  filtered = filtered.filter((p) => p.awards?.includes("trophy"));
+                } else if (selectedFilter === "large") {
+                  filtered = filtered.filter(
+                    (p) => p.category === "250 Gram" || p.category === "100 Gram"
+                  );
+                } else if (selectedFilter === "small") {
+                  filtered = filtered.filter(
+                    (p) => p.category === "10 Gram" || p.category === "5 Gram"
+                  );
+                }
+
+                return filtered;
+              })();
+
+              if (filteredProducts.length === 0) {
+                return (
+                  <div className="text-center py-20">
+                    <p className="text-[#8b7355]/60">No products found.</p>
                   </div>
-                </div>
+                );
+              }
 
-                {/* All Items - Grid Layout (Desktop) */}
-                <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-0 items-stretch overflow-hidden rounded-2xl border border-white/5">
-                  {filteredCategories.map((category, index) => {
-                    const totalItems = filteredCategories.length;
-                    const colsLg = 3;
-                    const colsMd = 2;
-
-                    // Calculate position for lg (3 cols)
-                    const rowLg = Math.floor(index / colsLg);
-                    const colLg = index % colsLg;
-                    const lastRowLg = Math.floor((totalItems - 1) / colsLg);
-
-                    // Calculate position for md (2 cols)
-                    const rowMd = Math.floor(index / colsMd);
-                    const colMd = index % colsMd;
-                    const lastRowMd = Math.floor((totalItems - 1) / colsMd);
-
-                    // Determine rounded corners
-                    const roundedClasses = [];
-
-                    // Top-left corner
-                    if ((rowLg === 0 && colLg === 0) || (rowMd === 0 && colMd === 0)) {
-                      roundedClasses.push("md:rounded-tl-2xl lg:rounded-tl-2xl");
-                    }
-
-                    // Top-right corner
-                    if (
-                      (rowLg === 0 && colLg === colsLg - 1) ||
-                      (rowMd === 0 && colMd === colsMd - 1)
-                    ) {
-                      roundedClasses.push("md:rounded-tr-2xl lg:rounded-tr-2xl");
-                    }
-
-                    // Bottom-left corner
-                    if (
-                      (rowLg === lastRowLg && colLg === 0) ||
-                      (rowMd === lastRowMd && colMd === 0)
-                    ) {
-                      roundedClasses.push("md:rounded-bl-2xl lg:rounded-bl-2xl");
-                    }
-
-                    // Bottom-right corner
-                    if (
-                      (rowLg === lastRowLg && colLg === colsLg - 1) ||
-                      (rowMd === lastRowMd && colMd === colsMd - 1)
-                    ) {
-                      roundedClasses.push("md:rounded-br-2xl lg:rounded-br-2xl");
-                    }
-
-                    return (
-                      <div key={category.title} className={roundedClasses.join(" ")}>
-                        <CategoryGridItem
-                          category={category}
-                          index={index}
+              return (
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={`${selectedFilter}-${selectedCategory}`}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    variants={{
+                      initial: { opacity: 0 },
+                      animate: {
+                        opacity: 1,
+                        transition: {
+                          staggerChildren: 0.03,
+                          delayChildren: 0.1,
+                        },
+                      },
+                      exit: {
+                        opacity: 0,
+                        transition: {
+                          staggerChildren: 0.02,
+                          staggerDirection: -1,
+                        },
+                      },
+                    }}
+                    className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-0 border-t border-l border-[#e8ddd0]/30"
+                  >
+                    {filteredProducts.map((product, index) => (
+                      <motion.div
+                        key={product.id}
+                        variants={cardVariants}
+                        custom={index}
+                        className="border-r border-b border-[#e8ddd0]/30"
+                      >
+                        <ProductCard
+                          product={product}
                           onProductSelect={handleProductSelect}
+                          index={index}
                         />
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Remaining Items - Grid Layout (Mobile) */}
-                <div className="md:hidden grid grid-cols-1 gap-12">
-                  {filteredCategories.slice(3).map((category, index) => (
-                    <CategoryGridItem
-                      key={category.title}
-                      category={category}
-                      index={index + 3}
-                      onProductSelect={handleProductSelect}
-                    />
-                  ))}
-                </div>
-              </>
-            );
-          })()}
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                </AnimatePresence>
+              );
+            })()}
+          </div>
         </div>
       </section>
 
@@ -1037,82 +1218,95 @@ export default function ProductsPage() {
         {/* Reading Text Container - Scrolls normally */}
         <div
           ref={readingTextRef}
-          className="relative z-10 flex min-h-[100vh] flex-col items-center justify-between px-6 md:px-8 lg:px-12"
+          className="relative z-10 flex min-h-[100vh] flex-col items-center justify-between px-8 md:px-12 lg:px-16"
           style={{
-            paddingTop: "18vh",
-            paddingBottom: "6vh",
+            paddingTop: "20vh",
+            paddingBottom: "10vh",
           }}
         >
-          {/* Top Content */}
-          <div className="mx-auto max-w-2xl text-center mt-auto">
-            <div className="prose prose-justify-center max-w-md mx-auto">
-              {/* Badge/Subheading */}
-              <span
-                data-reading-text
-                className="mb-8 inline-block text-xs font-light tracking-[0.2em] uppercase text-white/60"
-                style={{ opacity: 0.4, transform: "translateY(30px)" }}
+          {/* Top Content - Enhanced Typography & Motion */}
+          <motion.div
+            variants={bottomSectionVariants}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true, amount: 0.3 }}
+            className="mx-auto max-w-4xl text-center mb-10"
+          >
+            <div className="space-y-8 md:space-y-10">
+              <motion.span
+                variants={textRevealVariants}
+                className="inline-block text-[0.7rem] md:text-sm font-extralight tracking-[0.3em] uppercase text-white/40 letter-spacing-wider"
               >
                 Crafted with precision
-              </span>
+              </motion.span>
 
-              {/* Main Heading */}
-              <h2
-                data-reading-text
-                className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-light leading-[1.2] tracking-[-0.02em] text-white"
-                style={{ opacity: 0.4, transform: "translateY(30px)" }}
+              <motion.h2
+                variants={textRevealVariants}
+                className="text-5xl md:text-4xl lg:text-4xl xl:text-4xl font-extralight leading-[1.15] tracking-[-0.03em] text-white px-4 md:px-6"
               >
                 Preserved in gold,
                 <br />
-                <span className="font-normal">trusted for generations.</span>
-              </h2>
+                <span className="font-light">trusted for generations.</span>
+              </motion.h2>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Bottom Content - CTA and Footer */}
-          <div className="w-full flex flex-col items-center gap-6 mb-auto ">
-            {/* CTA Card - Scan & Verify - Minimalist & Clear */}
-            <div
-              data-cta-card
-              className="relative z-20 w-full max-w-[min(360px,calc(100vw-30px))] cta-float"
-              style={{ opacity: 0.3, transform: "translateY(20px)" }}
+          {/* Bottom Content - Enhanced Typography & Motion */}
+          <motion.div
+            variants={bottomSectionVariants}
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true, amount: 0.2 }}
+            className="w-full flex flex-col items-center gap-10 md:gap-16"
+          >
+            {/* CTA Card - Enhanced Design with Motion */}
+            <motion.div
+              variants={ctaCardVariants}
+              className="relative z-20 w-full max-w-lg cta-float "
             >
               <Link
                 href="/authenticity"
-                className="group inline-flex items-center gap-3 text-left w-full p-4 rounded-xl border border-white/30 bg-black/80 backdrop-blur-md transition-all duration-300 hover:border-luxury-gold/60 hover:bg-black/90"
+                className="group block w-full p-8 md:p-10 border rounded-md border-white/20 bg-white/[0.04] backdrop-blur-lg transition-all duration-700 hover:border-white/35 hover:bg-white/[0.1] hover:shadow-[0_20px_60px_rgba(0,0,0,0.3)]"
               >
-                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-white/30 bg-white/10 group-hover:border-luxury-gold/50 group-hover:bg-luxury-gold/10 transition-all duration-300">
-                  <QrCode className="h-5 w-5 text-white group-hover:text-luxury-gold transition-colors duration-300" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[0.65rem] uppercase tracking-[0.2em] text-white/60 mb-1 font-medium">
-                    Scan & Verify
-                  </p>
-                  <p className="text-sm font-semibold text-white tracking-tight mb-1 group-hover:text-luxury-gold transition-colors duration-300">
-                    Tap to launch Silver King QR scanner
-                  </p>
-                  <p className="text-xs text-white/60 leading-relaxed">
-                    Capture the QR seal to view purity & provenance. "Product authenticated" badge
-                    appears once functionality is live.
-                  </p>
-                </div>
-              </Link>
-            </div>
-
-            {/* Footer - Inside clipped section */}
-            <footer className="relative z-10 w-full border-t border-white/10 pt-6 pb-2">
-              <div className="mx-auto max-w-[900px] text-center">
-                <motion.p
-                  className="text-xs font-light text-white/40"
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.6 }}
+                <motion.div
+                  className="flex flex-col items-center text-center gap-6"
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ duration: 0.3 }}
                 >
+                  <motion.div
+                    className="flex rounded-lg h-16 w-16 items-center justify-center border border-white/30 bg-white/8 group-hover:bg-white/15 transition-all duration-700"
+                    whileHover={{ rotate: 5, scale: 1.1 }}
+                    transition={{ type: "spring", stiffness: 300 }}
+                  >
+                    <QrCode className="h-10 w-10 text-white/75 group-hover:text-white transition-colors duration-700" />
+                  </motion.div>
+                  <div className="space-y-2.5">
+                    <p className="text-[0.7rem] uppercase tracking-[0.25em] text-white/45 font-extralight letter-spacing-wider">
+                      Scan & Verify
+                    </p>
+                    <p className="text-lg md:text-lg font-extralight text-white/95 tracking-[-0.01em] leading-relaxed">
+                      Tap to launch Silver King QR scanner
+                    </p>
+                    <p className="text-xs md:text-xs text-white/35 font-extralight leading-relaxed max-w-md mx-auto tracking-wide">
+                      Capture the QR seal to view purity & provenance
+                    </p>
+                  </div>
+                </motion.div>
+              </Link>
+            </motion.div>
+
+            {/* Footer - Enhanced Typography */}
+            <motion.footer
+              variants={textRevealVariants}
+              className="relative z-10 w-full border-t border-white/10 pt-10 pb-6"
+            >
+              <div className="mx-auto max-w-[900px] text-center">
+                <p className="text-[0.7rem] md:text-xs font-extralight text-white/25 tracking-[0.1em] uppercase">
                   © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
-                </motion.p>
+                </p>
               </div>
-            </footer>
-          </div>
+            </motion.footer>
+          </motion.div>
         </div>
       </section>
 
