@@ -14,7 +14,10 @@ const playfair = Playfair_Display({
   preload: true,
 });
 
+const metadataBase = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "https://silverkingbycai-production.up.railway.app";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(metadataBase),
   title: APP_NAME,
   description: APP_DESCRIPTION,
   keywords: ["silver", "gold", "precious metals", "luxury", "verification", "authenticity"],
