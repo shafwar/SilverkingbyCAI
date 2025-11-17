@@ -28,8 +28,11 @@ export async function GET(
       margin: 1,
     });
 
+    // Convert Buffer to Uint8Array for NextResponse
+    const uint8Array = new Uint8Array(pngBuffer);
+
     // Return as PNG image
-    return new NextResponse(pngBuffer, {
+    return new NextResponse(uint8Array, {
       status: 200,
       headers: {
         "Content-Type": "image/png",
