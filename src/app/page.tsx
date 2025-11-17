@@ -33,7 +33,7 @@ export default function HomePage() {
     setSplashComplete(true);
   };
 
-  // Don't render anything until we know if splash should be shown (prevent flicker)
+  // Don't render anything until we know if splash should be shown (prevent flicker) 
   if (showSplash === null) {
     return (
       <div className="fixed inset-0 bg-black" />
