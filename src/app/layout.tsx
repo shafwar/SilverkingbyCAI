@@ -18,6 +18,29 @@ export const metadata: Metadata = {
   title: APP_NAME,
   description: APP_DESCRIPTION,
   keywords: ["silver", "gold", "precious metals", "luxury", "verification", "authenticity"],
+  icons: {
+    icon: "/images/cai-logo.png",
+    apple: "/images/cai-logo.png",
+  },
+  openGraph: {
+    title: APP_NAME,
+    description: APP_DESCRIPTION,
+    type: "website",
+    images: [
+      {
+        url: "/images/cai-logo.png",
+        width: 1200,
+        height: 630,
+        alt: "CAI Logo - Silver King by CAI",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: APP_NAME,
+    description: APP_DESCRIPTION,
+    images: ["/images/cai-logo.png"],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

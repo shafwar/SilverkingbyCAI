@@ -3,6 +3,7 @@
 import { useLayoutEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { gsap } from "gsap";
+import Image from "next/image";
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -99,12 +100,34 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
       {/* Subtle gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-black via-black to-gray-900/50" />
 
-      {/* Main text */}
+      {/* Main content with Logo and Text */}
       <div
         ref={textRef}
         className="relative z-10 text-center px-6"
         style={{ perspective: "1000px" }}
       >
+        {/* Company Logo */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8, y: -20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="mb-8 flex justify-center"
+        >
+          <div className="relative h-24 w-24 sm:h-32 sm:w-32 md:h-40 md:w-40">
+            <Image
+              src="/images/cai-logo.png"
+              alt="CAI Logo - Silver King by CAI"
+              fill
+              className="object-contain"
+              style={{
+                filter: "brightness(0) invert(1) drop-shadow(0 0 20px rgba(255, 255, 255, 0.3))",
+              }}
+              priority
+            />
+          </div>
+        </motion.div>
+
+        {/* Main text */}
         <div className="font-sans text-[2rem] sm:text-[2.5rem] md:text-[3rem] lg:text-[3.5rem] font-light tracking-tight leading-none text-white">
           {"Silver King by CAI".split("").map((char, index) => (
             <span

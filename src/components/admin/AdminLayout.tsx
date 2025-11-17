@@ -2,6 +2,7 @@
 
 import { ReactNode, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -72,9 +73,23 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-4">
           <Link
             href="/admin"
-            className="text-lg font-semibold tracking-[0.35em] uppercase text-white"
+            className="flex items-center gap-3 group"
           >
-            SILVER KING
+            <div className="relative h-10 w-10 transition-transform duration-300 group-hover:scale-110">
+              <Image
+                src="/images/cai-logo.png"
+                alt="CAI Logo - Silver King by CAI"
+                fill
+                className="object-contain"
+                style={{
+                  filter: "brightness(0) invert(1) drop-shadow(0 0 8px rgba(255, 255, 255, 0.2))",
+                }}
+                priority
+              />
+            </div>
+            <span className="text-lg font-semibold tracking-[0.35em] uppercase text-white">
+              SILVER KING
+            </span>
           </Link>
           <div className="hidden items-center gap-2 lg:flex">{renderLinks("row")}</div>
           <div className="flex items-center gap-3 text-sm text-white/70">
