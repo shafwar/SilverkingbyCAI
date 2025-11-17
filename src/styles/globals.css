@@ -90,6 +90,37 @@
     margin-right: auto;
     padding: 4rem 1rem;
   }
+
+  .image-background-fixed {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100vh;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .clip-inset {
+    clip-path: inset(0);
+    position: relative;
+  }
+
+  .cta-float.is-floating {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%,
+    100% {
+      margin-top: 0px;
+    }
+    50% {
+      margin-top: -10px;
+    }
+  }
 }
 
 @layer utilities {

@@ -3,7 +3,7 @@
 import Navbar from "@/components/layout/Navbar";
 import { motion, type Variants } from "framer-motion";
 import Link from "next/link";
-import { Sparkles, Gem, ArrowRight, Shield, ArrowDown } from "lucide-react";
+import { Sparkles, Gem, ArrowRight, Shield, ArrowDown, QrCode } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { APP_NAME } from "@/utils/constants";
 import { useRef, useState, useEffect } from "react";
@@ -426,6 +426,8 @@ export default function ProductsPage() {
   const sectionsRef = useRef<(HTMLElement | null)[]>([]);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const fadeOverlayRef = useRef<HTMLDivElement | null>(null);
+  const bottomSectionRef = useRef<HTMLDivElement | null>(null);
+  const readingTextRef = useRef<HTMLDivElement | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
@@ -623,6 +625,109 @@ export default function ProductsPage() {
               from: "random",
             },
           });
+        }
+
+        // Bottom section reading text reveal animation
+        if (bottomSectionRef.current && readingTextRef.current) {
+          const textElements = readingTextRef.current.querySelectorAll("[data-reading-text]");
+          const ctaElement = readingTextRef.current.querySelector("[data-cta-card]");
+
+          // Set initial state
+          gsap.set(textElements, {
+            opacity: 0.4,
+            y: 30,
+          });
+
+          if (ctaElement) {
+            gsap.set(ctaElement, {
+              opacity: 0,
+              y: 40,
+            });
+          }
+
+          // Create scroll trigger for text reveal
+          ScrollTrigger.create({
+            trigger: bottomSectionRef.current,
+            start: "top bottom",
+            end: "bottom top",
+            scrub: 1,
+            onUpdate: (self) => {
+              const progress = self.progress;
+
+              // Animate text elements with smooth stagger
+              textElements.forEach((el, index) => {
+                const staggerDelay = index * 0.15;
+                const adjustedProgress = Math.min(1, Math.max(0, progress - staggerDelay));
+
+                // Smooth reveal: start at 0.4 opacity, end at 1.0
+                const elOpacity = 0.4 + adjustedProgress * 0.6;
+                // Smooth translate: start at 30px, end at 0px
+                const elTranslateY = 30 - adjustedProgress * 30;
+
+                gsap.to(el, {
+                  opacity: elOpacity,
+                  y: elTranslateY,
+                  duration: 0.1,
+                  ease: "none",
+                });
+              });
+
+              // Animate CTA card - appears earlier and more visible
+              if (ctaElement) {
+                const ctaStartProgress = 0.3; // Start appearing earlier
+                if (progress > ctaStartProgress) {
+                  const ctaProgress = Math.min(
+                    1,
+                    (progress - ctaStartProgress) / (1 - ctaStartProgress)
+                  );
+                  // Ensure minimum opacity for visibility
+                  const finalOpacity = Math.max(0.8, ctaProgress);
+
+                  gsap.to(ctaElement, {
+                    opacity: finalOpacity,
+                    y: 40 - ctaProgress * 40,
+                    duration: 0.1,
+                    ease: "none",
+                  });
+
+                  // Add floating class when CTA is visible
+                  if (ctaProgress > 0.5 && !ctaElement.classList.contains("is-floating")) {
+                    ctaElement.classList.add("is-floating");
+                  }
+                } else {
+                  // Keep some visibility even when not fully scrolled
+                  gsap.to(ctaElement, {
+                    opacity: progress * 0.5, // Partial visibility
+                    y: 40 - progress * 20,
+                    duration: 0.1,
+                    ease: "none",
+                  });
+                  ctaElement.classList.remove("is-floating");
+                }
+              }
+            },
+          });
+
+          // Floating animation for CTA card using CSS animation
+          // This will be handled by CSS class, no GSAP needed to avoid conflicts
+
+          // Fallback: Ensure CTA is visible after a delay if scroll trigger doesn't work
+          if (ctaElement) {
+            setTimeout(() => {
+              const computedStyle = window.getComputedStyle(ctaElement);
+              const currentOpacity = parseFloat(computedStyle.opacity);
+              if (currentOpacity < 0.5) {
+                // If CTA is still not visible, make it visible
+                gsap.to(ctaElement, {
+                  opacity: 0.9,
+                  y: 0,
+                  duration: 0.8,
+                  ease: "power2.out",
+                });
+                ctaElement.classList.add("is-floating");
+              }
+            }, 2000);
+          }
         }
       }, pageRef);
 
@@ -903,68 +1008,113 @@ export default function ProductsPage() {
         </div>
       </section>
 
-      {/* CTA Section - Minimalist Modern */}
+      {/* Bottom Section - Fixed Background with Clip-Inset & Reading Text Reveal */}
       <section
         ref={(element) => {
           sectionsRef.current[2] = element;
+          bottomSectionRef.current = element as HTMLDivElement | null;
         }}
-        className="relative py-32 md:py-40 px-6"
+        className="clip-inset relative min-h-[100vh] overflow-hidden"
       >
-        <div className="relative z-10 mx-auto max-w-[900px] text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            data-reveal
-          >
-            <h2 className="mb-8 text-4xl font-light leading-[1.1] tracking-tight text-white md:text-5xl lg:text-6xl">
-              <span>Ready to start</span>
-              <br />
-              <span className="font-normal bg-gradient-to-r from-luxury-gold via-luxury-lightGold to-luxury-gold bg-clip-text text-transparent">
-                investing in precious metals?
+        {/* Fixed Background Image Container - Stays fixed while scrolling */}
+        <div className="image-background-fixed">
+          <img
+            src="/images/gold-ingot.jpg"
+            alt=""
+            className="h-full w-full object-cover"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "center",
+            }}
+            loading="lazy"
+          />
+          {/* Subtle overlay for better text readability */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/80" />
+        </div>
+
+        {/* Reading Text Container - Scrolls normally */}
+        <div
+          ref={readingTextRef}
+          className="relative z-10 flex min-h-[100vh] flex-col items-center justify-between px-6 md:px-8 lg:px-12"
+          style={{
+            paddingTop: "18vh",
+            paddingBottom: "6vh",
+          }}
+        >
+          {/* Top Content */}
+          <div className="mx-auto max-w-2xl text-center mt-auto">
+            <div className="prose prose-justify-center max-w-md mx-auto">
+              {/* Badge/Subheading */}
+              <span
+                data-reading-text
+                className="mb-8 inline-block text-xs font-light tracking-[0.2em] uppercase text-white/60"
+                style={{ opacity: 0.4, transform: "translateY(30px)" }}
+              >
+                Crafted with precision
               </span>
-            </h2>
-            <p className="mx-auto mb-12 max-w-xl text-base font-light leading-relaxed text-white/60 md:text-lg">
-              Join thousands of investors who trust {APP_NAME} for authentic and verified precious
-              metals.
-            </p>
 
-            <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link
-                href="/verify"
-                className="group relative inline-flex items-center justify-center gap-2 rounded-full bg-luxury-gold px-8 py-3.5 text-sm font-medium text-black transition-all duration-300 hover:bg-luxury-lightGold hover:shadow-[0_20px_50px_-15px_rgba(212,175,55,0.5)]"
+              {/* Main Heading */}
+              <h2
+                data-reading-text
+                className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-light leading-[1.2] tracking-[-0.02em] text-white"
+                style={{ opacity: 0.4, transform: "translateY(30px)" }}
               >
-                <Shield className="h-4 w-4" />
-                <span>Verify Product</span>
-                <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-              </Link>
+                Preserved in gold,
+                <br />
+                <span className="font-normal">trusted for generations.</span>
+              </h2>
+            </div>
+          </div>
 
+          {/* Bottom Content - CTA and Footer */}
+          <div className="w-full flex flex-col items-center gap-6 mb-auto ">
+            {/* CTA Card - Scan & Verify - Minimalist & Clear */}
+            <div
+              data-cta-card
+              className="relative z-20 w-full max-w-[min(360px,calc(100vw-30px))] cta-float"
+              style={{ opacity: 0.3, transform: "translateY(20px)" }}
+            >
               <Link
-                href="/contact"
-                className="inline-flex items-center justify-center rounded-full border border-white/20 px-8 py-3.5 text-sm font-medium text-white transition-all duration-300 hover:border-white/40 hover:bg-white/5"
+                href="/authenticity"
+                className="group inline-flex items-center gap-3 text-left w-full p-4 rounded-xl border border-white/30 bg-black/80 backdrop-blur-md transition-all duration-300 hover:border-luxury-gold/60 hover:bg-black/90"
               >
-                Contact Us
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-white/30 bg-white/10 group-hover:border-luxury-gold/50 group-hover:bg-luxury-gold/10 transition-all duration-300">
+                  <QrCode className="h-5 w-5 text-white group-hover:text-luxury-gold transition-colors duration-300" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[0.65rem] uppercase tracking-[0.2em] text-white/60 mb-1 font-medium">
+                    Scan & Verify
+                  </p>
+                  <p className="text-sm font-semibold text-white tracking-tight mb-1 group-hover:text-luxury-gold transition-colors duration-300">
+                    Tap to launch Silver King QR scanner
+                  </p>
+                  <p className="text-xs text-white/60 leading-relaxed">
+                    Capture the QR seal to view purity & provenance. "Product authenticated" badge
+                    appears once functionality is live.
+                  </p>
+                </div>
               </Link>
             </div>
-          </motion.div>
+
+            {/* Footer - Inside clipped section */}
+            <footer className="relative z-10 w-full border-t border-white/10 pt-6 pb-2">
+              <div className="mx-auto max-w-[900px] text-center">
+                <motion.p
+                  className="text-xs font-light text-white/40"
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6 }}
+                >
+                  © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
+                </motion.p>
+              </div>
+            </footer>
+          </div>
         </div>
       </section>
-
-      {/* Footer - Ultra Minimalist */}
-      <footer className="relative border-t border-white/5 py-16 px-6">
-        <div className="relative z-10 mx-auto max-w-[900px] text-center">
-          <motion.p
-            className="text-xs font-light text-white/40"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
-          </motion.p>
-        </div>
-      </footer>
 
       {/* Product Detail Modal */}
       <ProductModal product={selectedProduct} isOpen={isModalOpen} onClose={handleCloseModal} />
