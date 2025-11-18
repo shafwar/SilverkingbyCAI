@@ -73,11 +73,11 @@ export default function Navbar() {
           : "bg-transparent"
       } ${isModalOpen ? "pointer-events-none" : ""}`}
     >
-      <nav className="mx-auto max-w-[1440px] px-6 md:px-10 lg:px-16 xl:px-20">
-        <div className="flex items-center justify-between h-[5.5rem]">
-          {/* Logo - Bold & Powerful */}
+      <nav className="mx-auto max-w-[1440px] px-4 sm:px-6 md:px-10 lg:px-16 xl:px-20">
+        <div className="flex items-center justify-between h-[4.5rem] sm:h-[5rem] md:h-[5.5rem]">
+          {/* Logo - Smaller for mobile */}
           <Link href="/" className="group relative flex items-center">
-            <div className="relative w-14 h-14 transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-[8deg]">
+            <div className="relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-[8deg]">
               <Image
                 src="/images/cai-logo.png"
                 alt="Silver King by CAI"
@@ -123,23 +123,23 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Mobile Menu Button - Bold */}
+          {/* Mobile Menu Button - Smaller */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden flex flex-col gap-2 p-3 relative z-50"
+            className="md:hidden flex flex-col gap-1.5 p-2 relative z-50"
             aria-label="Toggle menu"
           >
             <motion.span
-              animate={isMobileMenuOpen ? { rotate: 45, y: 8 } : { rotate: 0, y: 0 }}
-              className="w-7 h-[2.5px] bg-white rounded-full transition-all"
+              animate={isMobileMenuOpen ? { rotate: 45, y: 6 } : { rotate: 0, y: 0 }}
+              className="w-6 h-[2px] bg-white rounded-full transition-all"
             />
             <motion.span
               animate={isMobileMenuOpen ? { opacity: 0 } : { opacity: 1 }}
-              className="w-7 h-[2.5px] bg-white rounded-full transition-all"
+              className="w-6 h-[2px] bg-white rounded-full transition-all"
             />
             <motion.span
-              animate={isMobileMenuOpen ? { rotate: -45, y: -8 } : { rotate: 0, y: 0 }}
-              className="w-7 h-[2.5px] bg-white rounded-full transition-all"
+              animate={isMobileMenuOpen ? { rotate: -45, y: -6 } : { rotate: 0, y: 0 }}
+              className="w-6 h-[2px] bg-white rounded-full transition-all"
             />
           </button>
         </div>
