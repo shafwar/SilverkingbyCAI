@@ -45,7 +45,11 @@ export function DonutChartDistribution() {
   const { data, error, isLoading } = useSWR<DistributionResponse>(
     "/api/admin/scans/top-products?view=distribution",
     fetcher,
-    { refreshInterval: 120000 }
+    { 
+      refreshInterval: 30000, // Refresh every 30 seconds for real-time updates
+      revalidateOnFocus: true, // Revalidate when user returns to tab
+      revalidateOnReconnect: true, // Revalidate when connection is restored
+    }
   );
 
   const chartData = data?.distribution ?? [];
