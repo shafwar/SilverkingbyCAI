@@ -15,31 +15,53 @@ export async function GET(request: Request) {
     const range = Number.isNaN(rangeParam) ? 30 : Math.min(Math.max(rangeParam, 1), 90);
 
     if (view === "distribution") {
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - range);
-
-      const distribution = await prisma.qRScanLog.groupBy({
-        by: ["location"],
-        _count: { location: true },
+      // Get scan logs with product information
+      const scanLogs = await prisma.qRScanLog.findMany({
         where: {
           scannedAt: {
-            gte: startDate,
+            gte: new Date(Date.now() - range * 24 * 60 * 60 * 1000),
+          },
+        },
+        include: {
+          qrRecord: {
+            include: {
+              product: {
+                select: {
+                  name: true,
+                },
+              },
+            },
           },
         },
         orderBy: {
-          _count: {
-            location: "desc",
-          },
+          scannedAt: "desc",
         },
-        take: 6,
       });
 
-      const normalized = distribution.map((entry) => ({
-        label: entry.location ?? "Unknown",
-        value: entry._count.location,
-      }));
+      // Group by product name
+      const productCounts = new Map<string, number>();
+      scanLogs.forEach((log) => {
+        const productName = log.qrRecord?.product?.name ?? "Unknown";
+        productCounts.set(productName, (productCounts.get(productName) || 0) + 1);
+      });
 
-      return NextResponse.json({ distribution: normalized });
+      // Convert to array and sort by count
+      const distribution = Array.from(productCounts.entries())
+        .map(([label, value]) => ({ label, value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 6);
+
+      // Return with cache control headers for real-time updates
+      return NextResponse.json(
+        { distribution },
+        {
+          headers: {
+            "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+          },
+        }
+      );
     }
 
     // Fix: Get all products with QR records, then sort in memory

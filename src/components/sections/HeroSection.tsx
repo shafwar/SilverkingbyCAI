@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, type Variants } from "framer-motion";
 import { gsap } from "gsap";
 import { QrCode } from "lucide-react";
+import ScrollingFeatures from "./ScrollingFeatures";
 
 interface HeroSectionProps {
   shouldAnimate?: boolean;
@@ -101,6 +102,24 @@ const bubbleOrbs = [
     delay: 0.2,
     duration: 7,
     gradient: "radial-gradient(circle at 50% 50%, rgba(255,215,0,0.25), rgba(255,215,0,0.04) 70%)",
+  },
+];
+
+const featuresData = [
+  {
+    label: "Chain-of-Custody",
+    title: "Ledger-locked traceability",
+    body: "Every gram is recorded with encrypted QR seals and mirrored audit trails.",
+  },
+  {
+    label: "Purity Lab",
+    title: "Spectrometry-backed assurance",
+    body: "In-house molecular testing calibrates bullion batches to bespoke tolerances.",
+  },
+  {
+    label: "Global Trust",
+    title: "ISO 9001 & LBMA-ready",
+    body: "Audited facilities, transparent compliance, concierge-level documentation.",
   },
 ];
 
@@ -340,14 +359,14 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
       </motion.div>
 
       {/* Content */}
-      <div className="relative z-10 flex min-h-screen items-center">
-        <div className="mx-auto w-full max-w-[1600px] px-6 md:px-10 lg:px-14 xl:px-20">
+      <div className="relative z-10 flex min-h-screen items-center pt-20 sm:pt-24 md:pt-0 pb-32 sm:pb-36 md:pb-0">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 md:px-10 lg:px-14 xl:px-20">
           {/* Main content - left side */}
           <div className="max-w-[900px]">
-            {/* Headline - Fragmented & Powerful */}
+            {/* Headline - Fragmented & Powerful - Better mobile sizing */}
             <h1
               ref={headlineRef}
-              className="mb-6 font-sans text-[2rem] sm:text-[2.5rem] md:text-[3rem] lg:text-[3.5rem] xl:text-[4rem] 2xl:text-[4.5rem] font-semibold tracking-[-0.03em] leading-[1.25] text-white"
+              className="mb-3 sm:mb-4 md:mb-5 font-sans text-[1.75rem] sm:text-[2.25rem] md:text-[3rem] lg:text-[3.5rem] xl:text-[4rem] 2xl:text-[4.5rem] font-semibold tracking-[-0.03em] leading-[1.2] sm:leading-[1.25] text-white"
               style={{ perspective: "1000px" }}
             >
               {/* Fragment 1 - Precious metals */}
@@ -385,10 +404,10 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
               </span>
             </h1>
 
-            {/* Subtitle */}
+            {/* Subtitle - Better mobile sizing */}
             <p
               ref={subtitleRef}
-              className="max-w-[85%] font-sans text-[1rem] md:text-[1.0625rem] leading-[1.7] font-light text-white/75"
+              className="max-w-[95%] sm:max-w-[90%] md:max-w-[85%] font-sans text-[0.875rem] sm:text-[0.9375rem] md:text-[1rem] lg:text-[1.0625rem] leading-[1.6] sm:leading-[1.65] md:leading-[1.7] font-light text-white/75 mb-8 sm:mb-10 md:mb-0"
             >
               Expert manufacturing of{" "}
               <span className="font-medium text-white/90">gold, silver, and palladium</span>{" "}
@@ -399,26 +418,16 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             </p>
           </div>
 
-          {/* Insight stack - minimal + precise */}
+          {/* Mobile: Scrolling Features - Continuous horizontal scroll animation */}
+          {/* Positioned above QR card with proper spacing */}
+          <div className="md:hidden absolute left-0 right-0 bottom-36 sm:bottom-40 z-20 px-4 sm:px-6">
+            <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate} />
+          </div>
+
+          {/* Desktop: Insight stack - minimal + precise */}
           <div className="hidden md:flex absolute right-3 lg:right-8 xl:right-12 top-1/2 -translate-y-1/2 pointer-events-auto z-20">
             <div ref={statsRef} className="flex flex-col gap-5 text-right items-end max-w-[360px]">
-              {[
-                {
-                  label: "Chain-of-Custody",
-                  title: "Ledger-locked traceability",
-                  body: "Every gram is recorded with encrypted QR seals and mirrored audit trails.",
-                },
-                {
-                  label: "Purity Lab",
-                  title: "Spectrometry-backed assurance",
-                  body: "In-house molecular testing calibrates bullion batches to bespoke tolerances.",
-                },
-                {
-                  label: "Global Trust",
-                  title: "ISO 9001 & LBMA-ready",
-                  body: "Audited facilities, transparent compliance, concierge-level documentation.",
-                },
-              ].map((item, index) => (
+              {featuresData.map((item, index) => (
                 <div key={item.label} className="stat-item relative pl-6">
                   <div className="absolute left-0 top-0 bottom-0 w-[1.5px] bg-gradient-to-b from-transparent via-white/25 to-transparent">
                     <div className="absolute -left-[2.5px] top-1.5 h-1.5 w-1.5 rounded-full bg-gradient-to-r from-white/60 to-white/20" />
@@ -439,7 +448,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         </div>
       </div>
 
-      {/* QR verification feature card */}
+      {/* QR verification feature card - Better mobile sizing */}
       <motion.div
         initial={{ opacity: 0, y: 35, scale: 0.97 }}
         animate={{
@@ -448,22 +457,22 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
           scale: shouldAnimate ? 1 : 0.97,
         }}
         transition={{ duration: 1, delay: 1.1, ease: "easeOut" }}
-        className="absolute bottom-8 inset-x-0 z-30 flex justify-center px-4"
+        className="absolute bottom-4 sm:bottom-6 md:bottom-8 inset-x-0 z-30 flex justify-center px-3 sm:px-4"
       >
         <a
           href="/authenticity"
-          className="group inline-flex items-center gap-3 text-left w-[min(360px,calc(100vw-48px))]"
+          className="group inline-flex items-center gap-2.5 sm:gap-3 text-left w-[min(340px,calc(100vw-24px))] sm:w-[min(360px,calc(100vw-48px))]"
         >
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-black/40">
-            <QrCode className="h-5 w-5 text-white" />
+          <div className="flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border border-white/20 bg-black/40">
+            <QrCode className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
           </div>
-          <div className="flex-1">
-            <p className="text-[0.5rem] uppercase tracking-[0.45em] text-white/55">Scan & Verify</p>
-            <p className="mt-0.5 text-[0.95rem] font-semibold text-white tracking-tight">
+          <div className="flex-1 min-w-0">
+            <p className="text-[0.45rem] sm:text-[0.5rem] uppercase tracking-[0.4em] sm:tracking-[0.45em] text-white/55">Scan & Verify</p>
+            <p className="mt-0.5 text-[0.8125rem] sm:text-[0.875rem] md:text-[0.95rem] font-semibold text-white tracking-tight">
               Tap to launch Silver King QR scanner
             </p>
-            <p className="mt-0.5 text-[0.65rem] text-white/60 leading-relaxed">
-              Capture the QR seal to view purity & provenance. “Product authenticated” badge appears
+            <p className="mt-0.5 text-[0.625rem] sm:text-[0.65rem] text-white/60 leading-relaxed">
+              Capture the QR seal to view purity & provenance. "Product authenticated" badge appears
               once functionality is live.
             </p>
           </div>

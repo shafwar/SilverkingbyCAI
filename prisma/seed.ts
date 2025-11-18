@@ -17,22 +17,39 @@ const products = [
 async function main() {
   console.log("🌱 Starting Silver King seed…");
 
-  await prisma.qRScanLog.deleteMany();
-  await prisma.qrRecord.deleteMany();
-  await prisma.product.deleteMany();
-  await prisma.user.deleteMany();
-
-  const hashedPassword = await bcrypt.hash("admin123", 12);
-
-  await prisma.user.create({
-    data: {
-      email: "admin@silverking.com",
-      password: hashedPassword,
-      role: "ADMIN",
-    },
+  // Check if admin user already exists
+  const existingAdmin = await prisma.user.findUnique({
+    where: { email: "admin@silverking.com" },
   });
 
-  console.log("✅ Admin account ready: admin@silverking.com / admin123");
+  if (!existingAdmin) {
+    // Only delete and recreate if admin doesn't exist (first time seed)
+    await prisma.qRScanLog.deleteMany();
+    await prisma.qrRecord.deleteMany();
+    await prisma.product.deleteMany();
+    await prisma.user.deleteMany();
+
+    const hashedPassword = await bcrypt.hash("admin123", 12);
+
+    await prisma.user.create({
+      data: {
+        email: "admin@silverking.com",
+        password: hashedPassword,
+        role: "ADMIN",
+      },
+    });
+
+    console.log("✅ Admin account created: admin@silverking.com / admin123");
+  } else {
+    console.log("✅ Admin account already exists: admin@silverking.com / admin123");
+    
+    // Check if products exist
+    const productCount = await prisma.product.count();
+    if (productCount > 0) {
+      console.log(`✅ Database already seeded with ${productCount} products`);
+      return; // Exit early if already seeded
+    }
+  }
 
   for (const item of products) {
     const product = await prisma.product.create({
@@ -43,7 +60,9 @@ async function main() {
       },
     });
 
-    const verifyUrl = `https://silverkingbycai.com/verify/${item.serialCode}`;
+    // Use production URL from environment or default to Railway URL
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "https://silverkingbycai-production.up.railway.app";
+    const verifyUrl = `${baseUrl}/verify/${item.serialCode}`;
     const { url } = await generateAndStoreQR(item.serialCode, verifyUrl);
 
     await prisma.qrRecord.create({
