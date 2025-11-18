@@ -347,7 +347,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             {/* Headline - Fragmented & Powerful - Better mobile sizing */}
             <h1
               ref={headlineRef}
-              className="mb-4 sm:mb-5 md:mb-6 font-sans text-[1.75rem] sm:text-[2.25rem] md:text-[3rem] lg:text-[3.5rem] xl:text-[4rem] 2xl:text-[4.5rem] font-semibold tracking-[-0.03em] leading-[1.2] sm:leading-[1.25] text-white"
+              className="mb-3 sm:mb-4 md:mb-5 font-sans text-[1.75rem] sm:text-[2.25rem] md:text-[3rem] lg:text-[3.5rem] xl:text-[4rem] 2xl:text-[4.5rem] font-semibold tracking-[-0.03em] leading-[1.2] sm:leading-[1.25] text-white"
               style={{ perspective: "1000px" }}
             >
               {/* Fragment 1 - Precious metals */}
