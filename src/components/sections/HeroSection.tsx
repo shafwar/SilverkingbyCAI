@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, type Variants } from "framer-motion";
 import { gsap } from "gsap";
 import { QrCode } from "lucide-react";
+import ScrollingFeatures from "./ScrollingFeatures";
 
 interface HeroSectionProps {
   shouldAnimate?: boolean;
@@ -101,6 +102,24 @@ const bubbleOrbs = [
     delay: 0.2,
     duration: 7,
     gradient: "radial-gradient(circle at 50% 50%, rgba(255,215,0,0.25), rgba(255,215,0,0.04) 70%)",
+  },
+];
+
+const featuresData = [
+  {
+    label: "Chain-of-Custody",
+    title: "Ledger-locked traceability",
+    body: "Every gram is recorded with encrypted QR seals and mirrored audit trails.",
+  },
+  {
+    label: "Purity Lab",
+    title: "Spectrometry-backed assurance",
+    body: "In-house molecular testing calibrates bullion batches to bespoke tolerances.",
+  },
+  {
+    label: "Global Trust",
+    title: "ISO 9001 & LBMA-ready",
+    body: "Audited facilities, transparent compliance, concierge-level documentation.",
   },
 ];
 
@@ -340,7 +359,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
       </motion.div>
 
       {/* Content */}
-      <div className="relative z-10 flex min-h-screen items-center pt-20 sm:pt-24 md:pt-0">
+      <div className="relative z-10 flex min-h-screen items-center pt-20 sm:pt-24 md:pt-0 pb-32 sm:pb-36 md:pb-0">
         <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 md:px-10 lg:px-14 xl:px-20">
           {/* Main content - left side */}
           <div className="max-w-[900px]">
@@ -388,7 +407,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             {/* Subtitle - Better mobile sizing */}
             <p
               ref={subtitleRef}
-              className="max-w-[95%] sm:max-w-[90%] md:max-w-[85%] font-sans text-[0.875rem] sm:text-[0.9375rem] md:text-[1rem] lg:text-[1.0625rem] leading-[1.6] sm:leading-[1.65] md:leading-[1.7] font-light text-white/75"
+              className="max-w-[95%] sm:max-w-[90%] md:max-w-[85%] font-sans text-[0.875rem] sm:text-[0.9375rem] md:text-[1rem] lg:text-[1.0625rem] leading-[1.6] sm:leading-[1.65] md:leading-[1.7] font-light text-white/75 mb-8 sm:mb-10 md:mb-0"
             >
               Expert manufacturing of{" "}
               <span className="font-medium text-white/90">gold, silver, and palladium</span>{" "}
@@ -399,26 +418,16 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             </p>
           </div>
 
-          {/* Insight stack - minimal + precise */}
+          {/* Mobile: Scrolling Features - Continuous horizontal scroll animation */}
+          {/* Positioned above QR card with proper spacing */}
+          <div className="md:hidden absolute left-0 right-0 bottom-36 sm:bottom-40 z-20 px-4 sm:px-6">
+            <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate} />
+          </div>
+
+          {/* Desktop: Insight stack - minimal + precise */}
           <div className="hidden md:flex absolute right-3 lg:right-8 xl:right-12 top-1/2 -translate-y-1/2 pointer-events-auto z-20">
             <div ref={statsRef} className="flex flex-col gap-5 text-right items-end max-w-[360px]">
-              {[
-                {
-                  label: "Chain-of-Custody",
-                  title: "Ledger-locked traceability",
-                  body: "Every gram is recorded with encrypted QR seals and mirrored audit trails.",
-                },
-                {
-                  label: "Purity Lab",
-                  title: "Spectrometry-backed assurance",
-                  body: "In-house molecular testing calibrates bullion batches to bespoke tolerances.",
-                },
-                {
-                  label: "Global Trust",
-                  title: "ISO 9001 & LBMA-ready",
-                  body: "Audited facilities, transparent compliance, concierge-level documentation.",
-                },
-              ].map((item, index) => (
+              {featuresData.map((item, index) => (
                 <div key={item.label} className="stat-item relative pl-6">
                   <div className="absolute left-0 top-0 bottom-0 w-[1.5px] bg-gradient-to-b from-transparent via-white/25 to-transparent">
                     <div className="absolute -left-[2.5px] top-1.5 h-1.5 w-1.5 rounded-full bg-gradient-to-r from-white/60 to-white/20" />
