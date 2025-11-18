@@ -13,44 +13,80 @@ interface ScannerProps {
 export function Scanner({ onScanSuccess, onClose }: ScannerProps) {
   const scannerRef = useRef<HTMLDivElement>(null);
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+  const onScanSuccessRef = useRef(onScanSuccess);
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const containerIdRef = useRef(`qr-scanner-container-${Math.random().toString(36).substr(2, 9)}`);
+
+  // Update ref when callback changes
+  useEffect(() => {
+    onScanSuccessRef.current = onScanSuccess;
+  }, [onScanSuccess]);
 
   useEffect(() => {
-    if (!scannerRef.current || html5QrCodeRef.current) return;
-
-    const html5QrCode = new Html5Qrcode("qr-scanner-container");
-    html5QrCodeRef.current = html5QrCode;
-
-    const config = {
-      fps: 10,
-      qrbox: { width: 280, height: 280 },
-      aspectRatio: 1.0,
-    };
-
-    html5QrCode
-      .start(
-        { facingMode: "environment" },
-        config,
-        (decodedText) => {
-          onScanSuccess(decodedText);
-          html5QrCode.stop();
-          setIsScanning(false);
-        },
-        () => {
-          // Ignore scan errors during continuous scanning
-        }
-      )
-      .then(() => {
-        setIsScanning(true);
-        setError(null);
-      })
-      .catch((err) => {
-        setError("Failed to start camera. Please ensure camera permissions are granted.");
-        setIsScanning(false);
+    const containerId = containerIdRef.current;
+    
+    // Small delay to ensure DOM is ready
+    const initTimer = setTimeout(() => {
+      console.log("Scanner useEffect triggered", {
+        scannerRef: !!scannerRef.current,
+        html5QrCodeRef: !!html5QrCodeRef.current,
+        containerId,
+        containerExists: !!document.getElementById(containerId),
       });
 
+      if (!scannerRef.current || html5QrCodeRef.current) {
+        console.log("Scanner: Early return", {
+          scannerRef: !!scannerRef.current,
+          html5QrCodeRef: !!html5QrCodeRef.current,
+        });
+        return;
+      }
+
+      const container = document.getElementById(containerId);
+      if (!container) {
+        console.error("Scanner: Container not found!", containerId);
+        return;
+      }
+
+      console.log("Scanner: Initializing Html5Qrcode", containerId);
+      const html5QrCode = new Html5Qrcode(containerId);
+      html5QrCodeRef.current = html5QrCode;
+
+      const config = {
+        fps: 10,
+        qrbox: { width: 280, height: 280 },
+        aspectRatio: 1.0,
+      };
+
+      const handleScanSuccess = (decodedText: string) => {
+        onScanSuccessRef.current(decodedText);
+        html5QrCode.stop();
+        setIsScanning(false);
+      };
+
+      html5QrCode
+        .start(
+          { facingMode: "environment" },
+          config,
+          handleScanSuccess,
+          () => {
+            // Ignore scan errors during continuous scanning
+          }
+        )
+        .then(() => {
+          setIsScanning(true);
+          setError(null);
+        })
+        .catch((err) => {
+          console.error("Scanner error:", err);
+          setError("Failed to start camera. Please ensure camera permissions are granted.");
+          setIsScanning(false);
+        });
+    }, 100);
+
     return () => {
+      clearTimeout(initTimer);
       if (html5QrCodeRef.current) {
         html5QrCodeRef.current
           .stop()
@@ -61,7 +97,7 @@ export function Scanner({ onScanSuccess, onClose }: ScannerProps) {
           .catch(() => {});
       }
     };
-  }, [onScanSuccess]);
+  }, []);
 
   return (
     <div className="relative w-full max-w-md mx-auto">
@@ -77,7 +113,7 @@ export function Scanner({ onScanSuccess, onClose }: ScannerProps) {
 
         <div className="relative">
           <div
-            id="qr-scanner-container"
+            id={containerIdRef.current}
             ref={scannerRef}
             className="relative w-full aspect-square rounded-xl overflow-hidden bg-black"
           />
