@@ -1364,9 +1364,9 @@ export default function ProductsPage() {
             {/* Footer - Enhanced Typography */}
             <motion.footer
               variants={textRevealVariants}
-              className="relative z-10 w-full border-t border-white/10 pt-10 pb-6"
+              className="relative z-10 w-full border-t border-white/10 pt-15 pb-2"
             >
-              <div className="mx-auto max-w-[900px] text-center">
+              <div className="mx-auto max-w-[900px] text-center mt-9">
                 <p className="text-[0.7rem] md:text-xs font-extralight text-white/25 tracking-[0.1em] uppercase">
                   © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
                 </p>

@@ -19,11 +19,11 @@ import {
   ArrowRight,
   Instagram,
   Linkedin,
-  Facebook,
   Youtube,
+  Github,
+  Twitter,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { APP_NAME } from "@/utils/constants";
 import { useEffect, useMemo, useRef, type CSSProperties } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -305,16 +305,6 @@ export default function AboutPage() {
         title: "Precision",
         description: "Meticulous attention to detail",
       },
-    ],
-    []
-  );
-
-  const socialLinks = useMemo(
-    () => [
-      { icon: Instagram, href: "https://instagram.com", label: "Instagram" },
-      { icon: Linkedin, href: "https://linkedin.com", label: "LinkedIn" },
-      { icon: Facebook, href: "https://facebook.com", label: "Facebook" },
-      { icon: Youtube, href: "https://youtube.com", label: "YouTube" },
     ],
     []
   );
@@ -713,42 +703,106 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="relative border-t border-white/10 py-12 px-6">
-        <div className="absolute inset-x-0 bottom-0 z-0 h-32 bg-gradient-to-t from-[#111111] via-[#080808] to-transparent" />
-        <div className="relative z-10 mx-auto flex max-w-[1320px] flex-col items-center gap-6 text-center">
-          <p className="text-sm text-luxury-silver/60" data-reveal>
-            © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
-          </p>
-          <div
-            className="h-px w-full max-w-xl bg-gradient-to-r from-transparent via-white/10 to-transparent"
-            data-reveal
-          />
+      {/* Footer Section – Consistent with What We Do page */}
+      <section
+        ref={(element) => {
+          sectionsRef.current[5] = element;
+        }}
+        className="relative px-6 md:px-8 lg:px-12 py-16 md:py-20 lg:py-24"
+      >
+        {/* Footer Navigation & Social */}
+        <div className="relative z-10 mx-auto w-full max-w-[1320px] flex flex-col md:flex-row items-start md:items-end justify-between gap-8 md:gap-0">
+          {/* Left: Navigation Links */}
           <motion.div
-            className="flex items-center justify-center gap-3"
-            variants={revealVariants}
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true, amount: 0.6 }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            className="flex flex-wrap items-center gap-6 md:gap-8"
           >
-            {socialLinks.map((social, index) => (
-              <motion.div key={social.label} variants={presenceVariants} custom={index}>
-                <Link
-                  href={social.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/5 bg-white/[0.03] backdrop-blur transition-all duration-300 hover:border-luxury-gold/60 hover:bg-white/10"
-                >
-                  <social.icon className="h-5 w-5 text-luxury-silver transition-colors duration-300 group-hover:text-luxury-gold" />
-                </Link>
-              </motion.div>
-            ))}
+            <span className="text-white/40 text-sm">×</span>
+            <Link
+              href="/what-we-do"
+              className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
+            >
+              What we do
+            </Link>
+            <Link
+              href="/authenticity"
+              className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
+            >
+              Authenticity
+            </Link>
+            <Link
+              href="/products"
+              className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
+            >
+              Products
+            </Link>
+            <Link
+              href="/about"
+              className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
+            >
+              About us
+            </Link>
           </motion.div>
-          <p className="text-xs uppercase tracking-[0.3em] text-luxury-silver/35" data-reveal>
-            Crafted for timeless confidence
-          </p>
+
+          {/* Right: Social Media Icons */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className="flex items-center gap-4 md:gap-5"
+          >
+            <a
+              href="https://github.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/80 hover:text-white transition-colors duration-300"
+              aria-label="GitHub"
+            >
+              <Github className="h-5 w-5 md:h-6 md:w-6" />
+            </a>
+            <a
+              href="https://instagram.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/80 hover:text-white transition-colors duration-300"
+              aria-label="Instagram"
+            >
+              <Instagram className="h-5 w-5 md:h-6 md:w-6" />
+            </a>
+            <a
+              href="https://twitter.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/80 hover:text-white transition-colors duration-300"
+              aria-label="Twitter"
+            >
+              <Twitter className="h-5 w-5 md:h-6 md:w-6" />
+            </a>
+            <a
+              href="https://linkedin.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/80 hover:text-white transition-colors duration-300"
+              aria-label="LinkedIn"
+            >
+              <Linkedin className="h-5 w-5 md:h-6 md:w-6" />
+            </a>
+            <a
+              href="https://youtube.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/80 hover:text-white transition-colors duration-300"
+              aria-label="YouTube"
+            >
+              <Youtube className="h-5 w-5 md:h-6 md:w-6" />
+            </a>
+          </motion.div>
         </div>
-      </footer>
+      </section>
     </div>
   );
 }
