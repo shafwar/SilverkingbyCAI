@@ -24,7 +24,7 @@ import {
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import { Scanner } from "@/components/shared/Scanner";
-import { VerificationResult } from "@/components/shared/VerificationResult";
+import { VerificationModal } from "@/components/shared/VerificationModal";
 import { useRouter } from "next/navigation";
 import { APP_NAME } from "@/utils/constants";
 
@@ -477,18 +477,23 @@ export default function AuthenticityPage() {
   };
 
   const verifySerial = async (serial: string) => {
+    // Close manual input modal when verification starts
+    setShowManualInput(false);
     setIsVerifying(true);
     setVerificationData(null);
 
     try {
-      const response = await fetch(`/api/verify/${encodeURIComponent(serial)}`);
+      // Normalize serial to uppercase (same as API does)
+      const normalizedSerial = serial.trim().toUpperCase();
+      const response = await fetch(`/api/verify/${encodeURIComponent(normalizedSerial)}`);
       const data = await response.json();
 
-      if (response.ok && data.success) {
+      // API returns 'verified' or 'success'
+      if (response.ok && (data.verified || data.success)) {
         setVerificationData({
           weight: `${data.product?.weight || "N/A"}gr`,
           purity: data.product?.purity || "99.99%",
-          serialNumber: serial,
+          serialNumber: normalizedSerial,
           productName: data.product?.name || "Unknown Product",
           firstScanned: data.firstScanned
             ? new Date(data.firstScanned).toLocaleDateString()
@@ -501,7 +506,7 @@ export default function AuthenticityPage() {
         setVerificationData({
           weight: "N/A",
           purity: "N/A",
-          serialNumber: serial,
+          serialNumber: normalizedSerial,
           productName: "Unknown Product",
           totalScans: 0,
           isAuthentic: false,
@@ -785,50 +790,18 @@ export default function AuthenticityPage() {
         )}
       </AnimatePresence>
 
-      {/* Verification Result */}
-      <AnimatePresence mode="wait">
-        {verificationData && (
-          <motion.section
-            key="verification-result"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            className="relative border-t border-white/5 py-20 px-6"
-          >
-            <div className="mx-auto max-w-xl">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3 }}
-              >
-                <VerificationResult data={verificationData} />
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.4 }}
-                className="mt-6 text-center"
-              >
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    setVerificationData(null);
-                    setShowManualInput(false);
-                    setSerialNumber("");
-                  }}
-                  className="group inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-white/10"
-                >
-                  Verify Another Bar
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                </motion.button>
-              </motion.div>
-            </div>
-          </motion.section>
-        )}
-      </AnimatePresence>
+      {/* Verification Modal - Only show when not in manual input mode */}
+      {!showManualInput && (
+        <VerificationModal
+          isOpen={isVerifying || !!verificationData}
+          onClose={() => {
+            setVerificationData(null);
+            setSerialNumber("");
+          }}
+          data={verificationData}
+          isVerifying={isVerifying}
+        />
+      )}
 
       {/* Benefits Section */}
       {!verificationData && !showManualInput && (
