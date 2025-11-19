@@ -3,6 +3,7 @@ import path from "path";
 import QRCode from "qrcode";
 import { createCanvas, loadImage } from "canvas";
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getR2Url } from "@/utils/r2-url";
 
 const R2_ENDPOINT = process.env.R2_ENDPOINT;
 const R2_BUCKET = process.env.R2_BUCKET;
@@ -141,7 +142,7 @@ export async function generateAndStoreQR(serialCode: string, targetUrl: string):
     await fs.writeFile(filePath, pngBuffer);
 
     return {
-      url: `/qr/${serialCode}.png`,
+      url: getR2Url(`/qr/${serialCode}.png`),
       mode: "LOCAL",
     };
   } catch (error) {

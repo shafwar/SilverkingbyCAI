@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { getR2UrlClient } from "@/utils/r2-url";
 
 interface HeroWithVideoProps {
   videoSrc: string;
@@ -22,6 +23,8 @@ export default function HeroWithVideo({
   overlayOpacity = 0.5,
   children,
 }: HeroWithVideoProps) {
+  // Convert fallback image to R2 URL
+  const r2FallbackImage = getR2UrlClient(fallbackImage);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -70,7 +73,7 @@ export default function HeroWithVideo({
         {(isMobile || !isVideoLoaded) && (
           <div
             className="w-full h-full bg-cover bg-center"
-            style={{ backgroundImage: `url(${fallbackImage})` }}
+            style={{ backgroundImage: `url(${r2FallbackImage})` }}
           />
         )}
 

@@ -9,6 +9,7 @@ import {
   type Variants,
 } from "framer-motion";
 import Link from "next/link";
+import { getR2UrlClient } from "@/utils/r2-url";
 import {
   Shield,
   Award,
@@ -446,7 +447,7 @@ export default function AboutPage() {
         <div className="absolute inset-0 z-0 overflow-hidden">
           <video
             className="absolute inset-0 h-full w-full object-cover brightness-[0.85] scale-105"
-            src="/videos/hero/gold-footage.mp4"
+            src={getR2UrlClient("/videos/hero/gold-footage.mp4")}
             autoPlay
             loop
             muted

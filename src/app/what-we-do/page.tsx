@@ -5,6 +5,7 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { motion, useInView, AnimatePresence, type Variants } from "framer-motion";
+import { getR2UrlClient } from "@/utils/r2-url";
 import {
   Sparkles,
   FlaskConical,
@@ -356,9 +357,9 @@ export default function WhatWeDoPage() {
       caption:
         "High‑throughput casting, edge finishing, and surface treatment tuned for bullion batches.",
       images: [
-        "/images/pexels-3d-render-1058120333-33539240.jpg",
-        "/images/pexels-sejio402-29336321.jpg",
-        "/images/silverking-gold.jpeg",
+        getR2UrlClient("/images/pexels-3d-render-1058120333-33539240.jpg"),
+        getR2UrlClient("/images/pexels-sejio402-29336321.jpg"),
+        getR2UrlClient("/images/silverking-gold.jpeg"),
       ],
     },
     {
@@ -366,9 +367,9 @@ export default function WhatWeDoPage() {
       caption:
         "Spectrometry‑backed purification with ISO‑aligned quality controls for industrial and retail bars.",
       images: [
-        "/images/pexels-michael-steinberg-95604-386318.jpg",
-        "/images/pexels-sejio402-29336326.jpg",
-        "/images/silverking-gold.jpeg",
+        getR2UrlClient("/images/pexels-michael-steinberg-95604-386318.jpg"),
+        getR2UrlClient("/images/pexels-sejio402-29336326.jpg"),
+        getR2UrlClient("/images/silverking-gold.jpeg"),
       ],
     },
     {
@@ -376,9 +377,9 @@ export default function WhatWeDoPage() {
       caption:
         "QR issuance, scan logging, and risk signals wired directly into Silver King Command.",
       images: [
-        "/images/pexels-sejio402-29336327.jpg",
-        "/images/pexels-sejio402-29336321.jpg",
-        "/images/silverking-gold.jpeg",
+        getR2UrlClient("/images/pexels-sejio402-29336327.jpg"),
+        getR2UrlClient("/images/pexels-sejio402-29336321.jpg"),
+        getR2UrlClient("/images/silverking-gold.jpeg"),
       ],
     },
   ] as const;
@@ -461,7 +462,7 @@ export default function WhatWeDoPage() {
             className="absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 will-change-transform z-10"
             style={{ transform: "scale(1.05)", transformOrigin: "center center" }}
           >
-            <source src="/videos/hero/metal crafting hands.mp4" type="video/mp4" />
+            <source src={getR2UrlClient("/videos/hero/metal crafting hands.mp4")} type="video/mp4" />
           </video>
 
           {/* Dark overlays for readability */}
@@ -629,7 +630,7 @@ export default function WhatWeDoPage() {
             playsInline
             className="absolute inset-0 w-full h-full object-cover"
           >
-            <source src="/videos/hero/molten metal slow motion.mp4" type="video/mp4" />
+            <source src={getR2UrlClient("/videos/hero/molten metal slow motion.mp4")} type="video/mp4" />
           </video>
           {/* Dark overlay for text readability */}
           <div className="absolute inset-0 bg-gradient-to-b from-luxury-black/85 via-luxury-black/75 to-luxury-black/85" />

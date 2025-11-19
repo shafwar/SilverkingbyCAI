@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile } from "fs/promises";
 import path from "path";
 import { auth } from "@/lib/auth";
+import { getR2Url } from "@/utils/r2-url";
 
 export async function POST(request: NextRequest) {
   try {
@@ -60,8 +61,8 @@ export async function POST(request: NextRequest) {
     );
     await writeFile(filePath, buffer);
 
-    // Return success with video URL
-    const videoUrl = `/videos/${folder}/${safeFileName}`;
+    // Return success with video URL (converted to R2 URL)
+    const videoUrl = getR2Url(`/videos/${folder}/${safeFileName}`);
 
     return NextResponse.json(
       {
@@ -109,7 +110,7 @@ export async function GET(request: NextRequest) {
           .filter((f: string) => f.match(/\.(mp4|webm|mov)$/i))
           .map((f: string) => ({
             name: f,
-            url: `/videos/${category}/${f}`,
+            url: getR2Url(`/videos/${category}/${f}`),
           }));
       } else {
         videos[category] = [];

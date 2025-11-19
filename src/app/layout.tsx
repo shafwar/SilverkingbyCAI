@@ -6,6 +6,7 @@ import { APP_NAME, APP_DESCRIPTION } from "@/utils/constants";
 import { Providers } from "./providers";
 import { NavigationTransitionProvider } from "@/components/layout/NavigationTransitionProvider";
 import { PageTransitionOverlay } from "@/components/layout/PageTransitionOverlay";
+import { getR2Url } from "@/utils/r2-url";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -16,14 +17,17 @@ const playfair = Playfair_Display({
 
 const metadataBase = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "https://silverkingbycai-production.up.railway.app";
 
+// Get R2 URLs for metadata (static at build time)
+const logoUrl = getR2Url("/images/cai-logo.png");
+
 export const metadata: Metadata = {
   metadataBase: new URL(metadataBase),
   title: APP_NAME,
   description: APP_DESCRIPTION,
   keywords: ["silver", "gold", "precious metals", "luxury", "verification", "authenticity"],
   icons: {
-    icon: "/images/cai-logo.png",
-    apple: "/images/cai-logo.png",
+    icon: logoUrl,
+    apple: logoUrl,
   },
   openGraph: {
     title: APP_NAME,
@@ -31,7 +35,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/images/cai-logo.png",
+        url: logoUrl,
         width: 1200,
         height: 630,
         alt: "CAI Logo - Silver King by CAI",
@@ -42,7 +46,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: APP_NAME,
     description: APP_DESCRIPTION,
-    images: ["/images/cai-logo.png"],
+    images: [logoUrl],
   },
 };
 

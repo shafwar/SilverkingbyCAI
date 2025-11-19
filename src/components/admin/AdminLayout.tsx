@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Toaster } from "sonner";
+import { getR2UrlClient } from "@/utils/r2-url";
 import {
   LayoutDashboard,
   PackageSearch,
@@ -78,7 +79,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
           >
             <div className="relative h-10 w-10 transition-transform duration-300 group-hover:scale-110">
               <Image
-                src="/images/cai-logo.png"
+                src={getR2UrlClient("/images/cai-logo.png")}
                 alt="CAI Logo - Silver King by CAI"
                 fill
                 className="object-contain"

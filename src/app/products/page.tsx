@@ -12,6 +12,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import ProductModal, { type Product } from "@/components/ui/ProductModal";
 import ProductCard, { type ProductWithPricing } from "@/components/ui/ProductCard";
+import { getR2UrlClient } from "@/utils/r2-url";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -97,7 +98,7 @@ const allProducts: ProductWithPricing[] = [
     id: "250gr-1",
     name: "Precious Metal Bar 250gr",
     rangeName: "Silver King",
-    image: "/images/silverking-gold.jpeg",
+    image: getR2UrlClient("/images/silverking-gold.jpeg"),
     purity: "99.99%",
     weight: "250gr",
     description:
@@ -111,7 +112,7 @@ const allProducts: ProductWithPricing[] = [
     id: "250gr-2",
     name: "Precious Metal Bar 250gr",
     rangeName: "Silver King",
-    image: "/images/silverking-gold.jpeg",
+    image: getR2UrlClient("/images/silverking-gold.jpeg"),
     purity: "99.99%",
     weight: "250gr",
     description: "Premium 250 gram precious metal bar with certification. SKU: SKA000002",
@@ -124,7 +125,7 @@ const allProducts: ProductWithPricing[] = [
     id: "250gr-3",
     name: "Precious Metal Bar 250gr",
     rangeName: "Silver King",
-    image: "/images/silverking-gold.jpeg",
+    image: getR2UrlClient("/images/silverking-gold.jpeg"),
     purity: "99.99%",
     weight: "250gr",
     description: "Premium 250 gram precious metal bar with certification. SKU: SKA000003",
@@ -137,7 +138,7 @@ const allProducts: ProductWithPricing[] = [
     id: "100gr-1",
     name: "Precious Metal Bar 100gr",
     rangeName: "Silver King",
-    image: "/images/silverking-gold.jpeg",
+    image: getR2UrlClient("/images/silverking-gold.jpeg"),
     purity: "99.99%",
     weight: "100gr",
     description:
@@ -151,7 +152,7 @@ const allProducts: ProductWithPricing[] = [
     id: "100gr-2",
     name: "Precious Metal Bar 100gr",
     rangeName: "Silver King",
-    image: "/images/silverking-gold.jpeg",
+    image: getR2UrlClient("/images/silverking-gold.jpeg"),
     purity: "99.99%",
     weight: "100gr",
     description: "Premium 100 gram precious metal bar with certification. SKU: SKP000002",
@@ -164,7 +165,7 @@ const allProducts: ProductWithPricing[] = [
     id: "100gr-3",
     name: "Precious Metal Bar 100gr",
     rangeName: "Silver King",
-    image: "/images/silverking-gold.jpeg",
+    image: getR2UrlClient("/images/silverking-gold.jpeg"),
     purity: "99.99%",
     weight: "100gr",
     description: "Premium 100 gram precious metal bar with certification. SKU: SKP000003",
@@ -177,7 +178,7 @@ const allProducts: ProductWithPricing[] = [
     id: "50gr-1",
     name: "Precious Metal Bar 50gr",
     rangeName: "Silver King",
-    image: "/images/silverking-gold.jpeg",
+    image: getR2UrlClient("/images/silverking-gold.jpeg"),
     purity: "99.99%",
     weight: "50gr",
     description:
@@ -191,7 +192,7 @@ const allProducts: ProductWithPricing[] = [
     id: "50gr-2",
     name: "Precious Metal Bar 50gr",
     rangeName: "Silver King",
-    image: "/images/silverking-gold.jpeg",
+    image: getR2UrlClient("/images/silverking-gold.jpeg"),
     purity: "99.99%",
     weight: "50gr",
     description: "Premium 50 gram precious metal bar with certification. SKU: SKN000002",
@@ -204,7 +205,7 @@ const allProducts: ProductWithPricing[] = [
     id: "50gr-3",
     name: "Precious Metal Bar 50gr",
     rangeName: "Silver King",
-    image: "/images/silverking-gold.jpeg",
+    image: getR2UrlClient("/images/silverking-gold.jpeg"),
     purity: "99.99%",
     weight: "50gr",
     description: "Premium 50 gram precious metal bar with certification. SKU: SKN000003",
@@ -217,7 +218,7 @@ const allProducts: ProductWithPricing[] = [
     id: "25gr-1",
     name: "Precious Metal Bar 25gr",
     rangeName: "Silver King",
-    image: "/images/silverking-gold.jpeg",
+    image: getR2UrlClient("/images/silverking-gold.jpeg"),
     purity: "99.99%",
     weight: "25gr",
     description:
@@ -231,7 +232,7 @@ const allProducts: ProductWithPricing[] = [
     id: "25gr-2",
     name: "Precious Metal Bar 25gr",
     rangeName: "Silver King",
-    image: "/images/silverking-gold.jpeg",
+    image: getR2UrlClient("/images/silverking-gold.jpeg"),
     purity: "99.99%",
     weight: "25gr",
     description: "Premium 25 gram precious metal bar with certification. SKU: SKC000002",
@@ -243,7 +244,7 @@ const allProducts: ProductWithPricing[] = [
     id: "25gr-3",
     name: "Precious Metal Bar 25gr",
     rangeName: "Silver King",
-    image: "/images/silverking-gold.jpeg",
+    image: getR2UrlClient("/images/silverking-gold.jpeg"),
     purity: "99.99%",
     weight: "25gr",
     description: "Premium 25 gram precious metal bar with certification. SKU: SKC000003",
@@ -256,7 +257,7 @@ const allProducts: ProductWithPricing[] = [
     id: "10gr-1",
     name: "Precious Metal Bar 10gr",
     rangeName: "Silver King",
-    image: "/images/silverking-gold.jpeg",
+    image: getR2UrlClient("/images/silverking-gold.jpeg"),
     purity: "99.99%",
     weight: "10gr",
     description:
@@ -270,7 +271,7 @@ const allProducts: ProductWithPricing[] = [
     id: "10gr-2",
     name: "Precious Metal Bar 10gr",
     rangeName: "Silver King",
-    image: "/images/silverking-gold.jpeg",
+    image: getR2UrlClient("/images/silverking-gold.jpeg"),
     purity: "99.99%",
     weight: "10gr",
     description: "Premium 10 gram precious metal bar with certification. SKU: SKI000002",
@@ -282,7 +283,7 @@ const allProducts: ProductWithPricing[] = [
     id: "10gr-3",
     name: "Precious Metal Bar 10gr",
     rangeName: "Silver King",
-    image: "/images/silverking-gold.jpeg",
+    image: getR2UrlClient("/images/silverking-gold.jpeg"),
     purity: "99.99%",
     weight: "10gr",
     description: "Premium 10 gram precious metal bar with certification. SKU: SKI000003",
@@ -295,7 +296,7 @@ const allProducts: ProductWithPricing[] = [
     id: "5gr-1",
     name: "Precious Metal Bar 5gr",
     rangeName: "Silver King",
-    image: "/images/silverking-gold.jpeg",
+    image: getR2UrlClient("/images/silverking-gold.jpeg"),
     purity: "99.99%",
     weight: "5gr",
     description:
@@ -309,7 +310,7 @@ const allProducts: ProductWithPricing[] = [
     id: "5gr-2",
     name: "Precious Metal Bar 5gr",
     rangeName: "Silver King",
-    image: "/images/silverking-gold.jpeg",
+    image: getR2UrlClient("/images/silverking-gold.jpeg"),
     purity: "99.99%",
     weight: "5gr",
     description: "Premium 5 gram precious metal bar with certification. SKU: SKT000002",
@@ -321,7 +322,7 @@ const allProducts: ProductWithPricing[] = [
     id: "5gr-3",
     name: "Precious Metal Bar 5gr",
     rangeName: "Silver King",
-    image: "/images/silverking-gold.jpeg",
+    image: getR2UrlClient("/images/silverking-gold.jpeg"),
     purity: "99.99%",
     weight: "5gr",
     description: "Premium 5 gram precious metal bar with certification. SKU: SKT000003",
@@ -885,7 +886,7 @@ export default function ProductsPage() {
               setIsVideoLoaded(true);
             }}
           >
-            <source src="/videos/hero/gold-stone.mp4" type="video/mp4" />
+            <source src={getR2UrlClient("/videos/hero/gold-stone.mp4")} type="video/mp4" />
           </video>
 
           {/* Dark overlay for better text readability */}
@@ -1266,7 +1267,7 @@ export default function ProductsPage() {
         {/* Fixed Background Image Container - Stays fixed while scrolling */}
         <div className="image-background-fixed">
           <img
-            src="/images/gold-ingot.jpg"
+            src={getR2UrlClient("/images/gold-ingot.jpg")}
             alt=""
             className="h-full w-full object-cover"
             style={{

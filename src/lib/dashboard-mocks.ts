@@ -1,3 +1,5 @@
+import { getR2Url } from "@/utils/r2-url";
+
 const envFlag = process.env.NEXT_PUBLIC_ENABLE_DASHBOARD_MOCKS;
 
 export const DASHBOARD_USE_MOCKS = envFlag !== "false";
@@ -76,7 +78,7 @@ export const mockQrPreview = {
     name: product.name,
     weight: [5, 10, 25, 50, 75, 100][index % 6],
     serialCode: `SKQR-${1000 + index}`,
-    qrImageUrl: `/qr/SK${String.fromCharCode(65 + index)}000001.png`,
+    qrImageUrl: getR2Url(`/qr/SK${String.fromCharCode(65 + index)}000001.png`),
     createdAt: new Date(Date.now() - index * 86400 * 1000).toISOString(),
   })),
 };

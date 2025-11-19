@@ -5,6 +5,7 @@ import { motion, useScroll, useTransform, type Variants } from "framer-motion";
 import { gsap } from "gsap";
 import { QrCode } from "lucide-react";
 import ScrollingFeatures from "./ScrollingFeatures";
+import { getR2UrlClient } from "@/utils/r2-url";
 
 interface HeroSectionProps {
   shouldAnimate?: boolean;
@@ -174,11 +175,11 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
       // Insight stack - hidden initially
       if (statsRef.current) {
         gsap.set(statsRef.current, { opacity: 0, x: 40 });
-        
+
         const statItems = statsRef.current.querySelectorAll(".stat-item");
-        gsap.set(statItems, { 
-          opacity: 0, 
-          x: 20, 
+        gsap.set(statItems, {
+          opacity: 0,
+          x: 20,
           y: 10,
           filter: "blur(4px)",
         });
@@ -250,10 +251,10 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
       masterTL.fromTo(
         statsRef.current,
         { opacity: 0, x: 40 },
-        { 
-          opacity: 1, 
-          x: 0, 
-          duration: 1.4, 
+        {
+          opacity: 1,
+          x: 0,
+          duration: 1.4,
           ease: "power3.out",
         },
         0.5
@@ -264,9 +265,9 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
       if (statItems) {
         masterTL.fromTo(
           statItems,
-          { 
-            opacity: 0, 
-            x: 20, 
+          {
+            opacity: 0,
+            x: 20,
             y: 10,
             filter: "blur(4px)",
           },
@@ -276,8 +277,8 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             y: 0,
             filter: "blur(0px)",
             duration: 1,
-            stagger: { 
-              amount: 0.4, 
+            stagger: {
+              amount: 0.4,
               ease: "power2.out",
               from: "start",
             },
@@ -313,7 +314,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             preload="auto"
             className="absolute inset-0 h-full w-full object-cover"
           >
-            <source src="/videos/hero/hero-background.mp4" type="video/mp4" />
+            <source src={getR2UrlClient("/videos/hero/hero-background.mp4")} type="video/mp4" />
           </video>
         </motion.div>
 
@@ -467,7 +468,9 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             <QrCode className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[0.45rem] sm:text-[0.5rem] uppercase tracking-[0.4em] sm:tracking-[0.45em] text-white/55">Scan & Verify</p>
+            <p className="text-[0.45rem] sm:text-[0.5rem] uppercase tracking-[0.4em] sm:tracking-[0.45em] text-white/55">
+              Scan & Verify
+            </p>
             <p className="mt-0.5 text-[0.8125rem] sm:text-[0.875rem] md:text-[0.95rem] font-semibold text-white tracking-tight">
               Tap to launch Silver King QR scanner
             </p>

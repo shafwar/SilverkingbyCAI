@@ -6,6 +6,7 @@ import Image from "next/image";
 import { ArrowRight, X, QrCode } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigationTransition } from "./NavigationTransitionProvider";
+import { getR2UrlClient } from "@/utils/r2-url";
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -91,7 +92,7 @@ export default function Navbar() {
           <Link href="/" className="group relative flex items-center">
             <div className="relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-[8deg]">
               <Image
-                src="/images/cai-logo.png"
+                src={getR2UrlClient("/images/cai-logo.png")}
                 alt="Silver King by CAI"
                 fill
                 className="object-contain brightness-0 invert transition-all duration-500"
@@ -190,7 +191,7 @@ export default function Navbar() {
                     >
                       <div className="relative w-10 h-10 sm:w-12 sm:h-12">
                         <Image
-                          src="/images/cai-logo.png"
+                          src={getR2UrlClient("/images/cai-logo.png")}
                           alt="Silver King by CAI"
                           fill
                           className="object-contain brightness-0 invert"

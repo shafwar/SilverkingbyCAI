@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { useNavigationTransition } from "./NavigationTransitionProvider";
 import { Variants } from "framer-motion";
+import { getR2UrlClient } from "@/utils/r2-url";
 
 const panelVariants: Variants = {
   enter: { y: "100%" },
@@ -78,7 +79,7 @@ export function PageTransitionOverlay() {
               transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
             >
               <Image
-                src="/images/cai-logo.png"
+                src={getR2UrlClient("/images/cai-logo.png")}
                 alt="CAI Emblem"
                 fill
                 className="object-contain"
