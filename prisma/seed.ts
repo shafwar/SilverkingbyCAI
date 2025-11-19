@@ -2,6 +2,7 @@ import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { generateAndStoreQR } from "../src/lib/qr";
+import { getVerifyUrl } from "../src/utils/constants";
 
 const prisma = new PrismaClient();
 
@@ -60,9 +61,8 @@ async function main() {
       },
     });
 
-    // Use production URL from environment or default to Railway URL
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "https://silverkingbycai-production.up.railway.app";
-    const verifyUrl = `${baseUrl}/verify/${item.serialCode}`;
+    // Use centralized function to get verify URL
+    const verifyUrl = getVerifyUrl(item.serialCode);
     const { url } = await generateAndStoreQR(item.serialCode, verifyUrl);
 
     await prisma.qrRecord.create({

@@ -3,7 +3,7 @@ import path from "path";
 import QRCode from "qrcode";
 import { createCanvas, loadImage } from "canvas";
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { getR2Url } from "@/utils/r2-url";
+import { getBaseUrl } from "@/utils/constants";
 
 const R2_ENDPOINT = process.env.R2_ENDPOINT;
 const R2_BUCKET = process.env.R2_BUCKET;
@@ -124,13 +124,10 @@ export async function generateAndStoreQR(serialCode: string, targetUrl: string):
   
   if (isProduction) {
     // Return API route URL for on-the-fly generation
-    const baseUrl =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      process.env.NEXTAUTH_URL ||
-      "http://localhost:3000";
+    const baseUrl = getBaseUrl();
     
     return {
-      url: `${baseUrl.replace(/\/$/, "")}/api/qr/${serialCode}`,
+      url: `${baseUrl}/api/qr/${serialCode}`,
       mode: "LOCAL",
     };
   }
@@ -148,13 +145,10 @@ export async function generateAndStoreQR(serialCode: string, targetUrl: string):
   } catch (error) {
     // If file write fails (e.g., in production), fallback to API route
     console.warn("Failed to write QR to file system, using API route:", error);
-    const baseUrl =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      process.env.NEXTAUTH_URL ||
-      "http://localhost:3000";
+    const baseUrl = getBaseUrl();
     
     return {
-      url: `${baseUrl.replace(/\/$/, "")}/api/qr/${serialCode}`,
+      url: `${baseUrl}/api/qr/${serialCode}`,
       mode: "LOCAL",
     };
   }
