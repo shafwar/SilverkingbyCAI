@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import QRCode from "qrcode";
 import { addSerialNumberToQR } from "@/lib/qr";
+import { getVerifyUrl } from "@/utils/constants";
 
 export async function GET(
   request: NextRequest,
@@ -13,13 +14,8 @@ export async function GET(
       return new NextResponse("Serial code is required", { status: 400 });
     }
 
-    // Get base URL from environment
-    const baseUrl =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      process.env.NEXTAUTH_URL ||
-      "http://localhost:3000";
-    
-    const verifyUrl = `${baseUrl.replace(/\/$/, "")}/verify/${serialCode}`;
+    // Get verify URL using centralized function
+    const verifyUrl = getVerifyUrl(serialCode);
 
     // Generate QR code as PNG buffer
     const qrBuffer = await QRCode.toBuffer(verifyUrl, {

@@ -26,14 +26,16 @@ railway service silverkingbycai
 MYSQL_DB_URL=$(railway variables --service mysql | grep DATABASE_URL | awk '{print $2}')
 
 # Set environment variables untuk Next.js app
-railway variables set DATABASE_URL="$MYSQL_DB_URL" --service silverkingbycai
-railway variables set NEXTAUTH_URL="https://silverkingbycai-production.up.railway.app" --service silverkingbycai
-railway variables set NEXTAUTH_SECRET="silverking-secret-change-in-production-2024" --service silverkingbycai
-railway variables set NEXT_PUBLIC_APP_URL="https://silverkingbycai-production.up.railway.app" --service silverkingbycai
-railway variables set NEXT_PUBLIC_ENABLE_DASHBOARD_MOCKS="false" --service silverkingbycai
+# Production domain: https://www.cahayasilverking.id
+# Note: Railway CLI syntax menggunakan --set "KEY=VALUE"
+railway variables --set "NEXTAUTH_URL=https://www.cahayasilverking.id"
+railway variables --set "NEXTAUTH_SECRET=silverking-secret-change-in-production-2024"
+railway variables --set "NEXT_PUBLIC_APP_URL=https://www.cahayasilverking.id"
+railway variables --set "NEXT_PUBLIC_ENABLE_DASHBOARD_MOCKS=false"
 
 # Optional: Set Node environment
-railway variables set NODE_ENV="production" --service silverkingbycai
+railway variables --set "NODE_ENV=production"
+railway variables --set "RAILWAY_ENVIRONMENT=true"
 
 echo "✅ Environment variables set successfully!"
 echo ""

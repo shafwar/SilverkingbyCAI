@@ -4,11 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { productUpdateSchema } from "@/lib/validators/product";
 import { normalizeSerialCode } from "@/lib/serial";
 import { deleteQrAsset, generateAndStoreQR } from "@/lib/qr";
-
-const baseUrl =
-  process.env.NEXT_PUBLIC_APP_URL ||
-  process.env.NEXTAUTH_URL ||
-  "http://localhost:3000";
+import { getVerifyUrl } from "@/utils/constants";
 
 export async function PATCH(
   request: Request,
@@ -55,7 +51,7 @@ export async function PATCH(
 
   if (serialChanged) {
     await deleteQrAsset(existing.serialCode, existing.qrRecord?.qrImageUrl);
-    const verifyUrl = `${baseUrl.replace(/\/$/, "")}/verify/${newSerial}`;
+    const verifyUrl = getVerifyUrl(newSerial);
     const qrResult = await generateAndStoreQR(newSerial, verifyUrl);
     qrImageUrl = qrResult.url;
   }

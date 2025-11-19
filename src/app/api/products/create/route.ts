@@ -9,9 +9,7 @@ import {
   findHighestSerialNumber,
 } from "@/lib/serial";
 import { generateAndStoreQR } from "@/lib/qr";
-
-const appBaseUrl =
-  process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
+import { getVerifyUrl } from "@/utils/constants";
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -89,11 +87,10 @@ export async function POST(request: Request) {
 
       // Create products in batch
       const products = [];
-      const baseUrl = appBaseUrl.replace(/\/$/, "");
 
       for (let i = 0; i < serials.length; i++) {
         const serialCode = serials[i];
-        const verifyUrl = `${baseUrl}/verify/${serialCode}`;
+        const verifyUrl = getVerifyUrl(serialCode);
 
         // Generate QR code for each product
         const { url: qrImageUrl } = await generateAndStoreQR(serialCode, verifyUrl);
@@ -143,7 +140,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Serial code already exists" }, { status: 400 });
     }
 
-    const verifyUrl = `${appBaseUrl.replace(/\/$/, "")}/verify/${serialCode}`;
+    const verifyUrl = getVerifyUrl(serialCode);
     const { url: qrImageUrl } = await generateAndStoreQR(serialCode, verifyUrl);
 
     const product = await prisma.product.create({

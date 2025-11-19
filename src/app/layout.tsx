@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { Playfair_Display } from "next/font/google";
 import "@/styles/globals.css";
-import { APP_NAME, APP_DESCRIPTION } from "@/utils/constants";
+import { APP_NAME, APP_DESCRIPTION, getBaseUrl } from "@/utils/constants";
 import { Providers } from "./providers";
 import { NavigationTransitionProvider } from "@/components/layout/NavigationTransitionProvider";
 import { PageTransitionOverlay } from "@/components/layout/PageTransitionOverlay";
@@ -14,7 +14,7 @@ const playfair = Playfair_Display({
   preload: true,
 });
 
-const metadataBase = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "https://silverkingbycai-production.up.railway.app";
+const metadataBase = getBaseUrl();
 
 export const metadata: Metadata = {
   metadataBase: new URL(metadataBase),
