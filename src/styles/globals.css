@@ -91,6 +91,90 @@
     padding: 4rem 1rem;
   }
 
+  /* Minimalist Toast Styles */
+  .toast-minimalist {
+    font-family: var(--font-geist-sans), system-ui, sans-serif !important;
+    font-size: 14px !important;
+    font-weight: 400 !important;
+    letter-spacing: 0.01em !important;
+  }
+
+  .toast-minimalist [data-sonner-toast] {
+    background: rgba(10, 10, 10, 0.95) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 12px !important;
+    backdrop-filter: blur(16px) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+    padding: 14px 16px !important;
+    min-width: 320px !important;
+    max-width: 420px !important;
+  }
+
+  .toast-minimalist [data-title] {
+    color: #ffffff !important;
+    font-weight: 500 !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+  }
+
+  .toast-minimalist [data-description] {
+    color: rgba(255, 255, 255, 0.7) !important;
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+    margin-top: 4px !important;
+  }
+
+  /* Success Toast */
+  .toast-success [data-sonner-toast] {
+    border-left: 3px solid #10b981 !important;
+  }
+
+  .toast-success [data-icon] {
+    color: #10b981 !important;
+  }
+
+  /* Error Toast */
+  .toast-error [data-sonner-toast] {
+    border-left: 3px solid #ef4444 !important;
+  }
+
+  .toast-error [data-icon] {
+    color: #ef4444 !important;
+  }
+
+  /* Info Toast */
+  .toast-info [data-sonner-toast] {
+    border-left: 3px solid #3b82f6 !important;
+  }
+
+  .toast-info [data-icon] {
+    color: #3b82f6 !important;
+  }
+
+  /* Warning Toast */
+  .toast-warning [data-sonner-toast] {
+    border-left: 3px solid #f59e0b !important;
+  }
+
+  .toast-warning [data-icon] {
+    color: #f59e0b !important;
+  }
+
+  /* Close Button */
+  .toast-minimalist [data-close-button] {
+    color: rgba(255, 255, 255, 0.5) !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 4px !important;
+    border-radius: 6px !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .toast-minimalist [data-close-button]:hover {
+    color: rgba(255, 255, 255, 0.9) !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+  }
+
   .image-background-fixed {
     position: fixed;
     top: 0;

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 type ProductRow = {
   id: number;
@@ -23,16 +24,29 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   async function handleDelete(id: number) {
+    const product = products.find((p) => p.id === id);
+    const productName = product?.name || "Product";
+
     setDeletingId(id);
     try {
       const res = await fetch(`/api/products/delete/${id}`, { method: "DELETE" });
       if (!res.ok) {
-        throw new Error("Delete failed");
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Delete failed");
       }
+
+      toast.success("Product deleted successfully", {
+        description: `${productName} has been removed from inventory`,
+        duration: 3000,
+      });
+
       startTransition(() => router.refresh());
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Failed to delete product");
+      toast.error("Failed to delete product", {
+        description: error.message || "Please try again",
+        duration: 4000,
+      });
     } finally {
       setDeletingId(null);
     }

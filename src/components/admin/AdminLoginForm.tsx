@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export function AdminLoginForm() {
   const [email, setEmail] = useState("admin@silverking.com");
@@ -15,17 +16,33 @@ export function AdminLoginForm() {
     event.preventDefault();
     setLoading(true);
     setError(null);
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-    setLoading(false);
-    if (res?.error) {
-      setError("Invalid credentials");
-      return;
+    try {
+      const res = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+      if (res?.error) {
+        setError("Invalid credentials");
+        toast.error("Login failed", {
+          description: "Invalid email or password",
+          duration: 4000,
+        });
+        return;
+      }
+      toast.success("Login successful", {
+        description: "Welcome back!",
+        duration: 2000,
+      });
+      router.push("/admin");
+    } catch (error: any) {
+      toast.error("Login failed", {
+        description: error.message || "Please try again",
+        duration: 4000,
+      });
+    } finally {
+      setLoading(false);
     }
-    router.push("/admin");
   }
 
   return (

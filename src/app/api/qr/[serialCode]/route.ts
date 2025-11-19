@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import QRCode from "qrcode";
+import { addSerialNumberToQR } from "@/lib/qr";
 
 export async function GET(
   request: NextRequest,
@@ -21,12 +22,15 @@ export async function GET(
     const verifyUrl = `${baseUrl.replace(/\/$/, "")}/verify/${serialCode}`;
 
     // Generate QR code as PNG buffer
-    const pngBuffer = await QRCode.toBuffer(verifyUrl, {
+    const qrBuffer = await QRCode.toBuffer(verifyUrl, {
       width: 560,
       errorCorrectionLevel: "H",
       color: { dark: "#0c0c0c", light: "#ffffff" },
       margin: 1,
     });
+
+    // Add serial number text below QR code
+    const pngBuffer = await addSerialNumberToQR(qrBuffer, serialCode);
 
     // Convert Buffer to Uint8Array for NextResponse
     const uint8Array = new Uint8Array(pngBuffer);

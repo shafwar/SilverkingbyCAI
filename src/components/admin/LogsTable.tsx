@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import useSWR from "swr";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import { Search, Download } from "lucide-react";
 
 import { fetcher } from "@/lib/fetcher";
@@ -84,6 +85,10 @@ export function LogsTable() {
   );
 
   const handleExport = () => {
+    toast.info("Exporting data", {
+      description: "Opening export in new window...",
+      duration: 2000,
+    });
     window.open("/api/export/excel", "_blank");
   };
 

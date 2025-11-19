@@ -1,21 +1,34 @@
 "use client";
 
+import { toast } from "sonner";
+
 export default function ExportPage() {
   async function handleExport() {
-    const res = await fetch("/api/export/excel");
-    if (!res.ok) {
-      alert("Failed to export");
-      return;
+    try {
+      const res = await fetch("/api/export/excel");
+      if (!res.ok) {
+        throw new Error("Export failed");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "silver-king-products.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+
+      toast.success("Export successful", {
+        description: "Excel file has been downloaded",
+        duration: 3000,
+      });
+    } catch (error: any) {
+      toast.error("Failed to export", {
+        description: error.message || "Please try again",
+        duration: 4000,
+      });
     }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "silver-king-products.xlsx";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
   }
 
   return (

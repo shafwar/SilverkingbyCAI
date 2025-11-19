@@ -3,7 +3,7 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { motion } from "framer-motion";
-import { QrCode, Maximize2 } from "lucide-react";
+import { QrCode, Maximize2, Download } from "lucide-react";
 
 import { fetcher } from "@/lib/fetcher";
 import { AnimatedCard } from "./AnimatedCard";
@@ -27,6 +27,30 @@ export function QrPreviewGrid() {
     refreshInterval: 60000,
   });
   const [selected, setSelected] = useState<Product | null>(null);
+
+  const handleDownload = async (product: Product) => {
+    if (!product.qrImageUrl) return;
+
+    try {
+      // Fetch the image
+      const response = await fetch(product.qrImageUrl);
+      const blob = await response.blob();
+
+      // Create a download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `QR-${product.serialCode}.png`;
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to download QR code:", error);
+    }
+  };
 
   if (isLoading) {
     return <LoadingSkeleton className="h-64 w-full" />;
@@ -86,9 +110,18 @@ export function QrPreviewGrid() {
             <img
               src={selected.qrImageUrl}
               alt={selected.name}
-              className="h-72 w-72 rounded-3xl border border-white/10 bg-white p-6 object-contain"
+              className="h-72 w-72 rounded-3xl border border-white/10 bg-white p-4 text-md object-contain"
             />
-            <p className="font-mono text-sm text-white/70">{selected.serialCode}</p>
+            <p className="font-mono text-md text-white/70">{selected.serialCode}</p>
+            <motion.button
+              onClick={() => selected && handleDownload(selected)}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-6 py-3 text-sm text-white/70 transition hover:border-[#FFD700]/40 hover:bg-black/60 hover:text-white"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Download className="h-4 w-4" />
+              Download QR Code
+            </motion.button>
           </div>
         ) : (
           <p className="text-white/60">QR not available.</p>
@@ -97,5 +130,3 @@ export function QrPreviewGrid() {
     </>
   );
 }
-
-

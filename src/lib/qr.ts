@@ -1,6 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import QRCode from "qrcode";
+import { createCanvas, loadImage } from "canvas";
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 const R2_ENDPOINT = process.env.R2_ENDPOINT;
@@ -34,13 +35,65 @@ export type QRStorageResult = {
   mode: "LOCAL" | "R2";
 };
 
+/**
+ * Adds serial number text below the QR code image
+ */
+export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string): Promise<Buffer> {
+  try {
+    // Load QR code image
+    const qrImage = await loadImage(qrBuffer);
+    
+    // Calculate dimensions
+    const qrWidth = qrImage.width;
+    const qrHeight = qrImage.height;
+    const textHeight = 40; // Space for text below QR
+    const padding = 20; // Padding around QR and text
+    const totalWidth = qrWidth + padding * 2;
+    const totalHeight = qrHeight + textHeight + padding * 2;
+    
+    // Create canvas
+    const canvas = createCanvas(totalWidth, totalHeight);
+    const ctx = canvas.getContext("2d");
+    
+    // Fill white background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, totalWidth, totalHeight);
+    
+    // Draw QR code centered horizontally, at the top
+    const qrX = padding;
+    const qrY = padding;
+    ctx.drawImage(qrImage, qrX, qrY);
+    
+    // Draw serial number text below QR code
+    ctx.fillStyle = "#0c0c0c";
+    ctx.font = "bold 20px Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    
+    const textX = totalWidth / 2;
+    const textY = qrHeight + padding + textHeight / 2;
+    ctx.fillText(serialCode, textX, textY);
+    
+    // Convert canvas to buffer
+    return canvas.toBuffer("image/png");
+  } catch (error) {
+    console.error("Error adding serial number to QR:", error);
+    // Return original QR buffer if canvas operation fails
+    return qrBuffer;
+  }
+}
+
 export async function generateAndStoreQR(serialCode: string, targetUrl: string): Promise<QRStorageResult> {
-  const pngBuffer = await QRCode.toBuffer(targetUrl, {
+  // Generate QR code buffer
+  const qrBuffer = await QRCode.toBuffer(targetUrl, {
     width: 560,
     errorCorrectionLevel: "H",
     color: { dark: "#0c0c0c", light: "#ffffff" },
     margin: 1,
   });
+  
+  // Add serial number text below QR code
+  const pngBuffer = await addSerialNumberToQR(qrBuffer, serialCode);
 
   if (r2Available && r2Client) {
     const key = `qr/${serialCode}.png`;

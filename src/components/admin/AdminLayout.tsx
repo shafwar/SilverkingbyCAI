@@ -6,6 +6,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Toaster } from "sonner";
 import {
   LayoutDashboard,
   PackageSearch,
@@ -138,6 +139,28 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
       </motion.nav>
 
       <main className="mx-auto max-w-[1400px] px-6 pb-12 pt-24 lg:pt-28">{children}</main>
+
+      <Toaster
+        position="top-right"
+        richColors
+        closeButton
+        toastOptions={{
+          className: "toast-minimalist",
+          style: {
+            background: "rgba(0, 0, 0, 0.9)",
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            borderRadius: "12px",
+            color: "#fff",
+            backdropFilter: "blur(12px)",
+          },
+          classNames: {
+            success: "toast-success",
+            error: "toast-error",
+            info: "toast-info",
+            warning: "toast-warning",
+          },
+        }}
+      />
     </div>
   );
 }

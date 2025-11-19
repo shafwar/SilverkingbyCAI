@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { AdminLoginForm } from "@/components/admin/AdminLoginForm";
+import { LoginToaster } from "@/components/admin/LoginToaster";
 
 export default async function AdminLoginPage() {
   const session = await auth();
@@ -18,6 +19,7 @@ export default async function AdminLoginPage() {
         </div>
         <AdminLoginForm />
       </div>
+      <LoginToaster />
     </div>
   );
 }
