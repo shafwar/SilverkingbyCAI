@@ -27,7 +27,7 @@ MYSQL_DB_URL=$(railway variables --service mysql | grep DATABASE_URL | awk '{pri
 
 # Set environment variables untuk Next.js app
 # Production domain: https://www.cahayasilverking.id
-# Note: Railway CLI syntax menggunakan --set "KEY=VALUE"
+# Note: R   ailway CLI syntax menggunakan --set "KEY=VALUE"
 railway variables --set "NEXTAUTH_URL=https://www.cahayasilverking.id"
 railway variables --set "NEXTAUTH_SECRET=silverking-secret-change-in-production-2024"
 railway variables --set "NEXT_PUBLIC_APP_URL=https://www.cahayasilverking.id"

@@ -88,20 +88,46 @@ export function VerificationModal({ isOpen, onClose, data, isVerifying }: Verifi
             scale: 1,
             duration: 0.3,
             ease: "power2.in",
-          })
-          // Sparkles animation
-          .to(
-            sparkles?.querySelectorAll("[data-sparkle]") || [],
-            {
-              scale: [0, 1.5, 0],
-              opacity: [0, 1, 0],
-              rotation: 360,
-              duration: 1.2,
-              stagger: 0.1,
-              ease: "power2.out",
-            },
-            "-=0.6"
-          );
+          });
+        
+        // Sparkles animation - use timeline with separate steps for keyframe effect
+        if (sparkles) {
+          const sparkleElements = sparkles.querySelectorAll("[data-sparkle]");
+          if (sparkleElements.length > 0) {
+            // Set initial state
+            gsap.set(sparkleElements, {
+              scale: 0,
+              opacity: 0,
+              rotation: 0,
+            });
+            
+            // Animate to peak
+            tl.to(
+              sparkleElements,
+              {
+                scale: 1.5,
+                opacity: 1,
+                rotation: 180,
+                duration: 0.6,
+                stagger: 0.1,
+                ease: "power2.out",
+              },
+              "-=0.6"
+            )
+              // Animate back down
+              .to(
+                sparkleElements,
+                {
+                  scale: 0,
+                  opacity: 0,
+                  rotation: 360,
+                  duration: 0.6,
+                  stagger: 0.1,
+                  ease: "power2.in",
+                }
+              );
+          }
+        }
       }
     },
     { scope: badgeRef, dependencies: [showSuccessBadge] }
