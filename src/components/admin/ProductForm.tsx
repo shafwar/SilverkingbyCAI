@@ -528,8 +528,11 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
             type="number"
             step="0.01"
             className="w-full rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-white transition-all placeholder:text-white/30 focus:border-green-400/60 focus:bg-green-500/20 focus:outline-none focus:ring-2 focus:ring-green-400/30"
-            placeholder="250000000"
-            {...form.register("price", { valueAsNumber: true })}
+            placeholder="250000000 (optional)"
+            {...form.register("price", { 
+              valueAsNumber: true,
+              setValueAs: (v) => v === "" || v === null || v === undefined ? undefined : Number(v)
+            })}
           />
           {form.formState.errors.price && (
             <motion.p

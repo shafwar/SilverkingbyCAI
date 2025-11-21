@@ -96,11 +96,12 @@ export async function POST(request: Request) {
         const { url: qrImageUrl } = await generateAndStoreQR(serialCode, verifyUrl);
 
         // Create product with stock = 1 (one unit per serial number)
+        // Price is optional - if not provided, set to null
         const product = await prisma.product.create({
           data: {
             name: payload.name,
             weight: payload.weight,
-            price: payload.price,
+            price: payload.price ?? null, // Explicitly set to null if undefined
             stock: 1, // Each serial number represents one unit
             serialCode,
             qrRecord: {
@@ -143,11 +144,12 @@ export async function POST(request: Request) {
     const verifyUrl = getVerifyUrl(serialCode);
     const { url: qrImageUrl } = await generateAndStoreQR(serialCode, verifyUrl);
 
+    // Price is optional - if not provided, set to null
     const product = await prisma.product.create({
       data: {
         name: payload.name,
         weight: payload.weight,
-        price: payload.price,
+        price: payload.price ?? null, // Explicitly set to null if undefined
         stock: payload.stock ?? 1,
         serialCode,
         qrRecord: {
