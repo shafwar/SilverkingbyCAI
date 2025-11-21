@@ -134,11 +134,18 @@ export async function GET(request: NextRequest) {
         const y = currentY;
 
         // Add QR code image to PDF
-        doc.image(pngBuffer, x, y, {
-          width: qrSize,
-          height: qrSize,
-          align: "center",
-        });
+        // PDFKit can accept Buffer directly
+        try {
+          doc.image(pngBuffer, x, y, {
+            width: qrSize,
+            height: qrSize,
+            fit: [qrSize, qrSize],
+          });
+        } catch (imageError) {
+          console.error(`Error adding image for ${product.serialCode}:`, imageError);
+          // Continue with next product if image fails
+          continue;
+        }
 
         // Add product name below QR (centered)
         doc.fontSize(10).text(product.name, x, y + qrSize + 5, {
@@ -189,9 +196,21 @@ export async function GET(request: NextRequest) {
         "Cache-Control": "no-cache",
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("PDF generation failed:", error);
-    return new NextResponse("Failed to generate PDF", { status: 500 });
+    console.error("Error details:", {
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name,
+    });
+    return NextResponse.json(
+      { 
+        error: "Failed to generate PDF", 
+        message: error?.message || "Unknown error",
+        details: process.env.NODE_ENV === "development" ? error?.stack : undefined
+      },
+      { status: 500 }
+    );
   }
 }
 

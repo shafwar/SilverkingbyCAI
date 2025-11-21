@@ -33,12 +33,12 @@ export function QrPreviewGrid() {
   const handleDownload = async (product: Product) => {
     setIsDownloading(true);
     try {
-      // Use PDF download endpoint
-      const response = await fetch(`/api/qr/${product.serialCode}/download-pdf`);
+      // Use PNG download endpoint (more reliable than PDF)
+      const response = await fetch(`/api/qr/${product.serialCode}/download`);
       
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || `Failed to generate PDF: ${response.statusText}`);
+        throw new Error(errorText || `Failed to fetch QR: ${response.statusText}`);
       }
       
       const blob = await response.blob();
@@ -50,7 +50,7 @@ export function QrPreviewGrid() {
       
       // Get filename from Content-Disposition header or use default
       const contentDisposition = response.headers.get("Content-Disposition");
-      let filename = `QR-${product.serialCode}.pdf`;
+      let filename = `QR-${product.serialCode}.png`;
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
         if (filenameMatch) {
@@ -215,7 +215,7 @@ export function QrPreviewGrid() {
               whileTap={{ scale: isDownloading ? 1 : 0.95 }}
             >
               <Download className="h-4 w-4" />
-              {isDownloading ? "Generating PDF..." : "Download QR Code (PDF)"}
+              {isDownloading ? "Downloading..." : "Download QR Code"}
             </motion.button>
           </div>
         )}
