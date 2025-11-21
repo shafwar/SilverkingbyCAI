@@ -14,7 +14,6 @@ import {
   QrCode,
   ActivitySquare,
   BarChart3,
-  Settings,
   Menu,
   LogOut,
 } from "lucide-react";
@@ -31,7 +30,6 @@ const navItems = [
   { label: "QR Preview", href: "/admin/qr-preview", icon: QrCode },
   { label: "Logs", href: "/admin/logs", icon: ActivitySquare },
   { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
-  { label: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
 export function AdminLayout({ children, email }: AdminLayoutProps) {
@@ -89,7 +87,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
                 priority
               />
             </div>
-            <span className="text-lg font-semibold tracking-[0.35em] uppercase text-white">
+            <span className="text-sm md:text-lg font-semibold tracking-[0.35em] uppercase text-white">
               SILVER KING
             </span>
           </Link>
@@ -139,7 +137,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         </AnimatePresence>
       </motion.nav>
 
-      <main className="mx-auto max-w-[1400px] px-6 pb-12 pt-24 lg:pt-28">{children}</main>
+      <main className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-12 pt-20 sm:pt-24 lg:pt-28">{children}</main>
 
       <Toaster
         position="top-right"

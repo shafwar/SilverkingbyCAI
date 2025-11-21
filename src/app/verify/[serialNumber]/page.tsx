@@ -30,14 +30,53 @@ export default function VerifyPage() {
   useEffect(() => {
     async function verifyProduct() {
       try {
-        const response = await fetch(`/api/verify/${serialNumber}`);
+        // Normalize serial number (uppercase, remove special chars)
+        const normalizedSerial = serialNumber?.trim().toUpperCase().replace(/[^A-Z0-9]/g, "") || "";
+        
+        if (!normalizedSerial || normalizedSerial.length < 3) {
+          setResult({
+            verified: false,
+            error: "Invalid serial number format",
+          });
+          setLoading(false);
+          return;
+        }
+
+        const response = await fetch(`/api/verify/${encodeURIComponent(normalizedSerial)}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+          setResult({
+            verified: false,
+            error: errorData.error || `Verification failed: ${response.status}`,
+          });
+          setLoading(false);
+          return;
+        }
+
         const data = await response.json();
+        
+        // Validate response
+        if (!data || typeof data !== "object") {
+          setResult({
+            verified: false,
+            error: "Invalid response from server",
+          });
+          setLoading(false);
+          return;
+        }
+
         setResult(data);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Verification error:", error);
         setResult({
           verified: false,
-          error: "Failed to verify product. Please try again.",
+          error: error?.message || "Failed to verify product. Please try again.",
         });
       } finally {
         setLoading(false);
@@ -46,6 +85,12 @@ export default function VerifyPage() {
 
     if (serialNumber) {
       verifyProduct();
+    } else {
+      setLoading(false);
+      setResult({
+        verified: false,
+        error: "Serial number is required",
+      });
     }
   }, [serialNumber]);
 

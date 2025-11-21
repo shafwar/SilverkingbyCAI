@@ -81,12 +81,12 @@ export function QrPreviewGrid() {
 
     setIsDownloadingAll(true);
     try {
-      // Download all QR codes as a single PDF file
-      const response = await fetch("/api/qr/download-all-pdf");
+      // Download all QR codes as a single PNG grid image
+      const response = await fetch("/api/qr/download-all-png");
       
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || "Failed to generate PDF");
+        throw new Error(errorText || "Failed to generate PNG grid");
       }
       
       const blob = await response.blob();
@@ -96,7 +96,7 @@ export function QrPreviewGrid() {
       
       // Get filename from Content-Disposition header or use default
       const contentDisposition = response.headers.get("Content-Disposition");
-      let filename = `Silver-King-All-QR-Codes-${new Date().toISOString().split("T")[0]}.pdf`;
+      let filename = `Silver-King-All-QR-Codes-${new Date().toISOString().split("T")[0]}.png`;
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
         if (filenameMatch) {
@@ -111,10 +111,10 @@ export function QrPreviewGrid() {
       window.URL.revokeObjectURL(url);
       
       // Show success message
-      alert(`Successfully downloaded PDF with ${data.products.length} QR code(s)!`);
+      alert(`Successfully downloaded PNG with ${data.products.length} QR code(s)!`);
     } catch (error: any) {
-      console.error("Failed to download PDF:", error);
-      alert(`Failed to download PDF: ${error.message || "Please try again"}`);
+      console.error("Failed to download PNG:", error);
+      alert(`Failed to download PNG: ${error.message || "Please try again"}`);
     } finally {
       setIsDownloadingAll(false);
     }
@@ -141,7 +141,7 @@ export function QrPreviewGrid() {
             whileTap={{ scale: isDownloadingAll ? 1 : 0.98 }}
           >
             <FileText className="h-4 w-4" />
-            {isDownloadingAll ? "Generating PDF..." : `Download All as PDF (${data.products.length})`}
+            {isDownloadingAll ? "Generating PNG..." : `Download All as PNG (${data.products.length})`}
           </motion.button>
         </div>
       )}

@@ -24,7 +24,6 @@ import {
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import { Scanner } from "@/components/shared/Scanner";
-import { VerificationModal } from "@/components/shared/VerificationModal";
 import { useRouter } from "next/navigation";
 import { APP_NAME } from "@/utils/constants";
 import { getR2UrlClient } from "@/utils/r2-url";
@@ -33,16 +32,6 @@ if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
 }
 
-interface VerificationData {
-  weight: string;
-  purity: string;
-  serialNumber: string;
-  productName: string;
-  firstScanned?: string;
-  totalScans: number;
-  locations?: Array<{ city: string; country: string }>;
-  isAuthentic: boolean;
-}
 
 const workflowSteps = [
   {
@@ -412,8 +401,6 @@ export default function AuthenticityPage() {
   const [showScanner, setShowScanner] = useState(false);
   const [showManualInput, setShowManualInput] = useState(false);
   const [serialNumber, setSerialNumber] = useState("");
-  const [verificationData, setVerificationData] = useState<VerificationData | null>(null);
-  const [isVerifying, setIsVerifying] = useState(false);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const heroRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -465,12 +452,36 @@ export default function AuthenticityPage() {
         return;
       }
       setShowScanner(false);
-      await verifySerial(decodedText);
+      
+      // Extract serial code from URL if QR code contains full URL
+      let serialCode = decodedText.trim();
+      
+      if (serialCode.includes("/verify/")) {
+        // Extract serial code from URL: https://cahayasilverking.id/verify/SKA00001
+        const urlMatch = serialCode.match(/\/verify\/([A-Z0-9]+)/i);
+        if (urlMatch && urlMatch[1]) {
+          serialCode = urlMatch[1];
+        }
+      } else if (serialCode.includes("http")) {
+        // Try to extract from any URL format
+        const urlParts = serialCode.split("/");
+        serialCode = urlParts[urlParts.length - 1] || serialCode;
+      }
+      
+      // Normalize serial to uppercase
+      const normalizedSerial = serialCode.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      
+      if (!normalizedSerial || normalizedSerial.length < 3) {
+        alert("Invalid QR code format. Please scan a valid Silver King QR code.");
+        return;
+      }
+      
+      // Redirect to verify page
+      router.push(`/verify/${normalizedSerial}`);
     } catch (error) {
       console.error("Error handling scan success:", error);
       setShowScanner(false);
-      // Still try to verify even if there's an error
-      await verifySerial(decodedText || "");
+      alert("Failed to process QR code. Please try again.");
     }
   };
 
@@ -486,120 +497,24 @@ export default function AuthenticityPage() {
   };
 
   const handleManualVerify = async () => {
-    if (!serialNumber.trim()) return;
-    await verifySerial(serialNumber.trim());
-  };
-
-  const verifySerial = async (serial: string) => {
-    // Close manual input modal when verification starts
-    setShowManualInput(false);
-    setIsVerifying(true);
-    setVerificationData(null);
-
-    try {
-      // Extract serial code from URL if QR code contains full URL
-      // QR codes contain URLs like: https://cahayasilverking.id/verify/SKA00001
-      // or just the serial code: SKA00001
-      let serialCode = serial.trim();
-      
-      if (!serialCode) {
-        throw new Error("Serial code is empty");
-      }
-      
-      // Check if it's a URL and extract serial code
-      if (serialCode.includes("/verify/")) {
-        // Extract serial code from URL
-        const urlMatch = serialCode.match(/\/verify\/([A-Z0-9]+)/i);
-        if (urlMatch && urlMatch[1]) {
-          serialCode = urlMatch[1];
-        }
-      } else if (serialCode.includes("http")) {
-        // Try to extract from any URL format
-        const urlParts = serialCode.split("/");
-        serialCode = urlParts[urlParts.length - 1] || serialCode;
-      }
-      
-      // Normalize serial to uppercase (same as API does)
-      const normalizedSerial = serialCode.toUpperCase().replace(/[^A-Z0-9]/g, "");
-      
-      if (!normalizedSerial || normalizedSerial.length < 3) {
-        throw new Error("Invalid serial code format");
-      }
-      
-      // Use the same endpoint for both scan and manual input
-      const response = await fetch(`/api/verify/${encodeURIComponent(normalizedSerial)}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      // Check if response is ok
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
-        throw new Error(errorData.error || `Verification failed: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-
-      // Validate response data
-      if (!data || typeof data !== "object") {
-        throw new Error("Invalid response from server");
-      }
-
-      // API returns 'verified' or 'success'
-      if (data.verified || data.success) {
-        setVerificationData({
-          weight: `${data.product?.weight || "N/A"}gr`,
-          purity: data.product?.purity || "99.99%",
-          serialNumber: normalizedSerial,
-          productName: data.product?.name || "Unknown Product",
-          firstScanned: data.firstScanned
-            ? new Date(data.firstScanned).toLocaleDateString()
-            : undefined,
-          totalScans: data.scanCount || 0,
-          locations: data.locations || [],
-          isAuthentic: true,
-        });
-      } else {
-        // Product not found or not verified
-        setVerificationData({
-          weight: "N/A",
-          purity: "N/A",
-          serialNumber: normalizedSerial,
-          productName: data.error || "Product Not Found",
-          totalScans: 0,
-          isAuthentic: false,
-        });
-      }
-    } catch (error: any) {
-      console.error("Verification error:", error);
-      
-      // Extract serial code for display even on error
-      let displaySerial = serial.trim();
-      if (displaySerial.includes("/verify/")) {
-        const match = displaySerial.match(/\/verify\/([A-Z0-9]+)/i);
-        if (match && match[1]) {
-          displaySerial = match[1].toUpperCase();
-        }
-      } else if (displaySerial.includes("http")) {
-        const parts = displaySerial.split("/");
-        displaySerial = parts[parts.length - 1] || displaySerial;
-      }
-      displaySerial = displaySerial.toUpperCase().replace(/[^A-Z0-9]/g, "");
-
-      setVerificationData({
-        weight: "N/A",
-        purity: "N/A",
-        serialNumber: displaySerial || "Unknown",
-        productName: error?.message || "Verification Error",
-        totalScans: 0,
-        isAuthentic: false,
-      });
-    } finally {
-      setIsVerifying(false);
+    if (!serialNumber.trim()) {
+      alert("Please enter a serial number");
+      return;
     }
+    
+    // Normalize serial code
+    let serialCode = serialNumber.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    
+    if (!serialCode || serialCode.length < 3) {
+      alert("Invalid serial number format. Please enter a valid serial code (e.g., SKA00001)");
+      return;
+    }
+    
+    // Close modal and redirect to verify page
+    setShowManualInput(false);
+    router.push(`/verify/${serialCode}`);
   };
+
 
   const pageRef = useRef<HTMLDivElement>(null);
   const sectionsRef = useRef<(HTMLDivElement | null)[]>([]);
@@ -894,10 +809,10 @@ export default function AuthenticityPage() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handleManualVerify}
-                    disabled={isVerifying || !serialNumber.trim()}
+                    disabled={!serialNumber.trim()}
                     className="rounded-lg bg-gradient-to-r from-luxury-gold to-luxury-lightGold px-6 py-3 text-sm font-semibold text-black transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isVerifying ? "Verifying..." : "Verify"}
+                    Verify
                   </motion.button>
                 </div>
                 <p className="text-xs text-white/50 text-center">
@@ -909,21 +824,9 @@ export default function AuthenticityPage() {
         )}
       </AnimatePresence>
 
-      {/* Verification Modal - Only show when not in manual input mode */}
-      {!showManualInput && (
-        <VerificationModal
-          isOpen={isVerifying || !!verificationData}
-          onClose={() => {
-            setVerificationData(null);
-            setSerialNumber("");
-          }}
-          data={verificationData}
-          isVerifying={isVerifying}
-        />
-      )}
 
       {/* Benefits Section */}
-      {!verificationData && !showManualInput && (
+      {!showManualInput && (
         <section
           ref={(element) => {
             sectionsRef.current[2] = element as HTMLDivElement | null;
