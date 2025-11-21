@@ -15,13 +15,15 @@ import { motion } from "framer-motion";
 import { Download } from "lucide-react";
 
 import { fetcher } from "@/lib/fetcher";
-import { DateRangePicker, DateRangeOption } from "./DateRangePicker";
+import { MonthYearPicker } from "./MonthYearPicker";
 import { AnimatedCard } from "./AnimatedCard";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import { DataTable, TableColumn } from "./DataTable";
 
 type TrendResponse = {
   data: { date: string; count: number }[];
+  month?: number | null;
+  year?: number | null;
 };
 
 type TopProductsResponse = {
@@ -33,29 +35,52 @@ type LogsResponse = {
 };
 
 export function AnalyticsPanel() {
-  const [range, setRange] = useState<DateRangeOption>("7d");
-  const [customDays, setCustomDays] = useState(14);
+  const now = new Date();
+  const [month, setMonth] = useState(now.getMonth() + 1); // 1-indexed
+  const [year, setYear] = useState(now.getFullYear());
 
-  const days = useMemo(() => {
-    if (range === "7d") return 7;
-    if (range === "30d") return 30;
-    return customDays;
-  }, [customDays, range]);
+  // Check if viewing current month - only real-time updates for current month
+  const isCurrentMonth = useMemo(() => {
+    const currentDate = new Date();
+    return year === currentDate.getFullYear() && month === currentDate.getMonth() + 1;
+  }, [month, year]);
 
-  const { data: trend, isLoading: trendLoading } = useSWR<TrendResponse>(
-    `/api/admin/scans/trend?range=${days}`,
+  const { data: trend, isLoading: trendLoading, mutate: mutateTrend } = useSWR<TrendResponse>(
+    `/api/admin/scans/trend?month=${month}&year=${year}`,
     fetcher,
-    { refreshInterval: 60000 }
+    {
+      // Only refresh in real-time for current month (every 30 seconds)
+      // History months don't need real-time updates
+      refreshInterval: isCurrentMonth ? 30000 : 0,
+      revalidateOnFocus: isCurrentMonth, // Revalidate on focus only for current month
+      revalidateOnReconnect: true, // Always revalidate when connection is restored
+      dedupingInterval: 5000, // Dedupe requests within 5 seconds
+    }
   );
+
+  const handleMonthYearChange = (newMonth: number, newYear: number) => {
+    setMonth(newMonth);
+    setYear(newYear);
+    // Immediately fetch new data when month changes
+    mutateTrend();
+  };
 
   const { data: top, isLoading: topLoading } = useSWR<TopProductsResponse>(
     "/api/admin/scans/top-products",
     fetcher,
-    { refreshInterval: 120000 }
+    {
+      refreshInterval: 60000, // Refresh every minute for top products
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      dedupingInterval: 5000,
+    }
   );
 
   const { data: logs } = useSWR<LogsResponse>("/api/admin/logs?limit=200", fetcher, {
-    refreshInterval: 60000,
+    refreshInterval: 30000, // Refresh every 30 seconds for logs (real-time activity)
+    revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+    dedupingInterval: 5000,
   });
 
   const trendSeries = trend?.data ?? [];
@@ -102,18 +127,7 @@ export function AnalyticsPanel() {
             <h3 className="mt-2 text-2xl font-semibold text-white">Scans over time</h3>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <DateRangePicker value={range} onChange={setRange} />
-            {range === "custom" && (
-              <input
-                type="number"
-                min={1}
-                max={60}
-                value={customDays}
-                onChange={(event) => setCustomDays(Number(event.target.value))}
-                className="w-24 rounded-full border border-white/10 bg-transparent px-4 py-2 text-sm text-white focus:border-[#FFD700] focus:outline-none"
-                aria-label="Custom day range"
-              />
-            )}
+            <MonthYearPicker month={month} year={year} onChange={handleMonthYearChange} />
             <button
               onClick={() => window.open("/api/export/excel", "_blank")}
               className="inline-flex items-center gap-2 rounded-full border border-[#FFD700]/40 px-4 py-2 text-sm text-white transition hover:border-[#FFD700]"

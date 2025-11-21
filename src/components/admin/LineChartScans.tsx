@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import useSWR from "swr";
 import {
   ResponsiveContainer,
@@ -16,24 +16,43 @@ import { motion } from "framer-motion";
 import { fetcher } from "@/lib/fetcher";
 import { AnimatedCard } from "./AnimatedCard";
 import { LoadingSkeleton } from "./LoadingSkeleton";
+import { MonthYearPicker } from "./MonthYearPicker";
 
 type TrendResponse = {
   range: number;
+  month?: number | null;
+  year?: number | null;
   data: { date: string; count: number }[];
 };
 
-const ranges: TrendResponse["range"][] = [7, 30];
-
 export function LineChartScans() {
-  const [range, setRange] = useState<TrendResponse["range"]>(7);
+  const now = new Date();
+  const [month, setMonth] = useState(now.getMonth() + 1); // 1-indexed
+  const [year, setYear] = useState(now.getFullYear());
+
+  // Check if viewing current month - only real-time updates for current month
+  const isCurrentMonth = useMemo(() => {
+    const currentDate = new Date();
+    return year === currentDate.getFullYear() && month === currentDate.getMonth() + 1;
+  }, [month, year]);
+
   const { data, error, isLoading, mutate } = useSWR<TrendResponse>(
-    `/api/admin/scans/trend?range=${range}`,
+    `/api/admin/scans/trend?month=${month}&year=${year}`,
     fetcher,
-    { refreshInterval: 60000, revalidateOnFocus: false }
+    {
+      // Only refresh in real-time for current month (every 30 seconds)
+      // History months don't need real-time updates
+      refreshInterval: isCurrentMonth ? 30000 : 0,
+      revalidateOnFocus: isCurrentMonth, // Revalidate on focus only for current month
+      revalidateOnReconnect: true, // Always revalidate when connection is restored
+      dedupingInterval: 5000, // Dedupe requests within 5 seconds
+    }
   );
 
-  const handleRangeChange = (value: TrendResponse["range"]) => {
-    setRange(value);
+  const handleMonthYearChange = (newMonth: number, newYear: number) => {
+    setMonth(newMonth);
+    setYear(newYear);
+    // Immediately fetch new data when month changes
     mutate();
   };
 
@@ -43,26 +62,12 @@ export function LineChartScans() {
 
   return (
     <AnimatedCard>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.35em] text-white/50">Verification Volume</p>
           <h3 className="mt-2 text-2xl font-semibold text-white">Scan trajectory</h3>
         </div>
-        <div className="flex gap-2">
-          {ranges.map((item) => (
-            <button
-              key={item}
-              onClick={() => handleRangeChange(item)}
-              className={`rounded-full border px-4 py-1 text-sm transition ${
-                range === item
-                  ? "border-[#FFD700]/80 bg-[#FFD700]/20 text-white"
-                  : "border-white/10 text-white/60 hover:border-white/30"
-              }`}
-            >
-              Last {item} days
-            </button>
-          ))}
-        </div>
+        <MonthYearPicker month={month} year={year} onChange={handleMonthYearChange} />
       </div>
 
       {loading && <LoadingSkeleton className="h-72 w-full" />}
