@@ -15,13 +15,15 @@ import { motion } from "framer-motion";
 import { Download } from "lucide-react";
 
 import { fetcher } from "@/lib/fetcher";
-import { DateRangePicker, DateRangeOption } from "./DateRangePicker";
+import { MonthYearPicker } from "./MonthYearPicker";
 import { AnimatedCard } from "./AnimatedCard";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import { DataTable, TableColumn } from "./DataTable";
 
 type TrendResponse = {
   data: { date: string; count: number }[];
+  month?: number | null;
+  year?: number | null;
 };
 
 type TopProductsResponse = {
@@ -33,20 +35,20 @@ type LogsResponse = {
 };
 
 export function AnalyticsPanel() {
-  const [range, setRange] = useState<DateRangeOption>("7d");
-  const [customDays, setCustomDays] = useState(14);
-
-  const days = useMemo(() => {
-    if (range === "7d") return 7;
-    if (range === "30d") return 30;
-    return customDays;
-  }, [customDays, range]);
+  const now = new Date();
+  const [month, setMonth] = useState(now.getMonth() + 1); // 1-indexed
+  const [year, setYear] = useState(now.getFullYear());
 
   const { data: trend, isLoading: trendLoading } = useSWR<TrendResponse>(
-    `/api/admin/scans/trend?range=${days}`,
+    `/api/admin/scans/trend?month=${month}&year=${year}`,
     fetcher,
     { refreshInterval: 60000 }
   );
+
+  const handleMonthYearChange = (newMonth: number, newYear: number) => {
+    setMonth(newMonth);
+    setYear(newYear);
+  };
 
   const { data: top, isLoading: topLoading } = useSWR<TopProductsResponse>(
     "/api/admin/scans/top-products",
@@ -102,18 +104,7 @@ export function AnalyticsPanel() {
             <h3 className="mt-2 text-2xl font-semibold text-white">Scans over time</h3>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <DateRangePicker value={range} onChange={setRange} />
-            {range === "custom" && (
-              <input
-                type="number"
-                min={1}
-                max={60}
-                value={customDays}
-                onChange={(event) => setCustomDays(Number(event.target.value))}
-                className="w-24 rounded-full border border-white/10 bg-transparent px-4 py-2 text-sm text-white focus:border-[#FFD700] focus:outline-none"
-                aria-label="Custom day range"
-              />
-            )}
+            <MonthYearPicker month={month} year={year} onChange={handleMonthYearChange} />
             <button
               onClick={() => window.open("/api/export/excel", "_blank")}
               className="inline-flex items-center gap-2 rounded-full border border-[#FFD700]/40 px-4 py-2 text-sm text-white transition hover:border-[#FFD700]"
