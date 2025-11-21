@@ -486,8 +486,28 @@ export default function AuthenticityPage() {
     setVerificationData(null);
 
     try {
+      // Extract serial code from URL if QR code contains full URL
+      // QR codes contain URLs like: https://cahayasilverking.id/verify/SKA00001
+      // or just the serial code: SKA00001
+      let serialCode = serial.trim();
+      
+      // Check if it's a URL and extract serial code
+      if (serialCode.includes("/verify/")) {
+        // Extract serial code from URL
+        const urlMatch = serialCode.match(/\/verify\/([A-Z0-9]+)/i);
+        if (urlMatch && urlMatch[1]) {
+          serialCode = urlMatch[1];
+        }
+      } else if (serialCode.includes("http")) {
+        // Try to extract from any URL format
+        const urlParts = serialCode.split("/");
+        serialCode = urlParts[urlParts.length - 1] || serialCode;
+      }
+      
       // Normalize serial to uppercase (same as API does)
-      const normalizedSerial = serial.trim().toUpperCase();
+      const normalizedSerial = serialCode.toUpperCase();
+      
+      // Use the same endpoint for both scan and manual input
       const response = await fetch(`/api/verify/${encodeURIComponent(normalizedSerial)}`);
       const data = await response.json();
 
