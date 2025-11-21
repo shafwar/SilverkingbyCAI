@@ -6,14 +6,15 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { serialCode: string } }
 ) {
-  const serial = params.serialCode?.trim().toUpperCase();
+  try {
+    const serial = params.serialCode?.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
 
-  if (!serial) {
-    return NextResponse.json(
-      { verified: false, error: "Serial code missing" },
-      { status: 400 }
-    );
-  }
+    if (!serial || serial.length < 3) {
+      return NextResponse.json(
+        { verified: false, success: false, error: "Invalid serial code format" },
+        { status: 400 }
+      );
+    }
 
   const qrRecord = await prisma.qrRecord.findUnique({
     where: { serialCode: serial },
@@ -76,23 +77,34 @@ export async function GET(
       index === self.findIndex((l) => l.city === loc.city && l.country === loc.country)
     );
 
-  return NextResponse.json({
-    verified: true,
-    success: true, // Add for backward compatibility
-    product: {
-      id: qrRecord.product.id,
-      name: qrRecord.product.name,
-      weight: qrRecord.product.weight,
-      purity: "99.99%", // Default purity (not stored in Product model)
-      serialCode: qrRecord.serialCode,
-      price: qrRecord.product.price,
-      stock: qrRecord.product.stock,
-      qrImageUrl: qrRecord.qrImageUrl,
-      createdAt: qrRecord.product.createdAt,
-    },
-    scanCount: qrRecord.scanCount + 1,
-    firstScanned: firstScanned.toISOString(),
-    locations: locations,
-  });
+    return NextResponse.json({
+      verified: true,
+      success: true, // Add for backward compatibility
+      product: {
+        id: qrRecord.product.id,
+        name: qrRecord.product.name,
+        weight: qrRecord.product.weight,
+        purity: "99.99%", // Default purity (not stored in Product model)
+        serialCode: qrRecord.serialCode,
+        price: qrRecord.product.price,
+        stock: qrRecord.product.stock,
+        qrImageUrl: qrRecord.qrImageUrl,
+        createdAt: qrRecord.product.createdAt,
+      },
+      scanCount: qrRecord.scanCount + 1,
+      firstScanned: firstScanned.toISOString(),
+      locations: locations,
+    });
+  } catch (error: any) {
+    console.error("Verification API error:", error);
+    return NextResponse.json(
+      {
+        verified: false,
+        success: false,
+        error: error?.message || "Internal server error during verification",
+      },
+      { status: 500 }
+    );
+  }
 }
 

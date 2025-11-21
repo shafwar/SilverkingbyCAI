@@ -59,10 +59,23 @@ export function Scanner({ onScanSuccess, onClose }: ScannerProps) {
         aspectRatio: 1.0,
       };
 
-      const handleScanSuccess = (decodedText: string) => {
-        onScanSuccessRef.current(decodedText);
-        html5QrCode.stop();
-        setIsScanning(false);
+      const handleScanSuccess = (decodedText: string, decodedResult: any) => {
+        try {
+          if (!decodedText || !decodedText.trim()) {
+            console.warn("Empty QR code detected");
+            return;
+          }
+          console.log("QR code scanned successfully:", decodedText);
+          onScanSuccessRef.current(decodedText);
+          html5QrCode.stop().catch((err) => {
+            console.error("Error stopping scanner:", err);
+          });
+          setIsScanning(false);
+        } catch (error) {
+          console.error("Error in handleScanSuccess:", error);
+          html5QrCode.stop().catch(() => {});
+          setIsScanning(false);
+        }
       };
 
       html5QrCode
@@ -70,17 +83,32 @@ export function Scanner({ onScanSuccess, onClose }: ScannerProps) {
           { facingMode: "environment" },
           config,
           handleScanSuccess,
-          () => {
-            // Ignore scan errors during continuous scanning
+          (errorMessage: string) => {
+            // Ignore scan errors during continuous scanning (these are normal)
+            // Only log if it's a significant error
+            if (errorMessage && !errorMessage.includes("NotFoundException")) {
+              console.debug("Scan error (ignored):", errorMessage);
+            }
           }
         )
         .then(() => {
           setIsScanning(true);
           setError(null);
+          console.log("Scanner started successfully");
         })
-        .catch((err) => {
-          console.error("Scanner error:", err);
-          setError("Failed to start camera. Please ensure camera permissions are granted.");
+        .catch((err: any) => {
+          console.error("Scanner initialization error:", err);
+          const errorMessage = err?.message || String(err);
+          
+          if (errorMessage.includes("Permission") || errorMessage.includes("permission")) {
+            setError("Camera permission denied. Please allow camera access in your browser settings.");
+          } else if (errorMessage.includes("NotFound") || errorMessage.includes("not found")) {
+            setError("No camera found. Please ensure your device has a camera.");
+          } else if (errorMessage.includes("NotAllowed") || errorMessage.includes("not allowed")) {
+            setError("Camera access not allowed. Please check your browser permissions.");
+          } else {
+            setError("Failed to start camera. Please ensure camera permissions are granted and try again.");
+          }
           setIsScanning(false);
         });
     }, 100);

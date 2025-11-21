@@ -459,8 +459,19 @@ export default function AuthenticityPage() {
   );
 
   const handleScanSuccess = async (decodedText: string) => {
-    setShowScanner(false);
-    await verifySerial(decodedText);
+    try {
+      if (!decodedText || !decodedText.trim()) {
+        console.error("Empty QR code scanned");
+        return;
+      }
+      setShowScanner(false);
+      await verifySerial(decodedText);
+    } catch (error) {
+      console.error("Error handling scan success:", error);
+      setShowScanner(false);
+      // Still try to verify even if there's an error
+      await verifySerial(decodedText || "");
+    }
   };
 
   const handleOpenScanner = () => {
@@ -491,6 +502,10 @@ export default function AuthenticityPage() {
       // or just the serial code: SKA00001
       let serialCode = serial.trim();
       
+      if (!serialCode) {
+        throw new Error("Serial code is empty");
+      }
+      
       // Check if it's a URL and extract serial code
       if (serialCode.includes("/verify/")) {
         // Extract serial code from URL
@@ -505,14 +520,35 @@ export default function AuthenticityPage() {
       }
       
       // Normalize serial to uppercase (same as API does)
-      const normalizedSerial = serialCode.toUpperCase();
+      const normalizedSerial = serialCode.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      
+      if (!normalizedSerial || normalizedSerial.length < 3) {
+        throw new Error("Invalid serial code format");
+      }
       
       // Use the same endpoint for both scan and manual input
-      const response = await fetch(`/api/verify/${encodeURIComponent(normalizedSerial)}`);
+      const response = await fetch(`/api/verify/${encodeURIComponent(normalizedSerial)}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      // Check if response is ok
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(errorData.error || `Verification failed: ${response.status} ${response.statusText}`);
+      }
+
       const data = await response.json();
 
+      // Validate response data
+      if (!data || typeof data !== "object") {
+        throw new Error("Invalid response from server");
+      }
+
       // API returns 'verified' or 'success'
-      if (response.ok && (data.verified || data.success)) {
+      if (data.verified || data.success) {
         setVerificationData({
           weight: `${data.product?.weight || "N/A"}gr`,
           purity: data.product?.purity || "99.99%",
@@ -526,21 +562,37 @@ export default function AuthenticityPage() {
           isAuthentic: true,
         });
       } else {
+        // Product not found or not verified
         setVerificationData({
           weight: "N/A",
           purity: "N/A",
           serialNumber: normalizedSerial,
-          productName: "Unknown Product",
+          productName: data.error || "Product Not Found",
           totalScans: 0,
           isAuthentic: false,
         });
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Verification error:", error);
+      
+      // Extract serial code for display even on error
+      let displaySerial = serial.trim();
+      if (displaySerial.includes("/verify/")) {
+        const match = displaySerial.match(/\/verify\/([A-Z0-9]+)/i);
+        if (match && match[1]) {
+          displaySerial = match[1].toUpperCase();
+        }
+      } else if (displaySerial.includes("http")) {
+        const parts = displaySerial.split("/");
+        displaySerial = parts[parts.length - 1] || displaySerial;
+      }
+      displaySerial = displaySerial.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
       setVerificationData({
         weight: "N/A",
         purity: "N/A",
-        serialNumber: serial,
-        productName: "Error",
+        serialNumber: displaySerial || "Unknown",
+        productName: error?.message || "Verification Error",
         totalScans: 0,
         isAuthentic: false,
       });
