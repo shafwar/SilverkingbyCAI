@@ -56,8 +56,26 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Collect PDF chunks
-    doc.on("data", (chunk) => chunks.push(chunk));
+    // Set up promise for PDF completion BEFORE adding any content
+    const pdfPromise = new Promise<Buffer>((resolve, reject) => {
+      // Collect PDF chunks
+      doc.on("data", (chunk) => chunks.push(chunk));
+      
+      // Handle successful completion
+      doc.on("end", () => {
+        try {
+          const buffer = Buffer.concat(chunks);
+          resolve(buffer);
+        } catch (error) {
+          reject(error);
+        }
+      });
+      
+      // Handle errors
+      doc.on("error", (error) => {
+        reject(error);
+      });
+    });
 
     // Add header
     doc.fontSize(20).text("Silver King - Product QR Codes", { align: "center" });
@@ -153,14 +171,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Finalize PDF and wait for completion
-    const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
-      doc.on("end", () => {
-        resolve(Buffer.concat(chunks));
-      });
-      doc.on("error", reject);
-      doc.end();
-    });
+    // Finalize PDF
+    doc.end();
+    
+    // Wait for PDF to complete
+    const pdfBuffer = await pdfPromise;
 
     // Convert Buffer to Uint8Array for NextResponse
     const uint8Array = new Uint8Array(pdfBuffer);

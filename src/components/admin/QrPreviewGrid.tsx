@@ -33,11 +33,12 @@ export function QrPreviewGrid() {
   const handleDownload = async (product: Product) => {
     setIsDownloading(true);
     try {
-      // Use download endpoint that includes product info
-      const response = await fetch(`/api/qr/${product.serialCode}/download`);
+      // Use PDF download endpoint
+      const response = await fetch(`/api/qr/${product.serialCode}/download-pdf`);
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch QR: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(errorText || `Failed to generate PDF: ${response.statusText}`);
       }
       
       const blob = await response.blob();
@@ -49,7 +50,7 @@ export function QrPreviewGrid() {
       
       // Get filename from Content-Disposition header or use default
       const contentDisposition = response.headers.get("Content-Disposition");
-      let filename = `QR-${product.serialCode}.png`;
+      let filename = `QR-${product.serialCode}.pdf`;
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
         if (filenameMatch) {
@@ -64,9 +65,9 @@ export function QrPreviewGrid() {
       // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to download QR code:", error);
-      alert(`Failed to download QR code for ${product.serialCode}. Please try again.`);
+      alert(`Failed to download QR code: ${error.message || "Please try again"}`);
     } finally {
       setIsDownloading(false);
     }
@@ -214,7 +215,7 @@ export function QrPreviewGrid() {
               whileTap={{ scale: isDownloading ? 1 : 0.95 }}
             >
               <Download className="h-4 w-4" />
-              {isDownloading ? "Downloading..." : "Download QR Code"}
+              {isDownloading ? "Generating PDF..." : "Download QR Code (PDF)"}
             </motion.button>
           </div>
         )}
