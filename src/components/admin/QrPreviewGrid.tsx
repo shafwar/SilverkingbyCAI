@@ -29,11 +29,15 @@ export function QrPreviewGrid() {
   const [selected, setSelected] = useState<Product | null>(null);
 
   const handleDownload = async (product: Product) => {
-    if (!product.qrImageUrl) return;
+    // Use API route as fallback if qrImageUrl is null
+    const qrUrl = product.qrImageUrl || `/api/qr/${product.serialCode}`;
 
     try {
       // Fetch the image
-      const response = await fetch(product.qrImageUrl);
+      const response = await fetch(qrUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch QR: ${response.statusText}`);
+      }
       const blob = await response.blob();
 
       // Create a download link
@@ -49,6 +53,8 @@ export function QrPreviewGrid() {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Failed to download QR code:", error);
+      // Show user-friendly error
+      alert(`Failed to download QR code for ${product.serialCode}. Please try again.`);
     }
   };
 
@@ -76,45 +82,55 @@ export function QrPreviewGrid() {
             </div>
             <p className="mt-4 text-2xl font-semibold">{product.name}</p>
             <p className="text-sm text-white/60">{product.weight} gr</p>
-            {product.qrImageUrl ? (
-              <motion.div
-                className="mt-6 flex items-center gap-4 rounded-2xl border border-white/5 bg-black/40 p-4"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
+            <motion.div
+              className="mt-6 flex items-center gap-4 rounded-2xl border border-white/5 bg-black/40 p-4"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={product.qrImageUrl || `/api/qr/${product.serialCode}`}
+                alt={product.name}
+                className="h-28 w-28 rounded-2xl border border-white/10 bg-white p-3 object-contain"
+                onError={(e) => {
+                  // Fallback to API route if image fails to load
+                  const target = e.target as HTMLImageElement;
+                  if (target.src !== `/api/qr/${product.serialCode}`) {
+                    target.src = `/api/qr/${product.serialCode}`;
+                  }
+                }}
+              />
+              <button
+                className="ml-auto inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 transition hover:border-[#FFD700]/40 hover:text-white"
+                onClick={() => setSelected(product)}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={product.qrImageUrl}
-                  alt={product.name}
-                  className="h-28 w-28 rounded-2xl border border-white/10 bg-white p-3 object-contain"
-                />
-                <button
-                  className="ml-auto inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 transition hover:border-[#FFD700]/40 hover:text-white"
-                  onClick={() => setSelected(product)}
-                >
-                  <Maximize2 className="h-4 w-4" />
-                  Enlarge
-                </button>
-              </motion.div>
-            ) : (
-              <p className="mt-6 text-sm text-white/40">QR not generated yet.</p>
-            )}
+                <Maximize2 className="h-4 w-4" />
+                Enlarge
+              </button>
+            </motion.div>
           </AnimatedCard>
         ))}
       </div>
 
       <Modal open={Boolean(selected)} onClose={() => setSelected(null)} title={selected?.name}>
-        {selected?.qrImageUrl ? (
+        {selected && (
           <div className="flex flex-col items-center gap-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={selected.qrImageUrl}
+              src={selected.qrImageUrl || `/api/qr/${selected.serialCode}`}
               alt={selected.name}
               className="h-72 w-72 rounded-3xl border border-white/10 bg-white p-4 text-md object-contain"
+              onError={(e) => {
+                // Fallback to API route if image fails to load
+                const target = e.target as HTMLImageElement;
+                if (target.src !== `/api/qr/${selected.serialCode}`) {
+                  target.src = `/api/qr/${selected.serialCode}`;
+                }
+              }}
             />
             <p className="font-mono text-md text-white/70">{selected.serialCode}</p>
             <motion.button
-              onClick={() => selected && handleDownload(selected)}
+              onClick={() => handleDownload({ ...selected, qrImageUrl: selected.qrImageUrl || `/api/qr/${selected.serialCode}` })}
               className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-6 py-3 text-sm text-white/70 transition hover:border-[#FFD700]/40 hover:bg-black/60 hover:text-white"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -123,8 +139,6 @@ export function QrPreviewGrid() {
               Download QR Code
             </motion.button>
           </div>
-        ) : (
-          <p className="text-white/60">QR not available.</p>
         )}
       </Modal>
     </>
