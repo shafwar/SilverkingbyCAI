@@ -39,25 +39,48 @@ export function AnalyticsPanel() {
   const [month, setMonth] = useState(now.getMonth() + 1); // 1-indexed
   const [year, setYear] = useState(now.getFullYear());
 
-  const { data: trend, isLoading: trendLoading } = useSWR<TrendResponse>(
+  // Check if viewing current month - only real-time updates for current month
+  const isCurrentMonth = useMemo(() => {
+    const currentDate = new Date();
+    return year === currentDate.getFullYear() && month === currentDate.getMonth() + 1;
+  }, [month, year]);
+
+  const { data: trend, isLoading: trendLoading, mutate: mutateTrend } = useSWR<TrendResponse>(
     `/api/admin/scans/trend?month=${month}&year=${year}`,
     fetcher,
-    { refreshInterval: 60000 }
+    {
+      // Only refresh in real-time for current month (every 30 seconds)
+      // History months don't need real-time updates
+      refreshInterval: isCurrentMonth ? 30000 : 0,
+      revalidateOnFocus: isCurrentMonth, // Revalidate on focus only for current month
+      revalidateOnReconnect: true, // Always revalidate when connection is restored
+      dedupingInterval: 5000, // Dedupe requests within 5 seconds
+    }
   );
 
   const handleMonthYearChange = (newMonth: number, newYear: number) => {
     setMonth(newMonth);
     setYear(newYear);
+    // Immediately fetch new data when month changes
+    mutateTrend();
   };
 
   const { data: top, isLoading: topLoading } = useSWR<TopProductsResponse>(
     "/api/admin/scans/top-products",
     fetcher,
-    { refreshInterval: 120000 }
+    {
+      refreshInterval: 60000, // Refresh every minute for top products
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      dedupingInterval: 5000,
+    }
   );
 
   const { data: logs } = useSWR<LogsResponse>("/api/admin/logs?limit=200", fetcher, {
-    refreshInterval: 60000,
+    refreshInterval: 30000, // Refresh every 30 seconds for logs (real-time activity)
+    revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+    dedupingInterval: 5000,
   });
 
   const trendSeries = trend?.data ?? [];

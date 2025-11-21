@@ -123,22 +123,6 @@ export function MonthYearPicker({ month, year, onChange }: MonthYearPickerProps)
       >
         <ChevronRight className="h-4 w-4" />
       </button>
-
-      {/* Dropdown for quick selection */}
-      <select
-        value={`${year}-${month}`}
-        onChange={(e) => {
-          const [y, m] = e.target.value.split("-").map(Number);
-          onChange(m, y);
-        }}
-        className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white focus:border-[#FFD700] focus:outline-none focus:ring-2 focus:ring-[#FFD700]/20"
-      >
-        {availableOptions.map((opt) => (
-          <option key={`${opt.year}-${opt.month}`} value={`${opt.year}-${opt.month}`}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
     </div>
   );
 }
