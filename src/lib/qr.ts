@@ -64,13 +64,26 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
 
     // Draw serial number text below QR code
     ctx.fillStyle = "#0c0c0c";
-    ctx.font = "bold 20px Arial, sans-serif";
+    // Use a monospace font that's universally supported and handles alphanumeric characters well
+    ctx.font = "bold 20px 'Courier New', Courier, monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
     const textX = totalWidth / 2;
     const textY = qrHeight + padding + textHeight / 2;
-    ctx.fillText(serialCode, textX, textY);
+    
+    // Ensure proper text rendering with proper encoding
+    try {
+      ctx.fillText(serialCode, textX, textY);
+    } catch (error) {
+      console.error("Error rendering serial number text:", error);
+      // Fallback: render each character individually if there's an encoding issue
+      const charWidth = ctx.measureText("M").width;
+      const startX = textX - (serialCode.length * charWidth) / 2;
+      for (let i = 0; i < serialCode.length; i++) {
+        ctx.fillText(serialCode[i], startX + i * charWidth + charWidth / 2, textY);
+      }
+    }
 
     // Convert canvas to buffer
     return canvas.toBuffer("image/png");
@@ -143,8 +156,20 @@ export async function addProductInfoToQR(
     // Draw serial code below product name - smaller, monospace
     currentY += titleHeight / 2 + spacing + serialHeight / 2;
     ctx.fillStyle = "#666666";
-    ctx.font = "bold 16px 'Courier New', monospace";
-    ctx.fillText(serialCode, textX, currentY);
+    ctx.font = "bold 16px 'Courier New', Courier, monospace";
+    
+    // Ensure proper text rendering with proper encoding
+    try {
+      ctx.fillText(serialCode, textX, currentY);
+    } catch (error) {
+      console.error("Error rendering serial number text:", error);
+      // Fallback: render each character individually if there's an encoding issue
+      const charWidth = ctx.measureText("M").width;
+      const startX = textX - (serialCode.length * charWidth) / 2;
+      for (let i = 0; i < serialCode.length; i++) {
+        ctx.fillText(serialCode[i], startX + i * charWidth + charWidth / 2, currentY);
+      }
+    }
 
     // Convert canvas to buffer
     return canvas.toBuffer("image/png");

@@ -71,10 +71,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         className="fixed inset-x-0 top-0 z-40 border-b border-white/5 bg-black/80 backdrop-blur-2xl"
       >
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-4">
-          <Link
-            href="/admin"
-            className="flex items-center gap-3 group"
-          >
+          <Link href="/admin" className="flex items-center gap-3 group">
             <div className="relative h-10 w-10 transition-transform duration-300 group-hover:scale-110">
               <Image
                 src={getR2UrlClient("/images/cai-logo.png")}
@@ -85,6 +82,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
                   filter: "brightness(0) invert(1) drop-shadow(0 0 8px rgba(255, 255, 255, 0.2))",
                 }}
                 priority
+                unoptimized
               />
             </div>
             <span className="text-sm md:text-lg font-semibold tracking-[0.35em] uppercase text-white">
@@ -137,7 +135,9 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         </AnimatePresence>
       </motion.nav>
 
-      <main className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-12 pt-20 sm:pt-24 lg:pt-28">{children}</main>
+      <main className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-12 pt-20 sm:pt-24 lg:pt-28">
+        {children}
+      </main>
 
       <Toaster
         position="top-right"

@@ -27,7 +27,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-md"
           onMouseDown={onClose}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

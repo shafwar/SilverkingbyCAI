@@ -8,12 +8,17 @@ export default async function ProtectedAdminLayout({
 }: {
   children: ReactNode;
 }) {
-  const session = await auth();
+  try {
+    const session = await auth();
 
-  if (!session || (session.user as any).role !== "ADMIN") {
+    if (!session || (session.user as any).role !== "ADMIN") {
+      redirect("/admin/login");
+    }
+
+    return <AdminLayout email={session.user?.email}>{children}</AdminLayout>;
+  } catch (error) {
+    console.error("Auth error in protected layout:", error);
     redirect("/admin/login");
   }
-
-  return <AdminLayout email={session.user?.email}>{children}</AdminLayout>;
 }
 

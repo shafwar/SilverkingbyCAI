@@ -55,12 +55,22 @@ export async function GET(
     // Convert Buffer to Uint8Array for NextResponse
     const uint8Array = new Uint8Array(pngBuffer);
 
+    // Sanitize filename: replace spaces with hyphens, remove special characters
+    const sanitizedName = product.name
+      .trim()
+      .replace(/\s+/g, "-") // Replace spaces with hyphens
+      .replace(/[^a-zA-Z0-9-]/g, "") // Remove special characters except hyphens
+      .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
+      .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
+    
+    const filename = `QR-${product.serialCode}${sanitizedName ? `-${sanitizedName}` : ""}.png`;
+    
     // Return as PNG image with download filename
     return new NextResponse(uint8Array, {
       status: 200,
       headers: {
         "Content-Type": "image/png",
-        "Content-Disposition": `attachment; filename="QR-${product.serialCode}-${product.name.replace(/[^a-zA-Z0-9]/g, "_")}.png"`,
+        "Content-Disposition": `attachment; filename="${filename}"`,
         "Cache-Control": "no-cache",
       },
     });
