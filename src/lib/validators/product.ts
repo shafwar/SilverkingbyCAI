@@ -28,7 +28,15 @@ export const productCreateSchema = z
       .optional()
       .default(""),
     quantity: z.coerce.number().int().positive().max(10000, "Maximum 10000 products per batch").optional(),
-    price: z.coerce.number().nonnegative().optional(),
+    price: z
+      .union([z.string(), z.number()])
+      .optional()
+      .transform((val) => {
+        if (val === "" || val === null || val === undefined) return undefined;
+        const num = typeof val === "string" ? parseFloat(val) : val;
+        return isNaN(num) ? undefined : num;
+      })
+      .pipe(z.number().nonnegative().optional()),
     stock: z.coerce.number().int().nonnegative().optional(),
   })
   .refine(
@@ -75,7 +83,15 @@ export const productUpdateSchema = z.object({
     .min(6)
     .regex(/^[A-Za-z0-9]+$/)
     .optional(),
-  price: z.coerce.number().nonnegative().optional(),
+  price: z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((val) => {
+      if (val === "" || val === null || val === undefined) return undefined;
+      const num = typeof val === "string" ? parseFloat(val) : val;
+      return isNaN(num) ? undefined : num;
+    })
+    .pipe(z.number().nonnegative().optional()),
   stock: z.coerce.number().int().nonnegative().optional(),
 });
 
