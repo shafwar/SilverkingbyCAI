@@ -3,7 +3,7 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { motion } from "framer-motion";
-import { QrCode, Maximize2, Download } from "lucide-react";
+import { QrCode, Maximize2, Download, DownloadCloud } from "lucide-react";
 
 import { fetcher } from "@/lib/fetcher";
 import { AnimatedCard } from "./AnimatedCard";
@@ -27,24 +27,37 @@ export function QrPreviewGrid() {
     refreshInterval: 60000,
   });
   const [selected, setSelected] = useState<Product | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
 
   const handleDownload = async (product: Product) => {
-    // Use API route as fallback if qrImageUrl is null
-    const qrUrl = product.qrImageUrl || `/api/qr/${product.serialCode}`;
-
+    setIsDownloading(true);
     try {
-      // Fetch the image
-      const response = await fetch(qrUrl);
+      // Use download endpoint that includes product info
+      const response = await fetch(`/api/qr/${product.serialCode}/download`);
+      
       if (!response.ok) {
         throw new Error(`Failed to fetch QR: ${response.statusText}`);
       }
+      
       const blob = await response.blob();
 
       // Create a download link
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `QR-${product.serialCode}.png`;
+      
+      // Get filename from Content-Disposition header or use default
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let filename = `QR-${product.serialCode}.png`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+      
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
 
@@ -53,8 +66,69 @@ export function QrPreviewGrid() {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Failed to download QR code:", error);
-      // Show user-friendly error
       alert(`Failed to download QR code for ${product.serialCode}. Please try again.`);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleDownloadAll = async () => {
+    if (!data?.products || data.products.length === 0) {
+      alert("No products available to download.");
+      return;
+    }
+
+    setIsDownloadingAll(true);
+    try {
+      // Download all QR codes one by one with delay to avoid browser blocking
+      for (let i = 0; i < data.products.length; i++) {
+        const product = data.products[i];
+        
+        try {
+          const response = await fetch(`/api/qr/${product.serialCode}/download`);
+          
+          if (!response.ok) {
+            console.warn(`Failed to download QR for ${product.serialCode}`);
+            continue;
+          }
+          
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          
+          // Get filename from Content-Disposition header
+          const contentDisposition = response.headers.get("Content-Disposition");
+          let filename = `QR-${product.serialCode}.png`;
+          if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+            if (filenameMatch) {
+              filename = filenameMatch[1];
+            }
+          }
+          
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+          
+          // Small delay between downloads to avoid browser blocking
+          if (i < data.products.length - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 300));
+          }
+        } catch (error) {
+          console.error(`Failed to download QR for ${product.serialCode}:`, error);
+          // Continue with next product
+        }
+      }
+      
+      alert(`Successfully downloaded ${data.products.length} QR code(s).`);
+    } catch (error) {
+      console.error("Failed to download all QR codes:", error);
+      alert("Failed to download some QR codes. Please check the console for details.");
+    } finally {
+      setIsDownloadingAll(false);
     }
   };
 
@@ -68,6 +142,22 @@ export function QrPreviewGrid() {
 
   return (
     <>
+      {/* Download All Button */}
+      {data && data.products.length > 0 && (
+        <div className="mb-6 flex justify-end">
+          <motion.button
+            onClick={handleDownloadAll}
+            disabled={isDownloadingAll}
+            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition-all hover:border-[#FFD700]/40 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+            whileHover={{ scale: isDownloadingAll ? 1 : 1.02 }}
+            whileTap={{ scale: isDownloadingAll ? 1 : 0.98 }}
+          >
+            <DownloadCloud className="h-4 w-4" />
+            {isDownloadingAll ? "Downloading..." : `Download All (${data.products.length})`}
+          </motion.button>
+        </div>
+      )}
+
       <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
         {data.products.map((product, index) => (
           <AnimatedCard key={product.id} delay={index * 0.04}>
@@ -130,13 +220,14 @@ export function QrPreviewGrid() {
             />
             <p className="font-mono text-md text-white/70">{selected.serialCode}</p>
             <motion.button
-              onClick={() => handleDownload({ ...selected, qrImageUrl: selected.qrImageUrl || `/api/qr/${selected.serialCode}` })}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-6 py-3 text-sm text-white/70 transition hover:border-[#FFD700]/40 hover:bg-black/60 hover:text-white"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              onClick={() => handleDownload(selected)}
+              disabled={isDownloading}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-6 py-3 text-sm text-white/70 transition hover:border-[#FFD700]/40 hover:bg-black/60 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              whileHover={{ scale: isDownloading ? 1 : 1.05 }}
+              whileTap={{ scale: isDownloading ? 1 : 0.95 }}
             >
               <Download className="h-4 w-4" />
-              Download QR Code
+              {isDownloading ? "Downloading..." : "Download QR Code"}
             </motion.button>
           </div>
         )}

@@ -81,6 +81,80 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
   }
 }
 
+/**
+ * Adds product information (name and serial) below the QR code image
+ * Used for downloadable QR codes with full product details
+ */
+export async function addProductInfoToQR(
+  qrBuffer: Buffer,
+  serialCode: string,
+  productName: string
+): Promise<Buffer> {
+  try {
+    // Load QR code image
+    const qrImage = await loadImage(qrBuffer);
+
+    // Calculate dimensions
+    const qrWidth = qrImage.width;
+    const qrHeight = qrImage.height;
+    const titleHeight = 30; // Space for product name
+    const serialHeight = 25; // Space for serial code
+    const padding = 20; // Padding around QR and text
+    const spacing = 8; // Space between title and serial
+    const totalWidth = qrWidth + padding * 2;
+    const totalHeight = qrHeight + titleHeight + serialHeight + padding * 2 + spacing;
+
+    // Create canvas
+    const canvas = createCanvas(totalWidth, totalHeight);
+    const ctx = canvas.getContext("2d");
+
+    // Fill white background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, totalWidth, totalHeight);
+
+    // Draw QR code centered horizontally, at the top
+    const qrX = padding;
+    const qrY = padding;
+    ctx.drawImage(qrImage, qrX, qrY);
+
+    const textX = totalWidth / 2;
+    let currentY = qrHeight + padding + titleHeight / 2;
+
+    // Draw product name (title) - larger, bold
+    ctx.fillStyle = "#0c0c0c";
+    ctx.font = "bold 18px Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    
+    // Truncate product name if too long
+    const maxWidth = totalWidth - padding * 2 - 20;
+    let displayName = productName;
+    const metrics = ctx.measureText(displayName);
+    if (metrics.width > maxWidth) {
+      // Truncate with ellipsis
+      while (ctx.measureText(displayName + "...").width > maxWidth && displayName.length > 0) {
+        displayName = displayName.slice(0, -1);
+      }
+      displayName += "...";
+    }
+    
+    ctx.fillText(displayName, textX, currentY);
+
+    // Draw serial code below product name - smaller, monospace
+    currentY += titleHeight / 2 + spacing + serialHeight / 2;
+    ctx.fillStyle = "#666666";
+    ctx.font = "bold 16px 'Courier New', monospace";
+    ctx.fillText(serialCode, textX, currentY);
+
+    // Convert canvas to buffer
+    return canvas.toBuffer("image/png");
+  } catch (error) {
+    console.error("Error adding product info to QR:", error);
+    // Fallback to serial number only
+    return addSerialNumberToQR(qrBuffer, serialCode);
+  }
+}
+
 export async function generateAndStoreQR(
   serialCode: string,
   targetUrl: string
