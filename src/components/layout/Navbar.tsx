@@ -97,7 +97,8 @@ export default function Navbar() {
                 fill
                 className="object-contain brightness-0 invert transition-all duration-500"
                 style={{
-                  filter: "brightness(0) invert(1) contrast(1.1) drop-shadow(0 0 12px rgba(255, 255, 255, 0.2))",
+                  filter:
+                    "brightness(0) invert(1) contrast(1.1) drop-shadow(0 0 12px rgba(255, 255, 255, 0.2))",
                 }}
                 priority
               />
@@ -107,7 +108,10 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Navigation - Bold */}
-          <div className="hidden lg:flex items-center gap-12 xl:gap-14 translate-x-6 group" role="menubar">
+          <div
+            className="hidden lg:flex items-center gap-12 xl:gap-14 translate-x-6 group"
+            role="menubar"
+          >
             {navLinks.map((link) => (
               <Link
                 key={link.name}
@@ -165,23 +169,23 @@ export default function Navbar() {
             <>
               {/* Backdrop */}
               <motion.div
-                initial={{ opacity: 0 }}
+                initial={{ opacity: 1 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
                 className="fixed inset-0 bg-black z-[99] md:hidden"
                 onClick={() => setIsMobileMenuOpen(false)}
               />
-              
+
               {/* Menu Content */}
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                className="fixed inset-0 bg-black z-[100] md:hidden overflow-y-auto"
+                className="fixed inset-0  z-[100] md:hidden"
               >
-                <div className="min-h-screen flex flex-col px-6 sm:px-8 py-8 sm:py-10">
+                <div className="min-h-screen flex flex-col px-6 sm:px-8 py-8 sm:py-10 bg-black">
                   {/* Header - Logo & Close Button */}
                   <div className="flex items-center justify-between mb-12 sm:mb-16">
                     <Link
@@ -254,7 +258,7 @@ export default function Navbar() {
                         <div className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-lg border border-white/20 bg-black/40 flex items-center justify-center group-hover:bg-white/10 transition-colors">
                           <QrCode className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                         </div>
-                        
+
                         {/* Content - Compact */}
                         <div className="flex-1 min-w-0">
                           <p className="font-sans text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.25em] sm:tracking-[0.3em] text-white/50 mb-1">
