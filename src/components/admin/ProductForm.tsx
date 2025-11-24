@@ -260,7 +260,7 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
               <span>
                 {quantity > 1
                   ? `Will create ${quantity} products with unique serial numbers`
-                  : "Single product. Enter serial prefix (e.g., SKT) to auto-generate SKT00001 format."}
+                  : "Single product. Enter serial prefix (e.g., SKT) to auto-generate SKT000001 format."}
               </span>
             </motion.p>
           </motion.div>
@@ -287,7 +287,7 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
                 Serial Prefix
                 {quantity === 1 && (
                   <span className="ml-1 text-[10px] normal-case text-white/40">
-                    (Auto-generates SKT00001 format)
+                    (Auto-generates SKT000001 format)
                   </span>
                 )}
               </label>
@@ -296,8 +296,8 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
                 className="w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-white uppercase transition-all placeholder:text-white/30 focus:border-amber-400/60 focus:bg-amber-500/20 focus:outline-none focus:ring-2 focus:ring-amber-400/30"
                 placeholder={
                   quantity === 1
-                    ? "SKT (will create SKT00001)"
-                    : "SKA (will create SKA00001, SKA00002...)"
+                    ? "SKT (will create SKT000001)"
+                    : "SKA (will create SKA000001, SKA000002...)"
                 }
                 value={serialPrefix}
                 onChange={(e) => {
@@ -364,12 +364,12 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
                       </p>
                       <p className="mt-1 font-mono text-sm text-green-300">
                         {serialPrefix}
-                        {String(serialInfo.nextNumber).padStart(5, "0")}
+                        {String(serialInfo.nextNumber).padStart(6, "0")}
                         {quantity > 1 && (
                           <>
                             {" "}
                             to {serialPrefix}
-                            {String(serialInfo.nextNumber + quantity - 1).padStart(5, "0")}
+                            {String(serialInfo.nextNumber + quantity - 1).padStart(6, "0")}
                           </>
                         )}
                       </p>
@@ -393,11 +393,11 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
                           Serial Number
                         </p>
                         <p className="mt-1.5 font-mono text-lg text-amber-400">
-                          {serialPrefix}00001
+                          {serialPrefix}000001
                         </p>
                         {serialInfo && !serialInfo.exists && (
                           <p className="mt-1.5 text-xs text-green-400">
-                            ✨ New prefix, starting from 00001
+                            ✨ New prefix, starting from 000001
                           </p>
                         )}
                       </div>
@@ -408,8 +408,8 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
                             Serial Range
                           </p>
                           <p className="mt-1.5 font-mono text-sm text-amber-400">
-                            {serialPrefix}00001 to {serialPrefix}
-                            {String(quantity).padStart(5, "0")}
+                            {serialPrefix}000001 to {serialPrefix}
+                            {String(quantity).padStart(6, "0")}
                           </p>
                         </div>
                         <p className="text-xs text-white/60">
@@ -428,7 +428,7 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
                   >
                     <Info className="h-4 w-4 mt-0.5 text-white/40" />
                     <p className="text-xs text-white/60">
-                      Enter a prefix (e.g., SKT) to auto-generate serial numbers in SKT00001 format
+                      Enter a prefix (e.g., SKT) to auto-generate serial numbers in SKT000001 format
                     </p>
                   </motion.div>
                 )}

@@ -457,7 +457,7 @@ export default function AuthenticityPage() {
       let serialCode = decodedText.trim();
       
       if (serialCode.includes("/verify/")) {
-        // Extract serial code from URL: https://cahayasilverking.id/verify/SKA00001
+        // Extract serial code from URL: https://cahayasilverking.id/verify/SKA000001
         const urlMatch = serialCode.match(/\/verify\/([A-Z0-9]+)/i);
         if (urlMatch && urlMatch[1]) {
           serialCode = urlMatch[1];
@@ -506,7 +506,7 @@ export default function AuthenticityPage() {
     let serialCode = serialNumber.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
     
     if (!serialCode || serialCode.length < 3) {
-      alert("Invalid serial number format. Please enter a valid serial code (e.g., SKA00001)");
+      alert("Invalid serial number format. Please enter a valid serial code (e.g., SKA000001)");
       return;
     }
     

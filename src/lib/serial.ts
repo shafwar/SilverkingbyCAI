@@ -13,14 +13,14 @@ export function normalizeSerialCode(serial: string) {
  * @param prefix - Serial prefix (e.g., "SKA")
  * @param startNumber - Starting number (default: 1)
  * @param quantity - Number of serials to generate
- * @param padding - Number of digits for padding (default: 5, e.g., 00001)
- * @returns Array of serial codes (e.g., ["SKA00001", "SKA00002", ..., "SKA00100"])
+ * @param padding - Number of digits for padding (default: 6, e.g., 000001)
+ * @returns Array of serial codes (e.g., ["SKA000001", "SKA000002", ..., "SKA000100"])
  */
 export function generateSequentialSerials(
   prefix: string,
   quantity: number,
   startNumber: number = 1,
-  padding: number = 5
+  padding: number = 6
 ): string[] {
   const normalizedPrefix = normalizeSerialCode(prefix);
   const serials: string[] = [];
