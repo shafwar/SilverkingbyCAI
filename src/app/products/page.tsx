@@ -558,21 +558,60 @@ export default function ProductsPage() {
     setTimeout(() => setSelectedProduct(null), 300);
   };
 
-  // Handle video load - more robust loading
+  // Optimal video autoplay handling - ensure video never pauses or breaks
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
+    // Force play function with error handling and retry
+    const forcePlay = async () => {
+      try {
+        if (video.paused && !video.ended) {
+          await video.play();
+        }
+      } catch (error) {
+        console.warn("[ProductsPage] Video autoplay prevented, retrying:", error);
+        // Retry after a short delay
+        setTimeout(() => {
+          video.play().catch(() => {
+            console.warn("[ProductsPage] Video autoplay failed after retry");
+          });
+        }, 100);
+      }
+    };
+
     const handleCanPlay = () => {
       setIsVideoLoaded(true);
+      forcePlay();
     };
 
     const handleLoadedData = () => {
       setIsVideoLoaded(true);
+      forcePlay();
     };
 
     const handleError = () => {
       setIsVideoLoaded(false);
+    };
+
+    // Resume video if it pauses (prevent breaks)
+    const handlePause = () => {
+      if (!video.ended) {
+        forcePlay();
+      }
+    };
+
+    // Handle visibility change - resume video when page becomes visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden && video.paused && !video.ended) {
+        forcePlay();
+      }
+    };
+
+    // Handle video end - restart immediately for seamless loop
+    const handleEnded = () => {
+      video.currentTime = 0;
+      forcePlay();
     };
 
     // Check if video is already loaded
@@ -580,17 +619,35 @@ export default function ProductsPage() {
       setIsVideoLoaded(true);
     }
 
+    // Initial play attempt
+    forcePlay();
+
+    // Event listeners
     video.addEventListener("canplay", handleCanPlay);
     video.addEventListener("loadeddata", handleLoadedData);
     video.addEventListener("error", handleError);
+    video.addEventListener("pause", handlePause);
+    video.addEventListener("ended", handleEnded);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     // Force load
     video.load();
+
+    // Periodic check to ensure video is playing (fallback)
+    const playCheckInterval = setInterval(() => {
+      if (video.paused && !video.ended) {
+        forcePlay();
+      }
+    }, 2000);
 
     return () => {
       video.removeEventListener("canplay", handleCanPlay);
       video.removeEventListener("loadeddata", handleLoadedData);
       video.removeEventListener("error", handleError);
+      video.removeEventListener("pause", handlePause);
+      video.removeEventListener("ended", handleEnded);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearInterval(playCheckInterval);
     };
   }, []);
 

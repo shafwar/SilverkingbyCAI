@@ -446,13 +446,63 @@ export default function AboutPage() {
         {/* Fullscreen Video Background */}
         <div className="absolute inset-0 z-0 overflow-hidden">
           <video
+            ref={(video) => {
+              if (video) {
+                // Optimal video autoplay handling
+                const forcePlay = async () => {
+                  try {
+                    if (video.paused && !video.ended) {
+                      await video.play();
+                    }
+                  } catch (error) {
+                    setTimeout(() => {
+                      video.play().catch(() => {});
+                    }, 100);
+                  }
+                };
+
+                const handlePause = () => {
+                  if (!video.ended) forcePlay();
+                };
+
+                const handleEnded = () => {
+                  video.currentTime = 0;
+                  forcePlay();
+                };
+
+                const handleVisibilityChange = () => {
+                  if (!document.hidden && video.paused && !video.ended) {
+                    forcePlay();
+                  }
+                };
+
+                forcePlay();
+                video.addEventListener("pause", handlePause);
+                video.addEventListener("ended", handleEnded);
+                document.addEventListener("visibilitychange", handleVisibilityChange);
+
+                const playCheckInterval = setInterval(() => {
+                  if (video.paused && !video.ended) {
+                    forcePlay();
+                  }
+                }, 2000);
+
+                // Cleanup stored on video element
+                (video as any).__cleanup = () => {
+                  video.removeEventListener("pause", handlePause);
+                  video.removeEventListener("ended", handleEnded);
+                  document.removeEventListener("visibilitychange", handleVisibilityChange);
+                  clearInterval(playCheckInterval);
+                };
+              }
+            }}
             className="absolute inset-0 h-full w-full object-cover brightness-[0.85] scale-105"
             src={getR2UrlClient("/videos/hero/gold-footage.mp4")}
             autoPlay
             loop
             muted
             playsInline
-            preload="metadata"
+            preload="auto"
           />
           {/* Smooth Multi-layer Gradients */}
           <div className="absolute inset-0 bg-gradient-to-b from-luxury-black/40 via-luxury-black/60 to-luxury-black" />

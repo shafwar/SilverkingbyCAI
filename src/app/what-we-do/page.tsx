@@ -454,6 +454,54 @@ export default function WhatWeDoPage() {
           <div className="absolute inset-0 bg-gradient-to-br from-luxury-black via-luxury-black/95 to-luxury-black z-0" />
 
           <video
+            ref={(video) => {
+              if (video) {
+                const forcePlay = async () => {
+                  try {
+                    if (video.paused && !video.ended) {
+                      await video.play();
+                    }
+                  } catch (error) {
+                    setTimeout(() => {
+                      video.play().catch(() => {});
+                    }, 100);
+                  }
+                };
+
+                const handlePause = () => {
+                  if (!video.ended) forcePlay();
+                };
+
+                const handleEnded = () => {
+                  video.currentTime = 0;
+                  forcePlay();
+                };
+
+                const handleVisibilityChange = () => {
+                  if (!document.hidden && video.paused && !video.ended) {
+                    forcePlay();
+                  }
+                };
+
+                forcePlay();
+                video.addEventListener("pause", handlePause);
+                video.addEventListener("ended", handleEnded);
+                document.addEventListener("visibilitychange", handleVisibilityChange);
+
+                const playCheckInterval = setInterval(() => {
+                  if (video.paused && !video.ended) {
+                    forcePlay();
+                  }
+                }, 2000);
+
+                (video as any).__cleanup = () => {
+                  video.removeEventListener("pause", handlePause);
+                  video.removeEventListener("ended", handleEnded);
+                  document.removeEventListener("visibilitychange", handleVisibilityChange);
+                  clearInterval(playCheckInterval);
+                };
+              }
+            }}
             autoPlay
             loop
             muted
@@ -624,10 +672,59 @@ export default function WhatWeDoPage() {
         {/* Video Background */}
         <div className="absolute inset-0 z-0">
           <video
+            ref={(video) => {
+              if (video) {
+                const forcePlay = async () => {
+                  try {
+                    if (video.paused && !video.ended) {
+                      await video.play();
+                    }
+                  } catch (error) {
+                    setTimeout(() => {
+                      video.play().catch(() => {});
+                    }, 100);
+                  }
+                };
+
+                const handlePause = () => {
+                  if (!video.ended) forcePlay();
+                };
+
+                const handleEnded = () => {
+                  video.currentTime = 0;
+                  forcePlay();
+                };
+
+                const handleVisibilityChange = () => {
+                  if (!document.hidden && video.paused && !video.ended) {
+                    forcePlay();
+                  }
+                };
+
+                forcePlay();
+                video.addEventListener("pause", handlePause);
+                video.addEventListener("ended", handleEnded);
+                document.addEventListener("visibilitychange", handleVisibilityChange);
+
+                const playCheckInterval = setInterval(() => {
+                  if (video.paused && !video.ended) {
+                    forcePlay();
+                  }
+                }, 2000);
+
+                (video as any).__cleanup = () => {
+                  video.removeEventListener("pause", handlePause);
+                  video.removeEventListener("ended", handleEnded);
+                  document.removeEventListener("visibilitychange", handleVisibilityChange);
+                  clearInterval(playCheckInterval);
+                };
+              }
+            }}
             autoPlay
             loop
             muted
             playsInline
+            preload="auto"
             className="absolute inset-0 w-full h-full object-cover"
           >
             <source src={getR2UrlClient("/videos/hero/molten metal slow motion.mp4")} type="video/mp4" />

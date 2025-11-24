@@ -141,8 +141,86 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
   const scale = useTransform(scrollYProgress, [0, 0.5], [1, 1.05]);
   const videoOpacity = useTransform(scrollYProgress, [0, 0.3], [1, 0.3]);
 
+  // Optimal video autoplay handling - ensure video never pauses or breaks
   useEffect(() => {
     setIsLoaded(true);
+    
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Force play function with error handling
+    const forcePlay = async () => {
+      try {
+        if (video.paused) {
+          await video.play();
+        }
+      } catch (error) {
+        console.warn("[HeroSection] Video autoplay prevented, retrying:", error);
+        // Retry after a short delay
+        setTimeout(() => {
+          video.play().catch(() => {
+            console.warn("[HeroSection] Video autoplay failed after retry");
+          });
+        }, 100);
+      }
+    };
+
+    // Ensure video plays when loaded
+    const handleCanPlay = () => {
+      forcePlay();
+    };
+
+    // Ensure video plays when data is loaded
+    const handleLoadedData = () => {
+      forcePlay();
+    };
+
+    // Resume video if it pauses (prevent breaks)
+    const handlePause = () => {
+      if (!video.ended) {
+        forcePlay();
+      }
+    };
+
+    // Handle visibility change - resume video when page becomes visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden && video.paused && !video.ended) {
+        forcePlay();
+      }
+    };
+
+    // Handle video end - restart immediately for seamless loop
+    const handleEnded = () => {
+      video.currentTime = 0;
+      forcePlay();
+    };
+
+    // Initial play attempt
+    forcePlay();
+
+    // Event listeners
+    video.addEventListener("canplay", handleCanPlay);
+    video.addEventListener("loadeddata", handleLoadedData);
+    video.addEventListener("pause", handlePause);
+    video.addEventListener("ended", handleEnded);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Periodic check to ensure video is playing (fallback)
+    const playCheckInterval = setInterval(() => {
+      if (video.paused && !video.ended) {
+        forcePlay();
+      }
+    }, 2000);
+
+    // Cleanup
+    return () => {
+      video.removeEventListener("canplay", handleCanPlay);
+      video.removeEventListener("loadeddata", handleLoadedData);
+      video.removeEventListener("pause", handlePause);
+      video.removeEventListener("ended", handleEnded);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearInterval(playCheckInterval);
+    };
   }, []);
 
   const animationState = shouldAnimate ? "visible" : "hidden";
