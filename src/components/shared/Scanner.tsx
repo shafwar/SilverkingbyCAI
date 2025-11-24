@@ -24,108 +24,143 @@ export function Scanner({ onScanSuccess, onClose }: ScannerProps) {
   }, [onScanSuccess]);
 
   useEffect(() => {
+    // Only initialize if component is mounted and container exists
+    if (typeof window === "undefined") return;
+    
     const containerId = containerIdRef.current;
+    let initTimer: NodeJS.Timeout | null = null;
+    let isMounted = true;
     
     // Small delay to ensure DOM is ready
-    const initTimer = setTimeout(() => {
-      console.log("Scanner useEffect triggered", {
-        scannerRef: !!scannerRef.current,
-        html5QrCodeRef: !!html5QrCodeRef.current,
-        containerId,
-        containerExists: !!document.getElementById(containerId),
-      });
-
-      if (!scannerRef.current || html5QrCodeRef.current) {
-        console.log("Scanner: Early return", {
-          scannerRef: !!scannerRef.current,
-          html5QrCodeRef: !!html5QrCodeRef.current,
+    initTimer = setTimeout(() => {
+      if (!isMounted) return;
+      
+      try {
+        console.log("[Scanner] Initializing QR scanner", {
+          containerId,
+          hasRef: !!scannerRef.current,
+          alreadyInitialized: !!html5QrCodeRef.current,
         });
-        return;
-      }
 
-      const container = document.getElementById(containerId);
-      if (!container) {
-        console.error("Scanner: Container not found!", containerId);
-        return;
-      }
-
-      console.log("Scanner: Initializing Html5Qrcode", containerId);
-      const html5QrCode = new Html5Qrcode(containerId);
-      html5QrCodeRef.current = html5QrCode;
-
-      const config = {
-        fps: 10,
-        qrbox: { width: 280, height: 280 },
-        aspectRatio: 1.0,
-      };
-
-      const handleScanSuccess = (decodedText: string, decodedResult: any) => {
-        try {
-          if (!decodedText || !decodedText.trim()) {
-            console.warn("Empty QR code detected");
-            return;
-          }
-          console.log("QR code scanned successfully:", decodedText);
-          onScanSuccessRef.current(decodedText);
-          html5QrCode.stop().catch((err) => {
-            console.error("Error stopping scanner:", err);
-          });
-          setIsScanning(false);
-        } catch (error) {
-          console.error("Error in handleScanSuccess:", error);
-          html5QrCode.stop().catch(() => {});
-          setIsScanning(false);
+        // Prevent multiple initializations
+        if (html5QrCodeRef.current) {
+          console.log("[Scanner] Already initialized, skipping");
+          return;
         }
-      };
 
-      html5QrCode
-        .start(
-          { facingMode: "environment" },
-          config,
-          handleScanSuccess,
-          (errorMessage: string) => {
-            // Ignore scan errors during continuous scanning (these are normal)
-            // Only log if it's a significant error
-            if (errorMessage && !errorMessage.includes("NotFoundException")) {
-              console.debug("Scan error (ignored):", errorMessage);
-            }
-          }
-        )
-        .then(() => {
-          setIsScanning(true);
-          setError(null);
-          console.log("Scanner started successfully");
-        })
-        .catch((err: any) => {
-          console.error("Scanner initialization error:", err);
-          const errorMessage = err?.message || String(err);
+        const container = document.getElementById(containerId);
+        if (!container) {
+          console.error("[Scanner] Container not found:", containerId);
+          return;
+        }
+
+        // Initialize Html5Qrcode
+        const html5QrCode = new Html5Qrcode(containerId);
+        html5QrCodeRef.current = html5QrCode;
+
+        const config = {
+          fps: 10,
+          qrbox: { width: 280, height: 280 },
+          aspectRatio: 1.0,
+        };
+
+        const handleScanSuccess = (decodedText: string, decodedResult: any) => {
+          if (!isMounted) return;
           
-          if (errorMessage.includes("Permission") || errorMessage.includes("permission")) {
-            setError("Camera permission denied. Please allow camera access in your browser settings.");
-          } else if (errorMessage.includes("NotFound") || errorMessage.includes("not found")) {
-            setError("No camera found. Please ensure your device has a camera.");
-          } else if (errorMessage.includes("NotAllowed") || errorMessage.includes("not allowed")) {
-            setError("Camera access not allowed. Please check your browser permissions.");
-          } else {
-            setError("Failed to start camera. Please ensure camera permissions are granted and try again.");
+          try {
+            if (!decodedText || !decodedText.trim()) {
+              console.warn("[Scanner] Empty QR code detected");
+              return;
+            }
+            
+            console.log("[Scanner] QR code scanned successfully:", decodedText);
+            
+            // Stop scanner first
+            html5QrCode.stop().catch((err) => {
+              console.error("[Scanner] Error stopping scanner:", err);
+            });
+            
+            setIsScanning(false);
+            
+            // Call success handler
+            onScanSuccessRef.current(decodedText);
+          } catch (error) {
+            console.error("[Scanner] Error in handleScanSuccess:", error);
+            html5QrCode.stop().catch(() => {});
+            setIsScanning(false);
           }
-          setIsScanning(false);
-        });
-    }, 100);
+        };
 
-    return () => {
-      clearTimeout(initTimer);
-      if (html5QrCodeRef.current) {
-        html5QrCodeRef.current
-          .stop()
+        // Start scanner
+        html5QrCode
+          .start(
+            { facingMode: "environment" },
+            config,
+            handleScanSuccess,
+            (errorMessage: string) => {
+              // Ignore scan errors during continuous scanning (these are normal)
+              if (errorMessage && !errorMessage.includes("NotFoundException") && !errorMessage.includes("No QR code")) {
+                console.debug("[Scanner] Scan error (ignored):", errorMessage);
+              }
+            }
+          )
           .then(() => {
-            html5QrCodeRef.current?.clear();
-            html5QrCodeRef.current = null;
+            if (isMounted) {
+              setIsScanning(true);
+              setError(null);
+              console.log("[Scanner] Scanner started successfully");
+            }
           })
-          .catch(() => {});
+          .catch((err: any) => {
+            if (!isMounted) return;
+            
+            console.error("[Scanner] Scanner initialization error:", err);
+            const errorMessage = err?.message || String(err);
+            
+            if (errorMessage.includes("Permission") || errorMessage.includes("permission")) {
+              setError("Camera permission denied. Please allow camera access in your browser settings.");
+            } else if (errorMessage.includes("NotFound") || errorMessage.includes("not found")) {
+              setError("No camera found. Please ensure your device has a camera.");
+            } else if (errorMessage.includes("NotAllowed") || errorMessage.includes("not allowed")) {
+              setError("Camera access not allowed. Please check your browser permissions.");
+            } else {
+              setError("Failed to start camera. Please ensure camera permissions are granted and try again.");
+            }
+            setIsScanning(false);
+          });
+      } catch (error) {
+        console.error("[Scanner] Error in useEffect:", error);
+        setError("Failed to initialize scanner. Please refresh the page and try again.");
+      }
+    }, 200); // Slightly longer delay for better reliability
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      
+      if (initTimer) {
+        clearTimeout(initTimer);
+      }
+      
+      if (html5QrCodeRef.current) {
+        try {
+          html5QrCodeRef.current
+            .stop()
+            .then(() => {
+              html5QrCodeRef.current?.clear();
+              html5QrCodeRef.current = null;
+            })
+            .catch((err) => {
+              console.error("[Scanner] Error during cleanup:", err);
+              html5QrCodeRef.current = null;
+            });
+        } catch (error) {
+          console.error("[Scanner] Error in cleanup:", error);
+          html5QrCodeRef.current = null;
+        }
       }
     };
-  }, []);
+  }, []); // Empty deps - only run once on mount
 
   return (
     <div className="relative w-full max-w-md mx-auto">

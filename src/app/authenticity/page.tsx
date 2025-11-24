@@ -67,9 +67,13 @@ const workflowSteps = [
 
 function CTASection() {
   const scrollToVerification = () => {
-    const verificationSection = document.querySelector("[data-verification-section]");
-    if (verificationSection) {
-      verificationSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    try {
+      const verificationSection = document.querySelector("[data-verification-section]");
+      if (verificationSection) {
+        verificationSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    } catch (error) {
+      console.error("Error scrolling to verification section:", error);
     }
   };
 
@@ -456,8 +460,10 @@ export default function AuthenticityPage() {
 
   const handleScanSuccess = async (decodedText: string) => {
     try {
+      console.log("[Authenticity] QR code scanned:", decodedText);
+      
       if (!decodedText || !decodedText.trim()) {
-        console.error("Empty QR code scanned");
+        console.error("[Authenticity] Empty QR code scanned");
         return;
       }
       
@@ -473,30 +479,34 @@ export default function AuthenticityPage() {
         const urlMatch = serialCode.match(/\/verify\/([A-Z0-9]+)/i);
         if (urlMatch && urlMatch[1]) {
           serialCode = urlMatch[1];
+          console.log("[Authenticity] Extracted serial from URL:", serialCode);
         }
       } else if (serialCode.includes("http")) {
         // Try to extract from any URL format
         const urlParts = serialCode.split("/");
         serialCode = urlParts[urlParts.length - 1] || serialCode;
+        console.log("[Authenticity] Extracted serial from HTTP URL:", serialCode);
       }
       
       // Normalize serial to uppercase and remove invalid characters
       const normalizedSerial = serialCode.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      
+      console.log("[Authenticity] Normalized serial:", normalizedSerial);
       
       if (!normalizedSerial || normalizedSerial.length < 3) {
         alert("Invalid QR code format. Please scan a valid Silver King QR code.");
         return;
       }
       
-      // Use window.location for more reliable navigation
-      try {
-        router.push(`/verify/${normalizedSerial}`);
-      } catch (routerError) {
-        console.error("Router error, using window.location:", routerError);
-        window.location.href = `/verify/${normalizedSerial}`;
-      }
+      // Navigate to verify page - use window.location for maximum reliability
+      // This ensures it works exactly like camera scanning
+      const verifyUrl = `/verify/${normalizedSerial}`;
+      console.log("[Authenticity] Navigating to:", verifyUrl);
+      
+      // Use window.location.href for most reliable navigation (same as camera scan)
+      window.location.href = verifyUrl;
     } catch (error) {
-      console.error("Error handling scan success:", error);
+      console.error("[Authenticity] Error handling scan success:", error);
       setShowScanner(false);
       alert("Failed to process QR code. Please try again.");
     }
@@ -523,6 +533,8 @@ export default function AuthenticityPage() {
       // Normalize serial code
       let serialCode = serialNumber.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
       
+      console.log("[Authenticity] Manual verify - serial code:", serialCode);
+      
       if (!serialCode || serialCode.length < 3) {
         alert("Invalid serial number format. Please enter a valid serial code (e.g., SKA000001)");
         return;
@@ -532,15 +544,15 @@ export default function AuthenticityPage() {
       setShowManualInput(false);
       setSerialNumber("");
       
-      // Use window.location for more reliable navigation
-      try {
-        router.push(`/verify/${serialCode}`);
-      } catch (routerError) {
-        console.error("Router error, using window.location:", routerError);
-        window.location.href = `/verify/${serialCode}`;
-      }
+      // Navigate to verify page - use window.location for maximum reliability
+      // This ensures it works exactly like camera scanning
+      const verifyUrl = `/verify/${serialCode}`;
+      console.log("[Authenticity] Manual verify - navigating to:", verifyUrl);
+      
+      // Use window.location.href for most reliable navigation (same as camera scan)
+      window.location.href = verifyUrl;
     } catch (error) {
-      console.error("Error in handleManualVerify:", error);
+      console.error("[Authenticity] Error in handleManualVerify:", error);
       alert("Failed to verify. Please try again.");
     }
   };
@@ -553,27 +565,31 @@ export default function AuthenticityPage() {
     () => {
       if (!pageRef.current) return;
 
-      const ctx = gsap.context(() => {
-        sectionsRef.current.forEach((section) => {
-          if (!section) return;
-          const targets = section.querySelectorAll("[data-reveal]");
+      try {
+        const ctx = gsap.context(() => {
+          sectionsRef.current.forEach((section) => {
+            if (!section) return;
+            const targets = section.querySelectorAll("[data-reveal]");
 
-          ScrollTrigger.batch(targets, {
-            start: "top 85%",
-            onEnter: (batch) =>
-              gsap.to(batch, {
-                opacity: 1,
-                y: 0,
-                duration: 0.5,
-                stagger: 0.1,
-                ease: "power2.out",
-              }),
-            once: true,
+            ScrollTrigger.batch(targets, {
+              start: "top 85%",
+              onEnter: (batch) =>
+                gsap.to(batch, {
+                  opacity: 1,
+                  y: 0,
+                  duration: 0.5,
+                  stagger: 0.1,
+                  ease: "power2.out",
+                }),
+              once: true,
+            });
           });
-        });
-      }, pageRef);
+        }, pageRef);
 
-      return () => ctx.revert();
+        return () => ctx.revert();
+      } catch (error) {
+        console.error("GSAP ScrollTrigger error:", error);
+      }
     },
     { scope: pageRef }
   );
@@ -750,7 +766,7 @@ export default function AuthenticityPage() {
       </section>
 
       {/* Scanner Modal */}
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {showScanner && (
           <motion.div
             key="scanner-modal"
@@ -760,7 +776,7 @@ export default function AuthenticityPage() {
             transition={{ duration: 0.3 }}
             className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6"
             onClick={() => {
-              console.log("Closing scanner from backdrop");
+              console.log("[Authenticity] Closing scanner from backdrop");
               setShowScanner(false);
             }}
           >
@@ -774,16 +790,14 @@ export default function AuthenticityPage() {
               }}
               className="relative z-[10000] w-full max-w-md"
             >
-              {showScanner && (
-                <Scanner
-                  key={`scanner-${showScanner}`}
-                  onScanSuccess={handleScanSuccess}
-                  onClose={() => {
-                    console.log("Closing scanner from component");
-                    setShowScanner(false);
-                  }}
-                />
-              )}
+              <Scanner
+                key="scanner-component"
+                onScanSuccess={handleScanSuccess}
+                onClose={() => {
+                  console.log("[Authenticity] Closing scanner from component");
+                  setShowScanner(false);
+                }}
+              />
             </motion.div>
           </motion.div>
         )}
