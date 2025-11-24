@@ -12,16 +12,52 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
   const { beginTransition } = useNavigationTransition();
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+      const currentScrollY = window.scrollY;
+      const scrollThreshold = 20;
+      
+      // Update isScrolled for background styling
+      setIsScrolled(currentScrollY > scrollThreshold);
+      
+      // Show navbar at top of page
+      if (currentScrollY < scrollThreshold) {
+        setIsVisible(true);
+        setLastScrollY(currentScrollY);
+        return;
+      }
+      
+      // Hide navbar when scrolling down, show when scrolling up
+      if (currentScrollY > lastScrollY && currentScrollY > scrollThreshold) {
+        // Scrolling down - hide navbar
+        setIsVisible(false);
+      } else if (currentScrollY < lastScrollY) {
+        // Scrolling up - show navbar
+        setIsVisible(true);
+      }
+      
+      setLastScrollY(currentScrollY);
     };
 
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+    // Throttle scroll events for better performance
+    let ticking = false;
+    const throttledHandleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          handleScroll();
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener("scroll", throttledHandleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", throttledHandleScroll);
+  }, [lastScrollY]);
 
   // Check if modal is open by checking body class
   useEffect(() => {
@@ -76,15 +112,21 @@ export default function Navbar() {
     <motion.header
       initial={false}
       animate={{
-        opacity: isModalOpen ? 0 : 1,
-        y: isModalOpen ? -100 : 0,
+        opacity: isModalOpen ? 0 : (isVisible ? 1 : 0),
+        y: isModalOpen ? -100 : (isVisible ? 0 : -100),
       }}
-      transition={{ duration: 0.3, ease: "easeInOut" }}
+      transition={{ 
+        duration: 0.4, 
+        ease: [0.22, 1, 0.36, 1], // Smooth easing curve
+        opacity: { duration: 0.3 },
+      }}
       className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${
         isScrolled
           ? "bg-black/90 backdrop-blur-2xl border-b border-white/[0.08] shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
           : "bg-transparent"
-      } ${isModalOpen ? "pointer-events-none" : ""}`}
+      } ${isModalOpen ? "pointer-events-none" : ""} ${
+        !isVisible && !isModalOpen ? "pointer-events-none" : ""
+      }`}
     >
       <nav className="mx-auto max-w-[1440px] px-4 sm:px-6 md:px-10 lg:px-16 xl:px-20">
         <div className="flex items-center justify-between h-[4.5rem] sm:h-[5rem] md:h-[5.5rem]">
