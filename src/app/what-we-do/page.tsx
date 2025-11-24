@@ -305,7 +305,7 @@ export default function WhatWeDoPage() {
       {
         title: "Gold, Silver & Palladium Fabrication",
         description:
-          "High-purity bullion manufacturing from 5gr to 500gr. Expert craftsmanship meeting LBMA standards.",
+          "High-purity bullion manufacturing from 5gr to 500gr. Expert craftsmanship meeting international standards.",
         icon: Sparkles,
         gradient: "from-luxury-gold to-luxury-lightGold",
       },

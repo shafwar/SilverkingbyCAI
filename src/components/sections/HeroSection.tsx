@@ -119,7 +119,7 @@ const featuresData = [
   },
   {
     label: "Global Trust",
-    title: "ISO 9001 & LBMA-ready",
+    title: "ISO 9001",
     body: "Audited facilities, transparent compliance, concierge-level documentation.",
   },
 ];
