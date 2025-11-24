@@ -195,28 +195,47 @@ const NarrativeImageSection = forwardRef<
                   className="relative w-full overflow-hidden rounded-lg border border-white/10 bg-black/60 flex-shrink-0"
                   style={{ aspectRatio: "3/2" }}
                 >
-                  {/* Image container with smooth slide transition - Pixelmatters style */}
+                  {/* Image container with ultra-smooth dynamic slide transition */}
                   <div className="relative w-full h-full overflow-hidden">
                     <AnimatePresence mode="wait" initial={false}>
                       <motion.div
                         key={`${idx}-${currentImageIndex}`}
-                        initial={{ opacity: 0, x: 30, scale: 1.05 }}
-                        animate={{ opacity: 1, x: 0, scale: 1 }}
-                        exit={{ opacity: 0, x: -30, scale: 0.95 }}
+                        initial={{ opacity: 0, x: 50, scale: 1.08, filter: "blur(8px)" }}
+                        animate={{ 
+                          opacity: 1, 
+                          x: 0, 
+                          scale: 1,
+                          filter: "blur(0px)"
+                        }}
+                        exit={{ 
+                          opacity: 0, 
+                          x: -50, 
+                          scale: 0.92,
+                          filter: "blur(8px)"
+                        }}
                         transition={{
-                          duration: 0.75,
-                          ease: [0.25, 0.46, 0.45, 0.94],
+                          duration: 0.9,
+                          ease: [0.22, 1, 0.36, 1], // Smooth cubic bezier
+                          opacity: { duration: 0.6 },
+                          filter: { duration: 0.7 },
                         }}
                         className="absolute inset-0"
-                        style={{ willChange: "transform, opacity" }}
+                        style={{ 
+                          willChange: "transform, opacity, filter",
+                          backfaceVisibility: "hidden",
+                          transform: "translateZ(0)",
+                        }}
                       >
                         <Image
                           src={currentImage}
                           alt={card.label}
                           fill
-                          className="object-cover"
+                          className="object-cover transition-opacity duration-300"
                           sizes="(min-width: 1024px) 33vw, 100vw"
                           priority={idx === 0}
+                          loading={idx === 0 ? "eager" : "lazy"}
+                          quality={90}
+                          unoptimized={false}
                         />
                       </motion.div>
                     </AnimatePresence>
@@ -260,10 +279,10 @@ const NarrativeImageSection = forwardRef<
 
           {/* Single large image – Pixelmatters style full-width edge-to-edge */}
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 30, filter: "blur(10px)" }}
+            whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
             viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
             className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] overflow-hidden"
             style={{ aspectRatio: "4/3" }}
             data-reveal
@@ -275,6 +294,8 @@ const NarrativeImageSection = forwardRef<
               className="object-cover"
               sizes="100vw"
               priority
+              quality={90}
+              loading="eager"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
 

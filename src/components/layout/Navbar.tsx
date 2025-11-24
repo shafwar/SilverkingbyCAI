@@ -24,21 +24,19 @@ export default function Navbar() {
       // Update isScrolled for background styling
       setIsScrolled(currentScrollY > scrollThreshold);
       
-      // Show navbar at top of page
+      // Always show navbar at top of page (below threshold)
       if (currentScrollY < scrollThreshold) {
         setIsVisible(true);
         setLastScrollY(currentScrollY);
         return;
       }
       
-      // Hide navbar when scrolling down, show when scrolling up
+      // Only hide navbar when scrolling down (never show again when scrolling up)
       if (currentScrollY > lastScrollY && currentScrollY > scrollThreshold) {
         // Scrolling down - hide navbar
         setIsVisible(false);
-      } else if (currentScrollY < lastScrollY) {
-        // Scrolling up - show navbar
-        setIsVisible(true);
       }
+      // Note: We don't show navbar again when scrolling up - it stays hidden
       
       setLastScrollY(currentScrollY);
     };
