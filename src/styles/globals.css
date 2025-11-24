@@ -10,6 +10,22 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Hide scrollbar globally for all browsers - Desktop & Mobile */
+  html {
+    /* Firefox */
+    scrollbar-width: none;
+    /* IE and Edge */
+    -ms-overflow-style: none;
+  }
+
+  html::-webkit-scrollbar {
+    /* Chrome, Safari, Opera, Edge */
+    display: none;
+    width: 0;
+    height: 0;
+    background: transparent;
+  }
+
   body {
     background-color: #0a0a0a;
     color: #e8e8e8;
@@ -17,6 +33,34 @@
     font-size: 15px;
     line-height: 1.6;
     font-weight: 400;
+    /* Firefox */
+    scrollbar-width: none;
+    /* IE and Edge */
+    -ms-overflow-style: none;
+  }
+
+  body::-webkit-scrollbar {
+    /* Chrome, Safari, Opera, Edge */
+    display: none;
+    width: 0;
+    height: 0;
+    background: transparent;
+  }
+
+  /* Hide scrollbar for all scrollable elements */
+  * {
+    /* Firefox */
+    scrollbar-width: none;
+    /* IE and Edge */
+    -ms-overflow-style: none;
+  }
+
+  *::-webkit-scrollbar {
+    /* Chrome, Safari, Opera, Edge */
+    display: none;
+    width: 0;
+    height: 0;
+    background: transparent;
   }
 
   h1,
@@ -212,13 +256,48 @@
     text-wrap: balance;
   }
 
+  /* Enhanced scrollbar-hide utility - already applied globally but available for specific elements */
   .scrollbar-hide {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
+    /* Firefox */
+    scrollbar-width: none;
+    /* IE and Edge */
+    -ms-overflow-style: none;
   }
 
   .scrollbar-hide::-webkit-scrollbar {
-    display: none; /* Chrome, Safari and Opera */
+    /* Chrome, Safari, Opera, Edge */
+    display: none;
+    width: 0;
+    height: 0;
+    background: transparent;
+  }
+
+  /* Show scrollbar utility (if needed for specific cases) */
+  .scrollbar-show {
+    /* Firefox */
+    scrollbar-width: thin;
+    /* IE and Edge */
+    -ms-overflow-style: auto;
+  }
+
+  .scrollbar-show::-webkit-scrollbar {
+    /* Chrome, Safari, Opera, Edge */
+    display: block;
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-show::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-show::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+  }
+
+  .scrollbar-show::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
   }
 }
 
