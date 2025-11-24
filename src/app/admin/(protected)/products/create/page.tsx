@@ -2,6 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { ProductForm } from "@/components/admin/ProductForm";
 import { notFound } from "next/navigation";
 
+// Force dynamic rendering - this page requires database access and authentication
+export const dynamic = "force-dynamic";
+
 type Props = {
   searchParams: { id?: string };
 };
