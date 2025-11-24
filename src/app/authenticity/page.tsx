@@ -28,8 +28,13 @@ import { useRouter } from "next/navigation";
 import { APP_NAME } from "@/utils/constants";
 import { getR2UrlClient } from "@/utils/r2-url";
 
+// Register GSAP plugins safely
 if (typeof window !== "undefined") {
-  gsap.registerPlugin(ScrollTrigger);
+  try {
+    gsap.registerPlugin(ScrollTrigger);
+  } catch (error) {
+    console.warn("GSAP ScrollTrigger registration failed:", error);
+  }
 }
 
 
@@ -410,37 +415,41 @@ export default function AuthenticityPage() {
     () => {
       if (!heroRef.current) return;
 
-      const ctx = gsap.context(() => {
-        gsap.fromTo(
-          heroRef.current?.querySelectorAll("[data-hero]") || [],
-          { opacity: 0, y: 40 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 1,
-            stagger: 0.1,
-            ease: "power2.out",
-          }
-        );
+      try {
+        const ctx = gsap.context(() => {
+          gsap.fromTo(
+            heroRef.current?.querySelectorAll("[data-hero]") || [],
+            { opacity: 0, y: 40 },
+            {
+              opacity: 1,
+              y: 0,
+              duration: 1,
+              stagger: 0.1,
+              ease: "power2.out",
+            }
+          );
 
-        // Minimal floating particles animation
-        const particles = heroRef.current?.querySelectorAll("[data-particle]");
-        if (particles) {
-          particles.forEach((particle, index) => {
-            gsap.to(particle, {
-              y: -15,
-              x: Math.sin(index) * 10,
-              opacity: 0.4,
-              duration: 4 + index * 0.5,
-              repeat: -1,
-              yoyo: true,
-              ease: "sine.inOut",
+          // Minimal floating particles animation
+          const particles = heroRef.current?.querySelectorAll("[data-particle]");
+          if (particles) {
+            particles.forEach((particle, index) => {
+              gsap.to(particle, {
+                y: -15,
+                x: Math.sin(index) * 10,
+                opacity: 0.4,
+                duration: 4 + index * 0.5,
+                repeat: -1,
+                yoyo: true,
+                ease: "sine.inOut",
+              });
             });
-          });
-        }
-      }, heroRef);
+          }
+        }, heroRef);
 
-      return () => ctx.revert();
+        return () => ctx.revert();
+      } catch (error) {
+        console.error("GSAP animation error:", error);
+      }
     },
     { scope: heroRef }
   );
@@ -451,11 +460,14 @@ export default function AuthenticityPage() {
         console.error("Empty QR code scanned");
         return;
       }
+      
+      // Close scanner first
       setShowScanner(false);
       
       // Extract serial code from URL if QR code contains full URL
       let serialCode = decodedText.trim();
       
+      // Handle different QR code formats
       if (serialCode.includes("/verify/")) {
         // Extract serial code from URL: https://cahayasilverking.id/verify/SKA000001
         const urlMatch = serialCode.match(/\/verify\/([A-Z0-9]+)/i);
@@ -468,7 +480,7 @@ export default function AuthenticityPage() {
         serialCode = urlParts[urlParts.length - 1] || serialCode;
       }
       
-      // Normalize serial to uppercase
+      // Normalize serial to uppercase and remove invalid characters
       const normalizedSerial = serialCode.toUpperCase().replace(/[^A-Z0-9]/g, "");
       
       if (!normalizedSerial || normalizedSerial.length < 3) {
@@ -476,8 +488,13 @@ export default function AuthenticityPage() {
         return;
       }
       
-      // Redirect to verify page
-      router.push(`/verify/${normalizedSerial}`);
+      // Use window.location for more reliable navigation
+      try {
+        router.push(`/verify/${normalizedSerial}`);
+      } catch (routerError) {
+        console.error("Router error, using window.location:", routerError);
+        window.location.href = `/verify/${normalizedSerial}`;
+      }
     } catch (error) {
       console.error("Error handling scan success:", error);
       setShowScanner(false);
@@ -497,22 +514,35 @@ export default function AuthenticityPage() {
   };
 
   const handleManualVerify = async () => {
-    if (!serialNumber.trim()) {
-      alert("Please enter a serial number");
-      return;
+    try {
+      if (!serialNumber.trim()) {
+        alert("Please enter a serial number");
+        return;
+      }
+      
+      // Normalize serial code
+      let serialCode = serialNumber.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+      
+      if (!serialCode || serialCode.length < 3) {
+        alert("Invalid serial number format. Please enter a valid serial code (e.g., SKA000001)");
+        return;
+      }
+      
+      // Close modal first
+      setShowManualInput(false);
+      setSerialNumber("");
+      
+      // Use window.location for more reliable navigation
+      try {
+        router.push(`/verify/${serialCode}`);
+      } catch (routerError) {
+        console.error("Router error, using window.location:", routerError);
+        window.location.href = `/verify/${serialCode}`;
+      }
+    } catch (error) {
+      console.error("Error in handleManualVerify:", error);
+      alert("Failed to verify. Please try again.");
     }
-    
-    // Normalize serial code
-    let serialCode = serialNumber.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
-    
-    if (!serialCode || serialCode.length < 3) {
-      alert("Invalid serial number format. Please enter a valid serial code (e.g., SKA000001)");
-      return;
-    }
-    
-    // Close modal and redirect to verify page
-    setShowManualInput(false);
-    router.push(`/verify/${serialCode}`);
   };
 
 
