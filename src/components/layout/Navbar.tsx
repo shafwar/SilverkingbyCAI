@@ -170,7 +170,8 @@ export default function Navbar() {
           {/* CTA Button - Powerful & Bold */}
           <div className="hidden md:flex items-center">
             <Link
-              href="/admin/login"
+              href="/contact"
+              onClick={(event) => handleNavClick(event, "/contact")}
               className="group relative overflow-hidden inline-flex items-center gap-2.5 rounded-full bg-gradient-to-r from-white/[0.12] to-white/[0.08] backdrop-blur-xl border border-white/[0.15] px-6 py-3 font-sans text-[0.9375rem] font-semibold text-white shadow-[0_8px_32px_rgba(0,0,0,0.12)] transition-all duration-500 hover:shadow-[0_8px_32px_rgba(212,175,55,0.25)] hover:scale-105 hover:border-luxury-gold/30"
             >
               <span className="relative z-10 transition-colors duration-300 group-hover:text-luxury-gold">
@@ -325,8 +326,11 @@ export default function Navbar() {
                     className="mb-8"
                   >
                     <Link
-                      href="/admin/login"
-                      onClick={() => setIsMobileMenuOpen(false)}
+                      href="/contact"
+                      onClick={(event) => {
+                        handleNavClick(event, "/contact");
+                        setIsMobileMenuOpen(false);
+                      }}
                       className="group flex items-center justify-center gap-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/20 px-6 py-4 font-sans text-base font-semibold text-white transition-all duration-300 hover:scale-[1.02]"
                     >
                       <span>Get in touch</span>
