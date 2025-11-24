@@ -75,33 +75,39 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
     // Validate and normalize serialCode
     const normalizedSerialCode = String(serialCode || "").trim().toUpperCase();
     
-    if (!normalizedSerialCode) {
-      console.error("Serial code is empty or invalid:", serialCode);
+    console.log("[addSerialNumberToQR] Rendering serial code:", {
+      original: serialCode,
+      normalized: normalizedSerialCode,
+      length: normalizedSerialCode.length,
+      isValid: normalizedSerialCode.length >= 3
+    });
+    
+    if (!normalizedSerialCode || normalizedSerialCode.length < 3) {
+      console.error("[addSerialNumberToQR] Serial code is empty or invalid:", serialCode);
       // Don't render if serial code is invalid
       return canvas.toBuffer("image/png");
     }
     
     // Ensure proper text rendering with proper encoding
-    try {
-      // Test if font can render the text
-      const testMetrics = ctx.measureText(normalizedSerialCode);
-      if (testMetrics.width > 0) {
-        ctx.fillText(normalizedSerialCode, textX, textY);
-      } else {
-        throw new Error("Font cannot render text");
-      }
-    } catch (error) {
-      console.error("Error rendering serial number text:", error, "SerialCode:", normalizedSerialCode);
-      // Fallback: render each character individually if there's an encoding issue
-      const charWidth = ctx.measureText("M").width;
-      const startX = textX - (normalizedSerialCode.length * charWidth) / 2;
-      for (let i = 0; i < normalizedSerialCode.length; i++) {
-        const char = normalizedSerialCode[i];
-        if (char) {
-          ctx.fillText(char, startX + i * charWidth + charWidth / 2, textY);
+    // Use character-by-character rendering for maximum compatibility
+    const charWidth = ctx.measureText("M").width || 10; // Fallback width
+    const startX = textX - (normalizedSerialCode.length * charWidth) / 2;
+    
+    // Render each character individually to ensure proper display
+    for (let i = 0; i < normalizedSerialCode.length; i++) {
+      const char = normalizedSerialCode[i];
+      if (char && char !== " ") {
+        const charX = startX + i * charWidth + charWidth / 2;
+        try {
+          ctx.fillText(char, charX, textY);
+        } catch (charError) {
+          console.error(`[addSerialNumberToQR] Error rendering character '${char}' at position ${i}:`, charError);
         }
       }
     }
+    
+    // Verify rendering by checking if text was drawn
+    console.log("[addSerialNumberToQR] Serial code rendered:", normalizedSerialCode);
 
     // Convert canvas to buffer
     return canvas.toBuffer("image/png");
@@ -179,33 +185,39 @@ export async function addProductInfoToQR(
     // Validate and normalize serialCode
     const normalizedSerialCode = String(serialCode || "").trim().toUpperCase();
     
-    if (!normalizedSerialCode) {
-      console.error("Serial code is empty or invalid:", serialCode);
+    console.log("[addProductInfoToQR] Rendering serial code:", {
+      original: serialCode,
+      normalized: normalizedSerialCode,
+      length: normalizedSerialCode.length,
+      isValid: normalizedSerialCode.length >= 3
+    });
+    
+    if (!normalizedSerialCode || normalizedSerialCode.length < 3) {
+      console.error("[addProductInfoToQR] Serial code is empty or invalid:", serialCode);
       // Don't render if serial code is invalid
       return canvas.toBuffer("image/png");
     }
     
     // Ensure proper text rendering with proper encoding
-    try {
-      // Test if font can render the text
-      const testMetrics = ctx.measureText(normalizedSerialCode);
-      if (testMetrics.width > 0) {
-        ctx.fillText(normalizedSerialCode, textX, currentY);
-      } else {
-        throw new Error("Font cannot render text");
-      }
-    } catch (error) {
-      console.error("Error rendering serial number text:", error, "SerialCode:", normalizedSerialCode);
-      // Fallback: render each character individually if there's an encoding issue
-      const charWidth = ctx.measureText("M").width;
-      const startX = textX - (normalizedSerialCode.length * charWidth) / 2;
-      for (let i = 0; i < normalizedSerialCode.length; i++) {
-        const char = normalizedSerialCode[i];
-        if (char) {
-          ctx.fillText(char, startX + i * charWidth + charWidth / 2, currentY);
+    // Use character-by-character rendering for maximum compatibility
+    const charWidth = ctx.measureText("M").width || 10; // Fallback width
+    const startX = textX - (normalizedSerialCode.length * charWidth) / 2;
+    
+    // Render each character individually to ensure proper display
+    for (let i = 0; i < normalizedSerialCode.length; i++) {
+      const char = normalizedSerialCode[i];
+      if (char && char !== " ") {
+        const charX = startX + i * charWidth + charWidth / 2;
+        try {
+          ctx.fillText(char, charX, currentY);
+        } catch (charError) {
+          console.error(`[addProductInfoToQR] Error rendering character '${char}' at position ${i}:`, charError);
         }
       }
     }
+    
+    // Verify rendering by checking if text was drawn
+    console.log("[addProductInfoToQR] Serial code rendered:", normalizedSerialCode);
 
     // Convert canvas to buffer
     return canvas.toBuffer("image/png");

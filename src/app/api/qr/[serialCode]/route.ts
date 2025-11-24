@@ -1,21 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import QRCode from "qrcode";
-import { addSerialNumberToQR } from "@/lib/qr";
+import { addProductInfoToQR } from "@/lib/qr";
 import { getVerifyUrl } from "@/utils/constants";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { serialCode: string } }
 ) {
   try {
-    const { serialCode } = params;
+    // Decode serialCode from URL params (handle URL encoding)
+    let { serialCode } = params;
+    serialCode = decodeURIComponent(serialCode).trim().toUpperCase();
     
     if (!serialCode) {
       return new NextResponse("Serial code is required", { status: 400 });
     }
 
+    // Get product information from database to ensure correct serialCode
+    const product = await prisma.product.findUnique({
+      where: { serialCode },
+      select: {
+        name: true,
+        serialCode: true,
+      },
+    });
+
+    // Use serialCode from database if available, otherwise use from params
+    const finalSerialCode = product?.serialCode || serialCode;
+    const productName = product?.name || "Product";
+
     // Get verify URL using centralized function
-    const verifyUrl = getVerifyUrl(serialCode);
+    const verifyUrl = getVerifyUrl(finalSerialCode);
 
     // Generate QR code as PNG buffer
     const qrBuffer = await QRCode.toBuffer(verifyUrl, {
@@ -25,8 +41,9 @@ export async function GET(
       margin: 1,
     });
 
-    // Add serial number text below QR code
-    const pngBuffer = await addSerialNumberToQR(qrBuffer, serialCode);
+    // Add product information (name and serial) below QR code
+    // Always use addProductInfoToQR to ensure serial number renders correctly
+    const pngBuffer = await addProductInfoToQR(qrBuffer, finalSerialCode, productName);
 
     // Convert Buffer to Uint8Array for NextResponse
     const uint8Array = new Uint8Array(pngBuffer);
