@@ -33,6 +33,16 @@ export default function HomePage() {
     setSplashComplete(true);
   };
 
+  // Add home-page class to body for CSS targeting
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      document.body.classList.add("home-page");
+      return () => {
+        document.body.classList.remove("home-page");
+      };
+    }
+  }, []);
+
   // Don't render anything until we know if splash should be shown (prevent flicker) 
   if (showSplash === null) {
     return (
@@ -49,7 +59,7 @@ export default function HomePage() {
 
       {/* Main content - hidden during splash with INSTANT opacity change */}
       <main
-        className={`h-screen overflow-hidden bg-black ${
+        className={`h-screen overflow-hidden bg-black fixed inset-0 home-page-main ${
           splashComplete 
             ? "opacity-100 transition-opacity duration-500" 
             : "opacity-0 pointer-events-none"

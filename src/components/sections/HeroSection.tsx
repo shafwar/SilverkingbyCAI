@@ -293,7 +293,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
   }, [shouldAnimate]);
 
   return (
-    <section ref={containerRef} className="relative min-h-screen w-full overflow-hidden bg-black">
+    <section ref={containerRef} className="relative h-screen w-full overflow-hidden bg-black">
       {/* Video Background */}
       <motion.div
         style={{ opacity: isLoaded ? videoOpacity : 0, scale }}
@@ -360,7 +360,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
       </motion.div>
 
       {/* Content */}
-      <div className="relative z-10 flex min-h-screen items-center pt-20 sm:pt-24 md:pt-0 pb-32 sm:pb-36 md:pb-0">
+      <div className="relative z-10 flex h-full items-center pt-14 sm:pt-18 md:pt-0 pb-16 sm:pb-20 md:pb-0">
         <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 md:px-10 lg:px-14 xl:px-20">
           {/* Main content - left side */}
           <div className="max-w-[900px]">
@@ -420,8 +420,8 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
           </div>
 
           {/* Mobile: Scrolling Features - Continuous horizontal scroll animation */}
-          {/* Positioned above QR card with proper spacing */}
-          <div className="md:hidden absolute left-0 right-0 bottom-36 sm:bottom-40 z-20 px-4 sm:px-6">
+          {/* Positioned above QR card with proper spacing - adjusted for no-scroll mobile */}
+          <div className="md:hidden absolute left-0 right-0 bottom-28 sm:bottom-32 z-20 px-4 sm:px-6">
             <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate} />
           </div>
 
@@ -449,7 +449,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         </div>
       </div>
 
-      {/* QR verification feature card - Better mobile sizing */}
+      {/* QR verification feature card - Better mobile sizing - adjusted for no-scroll mobile */}
       <motion.div
         initial={{ opacity: 0, y: 35, scale: 0.97 }}
         animate={{
@@ -458,7 +458,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
           scale: shouldAnimate ? 1 : 0.97,
         }}
         transition={{ duration: 1, delay: 1.1, ease: "easeOut" }}
-        className="absolute bottom-4 sm:bottom-6 md:bottom-8 inset-x-0 z-30 flex justify-center px-3 sm:px-4"
+        className="absolute bottom-2 sm:bottom-3 md:bottom-8 inset-x-0 z-30 flex justify-center px-3 sm:px-4"
       >
         <a
           href="/authenticity"
@@ -471,10 +471,10 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             <p className="text-[0.45rem] sm:text-[0.5rem] uppercase tracking-[0.4em] sm:tracking-[0.45em] text-white/55">
               Scan & Verify
             </p>
-            <p className="mt-0.5 text-[0.8125rem] sm:text-[0.875rem] md:text-[0.95rem] font-semibold text-white tracking-tight">
+            <p className="mt-0.5 text-[0.75rem] sm:text-[0.8125rem] md:text-[0.95rem] font-semibold text-white tracking-tight">
               Tap to launch Silver King QR scanner
             </p>
-            <p className="mt-0.5 text-[0.625rem] sm:text-[0.65rem] text-white/60 leading-relaxed">
+            <p className="mt-0.5 text-[0.6rem] sm:text-[0.625rem] text-white/60 leading-relaxed line-clamp-2">
               Capture the QR seal to view purity & provenance. "Product authenticated" badge appears
               once functionality is live.
             </p>
@@ -482,12 +482,12 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         </a>
       </motion.div>
 
-      {/* Bottom Fade */}
+      {/* Bottom Fade - Adjusted for mobile no-scroll */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 2, delay: 1 }}
-        className="absolute bottom-0 left-0 right-0 h-36 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none"
+        className="absolute bottom-0 left-0 right-0 h-24 sm:h-28 md:h-36 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none"
       />
     </section>
   );
