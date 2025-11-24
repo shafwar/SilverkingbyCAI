@@ -12,6 +12,7 @@ import {
   Tooltip,
 } from "recharts";
 import { motion } from "framer-motion";
+import clsx from "clsx";
 
 import { fetcher } from "@/lib/fetcher";
 import { AnimatedCard } from "./AnimatedCard";
@@ -25,25 +26,42 @@ type TrendResponse = {
   data: { date: string; count: number }[];
 };
 
+type ViewMode = "7d" | "30d" | "month";
+
 export function LineChartScans() {
   const now = new Date();
+  const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [month, setMonth] = useState(now.getMonth() + 1); // 1-indexed
   const [year, setYear] = useState(now.getFullYear());
 
-  // Check if viewing current month - only real-time updates for current month
-  const isCurrentMonth = useMemo(() => {
+  // Build API URL based on view mode
+  const apiUrl = useMemo(() => {
+    if (viewMode === "7d") {
+      return `/api/admin/scans/trend?range=7`;
+    } else if (viewMode === "30d") {
+      return `/api/admin/scans/trend?range=30`;
+    } else {
+      return `/api/admin/scans/trend?month=${month}&year=${year}`;
+    }
+  }, [viewMode, month, year]);
+
+  // Check if viewing current month - only real-time updates for current month or recent days
+  const shouldRefresh = useMemo(() => {
+    if (viewMode === "7d" || viewMode === "30d") {
+      return true; // Always refresh for recent days view
+    }
     const currentDate = new Date();
     return year === currentDate.getFullYear() && month === currentDate.getMonth() + 1;
-  }, [month, year]);
+  }, [viewMode, month, year]);
 
   const { data, error, isLoading, mutate } = useSWR<TrendResponse>(
-    `/api/admin/scans/trend?month=${month}&year=${year}`,
+    apiUrl,
     fetcher,
     {
-      // Only refresh in real-time for current month (every 30 seconds)
+      // Only refresh in real-time for current month or recent days (every 30 seconds)
       // History months don't need real-time updates
-      refreshInterval: isCurrentMonth ? 30000 : 0,
-      revalidateOnFocus: isCurrentMonth, // Revalidate on focus only for current month
+      refreshInterval: shouldRefresh ? 30000 : 0,
+      revalidateOnFocus: shouldRefresh, // Revalidate on focus only for current data
       revalidateOnReconnect: true, // Always revalidate when connection is restored
       dedupingInterval: 5000, // Dedupe requests within 5 seconds
     }
@@ -52,7 +70,13 @@ export function LineChartScans() {
   const handleMonthYearChange = (newMonth: number, newYear: number) => {
     setMonth(newMonth);
     setYear(newYear);
+    setViewMode("month"); // Switch to month view when using month picker
     // Immediately fetch new data when month changes
+    mutate();
+  };
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode);
     mutate();
   };
 
@@ -67,7 +91,48 @@ export function LineChartScans() {
           <p className="text-xs uppercase tracking-[0.35em] text-white/50">Verification Volume</p>
           <h3 className="mt-2 text-2xl font-semibold text-white">Scan trajectory</h3>
         </div>
-        <MonthYearPicker month={month} year={year} onChange={handleMonthYearChange} />
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Quick range buttons */}
+          <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 p-1">
+            <button
+              onClick={() => handleViewModeChange("7d")}
+              className={clsx(
+                "rounded-full px-4 py-1.5 text-sm font-medium transition",
+                viewMode === "7d"
+                  ? "bg-[#FFD700] text-black"
+                  : "text-white/60 hover:text-white hover:bg-white/10"
+              )}
+            >
+              7 Days
+            </button>
+            <button
+              onClick={() => handleViewModeChange("30d")}
+              className={clsx(
+                "rounded-full px-4 py-1.5 text-sm font-medium transition",
+                viewMode === "30d"
+                  ? "bg-[#FFD700] text-black"
+                  : "text-white/60 hover:text-white hover:bg-white/10"
+              )}
+            >
+              30 Days
+            </button>
+            <button
+              onClick={() => handleViewModeChange("month")}
+              className={clsx(
+                "rounded-full px-4 py-1.5 text-sm font-medium transition",
+                viewMode === "month"
+                  ? "bg-[#FFD700] text-black"
+                  : "text-white/60 hover:text-white hover:bg-white/10"
+              )}
+            >
+              Month
+            </button>
+          </div>
+          {/* Month/Year picker - only show when in month view */}
+          {viewMode === "month" && (
+            <MonthYearPicker month={month} year={year} onChange={handleMonthYearChange} />
+          )}
+        </div>
       </div>
 
       {loading && <LoadingSkeleton className="h-72 w-full" />}
