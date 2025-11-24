@@ -56,14 +56,33 @@ export async function GET(
 
     // Add product information (name and serial) below QR code
     // Use finalSerialCode from database to ensure correct serial number
-    // Always generate fresh QR code (bypass R2 cache) for download
-    console.log("Generating QR download for:", { serialCode: finalSerialCode, productName: product.name });
+    // ALWAYS generate fresh QR code (bypass R2 cache completely) for download
+    console.log("[QR Download] Generating fresh QR code:", {
+      serialCode: finalSerialCode,
+      productName: product.name,
+      serialCodeLength: finalSerialCode.length,
+      serialCodeChars: finalSerialCode.split("")
+    });
+    
+    // Validate serialCode before rendering
+    if (!finalSerialCode || finalSerialCode.length < 3) {
+      console.error("[QR Download] Invalid serialCode:", finalSerialCode);
+      return new NextResponse("Invalid serial code", { status: 400 });
+    }
+    
+    // Generate QR with product info - this always creates fresh image
     const pngBuffer = await addProductInfoToQR(qrBuffer, finalSerialCode, product.name);
     
-    // Validate that serialCode is in the buffer (debug)
-    if (!finalSerialCode || finalSerialCode.length < 3) {
-      console.error("Invalid serialCode for QR generation:", finalSerialCode);
+    // Additional validation: verify buffer was created
+    if (!pngBuffer || pngBuffer.length === 0) {
+      console.error("[QR Download] Failed to generate PNG buffer");
+      return new NextResponse("Failed to generate QR code image", { status: 500 });
     }
+    
+    console.log("[QR Download] QR code generated successfully:", {
+      bufferSize: pngBuffer.length,
+      serialCode: finalSerialCode
+    });
 
     // Convert Buffer to Uint8Array for NextResponse
     const uint8Array = new Uint8Array(pngBuffer);
