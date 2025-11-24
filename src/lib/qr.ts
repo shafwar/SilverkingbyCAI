@@ -62,17 +62,7 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
     const qrY = padding;
     ctx.drawImage(qrImage, qrX, qrY);
 
-    // Draw serial number text below QR code
-    ctx.fillStyle = "#0c0c0c";
-    // Use a monospace font that's universally supported and handles alphanumeric characters well
-    ctx.font = "bold 20px 'Courier New', Courier, monospace";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
-    const textX = totalWidth / 2;
-    const textY = qrHeight + padding + textHeight / 2;
-    
-    // Validate and normalize serialCode
+    // Validate and normalize serialCode first
     const normalizedSerialCode = String(serialCode || "").trim().toUpperCase();
     
     console.log("[addSerialNumberToQR] Rendering serial code:", {
@@ -87,18 +77,67 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
       // Don't render if serial code is invalid
       return canvas.toBuffer("image/png");
     }
+
+    const textX = totalWidth / 2;
+    const textY = qrHeight + padding + textHeight / 2;
     
-    // Ensure proper text rendering with proper encoding
-    // Use character-by-character rendering for maximum compatibility
-    const charWidth = ctx.measureText("M").width || 10; // Fallback width
+    // Use multiple font fallbacks and ensure proper rendering
+    // Try different fonts in order of preference
+    const fonts = [
+      "bold 20px monospace",
+      "20px monospace", 
+      "bold 20px 'Courier New', Courier, monospace",
+      "20px 'Courier New', Courier, monospace",
+      "bold 20px Arial, sans-serif",
+      "20px Arial, sans-serif"
+    ];
+    
+    let fontWorked = false;
+    let charWidth = 12; // Default fallback width
+    
+    // Try each font until one works
+    for (const font of fonts) {
+      try {
+        ctx.font = font;
+        ctx.fillStyle = "#000000"; // Pure black for maximum contrast
+        ctx.strokeStyle = "#000000";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        
+        // Test if font can measure text
+        const testMetrics = ctx.measureText(normalizedSerialCode);
+        if (testMetrics.width > 0) {
+          charWidth = testMetrics.width / normalizedSerialCode.length;
+          fontWorked = true;
+          break;
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+    
+    // If no font worked, use default
+    if (!fontWorked) {
+      ctx.font = "20px monospace";
+      ctx.fillStyle = "#000000";
+      ctx.strokeStyle = "#000000";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      charWidth = 12;
+    }
+    
+    // Render text with both fill and stroke for better visibility
     const startX = textX - (normalizedSerialCode.length * charWidth) / 2;
     
-    // Render each character individually to ensure proper display
+    // Render each character individually with both fill and stroke
     for (let i = 0; i < normalizedSerialCode.length; i++) {
       const char = normalizedSerialCode[i];
       if (char && char !== " ") {
         const charX = startX + i * charWidth + charWidth / 2;
         try {
+          // Use stroke first for outline, then fill for solid text
+          ctx.lineWidth = 0.5;
+          ctx.strokeText(char, charX, textY);
           ctx.fillText(char, charX, textY);
         } catch (charError) {
           console.error(`[addSerialNumberToQR] Error rendering character '${char}' at position ${i}:`, charError);
@@ -106,8 +145,8 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
       }
     }
     
-    // Verify rendering by checking if text was drawn
-    console.log("[addSerialNumberToQR] Serial code rendered:", normalizedSerialCode);
+    // Verify rendering
+    console.log("[addSerialNumberToQR] Serial code rendered:", normalizedSerialCode, "Font:", ctx.font);
 
     // Convert canvas to buffer
     return canvas.toBuffer("image/png");
@@ -179,8 +218,6 @@ export async function addProductInfoToQR(
 
     // Draw serial code below product name - smaller, monospace
     currentY += titleHeight / 2 + spacing + serialHeight / 2;
-    ctx.fillStyle = "#0c0c0c"; // Dark color for better visibility
-    ctx.font = "bold 16px 'Courier New', Courier, monospace";
     
     // Validate and normalize serialCode
     const normalizedSerialCode = String(serialCode || "").trim().toUpperCase();
@@ -198,17 +235,63 @@ export async function addProductInfoToQR(
       return canvas.toBuffer("image/png");
     }
     
-    // Ensure proper text rendering with proper encoding
-    // Use character-by-character rendering for maximum compatibility
-    const charWidth = ctx.measureText("M").width || 10; // Fallback width
+    // Use multiple font fallbacks and ensure proper rendering
+    // Try different fonts in order of preference
+    const fonts = [
+      "bold 16px monospace",
+      "16px monospace", 
+      "bold 16px 'Courier New', Courier, monospace",
+      "16px 'Courier New', Courier, monospace",
+      "bold 16px Arial, sans-serif",
+      "16px Arial, sans-serif"
+    ];
+    
+    let fontWorked = false;
+    let charWidth = 10; // Default fallback width
+    
+    // Try each font until one works
+    for (const font of fonts) {
+      try {
+        ctx.font = font;
+        ctx.fillStyle = "#000000"; // Pure black for maximum contrast
+        ctx.strokeStyle = "#000000";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        
+        // Test if font can measure text
+        const testMetrics = ctx.measureText(normalizedSerialCode);
+        if (testMetrics.width > 0) {
+          charWidth = testMetrics.width / normalizedSerialCode.length;
+          fontWorked = true;
+          break;
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+    
+    // If no font worked, use default
+    if (!fontWorked) {
+      ctx.font = "16px monospace";
+      ctx.fillStyle = "#000000";
+      ctx.strokeStyle = "#000000";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      charWidth = 10;
+    }
+    
+    // Render text with both fill and stroke for better visibility
     const startX = textX - (normalizedSerialCode.length * charWidth) / 2;
     
-    // Render each character individually to ensure proper display
+    // Render each character individually with both fill and stroke
     for (let i = 0; i < normalizedSerialCode.length; i++) {
       const char = normalizedSerialCode[i];
       if (char && char !== " ") {
         const charX = startX + i * charWidth + charWidth / 2;
         try {
+          // Use stroke first for outline, then fill for solid text
+          ctx.lineWidth = 0.5;
+          ctx.strokeText(char, charX, currentY);
           ctx.fillText(char, charX, currentY);
         } catch (charError) {
           console.error(`[addProductInfoToQR] Error rendering character '${char}' at position ${i}:`, charError);
@@ -216,8 +299,8 @@ export async function addProductInfoToQR(
       }
     }
     
-    // Verify rendering by checking if text was drawn
-    console.log("[addProductInfoToQR] Serial code rendered:", normalizedSerialCode);
+    // Verify rendering
+    console.log("[addProductInfoToQR] Serial code rendered:", normalizedSerialCode, "Font:", ctx.font);
 
     // Convert canvas to buffer
     return canvas.toBuffer("image/png");
