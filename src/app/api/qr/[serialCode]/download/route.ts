@@ -19,7 +19,9 @@ export async function GET(
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const { serialCode } = params;
+    // Decode serialCode from URL params (handle URL encoding)
+    let { serialCode } = params;
+    serialCode = decodeURIComponent(serialCode).trim().toUpperCase();
     
     if (!serialCode) {
       return new NextResponse("Serial code is required", { status: 400 });
@@ -38,8 +40,11 @@ export async function GET(
       return new NextResponse("Product not found", { status: 404 });
     }
 
+    // Ensure we use the serialCode from database (normalized)
+    const finalSerialCode = product.serialCode || serialCode;
+
     // Get verify URL using centralized function
-    const verifyUrl = getVerifyUrl(serialCode);
+    const verifyUrl = getVerifyUrl(finalSerialCode);
 
     // Generate QR code as PNG buffer
     const qrBuffer = await QRCode.toBuffer(verifyUrl, {
@@ -50,7 +55,8 @@ export async function GET(
     });
 
     // Add product information (name and serial) below QR code
-    const pngBuffer = await addProductInfoToQR(qrBuffer, product.serialCode, product.name);
+    // Use finalSerialCode from database to ensure correct serial number
+    const pngBuffer = await addProductInfoToQR(qrBuffer, finalSerialCode, product.name);
 
     // Convert Buffer to Uint8Array for NextResponse
     const uint8Array = new Uint8Array(pngBuffer);
@@ -63,7 +69,7 @@ export async function GET(
       .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
       .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
     
-    const filename = `QR-${product.serialCode}${sanitizedName ? `-${sanitizedName}` : ""}.png`;
+    const filename = `QR-${finalSerialCode}${sanitizedName ? `-${sanitizedName}` : ""}.png`;
     
     // Return as PNG image with download filename
     return new NextResponse(uint8Array, {

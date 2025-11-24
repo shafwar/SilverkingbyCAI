@@ -20,7 +20,9 @@ export async function GET(
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const { serialCode } = params;
+    // Decode serialCode from URL params (handle URL encoding)
+    let { serialCode } = params;
+    serialCode = decodeURIComponent(serialCode).trim().toUpperCase();
     
     if (!serialCode) {
       return new NextResponse("Serial code is required", { status: 400 });
@@ -39,8 +41,11 @@ export async function GET(
       return new NextResponse("Product not found", { status: 404 });
     }
 
+    // Ensure we use the serialCode from database (normalized)
+    const finalSerialCode = product.serialCode || serialCode;
+
     // Get verify URL using centralized function
-    const verifyUrl = getVerifyUrl(serialCode);
+    const verifyUrl = getVerifyUrl(finalSerialCode);
 
     // Generate QR code as PNG buffer
     const qrBuffer = await QRCode.toBuffer(verifyUrl, {
@@ -51,7 +56,8 @@ export async function GET(
     });
 
     // Add product information (name and serial) below QR code
-    const pngBuffer = await addProductInfoToQR(qrBuffer, product.serialCode, product.name);
+    // Use finalSerialCode from database to ensure correct serial number
+    const pngBuffer = await addProductInfoToQR(qrBuffer, finalSerialCode, product.name);
 
     // Create buffer to store PDF
     const chunks: Buffer[] = [];
@@ -61,7 +67,7 @@ export async function GET(
       size: "A4",
       margin: 50,
       info: {
-        Title: `Silver King - QR Code ${product.serialCode}`,
+        Title: `Silver King - QR Code ${finalSerialCode}`,
         Author: "Silver King Admin",
         Subject: "Product QR Code",
       },
@@ -124,7 +130,7 @@ export async function GET(
     // Add serial code below name
     doc.fontSize(12).font("Courier");
     doc.y = qrY + qrSize + 45;
-    doc.text(product.serialCode, {
+    doc.text(finalSerialCode, {
       align: "center",
     });
 
@@ -142,7 +148,7 @@ export async function GET(
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="QR-${product.serialCode}-${product.name.replace(/[^a-zA-Z0-9]/g, "_")}.pdf"`,
+        "Content-Disposition": `attachment; filename="QR-${finalSerialCode}-${product.name.replace(/[^a-zA-Z0-9]/g, "_")}.pdf"`,
         "Cache-Control": "no-cache",
       },
     });

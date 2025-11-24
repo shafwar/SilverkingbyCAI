@@ -72,16 +72,34 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
     const textX = totalWidth / 2;
     const textY = qrHeight + padding + textHeight / 2;
     
+    // Validate and normalize serialCode
+    const normalizedSerialCode = String(serialCode || "").trim().toUpperCase();
+    
+    if (!normalizedSerialCode) {
+      console.error("Serial code is empty or invalid:", serialCode);
+      // Don't render if serial code is invalid
+      return canvas.toBuffer("image/png");
+    }
+    
     // Ensure proper text rendering with proper encoding
     try {
-      ctx.fillText(serialCode, textX, textY);
+      // Test if font can render the text
+      const testMetrics = ctx.measureText(normalizedSerialCode);
+      if (testMetrics.width > 0) {
+        ctx.fillText(normalizedSerialCode, textX, textY);
+      } else {
+        throw new Error("Font cannot render text");
+      }
     } catch (error) {
-      console.error("Error rendering serial number text:", error);
+      console.error("Error rendering serial number text:", error, "SerialCode:", normalizedSerialCode);
       // Fallback: render each character individually if there's an encoding issue
       const charWidth = ctx.measureText("M").width;
-      const startX = textX - (serialCode.length * charWidth) / 2;
-      for (let i = 0; i < serialCode.length; i++) {
-        ctx.fillText(serialCode[i], startX + i * charWidth + charWidth / 2, textY);
+      const startX = textX - (normalizedSerialCode.length * charWidth) / 2;
+      for (let i = 0; i < normalizedSerialCode.length; i++) {
+        const char = normalizedSerialCode[i];
+        if (char) {
+          ctx.fillText(char, startX + i * charWidth + charWidth / 2, textY);
+        }
       }
     }
 
@@ -155,19 +173,37 @@ export async function addProductInfoToQR(
 
     // Draw serial code below product name - smaller, monospace
     currentY += titleHeight / 2 + spacing + serialHeight / 2;
-    ctx.fillStyle = "#666666";
+    ctx.fillStyle = "#0c0c0c"; // Dark color for better visibility
     ctx.font = "bold 16px 'Courier New', Courier, monospace";
+    
+    // Validate and normalize serialCode
+    const normalizedSerialCode = String(serialCode || "").trim().toUpperCase();
+    
+    if (!normalizedSerialCode) {
+      console.error("Serial code is empty or invalid:", serialCode);
+      // Don't render if serial code is invalid
+      return canvas.toBuffer("image/png");
+    }
     
     // Ensure proper text rendering with proper encoding
     try {
-      ctx.fillText(serialCode, textX, currentY);
+      // Test if font can render the text
+      const testMetrics = ctx.measureText(normalizedSerialCode);
+      if (testMetrics.width > 0) {
+        ctx.fillText(normalizedSerialCode, textX, currentY);
+      } else {
+        throw new Error("Font cannot render text");
+      }
     } catch (error) {
-      console.error("Error rendering serial number text:", error);
+      console.error("Error rendering serial number text:", error, "SerialCode:", normalizedSerialCode);
       // Fallback: render each character individually if there's an encoding issue
       const charWidth = ctx.measureText("M").width;
-      const startX = textX - (serialCode.length * charWidth) / 2;
-      for (let i = 0; i < serialCode.length; i++) {
-        ctx.fillText(serialCode[i], startX + i * charWidth + charWidth / 2, currentY);
+      const startX = textX - (normalizedSerialCode.length * charWidth) / 2;
+      for (let i = 0; i < normalizedSerialCode.length; i++) {
+        const char = normalizedSerialCode[i];
+        if (char) {
+          ctx.fillText(char, startX + i * charWidth + charWidth / 2, currentY);
+        }
       }
     }
 
