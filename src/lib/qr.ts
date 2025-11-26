@@ -134,11 +134,28 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
     const totalTextWidth = normalizedSerialCode.length * charWidth;
     const startX = textX - (totalTextWidth / 2);
     
+    // DEBUG: Draw a test rectangle to verify positioning
+    ctx.fillStyle = "#ff0000"; // Red background for debugging
+    ctx.fillRect(startX - 5, textY - 15, totalTextWidth + 10, 30);
+    console.log("[addSerialNumberToQR] DEBUG Rectangle drawn at:", {
+      x: startX - 5,
+      y: textY - 15,
+      width: totalTextWidth + 10,
+      height: 30,
+      textY,
+      textX,
+      totalTextWidth
+    });
+    
     // Render each character individually with MULTIPLE passes for maximum visibility
+    // CRITICAL FIX: Remove char.trim() check - it filters out valid characters like numbers
     for (let i = 0; i < normalizedSerialCode.length; i++) {
       const char = normalizedSerialCode[i];
-      if (char && char.trim()) {
+      // Only skip if char is null/undefined, NOT if it's a space or number
+      if (char !== null && char !== undefined) {
         const charX = startX + (i * charWidth);
+        
+        console.log(`[addSerialNumberToQR] Rendering char ${i}: "${char}" at (${charX.toFixed(2)}, ${textY.toFixed(2)})`);
         
         // MULTIPLE rendering passes for maximum visibility and reliability
         // 1. White background stroke (outline) for contrast
@@ -305,11 +322,28 @@ export async function addProductInfoToQR(
     const totalTextWidth = normalizedSerialCode.length * charWidth;
     const startX = textX - (totalTextWidth / 2);
     
+    // DEBUG: Draw a test rectangle to verify positioning
+    ctx.fillStyle = "#ff0000"; // Red background for debugging
+    ctx.fillRect(startX - 5, currentY - 15, totalTextWidth + 10, 30);
+    console.log("[addProductInfoToQR] DEBUG Rectangle drawn at:", {
+      x: startX - 5,
+      y: currentY - 15,
+      width: totalTextWidth + 10,
+      height: 30,
+      currentY,
+      textX,
+      totalTextWidth
+    });
+    
     // Render each character individually with MULTIPLE passes for maximum visibility
+    // CRITICAL FIX: Remove char.trim() check - it filters out valid characters like numbers
     for (let i = 0; i < normalizedSerialCode.length; i++) {
       const char = normalizedSerialCode[i];
-      if (char && char.trim()) {
+      // Only skip if char is null/undefined, NOT if it's a space or number
+      if (char !== null && char !== undefined) {
         const charX = startX + (i * charWidth);
+        
+        console.log(`[addProductInfoToQR] Rendering char ${i}: "${char}" at (${charX.toFixed(2)}, ${currentY.toFixed(2)})`);
         
         // MULTIPLE rendering passes for maximum visibility and reliability
         // 1. White background stroke (outline) for contrast
