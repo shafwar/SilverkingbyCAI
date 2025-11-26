@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import QRCode from "qrcode";
-import { createCanvas, loadImage } from "canvas";
+import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getBaseUrl } from "@/utils/constants";
 import { getR2Url } from "@/utils/r2-url";
@@ -172,7 +172,7 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
           
           // Verify rendering
           const imageData = ctx.getImageData(textX - 100, textY - 15, 200, 30);
-          const hasPixels = imageData.data.some((pixel, index) => index % 4 === 0 && pixel < 200);
+          const hasPixels = imageData.data.some((pixel: number, index: number) => index % 4 === 0 && pixel < 200);
           
           if (hasPixels) {
             console.log("[addSerialNumberToQR] Text rendered successfully with font:", fontOption);
@@ -399,7 +399,7 @@ export async function addProductInfoToQR(
           
           // Verify rendering
           const imageData = ctx.getImageData(textX - 100, currentY - 15, 200, 30);
-          const hasPixels = imageData.data.some((pixel, index) => index % 4 === 0 && pixel < 200);
+          const hasPixels = imageData.data.some((pixel: number, index: number) => index % 4 === 0 && pixel < 200);
           
           if (hasPixels) {
             console.log("[addProductInfoToQR] Text rendered successfully with font:", fontOption);

@@ -19,6 +19,15 @@ const nextConfig = {
   },
   swcMinify: true,
   reactStrictMode: true,
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals = config.externals || [];
+      if (!config.externals.includes("@napi-rs/canvas")) {
+        config.externals.push("@napi-rs/canvas");
+      }
+    }
+    return config;
+  },
 };
 
 module.exports = nextConfig;
