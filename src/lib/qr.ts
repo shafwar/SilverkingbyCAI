@@ -138,51 +138,86 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
     const totalTextWidth = normalizedSerialCode.length * charWidth;
     const startX = textX - (totalTextWidth / 2);
     
-    // CRITICAL FIX: Use SIMPLE, DIRECT text rendering approach
-    // Reset all context properties to ensure clean state
+    // CRITICAL FIX: Use ULTRA-SIMPLE text rendering with multiple font fallbacks
+    // Try multiple font approaches to ensure text renders
     ctx.save();
     
-    // Set text properties
-    ctx.fillStyle = "#000000";
-    ctx.strokeStyle = "#000000";
-    ctx.textAlign = "center"; // Center align for simplicity
-    ctx.textBaseline = "middle";
-    ctx.font = `bold ${fontSize}px monospace`;
+    // Approach 1: Try with system default fonts first (most reliable)
+    const fontOptions = [
+      `${fontSize}px monospace`,           // System monospace
+      `bold ${fontSize}px monospace`,      // Bold monospace
+      `${fontSize}px "Courier New"`,       // Courier New
+      `bold ${fontSize}px "Courier New"`,  // Bold Courier New
+      `${fontSize}px Arial`,               // Arial fallback
+      `bold ${fontSize}px Arial`,          // Bold Arial
+    ];
     
-    // Render text directly using fillText (simplest approach)
-    // This should work in all environments
-    ctx.fillText(normalizedSerialCode, textX, textY);
+    let textRendered = false;
     
-    // Also render with stroke for better visibility
-    ctx.lineWidth = 2;
-    ctx.strokeText(normalizedSerialCode, textX, textY);
+    for (const fontOption of fontOptions) {
+      try {
+        ctx.font = fontOption;
+        ctx.fillStyle = "#000000";
+        ctx.strokeStyle = "#000000";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.lineWidth = 2;
+        
+        // Test if font works by measuring
+        const testMetrics = ctx.measureText(normalizedSerialCode);
+        if (testMetrics.width > 0) {
+          // Render with both fill and stroke for maximum visibility
+          ctx.fillText(normalizedSerialCode, textX, textY);
+          ctx.strokeText(normalizedSerialCode, textX, textY);
+          
+          // Verify rendering
+          const imageData = ctx.getImageData(textX - 100, textY - 15, 200, 30);
+          const hasPixels = imageData.data.some((pixel, index) => index % 4 === 0 && pixel < 200);
+          
+          if (hasPixels) {
+            console.log("[addSerialNumberToQR] Text rendered successfully with font:", fontOption);
+            textRendered = true;
+            break;
+          }
+        }
+      } catch (error) {
+        console.warn(`[addSerialNumberToQR] Font ${fontOption} failed:`, error);
+        continue;
+      }
+    }
     
-    // Verify text was rendered by checking canvas
-    const imageData = ctx.getImageData(textX - 50, textY - 10, 100, 20);
-    const hasPixels = imageData.data.some((pixel, index) => index % 4 === 0 && pixel < 255);
-    
-    console.log("[addSerialNumberToQR] Text rendering verification:", {
-      serialCode: normalizedSerialCode,
-      position: { x: textX, y: textY },
-      font: ctx.font,
-      hasPixels: hasPixels,
-      canvasSize: { width: canvas.width, height: canvas.height }
-    });
-    
-    if (!hasPixels) {
-      console.error("[addSerialNumberToQR] WARNING: Text may not have rendered! Trying alternative method...");
-      // Fallback: Try rendering character by character with explicit positioning
+    // If all fonts failed, try manual character rendering as last resort
+    if (!textRendered) {
+      console.error("[addSerialNumberToQR] All font attempts failed, trying manual character rendering...");
+      ctx.font = `${fontSize}px monospace`;
       ctx.textAlign = "left";
-      const metrics = ctx.measureText(normalizedSerialCode);
-      const startX = textX - metrics.width / 2;
+      ctx.textBaseline = "middle";
+      
+      const metrics = ctx.measureText("0"); // Measure a single character
+      const charWidth = metrics.width || fontSize * 0.6;
+      const totalWidth = normalizedSerialCode.length * charWidth;
+      const startX = textX - totalWidth / 2;
+      
+      // Render each character individually
       for (let i = 0; i < normalizedSerialCode.length; i++) {
         const char = normalizedSerialCode[i];
         if (char) {
-          const charMetrics = ctx.measureText(char);
-          ctx.fillText(char, startX + (i * charWidth), textY);
+          const charX = startX + (i * charWidth);
+          // Multiple passes for visibility
+          ctx.fillStyle = "#000000";
+          ctx.fillText(char, charX, textY);
+          ctx.strokeText(char, charX, textY);
+          ctx.fillText(char, charX + 0.5, textY + 0.5); // Bold effect
         }
       }
     }
+    
+    console.log("[addSerialNumberToQR] Final text rendering status:", {
+      serialCode: normalizedSerialCode,
+      rendered: textRendered,
+      position: { x: textX, y: textY },
+      canvasSize: { width: canvas.width, height: canvas.height }
+    });
     
     ctx.restore();
     
@@ -330,51 +365,86 @@ export async function addProductInfoToQR(
     const totalTextWidth = normalizedSerialCode.length * charWidth;
     const startX = textX - (totalTextWidth / 2);
     
-    // CRITICAL FIX: Use SIMPLE, DIRECT text rendering approach
-    // Reset all context properties to ensure clean state
+    // CRITICAL FIX: Use ULTRA-SIMPLE text rendering with multiple font fallbacks
+    // Try multiple font approaches to ensure text renders
     ctx.save();
     
-    // Set text properties
-    ctx.fillStyle = "#000000";
-    ctx.strokeStyle = "#000000";
-    ctx.textAlign = "center"; // Center align for simplicity
-    ctx.textBaseline = "middle";
-    ctx.font = `bold ${fontSize}px monospace`;
+    // Approach 1: Try with system default fonts first (most reliable)
+    const fontOptions = [
+      `${fontSize}px monospace`,           // System monospace
+      `bold ${fontSize}px monospace`,      // Bold monospace
+      `${fontSize}px "Courier New"`,       // Courier New
+      `bold ${fontSize}px "Courier New"`,  // Bold Courier New
+      `${fontSize}px Arial`,               // Arial fallback
+      `bold ${fontSize}px Arial`,          // Bold Arial
+    ];
     
-    // Render text directly using fillText (simplest approach)
-    // This should work in all environments
-    ctx.fillText(normalizedSerialCode, textX, currentY);
+    let textRendered = false;
     
-    // Also render with stroke for better visibility
-    ctx.lineWidth = 2;
-    ctx.strokeText(normalizedSerialCode, textX, currentY);
+    for (const fontOption of fontOptions) {
+      try {
+        ctx.font = fontOption;
+        ctx.fillStyle = "#000000";
+        ctx.strokeStyle = "#000000";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.lineWidth = 2;
+        
+        // Test if font works by measuring
+        const testMetrics = ctx.measureText(normalizedSerialCode);
+        if (testMetrics.width > 0) {
+          // Render with both fill and stroke for maximum visibility
+          ctx.fillText(normalizedSerialCode, textX, currentY);
+          ctx.strokeText(normalizedSerialCode, textX, currentY);
+          
+          // Verify rendering
+          const imageData = ctx.getImageData(textX - 100, currentY - 15, 200, 30);
+          const hasPixels = imageData.data.some((pixel, index) => index % 4 === 0 && pixel < 200);
+          
+          if (hasPixels) {
+            console.log("[addProductInfoToQR] Text rendered successfully with font:", fontOption);
+            textRendered = true;
+            break;
+          }
+        }
+      } catch (error) {
+        console.warn(`[addProductInfoToQR] Font ${fontOption} failed:`, error);
+        continue;
+      }
+    }
     
-    // Verify text was rendered by checking canvas
-    const imageData = ctx.getImageData(textX - 50, currentY - 10, 100, 20);
-    const hasPixels = imageData.data.some((pixel, index) => index % 4 === 0 && pixel < 255);
-    
-    console.log("[addProductInfoToQR] Text rendering verification:", {
-      serialCode: normalizedSerialCode,
-      position: { x: textX, y: currentY },
-      font: ctx.font,
-      hasPixels: hasPixels,
-      canvasSize: { width: canvas.width, height: canvas.height }
-    });
-    
-    if (!hasPixels) {
-      console.error("[addProductInfoToQR] WARNING: Text may not have rendered! Trying alternative method...");
-      // Fallback: Try rendering character by character with explicit positioning
+    // If all fonts failed, try manual character rendering as last resort
+    if (!textRendered) {
+      console.error("[addProductInfoToQR] All font attempts failed, trying manual character rendering...");
+      ctx.font = `${fontSize}px monospace`;
       ctx.textAlign = "left";
-      const metrics = ctx.measureText(normalizedSerialCode);
-      const startX = textX - metrics.width / 2;
+      ctx.textBaseline = "middle";
+      
+      const metrics = ctx.measureText("0"); // Measure a single character
+      const charWidth = metrics.width || fontSize * 0.6;
+      const totalWidth = normalizedSerialCode.length * charWidth;
+      const startX = textX - totalWidth / 2;
+      
+      // Render each character individually
       for (let i = 0; i < normalizedSerialCode.length; i++) {
         const char = normalizedSerialCode[i];
         if (char) {
-          const charMetrics = ctx.measureText(char);
-          ctx.fillText(char, startX + (i * charWidth), currentY);
+          const charX = startX + (i * charWidth);
+          // Multiple passes for visibility
+          ctx.fillStyle = "#000000";
+          ctx.fillText(char, charX, currentY);
+          ctx.strokeText(char, charX, currentY);
+          ctx.fillText(char, charX + 0.5, currentY + 0.5); // Bold effect
         }
       }
     }
+    
+    console.log("[addProductInfoToQR] Final text rendering status:", {
+      serialCode: normalizedSerialCode,
+      rendered: textRendered,
+      position: { x: textX, y: currentY },
+      canvasSize: { width: canvas.width, height: canvas.height }
+    });
     
     ctx.restore();
     
