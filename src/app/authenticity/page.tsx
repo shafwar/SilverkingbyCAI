@@ -109,19 +109,20 @@ function CTASection() {
   );
 }
 
+// WorkflowTimeline - NO BLOCKING ANIMATIONS
 function WorkflowTimeline() {
   const timelineRef = useRef<HTMLDivElement>(null);
   const pathRef = useRef<SVGPathElement>(null);
   const pathMobileRef = useRef<SVGPathElement>(null);
-  const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [activeStep, setActiveStep] = useState<number | null>(null);
 
+  // Optional animation - won't block rendering
   useGSAP(
     () => {
       if (!timelineRef.current) return;
 
       const ctx = gsap.context(() => {
-        // Animate desktop path drawing
+        // Animate desktop path drawing - OPTIONAL
         if (pathRef.current) {
           const path = pathRef.current;
           const pathLength = path.getTotalLength();
@@ -140,7 +141,7 @@ function WorkflowTimeline() {
           });
         }
 
-        // Animate mobile path drawing
+        // Animate mobile path drawing - OPTIONAL
         if (pathMobileRef.current) {
           const pathMobile = pathMobileRef.current;
           const pathMobileLength = pathMobile.getTotalLength();
@@ -158,71 +159,6 @@ function WorkflowTimeline() {
             },
           });
         }
-
-        // Animate step cards with enhanced interactions
-        stepRefs.current.forEach((stepRef, index) => {
-          if (!stepRef) return;
-
-          const stepCard = stepRef.querySelector("[data-step-card]");
-          const stepIcon = stepRef.querySelector("[data-step-icon]");
-          const stepGlow = stepRef.querySelector("[data-step-glow]");
-
-          if (!stepCard || !stepIcon) return;
-
-          // Fade in card with scale
-          gsap.fromTo(
-            stepCard,
-            { opacity: 0, y: 40, scale: 0.95 },
-            {
-              opacity: 1,
-              y: 0,
-              scale: 1,
-              duration: 0.8,
-              ease: "power3.out",
-              scrollTrigger: {
-                trigger: stepRef,
-                start: "top 75%",
-                toggleActions: "play none none reverse",
-              },
-            }
-          );
-
-          // Animate icon with bounce
-          gsap.fromTo(
-            stepIcon,
-            { scale: 0, opacity: 0, rotation: -180 },
-            {
-              scale: 1,
-              opacity: 1,
-              rotation: 0,
-              duration: 0.8,
-              ease: "back.out(1.7)",
-              delay: 0.2,
-              scrollTrigger: {
-                trigger: stepRef,
-                start: "top 75%",
-                toggleActions: "play none none reverse",
-              },
-            }
-          );
-
-          // Pulsing glow effect
-          if (stepGlow) {
-            gsap.to(stepGlow, {
-              scale: 1.4,
-              opacity: 0.8,
-              duration: 2,
-              repeat: -1,
-              yoyo: true,
-              ease: "sine.inOut",
-              scrollTrigger: {
-                trigger: stepRef,
-                start: "top 75%",
-                toggleActions: "play none none reverse",
-              },
-            });
-          }
-        });
       }, timelineRef);
 
       return () => ctx.revert();
@@ -232,8 +168,8 @@ function WorkflowTimeline() {
 
   return (
     <div ref={timelineRef} className="relative">
-      {/* SVG Path - Desktop with animated drawing */}
-      <div className="absolute left-8 top-0 hidden h-full w-0.5 md:left-1/2 md:block z-0">
+      {/* SVG Path - Desktop - ALWAYS VISIBLE */}
+      <div className="absolute left-8 top-0 hidden h-full w-0.5 md:left-1/2 md:block">
         <svg className="h-full w-full" viewBox="0 0 2 1000" preserveAspectRatio="none">
           <defs>
             <linearGradient id="workflow-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -260,8 +196,8 @@ function WorkflowTimeline() {
         </svg>
       </div>
 
-      {/* SVG Path - Mobile with animated drawing */}
-      <div className="absolute left-8 top-0 block h-full w-0.5 md:hidden z-0">
+      {/* SVG Path - Mobile - ALWAYS VISIBLE */}
+      <div className="absolute left-8 top-0 block h-full w-0.5 md:hidden">
         <svg className="h-full w-full" viewBox="0 0 2 1000" preserveAspectRatio="none">
           <defs>
             <linearGradient id="workflow-gradient-mobile" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -288,8 +224,8 @@ function WorkflowTimeline() {
         </svg>
       </div>
 
-      {/* Steps */}
-      <div className="relative space-y-12 md:space-y-20 z-10">
+      {/* Steps - NO BLOCKING ANIMATIONS, ALWAYS VISIBLE */}
+      <div className="relative space-y-12 md:space-y-20">
         {workflowSteps.map((step, index) => {
           const Icon = step.icon;
           const isEven = index % 2 === 0;
@@ -297,21 +233,15 @@ function WorkflowTimeline() {
           return (
             <div
               key={step.id}
-              ref={(el) => {
-                stepRefs.current[index] = el;
-              }}
               className={`relative flex items-center gap-8 ${
                 isEven ? "md:flex-row" : "md:flex-row-reverse"
               }`}
             >
-              {/* Step Content with Enhanced Card - ALWAYS VISIBLE */}
-              <motion.div
-                data-step-card
+              {/* Step Content - ALWAYS VISIBLE, NO ANIMATION BLOCKING */}
+              <div
                 className={`flex-1 pl-20 md:pl-0 ${isEven ? "md:pr-16 md:text-right" : "md:pl-16"}`}
-                onHoverStart={() => setActiveStep(index)}
-                onHoverEnd={() => setActiveStep(null)}
-                whileHover={{ scale: 1.03, x: isEven ? -10 : 10 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                onMouseEnter={() => setActiveStep(index)}
+                onMouseLeave={() => setActiveStep(null)}
               >
                 <div
                   className={`group relative cursor-pointer rounded-3xl border transition-all duration-500 p-6 md:p-8 backdrop-blur-xl ${
@@ -326,73 +256,38 @@ function WorkflowTimeline() {
                     }`}
                   />
                   <div className="relative z-10">
-                    <motion.h3
-                      className="mb-2 md:mb-3 text-lg md:text-2xl font-semibold text-white transition-colors group-hover:text-luxury-gold"
-                      animate={{ color: activeStep === index ? "#D4AF37" : "#FFFFFF" }}
-                    >
+                    <h3 className="mb-2 md:mb-3 text-lg md:text-2xl font-semibold text-white transition-colors group-hover:text-luxury-gold">
                       {step.title}
-                    </motion.h3>
+                    </h3>
                     <p className="text-xs md:text-sm text-luxury-silver/70 leading-relaxed transition-colors group-hover:text-luxury-silver/90">
                       {step.description}
                     </p>
                   </div>
                 </div>
-              </motion.div>
+              </div>
 
-              {/* Step Icon with Enhanced Interactions */}
+              {/* Step Icon - ALWAYS VISIBLE */}
               <div className="absolute left-0 md:left-1/2 md:-translate-x-1/2 z-20">
-                <motion.div
-                  className="relative"
-                  animate={{
-                    scale: activeStep === index ? 1.15 : 1,
-                  }}
-                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                >
+                <div className="relative">
                   {/* Glowing Pulse Circle */}
-                  <motion.div
-                    data-step-glow
-                    className="absolute inset-0 -z-10 rounded-full bg-luxury-gold/30 blur-2xl"
-                    animate={{
-                      scale: activeStep === index ? 1.5 : 1.2,
-                      opacity: activeStep === index ? 0.6 : 0.3,
-                    }}
-                    transition={{ duration: 0.3 }}
-                  />
+                  <div className="absolute inset-0 -z-10 rounded-full bg-luxury-gold/30 blur-2xl" />
 
-                  {/* Icon Circle with Gradient */}
-                  <motion.div
-                    data-step-icon
-                    className="relative flex h-20 w-20 md:h-24 md:w-24 items-center justify-center rounded-full border-2 bg-gradient-to-br from-luxury-gold/20 via-luxury-gold/10 to-luxury-black shadow-[0_10px_30px_-10px_rgba(212,175,55,0.5)] backdrop-blur-sm"
-                    animate={{
-                      borderColor:
-                        activeStep === index ? "rgba(212,175,55,0.8)" : "rgba(212,175,55,0.5)",
-                      boxShadow:
-                        activeStep === index
-                          ? "0 0 40px rgba(212,175,55,0.7)"
-                          : "0 10px 30px -10px rgba(212,175,55,0.5)",
-                    }}
-                    transition={{ duration: 0.3 }}
+                  {/* Icon Circle */}
+                  <div
+                    className={`relative flex h-20 w-20 md:h-24 md:w-24 items-center justify-center rounded-full border-2 bg-gradient-to-br from-luxury-gold/20 via-luxury-gold/10 to-luxury-black shadow-[0_10px_30px_-10px_rgba(212,175,55,0.5)] backdrop-blur-sm transition-all duration-300 ${
+                      activeStep === index
+                        ? "border-luxury-gold/80 shadow-[0_0_40px_rgba(212,175,55,0.7)]"
+                        : "border-luxury-gold/50"
+                    }`}
                   >
-                    <motion.div
-                      animate={{ rotate: activeStep === index ? [0, 5, -5, 0] : 0 }}
-                      transition={{ duration: 0.5 }}
-                    >
-                      <Icon className="h-8 w-8 md:h-10 md:w-10 text-luxury-gold" />
-                    </motion.div>
-                  </motion.div>
+                    <Icon className="h-8 w-8 md:h-10 md:w-10 text-luxury-gold" />
+                  </div>
 
                   {/* Step Number Badge */}
-                  <motion.div
-                    className="absolute -bottom-1 -right-1 flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full bg-gradient-to-br from-luxury-gold to-luxury-lightGold text-xs font-bold text-black shadow-lg"
-                    animate={{
-                      scale: activeStep === index ? 1.2 : 1,
-                      rotate: activeStep === index ? 360 : 0,
-                    }}
-                    transition={{ duration: 0.5 }}
-                  >
+                  <div className="absolute -bottom-1 -right-1 flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full bg-gradient-to-br from-luxury-gold to-luxury-lightGold text-xs font-bold text-black shadow-lg">
                     {step.id}
-                  </motion.div>
-                </motion.div>
+                  </div>
+                </div>
               </div>
 
               {/* Spacer */}
@@ -457,7 +352,7 @@ export default function AuthenticityPage() {
     { scope: heroRef }
   );
 
-  // Optimal video autoplay handling
+  // Video autoplay handling
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -561,39 +456,6 @@ export default function AuthenticityPage() {
   const pageRef = useRef<HTMLDivElement>(null);
   const sectionsRef = useRef<(HTMLDivElement | null)[]>([]);
 
-  useGSAP(
-    () => {
-      if (!pageRef.current) return;
-
-      try {
-        const ctx = gsap.context(() => {
-          sectionsRef.current.forEach((section) => {
-            if (!section) return;
-            const targets = section.querySelectorAll("[data-reveal]");
-
-            ScrollTrigger.batch(targets, {
-              start: "top 85%",
-              onEnter: (batch) =>
-                gsap.to(batch, {
-                  opacity: 1,
-                  y: 0,
-                  duration: 0.5,
-                  stagger: 0.1,
-                  ease: "power2.out",
-                }),
-              once: true,
-            });
-          });
-        }, pageRef);
-
-        return () => ctx.revert();
-      } catch (error) {
-        console.error("GSAP ScrollTrigger error:", error);
-      }
-    },
-    { scope: pageRef }
-  );
-
   return (
     <div ref={pageRef} className="min-h-screen bg-luxury-black text-white">
       {/* Simplified Background */}
@@ -612,10 +474,8 @@ export default function AuthenticityPage() {
       >
         {/* Video Background */}
         <div className="absolute inset-0 z-0 overflow-hidden">
-          {/* Fallback gradient background */}
           <div className="absolute inset-0 bg-gradient-to-br from-luxury-black via-luxury-black/95 to-luxury-black z-0" />
           
-          {/* Video */}
           <video
             ref={videoRef}
             autoPlay
@@ -630,27 +490,16 @@ export default function AuthenticityPage() {
               transform: "scale(1.05)",
               transformOrigin: "center center",
             }}
-            onError={() => {
-              setIsVideoLoaded(false);
-            }}
-            onCanPlay={() => {
-              setIsVideoLoaded(true);
-            }}
-            onLoadedData={() => {
-              setIsVideoLoaded(true);
-            }}
+            onError={() => setIsVideoLoaded(false)}
+            onCanPlay={() => setIsVideoLoaded(true)}
+            onLoadedData={() => setIsVideoLoaded(true)}
           >
             <source src={getR2UrlClient("/videos/hero/mobile scanning qr.mp4")} type="video/mp4" />
           </video>
 
-          {/* Dark overlays for better text readability */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70 z-20" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(10,10,10,0.6)_100%)] z-20" />
-          
-          {/* Vignette effect */}
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.8)_100%)] z-20" />
-          
-          {/* Soft fading at bottom for smooth transition */}
           <div className="absolute inset-x-0 bottom-0 h-40 md:h-52 lg:h-64 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-transparent pointer-events-none z-20" />
         </div>
 
@@ -726,10 +575,9 @@ export default function AuthenticityPage() {
         </div>
       </section>
 
-      {/* CTA Section */}
       <CTASection />
 
-      {/* Verification Workflow Section */}
+      {/* Verification Workflow Section - ALWAYS VISIBLE */}
       <section
         data-verification-section
         ref={(element) => {
@@ -737,11 +585,9 @@ export default function AuthenticityPage() {
         }}
         className="relative overflow-hidden border-t border-white/10 bg-gradient-to-b from-luxury-black/50 via-luxury-black to-luxury-black/50 py-24 px-6 md:py-32"
       >
-        {/* Background Decoration */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(212,175,55,0.03)_0%,transparent_70%)]" />
 
         <div className="relative z-10 mx-auto max-w-6xl">
-          {/* Section Header with Animation */}
           <motion.div
             className="mb-20 text-center"
             initial={{ opacity: 0, y: 30 }}
@@ -760,7 +606,6 @@ export default function AuthenticityPage() {
             </p>
           </motion.div>
 
-          {/* Workflow Timeline */}
           <WorkflowTimeline />
         </div>
       </section>
@@ -775,27 +620,17 @@ export default function AuthenticityPage() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
             className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6"
-            onClick={() => {
-              setShowScanner(false);
-            }}
+            onClick={() => setShowScanner(false)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
+              transition={{ duration: 0.3 }}
+              onClick={(e) => e.stopPropagation()}
               className="relative z-[10000] w-full max-w-md"
             >
-              <Scanner
-                key="scanner-component"
-                onScanSuccess={handleScanSuccess}
-                onClose={() => {
-                  setShowScanner(false);
-                }}
-              />
+              <Scanner onScanSuccess={handleScanSuccess} onClose={() => setShowScanner(false)} />
             </motion.div>
           </motion.div>
         )}
@@ -820,7 +655,7 @@ export default function AuthenticityPage() {
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.3 }}
               onClick={(e) => e.stopPropagation()}
               className="w-full max-w-md"
             >
@@ -951,7 +786,7 @@ export default function AuthenticityPage() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.6, delay: 0.2 }}
               className="flex flex-wrap items-center gap-6 md:gap-8"
             >
               <span className="text-white/40 text-sm">×</span>
@@ -985,7 +820,7 @@ export default function AuthenticityPage() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.6, delay: 0.3 }}
               className="flex items-center gap-4 md:gap-5"
             >
               <a
