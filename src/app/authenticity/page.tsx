@@ -310,7 +310,7 @@ function WorkflowTimeline() {
       </div>
 
       {/* SVG Path - Mobile */}
-      <div className="absolute left-8 top-0 block h-full w-0.5 md:hidden">
+      <div className="absolute left-7 top-0 block h-full w-0.5 md:hidden">
         <svg className="h-full w-full" viewBox="0 0 2 1000" preserveAspectRatio="none">
           <defs>
             <linearGradient id="workflow-gradient-mobile" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -338,7 +338,7 @@ function WorkflowTimeline() {
       </div>
 
       {/* Steps */}
-      <div className="relative space-y-12 md:space-y-20">
+      <div className="relative space-y-8 md:space-y-20">
         {workflowSteps.map((step, index) => {
           const Icon = step.icon;
           const isEven = index % 2 === 0;
@@ -349,21 +349,21 @@ function WorkflowTimeline() {
               ref={(el) => {
                 stepRefs.current[index] = el;
               }}
-              className={`relative flex items-center gap-8 ${
+              className={`relative flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-8 ${
                 isEven ? "md:flex-row" : "md:flex-row-reverse"
               }`}
             >
               {/* Step Content with Enhanced Card */}
               <motion.div
                 data-step-card
-                className={`flex-1 pl-20 md:pl-0 ${isEven ? "md:pr-16 md:text-right" : "md:pl-16"}`}
+                className={`flex-1 w-full md:w-auto pl-16 md:pl-0 ${isEven ? "md:pr-16 md:text-right" : "md:pl-16"}`}
                 onHoverStart={() => !isMobile && setActiveStep(index)}
                 onHoverEnd={() => !isMobile && setActiveStep(null)}
                 whileHover={!isMobile ? { scale: 1.03, x: isEven ? -10 : 10 } : {}}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
               >
                 <div
-                  className={`group relative cursor-pointer rounded-3xl border transition-all duration-500 p-8 backdrop-blur-xl ${
+                  className={`group relative cursor-pointer rounded-2xl md:rounded-3xl border transition-all duration-500 p-5 md:p-8 backdrop-blur-xl ${
                     activeStep === index
                       ? "border-luxury-gold/60 bg-gradient-to-br from-luxury-gold/10 via-white/5 to-transparent shadow-[0px_25px_70px_-30px_rgba(212,175,55,0.6)]"
                       : "border-white/10 bg-gradient-to-br from-white/5 via-white/[0.03] to-transparent hover:border-luxury-gold/40 hover:shadow-[0px_20px_60px_-30px_rgba(212,175,55,0.4)]"
@@ -378,12 +378,12 @@ function WorkflowTimeline() {
                   )}
                   <div className="relative z-10">
                     <motion.h3
-                      className="mb-3 text-2xl font-semibold text-white transition-colors group-hover:text-luxury-gold"
+                      className="mb-2 md:mb-3 text-lg md:text-2xl font-semibold text-white transition-colors group-hover:text-luxury-gold"
                       animate={{ color: activeStep === index ? "#D4AF37" : "#FFFFFF" }}
                     >
                       {step.title}
                     </motion.h3>
-                    <p className="text-sm text-luxury-silver/70 leading-relaxed transition-colors group-hover:text-luxury-silver/90">
+                    <p className="text-sm md:text-sm text-luxury-silver/70 leading-relaxed transition-colors group-hover:text-luxury-silver/90">
                       {step.description}
                     </p>
                   </div>
@@ -391,7 +391,7 @@ function WorkflowTimeline() {
               </motion.div>
 
               {/* Step Icon with Enhanced Interactions */}
-              <div className="absolute left-0 md:left-1/2 md:-translate-x-1/2">
+              <div className="absolute left-0 top-1 md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2">
                 <motion.div
                   className="relative"
                   animate={{
@@ -415,7 +415,7 @@ function WorkflowTimeline() {
                   {/* Icon Circle with Gradient */}
                   <motion.div
                     data-step-icon
-                    className="relative flex h-24 w-24 items-center justify-center rounded-full border-2 bg-gradient-to-br from-luxury-gold/20 via-luxury-gold/10 to-luxury-black shadow-[0_10px_30px_-10px_rgba(212,175,55,0.5)] backdrop-blur-sm"
+                    className="relative flex h-16 w-16 md:h-24 md:w-24 items-center justify-center rounded-full border-2 bg-gradient-to-br from-luxury-gold/20 via-luxury-gold/10 to-luxury-black shadow-[0_10px_30px_-10px_rgba(212,175,55,0.5)] backdrop-blur-sm"
                     animate={{
                       borderColor:
                         !isMobile && activeStep === index
@@ -434,13 +434,13 @@ function WorkflowTimeline() {
                       }}
                       transition={{ duration: 0.5 }}
                     >
-                      <Icon className="h-10 w-10 text-luxury-gold" />
+                      <Icon className="h-7 w-7 md:h-10 md:w-10 text-luxury-gold" />
                     </motion.div>
                   </motion.div>
 
                   {/* Step Number Badge */}
                   <motion.div
-                    className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-luxury-gold to-luxury-lightGold text-xs font-bold text-black shadow-lg"
+                    className="absolute -bottom-1 -right-1 flex h-6 w-6 md:h-8 md:w-8 items-center justify-center rounded-full bg-gradient-to-br from-luxury-gold to-luxury-lightGold text-[10px] md:text-xs font-bold text-black shadow-lg"
                     animate={{
                       scale: !isMobile && activeStep === index ? 1.2 : 1,
                       rotate: !isMobile && activeStep === index ? 360 : 0,
@@ -731,25 +731,25 @@ export default function AuthenticityPage() {
       {/* Verification Workflow Section */}
       <section
         data-verification-section
-        className="relative overflow-hidden border-t border-white/10 bg-gradient-to-b from-luxury-black/50 via-luxury-black to-luxury-black/50 py-24 px-6 md:py-32"
+        className="relative overflow-hidden border-t border-white/10 bg-gradient-to-b from-luxury-black/50 via-luxury-black to-luxury-black/50 py-16 px-4 md:py-32 md:px-6"
       >
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(212,175,55,0.03)_0%,transparent_70%)]" />
 
         <div className="relative z-10 mx-auto max-w-6xl">
           <motion.div
-            className="mb-20 text-center"
+            className="mb-12 md:mb-20 text-center"
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
           >
-            <h2 className="mb-4 text-4xl font-light text-white md:text-5xl">
+            <h2 className="mb-3 md:mb-4 text-2xl md:text-4xl lg:text-5xl font-light text-white">
               Verification{" "}
               <span className="bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text font-semibold text-transparent">
                 Process
               </span>
             </h2>
-            <p className="mx-auto max-w-2xl text-base text-luxury-silver/70 md:text-lg">
+            <p className="mx-auto max-w-2xl text-sm md:text-base lg:text-lg text-luxury-silver/70 px-2">
               Simple four-step verification for your Silver King bar
             </p>
           </motion.div>
