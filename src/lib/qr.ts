@@ -108,36 +108,56 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
     const textX = totalWidth / 2;
     const textY = qrHeight + padding + textHeight / 2;
     
-    // CRITICAL FIX: Use ultra-robust text rendering that works in all environments
-    // Always use character-by-character rendering for maximum reliability
+    // CRITICAL FIX: Use LARGER font size and multiple rendering techniques for maximum visibility
+    // Increase font size significantly for better visibility
+    const fontSize = 28; // Increased from 22px to 28px for better visibility
     ctx.fillStyle = "#000000"; // Pure black
     ctx.strokeStyle = "#000000";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3; // Increased line width for better stroke visibility
     
-    // Use simple monospace font - guaranteed to work in all Node.js environments
-    ctx.font = "bold 22px monospace";
+    // Use larger monospace font - guaranteed to work in all Node.js environments
+    ctx.font = `bold ${fontSize}px monospace`;
+    
+    // Test font rendering by measuring text
+    const testMetrics = ctx.measureText(normalizedSerialCode);
+    console.log("[addSerialNumberToQR] Font metrics:", {
+      width: testMetrics.width,
+      font: ctx.font,
+      serialCode: normalizedSerialCode
+    });
     
     // ALWAYS use character-by-character rendering for maximum reliability
     // This ensures text renders correctly even if font measurement fails
-    const charWidth = 13.2; // Fixed width for monospace 22px font
+    const charWidth = fontSize * 0.6; // Approximate character width for monospace (60% of font size)
     const totalTextWidth = normalizedSerialCode.length * charWidth;
     const startX = textX - (totalTextWidth / 2);
     
-    // Render each character individually with multiple passes for visibility
+    // Render each character individually with MULTIPLE passes for maximum visibility
     for (let i = 0; i < normalizedSerialCode.length; i++) {
       const char = normalizedSerialCode[i];
-      if (char) {
+      if (char && char.trim()) {
         const charX = startX + (i * charWidth);
         
-        // Multiple rendering passes for maximum visibility and reliability
-        // 1. Stroke (outline) - makes text visible even if fill fails
+        // MULTIPLE rendering passes for maximum visibility and reliability
+        // 1. White background stroke (outline) for contrast
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 4;
         ctx.strokeText(char, charX, textY);
-        // 2. Fill (solid) - main text
+        
+        // 2. Black stroke (outline) - makes text visible even if fill fails
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 3;
+        ctx.strokeText(char, charX, textY);
+        
+        // 3. Fill (solid) - main text
+        ctx.fillStyle = "#000000";
         ctx.fillText(char, charX, textY);
-        // 3. Additional fill slightly offset for bold effect
-        ctx.fillText(char, charX + 0.3, textY + 0.3);
+        
+        // 4. Additional fill slightly offset for bold effect
+        ctx.fillText(char, charX + 0.5, textY + 0.5);
+        ctx.fillText(char, charX - 0.5, textY - 0.5);
       }
     }
     
@@ -228,7 +248,7 @@ export async function addProductInfoToQR(
     
     ctx.fillText(displayName, textX, currentY);
 
-    // Draw serial code below product name - smaller, monospace
+    // Draw serial code below product name - LARGER, BOLD, MONOSPACE for maximum visibility
     currentY += titleHeight / 2 + spacing + serialHeight / 2;
     
     // Validate and normalize serialCode - CRITICAL: Ensure we have a valid serial code
@@ -259,36 +279,56 @@ export async function addProductInfoToQR(
       return canvas.toBuffer("image/png");
     }
     
-    // CRITICAL FIX: Use ultra-robust text rendering that works in all environments
-    // Always use character-by-character rendering for maximum reliability
+    // CRITICAL FIX: Use LARGER font size and multiple rendering techniques for maximum visibility
+    // Increase font size significantly for better visibility
+    const fontSize = 24; // Increased from 18px to 24px for better visibility
     ctx.fillStyle = "#000000"; // Pure black
     ctx.strokeStyle = "#000000";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3; // Increased line width for better stroke visibility
     
-    // Use simple monospace font - guaranteed to work in all Node.js environments
-    ctx.font = "bold 18px monospace";
+    // Use larger monospace font - guaranteed to work in all Node.js environments
+    ctx.font = `bold ${fontSize}px monospace`;
+    
+    // Test font rendering by measuring text
+    const testMetrics = ctx.measureText(normalizedSerialCode);
+    console.log("[addProductInfoToQR] Font metrics:", {
+      width: testMetrics.width,
+      font: ctx.font,
+      serialCode: normalizedSerialCode
+    });
     
     // ALWAYS use character-by-character rendering for maximum reliability
     // This ensures text renders correctly even if font measurement fails
-    const charWidth = 10.8; // Fixed width for monospace 18px font
+    const charWidth = fontSize * 0.6; // Approximate character width for monospace (60% of font size)
     const totalTextWidth = normalizedSerialCode.length * charWidth;
     const startX = textX - (totalTextWidth / 2);
     
-    // Render each character individually with multiple passes for visibility
+    // Render each character individually with MULTIPLE passes for maximum visibility
     for (let i = 0; i < normalizedSerialCode.length; i++) {
       const char = normalizedSerialCode[i];
-      if (char) {
+      if (char && char.trim()) {
         const charX = startX + (i * charWidth);
         
-        // Multiple rendering passes for maximum visibility and reliability
-        // 1. Stroke (outline) - makes text visible even if fill fails
+        // MULTIPLE rendering passes for maximum visibility and reliability
+        // 1. White background stroke (outline) for contrast
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 4;
         ctx.strokeText(char, charX, currentY);
-        // 2. Fill (solid) - main text
+        
+        // 2. Black stroke (outline) - makes text visible even if fill fails
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 3;
+        ctx.strokeText(char, charX, currentY);
+        
+        // 3. Fill (solid) - main text
+        ctx.fillStyle = "#000000";
         ctx.fillText(char, charX, currentY);
-        // 3. Additional fill slightly offset for bold effect
-        ctx.fillText(char, charX + 0.3, currentY + 0.3);
+        
+        // 4. Additional fill slightly offset for bold effect
+        ctx.fillText(char, charX + 0.5, currentY + 0.5);
+        ctx.fillText(char, charX - 0.5, currentY - 0.5);
       }
     }
     
