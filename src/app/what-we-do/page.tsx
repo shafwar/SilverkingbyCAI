@@ -80,7 +80,7 @@ const FeatureCard = ({
   const isInView = useInView(containerRef, { amount: 0.45, margin: "-15% 0px" });
 
   return (
-    <div ref={containerRef} className="group relative min-h-[360px]">
+    <div ref={containerRef} className="group relative min-h-[280px] sm:min-h-[320px] md:min-h-[360px]">
       <AnimatePresence mode="sync">
         {isInView && (
           <motion.div
@@ -91,7 +91,7 @@ const FeatureCard = ({
             exit="exit"
             custom={index}
             whileHover={hoverSpring}
-            className="relative flex h-full flex-col rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] p-10 backdrop-blur-xl transition-all duration-500 hover:border-luxury-gold/40 hover:shadow-[0px_30px_80px_-40px_rgba(212,175,55,0.6)]"
+            className="relative flex h-full flex-col rounded-2xl sm:rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] p-6 sm:p-8 md:p-10 backdrop-blur-xl transition-all duration-500 hover:border-luxury-gold/40 hover:shadow-[0px_30px_80px_-40px_rgba(212,175,55,0.6)]"
           >
             <div
               className="absolute -inset-px rounded-3xl bg-gradient-to-br opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-20"
@@ -100,12 +100,16 @@ const FeatureCard = ({
 
             <div className="relative z-10">
               <div
-                className={`mb-6 inline-flex rounded-2xl bg-gradient-to-br ${feature.gradient} p-4 shadow-lg`}
+                className={`mb-4 sm:mb-5 md:mb-6 inline-flex rounded-xl sm:rounded-2xl bg-gradient-to-br ${feature.gradient} p-3 sm:p-3.5 md:p-4 shadow-lg`}
               >
-                <feature.icon className="h-6 w-6 text-white" />
+                <feature.icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
-              <h3 className="mb-3 text-2xl font-semibold text-white">{feature.title}</h3>
-              <p className="text-luxury-silver/80 leading-relaxed">{feature.description}</p>
+              <h3 className="mb-2 sm:mb-3 text-xl sm:text-2xl font-semibold text-white">
+                {feature.title}
+              </h3>
+              <p className="text-sm sm:text-base text-luxury-silver/80 leading-relaxed">
+                {feature.description}
+              </p>
             </div>
           </motion.div>
         )}
@@ -128,6 +132,22 @@ const NarrativeImageSection = forwardRef<
 >(({ columns, cards }, ref) => {
   const [hoveredColumnIndex, setHoveredColumnIndex] = useState<number | null>(null);
   const [imageIndices, setImageIndices] = useState<number[]>([0, 0, 0]);
+  const [imageLoaded, setImageLoaded] = useState<{ [key: string]: boolean }>({});
+  const [imageError, setImageError] = useState<{ [key: string]: boolean }>({});
+
+  // Preload first image for each card on mount for better performance
+  useEffect(() => {
+    const preloadImages = () => {
+      cards.forEach((card, idx) => {
+        if (card.images[0]) {
+          const img = new window.Image();
+          img.src = card.images[0];
+          img.loading = "eager";
+        }
+      });
+    };
+    preloadImages();
+  }, [cards]);
 
   // Auto-rotate images on hover for desktop with smooth slide transition
   useEffect(() => {
@@ -146,6 +166,12 @@ const NarrativeImageSection = forwardRef<
           const currentIndex = prev[hoveredColumnIndex];
           const nextIndex = (currentIndex + 1) % card.images.length;
           newIndices[hoveredColumnIndex] = nextIndex;
+          
+          // Preload next image before switching
+          if (card.images[nextIndex]) {
+            const img = new window.Image();
+            img.src = card.images[nextIndex];
+          }
         }
         return newIndices;
       });
@@ -157,7 +183,7 @@ const NarrativeImageSection = forwardRef<
   return (
     <section
       ref={ref}
-      className="relative border-t border-white/5 bg-gradient-to-b from-[#050505] via-[#050505] to-[#030303] px-6 py-16 md:py-20 lg:py-24"
+      className="relative border-t border-white/5 bg-gradient-to-b from-[#050505] via-[#050505] to-[#030303] px-4 sm:px-6 md:px-6 py-12 sm:py-16 md:py-20 lg:py-24"
     >
       <div className="relative z-10 mx-auto max-w-[1320px]">
         {/* Desktop: 3-column grid with dynamic hover images - Pixelmatters style */}
@@ -170,10 +196,10 @@ const NarrativeImageSection = forwardRef<
             return (
               <motion.div
                 key={item.title}
-                initial={{ opacity: 0, y: 24 }}
+                initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: idx * 0.08 }}
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: idx * 0.06 }}
                 onMouseEnter={() => setHoveredColumnIndex(idx)}
                 onMouseLeave={() => setHoveredColumnIndex(null)}
                 className="flex flex-col gap-6 group"
@@ -195,50 +221,82 @@ const NarrativeImageSection = forwardRef<
                   className="relative w-full overflow-hidden rounded-lg border border-white/10 bg-black/60 flex-shrink-0"
                   style={{ aspectRatio: "3/2" }}
                 >
-                  {/* Image container with ultra-smooth dynamic slide transition */}
-                  <div className="relative w-full h-full overflow-hidden">
+                  {/* Image container with optimized loading and error handling */}
+                  <div className="relative w-full h-full overflow-hidden bg-black/40">
+                    {/* Loading placeholder */}
+                    {!imageLoaded[`${idx}-${currentImageIndex}`] && !imageError[`${idx}-${currentImageIndex}`] && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-black/60 to-black/40">
+                        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+                      </div>
+                    )}
+                    
                     <AnimatePresence mode="wait" initial={false}>
-                      <motion.div
-                        key={`${idx}-${currentImageIndex}`}
-                        initial={{ opacity: 0, x: 50, scale: 1.08, filter: "blur(8px)" }}
-                        animate={{ 
-                          opacity: 1, 
-                          x: 0, 
-                          scale: 1,
-                          filter: "blur(0px)"
-                        }}
-                        exit={{ 
-                          opacity: 0, 
-                          x: -50, 
-                          scale: 0.92,
-                          filter: "blur(8px)"
-                        }}
-                        transition={{
-                          duration: 0.9,
-                          ease: [0.22, 1, 0.36, 1], // Smooth cubic bezier
-                          opacity: { duration: 0.6 },
-                          filter: { duration: 0.7 },
-                        }}
-                        className="absolute inset-0"
-                        style={{ 
-                          willChange: "transform, opacity, filter",
-                          backfaceVisibility: "hidden",
-                          transform: "translateZ(0)",
-                        }}
-                      >
-                        <Image
-                          src={currentImage}
-                          alt={card.label}
-                          fill
-                          className="object-cover transition-opacity duration-300"
-                          sizes="(min-width: 1024px) 33vw, 100vw"
-                          priority={idx === 0}
-                          loading={idx === 0 ? "eager" : "lazy"}
-                          quality={90}
-                          unoptimized={false}
-                        />
-                      </motion.div>
+                      {!imageError[`${idx}-${currentImageIndex}`] && (
+                        <motion.div
+                          key={`${idx}-${currentImageIndex}`}
+                          initial={{ opacity: 0, x: 30, scale: 1.05 }}
+                          animate={{ 
+                            opacity: imageLoaded[`${idx}-${currentImageIndex}`] ? 1 : 0, 
+                            x: 0, 
+                            scale: 1
+                          }}
+                          exit={{ 
+                            opacity: 0, 
+                            x: -30, 
+                            scale: 0.95
+                          }}
+                          transition={{
+                            duration: 0.5,
+                            ease: [0.22, 1, 0.36, 1],
+                          }}
+                          className="absolute inset-0"
+                          style={{ 
+                            willChange: "transform, opacity",
+                            backfaceVisibility: "hidden",
+                          }}
+                        >
+                          <Image
+                            src={currentImage}
+                            alt={card.label}
+                            fill
+                            className="object-cover transition-opacity duration-300"
+                            sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+                            priority={idx === 0 && currentImageIndex === 0}
+                            loading={idx === 0 && currentImageIndex === 0 ? "eager" : "lazy"}
+                            quality={idx === 0 ? 85 : 75}
+                            unoptimized={false}
+                            onLoad={(e) => {
+                              const imageKey = `${idx}-${currentImageIndex}`;
+                              setImageLoaded((prev) => ({
+                                ...prev,
+                                [imageKey]: true,
+                              }));
+                              // Remove error state if image loads successfully
+                              setImageError((prev) => {
+                                const newState = { ...prev };
+                                delete newState[imageKey];
+                                return newState;
+                              });
+                            }}
+                            onError={(e) => {
+                              const imageKey = `${idx}-${currentImageIndex}`;
+                              console.warn(`[NarrativeImageSection] Failed to load image: ${currentImage}`, imageKey);
+                              setImageError((prev) => ({
+                                ...prev,
+                                [imageKey]: true,
+                              }));
+                            }}
+                          />
+                        </motion.div>
+                      )}
                     </AnimatePresence>
+                    
+                    {/* Error fallback */}
+                    {imageError[`${idx}-${currentImageIndex}`] && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-black/80 to-black/60">
+                        <p className="text-sm text-white/60">Image unavailable</p>
+                      </div>
+                    )}
                   </div>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent pointer-events-none" />
 
@@ -256,52 +314,102 @@ const NarrativeImageSection = forwardRef<
           })}
         </div>
 
-        {/* Mobile: Pixelmatters-style layout - Text stacked, then single large image */}
+        {/* Mobile: Pixelmatters-style layout - Text stacked, then single large image - Optimized */}
         <div className="md:hidden">
-          {/* Text sections – stacked vertically like Pixelmatters */}
-          <div className="mb-16 space-y-14" data-reveal>
+          {/* Text sections – stacked vertically like Pixelmatters - Mobile optimized spacing */}
+          <div className="mb-12 sm:mb-16 space-y-10 sm:space-y-14" data-reveal>
             {columns.map((item, idx) => (
               <motion.div
                 key={item.title}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 15 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.6, delay: idx * 0.1, ease: [0.22, 1, 0.36, 1] }}
-                className="space-y-3"
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 0.5, delay: idx * 0.08, ease: [0.22, 1, 0.36, 1] }}
+                className="space-y-2.5 sm:space-y-3"
               >
-                <h3 className="text-[32px] font-semibold leading-[1.2] text-white">{item.title}</h3>
-                <p className="text-[15px] leading-[1.6] text-luxury-silver/80">
+                <h3 className="text-[1.5rem] sm:text-[2rem] font-semibold leading-tight sm:leading-[1.2] text-white">
+                  {item.title}
+                </h3>
+                <p className="text-sm sm:text-[15px] leading-relaxed sm:leading-[1.6] text-luxury-silver/80">
                   {item.description}
                 </p>
               </motion.div>
             ))}
           </div>
 
-          {/* Single large image – Pixelmatters style full-width edge-to-edge */}
+          {/* Single large image – Pixelmatters style full-width edge-to-edge - Mobile optimized with error handling */}
           <motion.div
-            initial={{ opacity: 0, y: 30, filter: "blur(10px)" }}
-            whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-            className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] overflow-hidden"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] overflow-hidden bg-black/40"
             style={{ aspectRatio: "4/3" }}
             data-reveal
           >
-            <Image
-              src={cards[0].images[0]}
-              alt={cards[0].label}
-              fill
-              className="object-cover"
-              sizes="100vw"
-              priority
-              quality={90}
-              loading="eager"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
+            {/* Loading state */}
+            {!imageLoaded["mobile-0"] && !imageError["mobile-0"] && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-black/60 to-black/40 z-10">
+                <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+              </div>
+            )}
+            
+            {/* Image with error handling */}
+            {!imageError["mobile-0"] && (
+              <Image
+                src={cards[0].images[0]}
+                alt={cards[0].label}
+                fill
+                className="object-cover transition-opacity duration-500"
+                sizes="100vw"
+                priority
+                quality={80}
+                loading="eager"
+                unoptimized={false}
+                onLoad={(e) => {
+                  setImageLoaded((prev) => ({
+                    ...prev,
+                    "mobile-0": true,
+                  }));
+                  // Remove error state if image loads successfully
+                  setImageError((prev) => {
+                    const newState = { ...prev };
+                    delete newState["mobile-0"];
+                    return newState;
+                  });
+                }}
+                onError={(e) => {
+                  console.warn(`[NarrativeImageSection] Failed to load mobile image: ${cards[0].images[0]}`);
+                  setImageError((prev) => ({
+                    ...prev,
+                    "mobile-0": true,
+                  }));
+                }}
+                style={{
+                  opacity: imageLoaded["mobile-0"] ? 1 : 0,
+                }}
+              />
+            )}
+            
+            {/* Error fallback */}
+            {imageError["mobile-0"] && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-black/80 to-black/60 z-10">
+                <div className="text-center px-4">
+                  <p className="text-base text-white/60 mb-2">Image unavailable</p>
+                  <p className="text-sm text-white/40">{cards[0].label}</p>
+                </div>
+              </div>
+            )}
+            
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent pointer-events-none z-0" />
 
-            <div className="absolute inset-x-0 bottom-0 p-5">
-              <p className="text-base font-semibold text-white mb-1.5">{cards[0].label}</p>
-              <p className="text-sm leading-relaxed text-luxury-silver/85">{cards[0].caption}</p>
+            <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 z-10 pointer-events-none">
+              <p className="text-sm sm:text-base font-semibold text-white mb-1 sm:mb-1.5">
+                {cards[0].label}
+              </p>
+              <p className="text-xs sm:text-sm leading-relaxed text-luxury-silver/85">
+                {cards[0].caption}
+              </p>
             </div>
           </motion.div>
         </div>
@@ -530,6 +638,8 @@ export default function WhatWeDoPage() {
             preload="auto"
             className="absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 will-change-transform z-10"
             style={{ transform: "scale(1.05)", transformOrigin: "center center" }}
+            disablePictureInPicture
+            disableRemotePlayback
           >
             <source src={getR2UrlClient("/videos/hero/metal crafting hands.mp4")} type="video/mp4" />
           </video>
@@ -541,12 +651,12 @@ export default function WhatWeDoPage() {
         </div>
       </div>
 
-      {/* Hero Section – typography & layout aligned with products hero */}
+      {/* Hero Section – typography & layout aligned with products hero - Mobile optimized */}
       <section
         ref={(element) => {
           sectionsRef.current[0] = element as HTMLDivElement | null;
         }}
-        className="relative px-6 md:px-8 lg:px-12 pt-32 pb-24 md:pt-40 md:pb-32 lg:pt-48 lg:pb-40 min-h-[80vh] md:min-h-[90vh] lg:min-h-screen flex items-center"
+        className="relative px-4 sm:px-6 md:px-8 lg:px-12 pt-[calc(env(safe-area-inset-top)+4rem)] sm:pt-32 md:pt-40 lg:pt-48 pb-16 sm:pb-24 md:pb-32 lg:pb-40 min-h-[85vh] sm:min-h-[80vh] md:min-h-[90vh] lg:min-h-screen flex items-center"
       >
         <div className="relative z-10 w-full max-w-[1400px] mx-auto">
           <motion.div
@@ -557,7 +667,7 @@ export default function WhatWeDoPage() {
             className="text-left max-w-4xl"
           >
             <motion.h1
-              className="text-[1.5rem] md:text-[3.5rem] lg:text-[2.5rem] xl:text-[3.5rem] 2xl:text-[4rem] font-light leading-[1.15] tracking-[-0.02em] md:tracking-[-0.03em] text-white"
+              className="text-[1.75rem] sm:text-[2rem] md:text-[3.5rem] lg:text-[2.5rem] xl:text-[3.5rem] 2xl:text-[4rem] font-light leading-tight sm:leading-[1.15] tracking-tight md:tracking-[-0.02em] lg:tracking-[-0.03em] text-white"
               data-hero
             >
               Engineering the lifecycle
@@ -566,7 +676,7 @@ export default function WhatWeDoPage() {
             </motion.h1>
             <motion.p
               data-hero
-              className="mt-6 max-w-xl text-sm md:text-base font-light leading-relaxed text-luxury-silver/80"
+              className="mt-4 sm:mt-6 max-w-xl text-sm sm:text-[0.9375rem] md:text-base font-light leading-relaxed text-luxury-silver/80"
             >
               From ore selection and purification to serial coding, QR sealing, and verification, we
               choreograph each step so every bar carries a verifiable story of origin and custody.
@@ -584,25 +694,25 @@ export default function WhatWeDoPage() {
         cards={narrativeCards}
       />
 
-      {/* Impact Section – similar to Pixelmatters "The impact you can expect" */}
+      {/* Impact Section – similar to Pixelmatters "The impact you can expect" - Mobile optimized */}
       <section
         ref={(element) => {
           sectionsRef.current[2] = element as HTMLDivElement | null;
         }}
-        className="relative border-t border-white/10 bg-gradient-to-b from-[#050505] via-[#050505] to-[#020202] px-6 py-20 md:py-24 lg:py-28"
+        className="relative border-t border-white/10 bg-gradient-to-b from-[#050505] via-[#050505] to-[#020202] px-4 sm:px-6 md:px-6 py-12 sm:py-16 md:py-24 lg:py-28"
       >
-        <div className="relative mx-auto flex max-w-[1320px] flex-col gap-16 md:flex-row md:items-start md:justify-between">
+        <div className="relative mx-auto flex max-w-[1320px] flex-col gap-10 sm:gap-12 md:gap-16 md:flex-row md:items-start md:justify-between">
           {/* Left title block */}
           <div className="max-w-md" data-reveal>
-            <h2 className="text-4xl md:text-5xl lg:text-[52px] font-light leading-tight tracking-tight text-white">
+            <h2 className="text-2xl sm:text-3xl md:text-5xl lg:text-[52px] font-light leading-tight tracking-tight text-white">
               The impact
               <br />
               you can expect
             </h2>
           </div>
 
-          {/* Right list of impacts */}
-          <div className="flex-1 space-y-10 md:space-y-6" data-reveal>
+          {/* Right list of impacts - Mobile optimized */}
+          <div className="flex-1 space-y-8 sm:space-y-10 md:space-y-6" data-reveal>
             {[
               {
                 title: "Traceable supply chains",
@@ -622,22 +732,24 @@ export default function WhatWeDoPage() {
               },
             ].map((item, idx, arr) => (
               <div key={item.title}>
-                <div className="grid gap-4 md:grid-cols-[minmax(0,0.5fr)_minmax(0,1fr)] md:gap-8">
-                  <p className="text-sm font-semibold text-white md:text-base">{item.title}</p>
-                  <p className="text-sm leading-relaxed text-luxury-silver/80 md:text-[15px]">
+                <div className="grid gap-3 sm:gap-4 md:grid-cols-[minmax(0,0.5fr)_minmax(0,1fr)] md:gap-8">
+                  <p className="text-sm sm:text-[0.9375rem] font-semibold text-white md:text-base">
+                    {item.title}
+                  </p>
+                  <p className="text-sm sm:text-[0.9375rem] leading-relaxed text-luxury-silver/80 md:text-[15px]">
                     {item.body}
                   </p>
                 </div>
                 {idx < arr.length - 1 && (
-                  <div className="mt-6 h-px w-full bg-gradient-to-r from-white/15 via-white/5 to-transparent" />
+                  <div className="mt-5 sm:mt-6 h-px w-full bg-gradient-to-r from-white/15 via-white/5 to-transparent" />
                 )}
               </div>
             ))}
           </div>
         </div>
 
-        {/* Centered CTA pill */}
-        <div className="mt-16 flex justify-center" data-reveal>
+        {/* Centered CTA pill - Mobile optimized */}
+        <div className="mt-12 sm:mt-14 md:mt-16 flex justify-center" data-reveal>
           <button
             type="button"
             className="group inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/[0.04] px-6 py-2 text-xs font-medium text-white backdrop-blur-md transition-all duration-300 hover:border-white/60 hover:bg-white/[0.08]"
@@ -650,32 +762,32 @@ export default function WhatWeDoPage() {
         </div>
       </section>
 
-      {/* Features Section – Our Capabilities */}
+      {/* Features Section – Our Capabilities - Mobile optimized */}
       <section
         id="features"
         ref={(element) => {
           sectionsRef.current[3] = element as HTMLDivElement | null;
         }}
-        className="relative overflow-hidden py-20 md:py-28 lg:py-32 px-6"
+        className="relative overflow-hidden py-12 sm:py-16 md:py-28 lg:py-32 px-4 sm:px-6 md:px-6"
       >
         {/* Soft background without hard band at the top */}
         <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#111111] via-[#060606] to-[#020202]" />
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-luxury-black via-transparent to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-24 sm:h-28 md:h-32 bg-gradient-to-t from-luxury-black via-transparent to-transparent" />
 
         <div className="relative z-10 mx-auto max-w-[1320px]">
-          <motion.div className="mb-20 text-center" data-reveal>
-            <h2 className="mb-5 text-4xl md:text-5xl lg:text-6xl font-light tracking-tight">
+          <motion.div className="mb-12 sm:mb-16 md:mb-20 text-center" data-reveal>
+            <h2 className="mb-4 sm:mb-5 text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-light tracking-tight">
               <span className="text-white">Our</span>{" "}
               <span className="bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text text-transparent">
                 Capabilities
               </span>
             </h2>
-            <p className="mx-auto max-w-3xl text-lg md:text-xl text-luxury-silver/70">
+            <p className="mx-auto max-w-3xl text-sm sm:text-base md:text-lg lg:text-xl text-luxury-silver/70 px-4 sm:px-0">
               Precision engineering meets uncompromising quality standards
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-12">
+          <div className="grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-3 md:gap-12">
             {featureItems.map((feature, index) => (
               <FeatureCard key={feature.title} feature={feature} index={index} />
             ))}
@@ -683,12 +795,12 @@ export default function WhatWeDoPage() {
         </div>
       </section>
 
-      {/* Footer Section – Pixelmatters style with video background */}
+      {/* Footer Section – Pixelmatters style with video background - Mobile optimized */}
       <section
         ref={(element) => {
           sectionsRef.current[4] = element as HTMLDivElement | null;
         }}
-        className="relative min-h-[60vh] md:min-h-[70vh] flex flex-col justify-between px-6 md:px-8 lg:px-12 py-16 md:py-20 lg:py-24 overflow-hidden"
+        className="relative min-h-[50vh] sm:min-h-[60vh] md:min-h-[70vh] flex flex-col justify-between px-4 sm:px-6 md:px-8 lg:px-12 py-12 sm:py-16 md:py-20 lg:py-24 overflow-hidden"
       >
         {/* Video Background */}
         <div className="absolute inset-0 z-0">
@@ -747,6 +859,8 @@ export default function WhatWeDoPage() {
             playsInline
             preload="auto"
             className="absolute inset-0 w-full h-full object-cover"
+            disablePictureInPicture
+            disableRemotePlayback
           >
             <source src={getR2UrlClient("/videos/hero/molten metal slow motion.mp4")} type="video/mp4" />
           </video>
@@ -754,14 +868,14 @@ export default function WhatWeDoPage() {
           <div className="absolute inset-0 bg-gradient-to-b from-luxury-black/85 via-luxury-black/75 to-luxury-black/85" />
         </div>
 
-        {/* Main Content - Centered */}
-        <div className="relative z-10 mx-auto max-w-4xl text-center flex-1 flex items-center justify-center">
+        {/* Main Content - Centered - Mobile optimized */}
+        <div className="relative z-10 mx-auto max-w-4xl text-center flex-1 flex items-center justify-center px-4 sm:px-6">
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-light leading-tight tracking-tight text-white"
+            className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl xl:text-7xl font-light leading-tight tracking-tight text-white"
           >
             Let's raise the bar,
             <br />
@@ -771,15 +885,15 @@ export default function WhatWeDoPage() {
           </motion.h2>
         </div>
 
-        {/* Footer Navigation & Social - Bottom */}
-        <div className="relative z-10 mx-auto w-full max-w-[1320px] flex flex-col md:flex-row items-start md:items-end justify-between gap-8 md:gap-0">
+        {/* Footer Navigation & Social - Bottom - Mobile optimized */}
+        <div className="relative z-10 mx-auto w-full max-w-[1320px] flex flex-col md:flex-row items-start md:items-end justify-between gap-6 sm:gap-8 md:gap-0 px-4 sm:px-6">
           {/* Left: Navigation Links */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="flex flex-wrap items-center gap-6 md:gap-8"
+            className="flex flex-wrap items-center gap-4 sm:gap-6 md:gap-8"
           >
             <span className="text-white/40 text-sm">×</span>
             <Link

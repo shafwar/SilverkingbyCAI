@@ -437,15 +437,15 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         </motion.div>
       </motion.div>
 
-      {/* Content - KONTEN UTAMA TETAP DI POSISI SEMULA */}
-      <div className="relative z-10 flex h-full items-center pt-[calc(env(safe-area-inset-top)+1rem)] sm:pt-8 md:pt-0 pb-12 sm:pb-16 md:pb-0">
-        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 md:px-10 lg:px-14 xl:px-20">
-          {/* Main content - left side - POSISI SEPERTI SEMULA */}
-          <div className="max-w-[900px] -translate-y-2 sm:-translate-y-3 md:translate-y-0">
-            {/* Headline - Fragmented & Powerful - Optimized mobile spacing */}
+      {/* Content - Optimized untuk semua device termasuk iPhone 11 Pro */}
+      <div className="relative z-10 flex h-full items-center pt-[calc(env(safe-area-inset-top)+0.5rem)] xs:pt-[calc(env(safe-area-inset-top)+1rem)] sm:pt-8 md:pt-0 pb-12 sm:pb-16 md:pb-0">
+        <div className="mx-auto w-full max-w-[1600px] px-4 xs:px-5 sm:px-6 md:px-10 lg:px-14 xl:px-20">
+          {/* Main content - left side - Optimized spacing */}
+          <div className="max-w-[900px] -translate-y-3 xs:-translate-y-2 sm:-translate-y-3 md:translate-y-0">
+            {/* Headline - Optimized untuk iPhone 11 Pro dan semua device */}
             <h1
               ref={headlineRef}
-              className="mb-2 sm:mb-3 md:mb-5 font-sans text-[1.75rem] sm:text-[2.25rem] md:text-[3rem] lg:text-[3.5rem] xl:text-[4rem] 2xl:text-[4.5rem] font-semibold tracking-tight md:tracking-[-0.03em] leading-tight sm:leading-[1.2] md:leading-[1.25] text-white"
+              className="mb-1.5 xs:mb-2 sm:mb-3 md:mb-5 font-sans text-[1.65rem] xs:text-[1.75rem] sm:text-[2.25rem] md:text-[3rem] lg:text-[3.5rem] xl:text-[4rem] 2xl:text-[4.5rem] font-semibold tracking-tight md:tracking-[-0.03em] leading-[1.15] xs:leading-tight sm:leading-[1.2] md:leading-[1.25] text-white"
               style={{ perspective: "1000px" }}
             >
               {/* Fragment 1 - Precious metals */}
@@ -483,10 +483,10 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
               </span>
             </h1>
 
-            {/* Subtitle - Optimized mobile spacing and typography */}
+            {/* Subtitle - Optimized untuk semua device */}
             <p
               ref={subtitleRef}
-              className="max-w-[92%] sm:max-w-[88%] md:max-w-[85%] font-sans text-[0.875rem] sm:text-[0.9375rem] md:text-[1rem] lg:text-[1.0625rem] leading-relaxed sm:leading-[1.65] md:leading-[1.7] font-light text-white/75 mt-4 sm:mt-5 md:mt-0"
+              className="max-w-[95%] xs:max-w-[92%] sm:max-w-[88%] md:max-w-[85%] font-sans text-[0.8125rem] xs:text-[0.875rem] sm:text-[0.9375rem] md:text-[1rem] lg:text-[1.0625rem] leading-[1.6] xs:leading-relaxed sm:leading-[1.65] md:leading-[1.7] font-light text-white/75 mt-3 xs:mt-3.5 sm:mt-5 md:mt-0"
             >
               Expert manufacturing of{" "}
               <span className="font-medium text-white/90">gold, silver, and palladium</span>{" "}
@@ -521,14 +521,13 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         </div>
       </div>
 
-      {/* Mobile: Scrolling Features - NAIK LEBIH TINGGI, LEBIH DEKAT DENGAN SUBTITLE */}
-      {/* Positioned with gap ~32-36px from subtitle for better proportion */}
-      <div className="md:hidden absolute left-0 right-0 bottom-[132px] sm:bottom-[148px] z-20 px-4 sm:px-6">
+      {/* Mobile: Scrolling Features - OPTIMIZED untuk iPhone 11 Pro dan semua device */}
+      {/* Menggunakan responsive positioning yang lebih baik */}
+      <div className="md:hidden absolute left-0 right-0 bottom-[140px] xs:bottom-[145px] sm:bottom-[155px] z-20 px-3.5 xs:px-4 sm:px-6">
         <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate} />
       </div>
 
-      {/* QR verification feature card - DEKAT DENGAN SCROLLING FEATURES */}
-      {/* Gap from ScrollingFeatures ~16-20px */}
+      {/* QR verification feature card - OPTIMIZED untuk semua device */}
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.97 }}
         animate={{
@@ -537,23 +536,23 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
           scale: shouldAnimate ? 1 : 0.97,
         }}
         transition={{ duration: 1, delay: 1.1, ease: "easeOut" }}
-        className="absolute bottom-6 sm:bottom-8 md:bottom-8 inset-x-0 z-30 flex justify-center px-3 sm:px-4"
+        className="absolute bottom-5 xs:bottom-6 sm:bottom-8 md:bottom-8 inset-x-0 z-30 flex justify-center px-3 xs:px-3.5 sm:px-4"
       >
         <a
           href="/authenticity"
-          className="group inline-flex items-center gap-2.5 sm:gap-3 text-left w-[min(340px,calc(100vw-24px))] sm:w-[min(360px,calc(100vw-48px))] backdrop-blur-sm bg-black/50 border border-white/10 rounded-2xl p-3 sm:p-3.5 transition-all duration-300 hover:bg-black/60 hover:border-white/20"
+          className="group inline-flex items-center gap-2 xs:gap-2.5 sm:gap-3 text-left w-full max-w-[345px] xs:max-w-[355px] sm:max-w-[370px] backdrop-blur-sm bg-black/50 border border-white/10 rounded-2xl p-2.5 xs:p-3 sm:p-3.5 transition-all duration-300 hover:bg-black/60 hover:border-white/20"
         >
-          <div className="flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border border-white/20 bg-black/40">
-            <QrCode className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+          <div className="flex h-8 w-8 xs:h-8 xs:w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border border-white/20 bg-black/40">
+            <QrCode className="h-4 w-4 xs:h-4 xs:w-4 sm:h-5 sm:w-5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[0.45rem] sm:text-[0.5rem] uppercase tracking-[0.4em] sm:tracking-[0.45em] text-white/55">
+            <p className="text-[0.4rem] xs:text-[0.45rem] sm:text-[0.5rem] uppercase tracking-[0.35em] xs:tracking-[0.4em] sm:tracking-[0.45em] text-white/55">
               Scan & Verify
             </p>
-            <p className="mt-0.5 text-[0.75rem] sm:text-[0.8125rem] md:text-[0.95rem] font-semibold text-white tracking-tight">
+            <p className="mt-0.5 text-[0.7rem] xs:text-[0.75rem] sm:text-[0.8125rem] md:text-[0.95rem] font-semibold text-white tracking-tight leading-tight">
               Tap to launch Silver King QR scanner
             </p>
-            <p className="mt-0.5 text-[0.6rem] sm:text-[0.625rem] text-white/60 leading-relaxed line-clamp-2">
+            <p className="mt-0.5 text-[0.575rem] xs:text-[0.6rem] sm:text-[0.625rem] text-white/60 leading-[1.5] xs:leading-relaxed line-clamp-2">
               Capture the QR seal to view purity & provenance. "Product authenticated" badge appears
               once functionality is live.
             </p>
