@@ -133,13 +133,16 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
       charWidth
     });
     
-    // Log successful rendering
+    // Log successful rendering with detailed information
     console.log("[addSerialNumberToQR] Serial code rendered successfully:", {
       serialCode: normalizedSerialCode,
       font: ctx.font,
       characters: normalizedSerialCode.length,
       centerX: textX,
-      textY: textY
+      textY: textY,
+      environment: process.env.NODE_ENV,
+      railwayEnv: process.env.RAILWAY_ENVIRONMENT,
+      canvasAvailable: typeof createCanvas !== "undefined"
     });
     
     // Convert canvas to buffer
@@ -281,13 +284,16 @@ export async function addProductInfoToQR(
       charWidth
     });
     
-    // Log successful rendering
+    // Log successful rendering with detailed information
     console.log("[addProductInfoToQR] Serial code rendered successfully:", {
       serialCode: normalizedSerialCode,
       font: ctx.font,
       characters: normalizedSerialCode.length,
       centerX: textX,
-      textY: currentY
+      textY: currentY,
+      environment: process.env.NODE_ENV,
+      railwayEnv: process.env.RAILWAY_ENVIRONMENT,
+      canvasAvailable: typeof createCanvas !== "undefined"
     });
 
     // Convert canvas to buffer

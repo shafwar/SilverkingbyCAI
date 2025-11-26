@@ -88,6 +88,14 @@ export async function GET(
     }
     
     // Generate QR with product info - this always creates fresh image
+    console.log("[QR Download] Environment check:", {
+      nodeEnv: process.env.NODE_ENV,
+      railwayEnv: process.env.RAILWAY_ENVIRONMENT,
+      r2Available: !!process.env.R2_ENDPOINT,
+      serialCode: finalSerialCode,
+      productName: product.name
+    });
+    
     const pngBuffer = await addProductInfoToQR(qrBuffer, finalSerialCode, product.name);
     
     // Additional validation: verify buffer was created
@@ -98,7 +106,9 @@ export async function GET(
     
     console.log("[QR Download] QR code generated successfully:", {
       bufferSize: pngBuffer.length,
-      serialCode: finalSerialCode
+      serialCode: finalSerialCode,
+      environment: process.env.NODE_ENV,
+      railwayEnv: process.env.RAILWAY_ENVIRONMENT
     });
 
     // Convert Buffer to Uint8Array for NextResponse

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
+    "build:railway": "apt-get update && apt-get install -y libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev || true && prisma generate && next build",
     "start": "node -r dotenv/config scripts/migrate-and-start.js",
     "start:next": "next start",
     "lint": "next lint",
