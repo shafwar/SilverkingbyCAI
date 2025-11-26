@@ -85,7 +85,8 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
     // Calculate dimensions
     const qrWidth = qrImage.width;
     const qrHeight = qrImage.height;
-    const textHeight = 50; // Increased space for text below QR (larger font)
+    // Extra space below QR so larger serial text has room when printed small
+    const textHeight = 70;
     const padding = 20; // Padding around QR and text
     const totalWidth = qrWidth + padding * 2;
     const totalHeight = qrHeight + textHeight + padding * 2;
@@ -139,28 +140,17 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
     const textX = totalWidth / 2;
     const textY = qrHeight + padding + textHeight / 2;
 
-    const fontSize = 28;
-    ctx.fillStyle = "#000000"; // Pure black
-    ctx.strokeStyle = "#000000";
-    ctx.textAlign = "left";
+    // Serial label under QR (optimized for small-print readability & balance)
+    const fontSize = 30;
+    ctx.fillStyle = "#222222"; // slightly darker for print
+    ctx.strokeStyle = "transparent";
+    ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 1;
     ctx.font = `${fontSize}px "${QR_FONT_FAMILY}"`;
 
-    // Render each character individually using bundled font
-    ctx.save();
-    const metrics = ctx.measureText("0");
-    const charWidth = metrics.width || fontSize * 0.6;
-    const labelWidth = normalizedSerialCode.length * charWidth;
-    const startX = textX - labelWidth / 2;
-
-    for (let i = 0; i < normalizedSerialCode.length; i++) {
-      const char = normalizedSerialCode[i];
-      if (!char) continue;
-      const charX = startX + i * charWidth;
-      ctx.fillText(char, charX, textY);
-      ctx.strokeText(char, charX, textY);
-    }
+    // Simple centered rendering – monospaced font keeps spacing clean
+    ctx.fillText(normalizedSerialCode, textX, textY);
 
     console.log("[addSerialNumberToQR] Final text rendering status:", {
       serialCode: normalizedSerialCode,
@@ -169,13 +159,6 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
     });
 
     ctx.restore();
-
-    console.log("[addSerialNumberToQR] Text rendered character-by-character:", {
-      serialCode: normalizedSerialCode,
-      characters: normalizedSerialCode.length,
-      startX,
-      charWidth,
-    });
 
     // Log successful rendering with detailed information
     console.log("[addSerialNumberToQR] Serial code rendered successfully:", {
@@ -214,10 +197,11 @@ export async function addProductInfoToQR(
     // Calculate dimensions
     const qrWidth = qrImage.width;
     const qrHeight = qrImage.height;
-    const titleHeight = 35; // Increased space for product name
-    const serialHeight = 35; // Increased space for serial code (larger font)
+    // More vertical room so larger name + serial do not collide
+    const titleHeight = 42;
+    const serialHeight = 40;
     const padding = 20; // Padding around QR and text
-    const spacing = 12; // Increased space between title and serial
+    const spacing = 18; // Space between product name and serial
     const totalWidth = qrWidth + padding * 2;
     const totalHeight = qrHeight + titleHeight + serialHeight + padding * 2 + spacing;
 
@@ -237,9 +221,9 @@ export async function addProductInfoToQR(
     const textX = totalWidth / 2;
     let currentY = qrHeight + padding + titleHeight / 2;
 
-    // Draw product name (title) - larger, bold
+    // Draw product name (title)
     ctx.fillStyle = "#0c0c0c";
-    ctx.font = "bold 18px Arial, sans-serif";
+    ctx.font = "bold 22px Arial, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
@@ -293,28 +277,18 @@ export async function addProductInfoToQR(
       return canvas.toBuffer("image/png");
     }
 
+    // Serial label in download version (product name + serial)
     const fontSize = 24;
-    ctx.fillStyle = "#000000"; // Pure black
-    ctx.strokeStyle = "#000000";
-    ctx.textAlign = "left";
+    ctx.fillStyle = "#222222";
+    ctx.strokeStyle = "transparent";
+    ctx.textAlign = "center"; // center on textX
     ctx.textBaseline = "middle";
     ctx.lineWidth = 3;
     ctx.font = `${fontSize}px "${QR_FONT_FAMILY}"`;
 
-    // Render each character individually using bundled font
+    // Simple centered rendering using bundled font
     ctx.save();
-    const metrics2 = ctx.measureText("0");
-    const charWidth2 = metrics2.width || fontSize * 0.6;
-    const totalWidth2 = normalizedSerialCode.length * charWidth2;
-    const startX2 = textX - totalWidth2 / 2;
-
-    for (let i = 0; i < normalizedSerialCode.length; i++) {
-      const char = normalizedSerialCode[i];
-      if (!char) continue;
-      const charX = startX2 + i * charWidth2;
-      ctx.fillText(char, charX, currentY);
-      ctx.strokeText(char, charX, currentY);
-    }
+    ctx.fillText(normalizedSerialCode, textX, currentY);
 
     console.log("[addProductInfoToQR] Final text rendering status:", {
       serialCode: normalizedSerialCode,
