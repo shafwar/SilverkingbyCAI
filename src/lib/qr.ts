@@ -7,16 +7,20 @@ import { getBaseUrl } from "@/utils/constants";
 import { getR2Url } from "@/utils/r2-url";
 
 const R2_ENDPOINT = process.env.R2_ENDPOINT;
-const R2_BUCKET = process.env.R2_BUCKET;
+const R2_BUCKET = process.env.R2_BUCKET || process.env.R2_BUCKET_NAME; // Support both variable names
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
 const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
 const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL;
 
 // CRITICAL: Normalize R2_ENDPOINT - remove bucket name from path if present
 // R2_ENDPOINT should be just the base URL, bucket is specified separately
+// If R2_ENDPOINT is not set, construct it from R2_ACCOUNT_ID
+const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
 const normalizedR2Endpoint = R2_ENDPOINT 
   ? R2_ENDPOINT.replace(/\/[^\/]+$/, "") // Remove last path segment (bucket name)
-  : null;
+  : R2_ACCOUNT_ID 
+    ? `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
+    : null;
 
 console.log("[QR Config] R2 Configuration:", {
   endpoint: normalizedR2Endpoint ? `${normalizedR2Endpoint.substring(0, 50)}...` : "NOT SET",
