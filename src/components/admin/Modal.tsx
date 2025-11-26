@@ -42,7 +42,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
             transition={{ duration: 0.3 }}
-            className="relative w-full max-w-2xl rounded-3xl border border-white/10 bg-gradient-to-br from-black to-[#0a0a0a] p-8 shadow-2xl"
+            className="relative w-full max-w-2xl rounded-3xl border border-white/10 bg-gradient-to-br from-black to-[#0a0a0a] p-4 sm:p-6 md:p-8 shadow-2xl mx-4"
           >
             <button
               className="absolute right-4 top-4 rounded-full border border-white/10 p-2 text-white/60 transition hover:border-white/30 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD700]"

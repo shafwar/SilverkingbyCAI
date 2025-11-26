@@ -763,11 +763,17 @@ export function QrPreviewGrid() {
                       <img
                         src={`/api/qr/${product.serialCode}?t=${Date.now()}`}
                         alt={product.name}
-                        className="h-28 w-28 rounded-2xl border border-white/10 bg-white p-3 object-contain"
+                        className="h-24 w-24 sm:h-28 sm:w-28 flex-shrink-0 rounded-2xl border border-white/10 bg-white p-2 sm:p-3 object-contain"
+                        loading="lazy"
                         onError={(e) => {
                           // Fallback: try with different timestamp
                           const target = e.target as HTMLImageElement;
-                          target.src = `/api/qr/${product.serialCode}?t=${Date.now()}`;
+                          const newTimestamp = Date.now();
+                          console.error("[QR Grid] Image load error, retrying:", product.serialCode);
+                          target.src = `/api/qr/${product.serialCode}?t=${newTimestamp}`;
+                        }}
+                        onLoad={() => {
+                          console.log("[QR Grid] QR image loaded:", product.serialCode);
                         }}
                       />
                 <button
@@ -789,22 +795,33 @@ export function QrPreviewGrid() {
       <Modal open={Boolean(selected)} onClose={() => setSelected(null)} title={selected?.name}>
         {selected && (
           <div className="flex flex-col items-center gap-4">
+            <div className="relative w-full max-w-sm">
+              {/* Responsive QR Code Image Container */}
+              <div className="relative aspect-square w-full rounded-3xl border border-white/10 bg-white p-4 sm:p-6">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={`/api/qr/${selected.serialCode}?t=${Date.now()}`}
+                  src={`/api/qr/${selected.serialCode}?t=${Date.now()}`}
               alt={selected.name}
-              className="h-72 w-72 rounded-3xl border border-white/10 bg-white p-4 text-md object-contain"
-              onError={(e) => {
-                // Fallback: try with different timestamp
-                const target = e.target as HTMLImageElement;
-                target.src = `/api/qr/${selected.serialCode}?t=${Date.now()}`;
-              }}
-            />
-            <p className="font-mono text-md text-white/70">{selected.serialCode}</p>
+                  className="h-full w-full object-contain"
+                  loading="eager"
+                  onError={(e) => {
+                    // Fallback: try with different timestamp
+                    const target = e.target as HTMLImageElement;
+                    const newTimestamp = Date.now();
+                    console.error("[QR Modal] Image load error, retrying with new timestamp:", newTimestamp);
+                    target.src = `/api/qr/${selected.serialCode}?t=${newTimestamp}`;
+                  }}
+                  onLoad={() => {
+                    console.log("[QR Modal] QR image loaded successfully:", selected.serialCode);
+                  }}
+                />
+              </div>
+            </div>
+            <p className="font-mono text-lg sm:text-xl text-white/70">{selected.serialCode}</p>
             <motion.button
               onClick={() => handleDownload(selected)}
               disabled={isDownloading}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-6 py-3 text-sm text-white/70 transition hover:border-[#FFD700]/40 hover:bg-black/60 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-black/40 px-6 py-3 text-sm text-white/70 transition hover:border-[#FFD700]/40 hover:bg-black/60 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
               whileHover={{ scale: isDownloading ? 1 : 1.05 }}
               whileTap={{ scale: isDownloading ? 1 : 0.95 }}
             >
