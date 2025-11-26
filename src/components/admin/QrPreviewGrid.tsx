@@ -667,11 +667,17 @@ export function QrPreviewGrid() {
                                 <img
                                   src={`/api/qr/${product.serialCode}?t=${Date.now()}`}
                                   alt={product.name}
-                                  className="h-16 w-16 rounded-lg border border-white/10 bg-white p-2 object-contain"
+                                  className="h-14 w-14 sm:h-16 sm:w-16 flex-shrink-0 rounded-lg border border-white/10 bg-white p-1.5 sm:p-2 object-contain"
+                                  loading="lazy"
                                   onError={(e) => {
                                     // Fallback: try with different timestamp
                                     const target = e.target as HTMLImageElement;
-                                    target.src = `/api/qr/${product.serialCode}?t=${Date.now()}`;
+                                    const newTimestamp = Date.now();
+                                    console.error("[QR Table] Image load error, retrying:", product.serialCode);
+                                    target.src = `/api/qr/${product.serialCode}?t=${newTimestamp}`;
+                                  }}
+                                  onLoad={() => {
+                                    console.log("[QR Table] QR image loaded:", product.serialCode);
                                   }}
                                 />
                               </div>
