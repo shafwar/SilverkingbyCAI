@@ -13,6 +13,7 @@ import {
   Grid3x3,
   Table2,
   Search,
+  RefreshCw,
 } from "lucide-react";
 
 import { fetcher } from "@/lib/fetcher";
@@ -33,13 +34,14 @@ type PreviewResponse = {
 };
 
 export function QrPreviewGrid() {
-  const { data, error, isLoading } = useSWR<PreviewResponse>("/api/admin/qr-preview", fetcher, {
+  const { data, error, isLoading, mutate } = useSWR<PreviewResponse>("/api/admin/qr-preview", fetcher, {
     refreshInterval: 60000,
   });
   const [selected, setSelected] = useState<Product | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [isDownloadingSelected, setIsDownloadingSelected] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [layoutView, setLayoutView] = useState<"table" | "grid">("table");
   const [searchQuery, setSearchQuery] = useState("");
@@ -232,6 +234,50 @@ export function QrPreviewGrid() {
   }, [filteredProducts, selectedItems.size]);
 
   // Update select all to work with filtered products
+  const handleRegenerateAll = async () => {
+    if (!data?.products || data.products.length === 0) {
+      alert("No products available to regenerate.");
+      return;
+    }
+
+    const confirmMessage = `Are you sure you want to regenerate ALL ${data.products.length} QR codes?\n\nThis will update all QR codes with correct serial numbers from the database.`;
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    setIsRegenerating(true);
+    try {
+      const response = await fetch("/api/admin/qr-preview/regenerate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ regenerateAll: true }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to regenerate QR codes");
+      }
+
+      const result = await response.json();
+      
+      // Refresh the data
+      await mutate();
+      
+      alert(
+        `Successfully regenerated ${result.regenerated} QR code(s)!\n` +
+        (result.failed > 0 ? `Failed: ${result.failed}\n` : "") +
+        `Total processed: ${result.total}`
+      );
+    } catch (error: any) {
+      console.error("Failed to regenerate QR codes:", error);
+      alert(`Failed to regenerate QR codes: ${error.message || "Please try again"}`);
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
   const toggleSelectAll = () => {
     if (!filteredProducts) return;
 
