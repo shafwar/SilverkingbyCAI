@@ -12,13 +12,28 @@ const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
 const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
 const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL;
 
+// CRITICAL: Normalize R2_ENDPOINT - remove bucket name from path if present
+// R2_ENDPOINT should be just the base URL, bucket is specified separately
+const normalizedR2Endpoint = R2_ENDPOINT 
+  ? R2_ENDPOINT.replace(/\/[^\/]+$/, "") // Remove last path segment (bucket name)
+  : null;
+
+console.log("[QR Config] R2 Configuration:", {
+  endpoint: normalizedR2Endpoint ? `${normalizedR2Endpoint.substring(0, 50)}...` : "NOT SET",
+  bucket: R2_BUCKET || "NOT SET",
+  hasAccessKey: !!R2_ACCESS_KEY_ID,
+  hasSecretKey: !!R2_SECRET_ACCESS_KEY,
+  publicUrl: R2_PUBLIC_URL || "NOT SET",
+  originalEndpoint: R2_ENDPOINT ? `${R2_ENDPOINT.substring(0, 50)}...` : "NOT SET"
+});
+
 const r2Available =
-  !!R2_ENDPOINT && !!R2_BUCKET && !!R2_ACCESS_KEY_ID && !!R2_SECRET_ACCESS_KEY && !!R2_PUBLIC_URL;
+  !!normalizedR2Endpoint && !!R2_BUCKET && !!R2_ACCESS_KEY_ID && !!R2_SECRET_ACCESS_KEY && !!R2_PUBLIC_URL;
 
 const r2Client = r2Available
   ? new S3Client({
       region: "auto",
-      endpoint: R2_ENDPOINT,
+      endpoint: normalizedR2Endpoint,
       credentials: {
         accessKeyId: R2_ACCESS_KEY_ID!,
         secretAccessKey: R2_SECRET_ACCESS_KEY!,
