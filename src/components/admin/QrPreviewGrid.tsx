@@ -803,19 +803,27 @@ export function QrPreviewGrid() {
           <div className="flex flex-col items-center gap-4">
             <div className="relative w-full max-w-sm">
               {/* Responsive QR Code Image Container */}
-              <div className="relative aspect-square w-full rounded-3xl border border-white/10 bg-white p-4 sm:p-6">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+              <div className="relative aspect-square w-full rounded-3xl border border-white/10 bg-white p-4 sm:p-6 overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  key={`qr-modal-${selected.serialCode}-${Date.now()}`}
                   src={`/api/qr/${selected.serialCode}?t=${Date.now()}`}
-              alt={selected.name}
-                  className="h-full w-full object-contain"
+                  alt={selected.name}
+                  className="h-full w-full object-contain transition-opacity duration-300"
                   loading="eager"
                   onError={(e) => {
                     // Fallback: try with different timestamp
                     const target = e.target as HTMLImageElement;
                     const newTimestamp = Date.now();
                     console.error("[QR Modal] Image load error, retrying with new timestamp:", newTimestamp);
+                    // Force reload by changing src
                     target.src = `/api/qr/${selected.serialCode}?t=${newTimestamp}`;
+                    // If still fails, show error message
+                    setTimeout(() => {
+                      if (target.complete && target.naturalWidth === 0) {
+                        console.error("[QR Modal] Image still failed to load after retry");
+                      }
+                    }, 2000);
                   }}
                   onLoad={() => {
                     console.log("[QR Modal] QR image loaded successfully:", selected.serialCode);
