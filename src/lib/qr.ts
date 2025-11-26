@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import QRCode from "qrcode";
-import { createCanvas, loadImage } from "@napi-rs/canvas";
+import { createCanvas, loadImage, registerFont } from "canvas";
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getBaseUrl } from "@/utils/constants";
 import { getR2Url } from "@/utils/r2-url";
@@ -16,9 +16,9 @@ const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL;
 // R2_ENDPOINT should be just the base URL, bucket is specified separately
 // If R2_ENDPOINT is not set, construct it from R2_ACCOUNT_ID
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
-const normalizedR2Endpoint = R2_ENDPOINT 
+const normalizedR2Endpoint = R2_ENDPOINT
   ? R2_ENDPOINT.replace(/\/[^\/]+$/, "") // Remove last path segment (bucket name)
-  : R2_ACCOUNT_ID 
+  : R2_ACCOUNT_ID
     ? `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
     : null;
 
@@ -28,11 +28,15 @@ console.log("[QR Config] R2 Configuration:", {
   hasAccessKey: !!R2_ACCESS_KEY_ID,
   hasSecretKey: !!R2_SECRET_ACCESS_KEY,
   publicUrl: R2_PUBLIC_URL || "NOT SET",
-  originalEndpoint: R2_ENDPOINT ? `${R2_ENDPOINT.substring(0, 50)}...` : "NOT SET"
+  originalEndpoint: R2_ENDPOINT ? `${R2_ENDPOINT.substring(0, 50)}...` : "NOT SET",
 });
 
 const r2Available =
-  !!normalizedR2Endpoint && !!R2_BUCKET && !!R2_ACCESS_KEY_ID && !!R2_SECRET_ACCESS_KEY && !!R2_PUBLIC_URL;
+  !!normalizedR2Endpoint &&
+  !!R2_BUCKET &&
+  !!R2_ACCESS_KEY_ID &&
+  !!R2_SECRET_ACCESS_KEY &&
+  !!R2_PUBLIC_URL;
 
 const r2Client = r2Available
   ? new S3Client({
@@ -47,6 +51,23 @@ const r2Client = r2Available
 
 const QR_FOLDER = path.join(process.cwd(), "public", "qr");
 
+// Register bundled font for QR labels so text renders consistently in all environments
+const QR_FONT_FAMILY = "SKMono";
+const QR_FONT_PATH = path.join(process.cwd(), "public", "fonts", "SKMono-Regular.ttf");
+
+try {
+  registerFont(QR_FONT_PATH, { family: QR_FONT_FAMILY });
+  console.log("[QR Config] Registered QR font:", {
+    family: QR_FONT_FAMILY,
+    path: QR_FONT_PATH,
+  });
+} catch (error) {
+  console.warn("[QR Config] Failed to register QR font, falling back to system fonts:", {
+    error,
+    path: QR_FONT_PATH,
+  });
+}
+
 export type QRStorageResult = {
   url: string;
   mode: "LOCAL" | "R2";
@@ -59,7 +80,7 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
   try {
     // Load QR code image
     const qrImage = await loadImage(qrBuffer);
-    
+
     // Calculate dimensions
     const qrWidth = qrImage.width;
     const qrHeight = qrImage.height;
@@ -67,167 +88,94 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
     const padding = 20; // Padding around QR and text
     const totalWidth = qrWidth + padding * 2;
     const totalHeight = qrHeight + textHeight + padding * 2;
-    
+
     // Create canvas
     const canvas = createCanvas(totalWidth, totalHeight);
     const ctx = canvas.getContext("2d");
-    
+
     // Fill white background
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, totalWidth, totalHeight);
-    
+
     // Draw QR code centered horizontally, at the top
     const qrX = padding;
     const qrY = padding;
     ctx.drawImage(qrImage, qrX, qrY);
-    
+
     // Validate and normalize serialCode first - CRITICAL: Ensure we have a valid serial code
-    const normalizedSerialCode = String(serialCode || "").trim().toUpperCase();
-    
+    const normalizedSerialCode = String(serialCode || "")
+      .trim()
+      .toUpperCase();
+
     console.log("[addSerialNumberToQR] Rendering serial code:", {
       original: serialCode,
       normalized: normalizedSerialCode,
       length: normalizedSerialCode.length,
       isValid: normalizedSerialCode.length >= 3,
       type: typeof serialCode,
-      value: JSON.stringify(serialCode)
+      value: JSON.stringify(serialCode),
     });
-    
+
     if (!normalizedSerialCode || normalizedSerialCode.length < 3) {
       console.error("[addSerialNumberToQR] Serial code is empty or invalid:", {
         serialCode,
         normalized: normalizedSerialCode,
-        length: normalizedSerialCode.length
+        length: normalizedSerialCode.length,
       });
       // Don't render if serial code is invalid - return QR without text
       return canvas.toBuffer("image/png");
     }
-    
+
     // Additional validation: ensure serial code doesn't contain only zeros or invalid characters
     if (normalizedSerialCode.match(/^0+$/)) {
-      console.error("[addSerialNumberToQR] Serial code contains only zeros - this is invalid:", normalizedSerialCode);
+      console.error(
+        "[addSerialNumberToQR] Serial code contains only zeros - this is invalid:",
+        normalizedSerialCode
+      );
       return canvas.toBuffer("image/png");
     }
-    
+
     const textX = totalWidth / 2;
     const textY = qrHeight + padding + textHeight / 2;
-    
-    // CRITICAL FIX: Use LARGER font size and multiple rendering techniques for maximum visibility
-    // Increase font size significantly for better visibility
-    const fontSize = 28; // Increased from 22px to 28px for better visibility
+
+    const fontSize = 28;
     ctx.fillStyle = "#000000"; // Pure black
     ctx.strokeStyle = "#000000";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    ctx.lineWidth = 3; // Increased line width for better stroke visibility
-    
-    // Use larger monospace font - guaranteed to work in all Node.js environments
-    ctx.font = `bold ${fontSize}px monospace`;
-    
-    // Test font rendering by measuring text
-    const testMetrics = ctx.measureText(normalizedSerialCode);
-    console.log("[addSerialNumberToQR] Font metrics:", {
-      width: testMetrics.width,
-      font: ctx.font,
-      serialCode: normalizedSerialCode
-    });
-    
-    // ALWAYS use character-by-character rendering for maximum reliability
-    // This ensures text renders correctly even if font measurement fails
-    const charWidth = fontSize * 0.6; // Approximate character width for monospace (60% of font size)
-    const totalTextWidth = normalizedSerialCode.length * charWidth;
-    const startX = textX - (totalTextWidth / 2);
-    
-    // CRITICAL FIX: Use ULTRA-SIMPLE text rendering with multiple font fallbacks
-    // Try multiple font approaches to ensure text renders
+    ctx.lineWidth = 3;
+    ctx.font = `${fontSize}px "${QR_FONT_FAMILY}"`;
+
+    // Render each character individually using bundled font
     ctx.save();
-    
-    // Approach 1: Try with system default fonts first (most reliable)
-    const fontOptions = [
-      `${fontSize}px monospace`,           // System monospace
-      `bold ${fontSize}px monospace`,      // Bold monospace
-      `${fontSize}px "Courier New"`,       // Courier New
-      `bold ${fontSize}px "Courier New"`,  // Bold Courier New
-      `${fontSize}px Arial`,               // Arial fallback
-      `bold ${fontSize}px Arial`,          // Bold Arial
-    ];
-    
-    let textRendered = false;
-    
-    for (const fontOption of fontOptions) {
-      try {
-        ctx.font = fontOption;
-        ctx.fillStyle = "#000000";
-        ctx.strokeStyle = "#000000";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.lineWidth = 2;
-        
-        // Test if font works by measuring
-        const testMetrics = ctx.measureText(normalizedSerialCode);
-        if (testMetrics.width > 0) {
-          // Render with both fill and stroke for maximum visibility
-          ctx.fillText(normalizedSerialCode, textX, textY);
-          ctx.strokeText(normalizedSerialCode, textX, textY);
-          
-          // Verify rendering
-          const imageData = ctx.getImageData(textX - 100, textY - 15, 200, 30);
-          const hasPixels = imageData.data.some((pixel: number, index: number) => index % 4 === 0 && pixel < 200);
-          
-          if (hasPixels) {
-            console.log("[addSerialNumberToQR] Text rendered successfully with font:", fontOption);
-            textRendered = true;
-            break;
-          }
-        }
-      } catch (error) {
-        console.warn(`[addSerialNumberToQR] Font ${fontOption} failed:`, error);
-        continue;
-      }
+    const metrics = ctx.measureText("0");
+    const charWidth = metrics.width || fontSize * 0.6;
+    const labelWidth = normalizedSerialCode.length * charWidth;
+    const startX = textX - labelWidth / 2;
+
+    for (let i = 0; i < normalizedSerialCode.length; i++) {
+      const char = normalizedSerialCode[i];
+      if (!char) continue;
+      const charX = startX + i * charWidth;
+      ctx.fillText(char, charX, textY);
+      ctx.strokeText(char, charX, textY);
     }
-    
-    // If all fonts failed, try manual character rendering as last resort
-    if (!textRendered) {
-      console.error("[addSerialNumberToQR] All font attempts failed, trying manual character rendering...");
-      ctx.font = `${fontSize}px monospace`;
-      ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
-      
-      const metrics = ctx.measureText("0"); // Measure a single character
-      const charWidth = metrics.width || fontSize * 0.6;
-      const totalWidth = normalizedSerialCode.length * charWidth;
-      const startX = textX - totalWidth / 2;
-      
-      // Render each character individually
-      for (let i = 0; i < normalizedSerialCode.length; i++) {
-        const char = normalizedSerialCode[i];
-        if (char) {
-          const charX = startX + (i * charWidth);
-          // Multiple passes for visibility
-          ctx.fillStyle = "#000000";
-          ctx.fillText(char, charX, textY);
-          ctx.strokeText(char, charX, textY);
-          ctx.fillText(char, charX + 0.5, textY + 0.5); // Bold effect
-        }
-      }
-    }
-    
+
     console.log("[addSerialNumberToQR] Final text rendering status:", {
       serialCode: normalizedSerialCode,
-      rendered: textRendered,
       position: { x: textX, y: textY },
-      canvasSize: { width: canvas.width, height: canvas.height }
+      canvasSize: { width: canvas.width, height: canvas.height },
     });
-    
+
     ctx.restore();
-    
+
     console.log("[addSerialNumberToQR] Text rendered character-by-character:", {
       serialCode: normalizedSerialCode,
       characters: normalizedSerialCode.length,
       startX,
-      charWidth
+      charWidth,
     });
-    
+
     // Log successful rendering with detailed information
     console.log("[addSerialNumberToQR] Serial code rendered successfully:", {
       serialCode: normalizedSerialCode,
@@ -237,9 +185,9 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
       textY: textY,
       environment: process.env.NODE_ENV,
       railwayEnv: process.env.RAILWAY_ENVIRONMENT,
-      canvasAvailable: typeof createCanvas !== "undefined"
+      canvasAvailable: typeof createCanvas !== "undefined",
     });
-    
+
     // Convert canvas to buffer
     return canvas.toBuffer("image/png");
   } catch (error) {
@@ -293,7 +241,7 @@ export async function addProductInfoToQR(
     ctx.font = "bold 18px Arial, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    
+
     // Truncate product name if too long
     const maxWidth = totalWidth - padding * 2 - 20;
     let displayName = productName;
@@ -305,156 +253,81 @@ export async function addProductInfoToQR(
       }
       displayName += "...";
     }
-    
+
     ctx.fillText(displayName, textX, currentY);
 
     // Draw serial code below product name - LARGER, BOLD, MONOSPACE for maximum visibility
     currentY += titleHeight / 2 + spacing + serialHeight / 2;
-    
+
     // Validate and normalize serialCode - CRITICAL: Ensure we have a valid serial code
-    const normalizedSerialCode = String(serialCode || "").trim().toUpperCase();
-    
+    const normalizedSerialCode = String(serialCode || "")
+      .trim()
+      .toUpperCase();
+
     console.log("[addProductInfoToQR] Rendering serial code:", {
       original: serialCode,
       normalized: normalizedSerialCode,
       length: normalizedSerialCode.length,
       isValid: normalizedSerialCode.length >= 3,
       type: typeof serialCode,
-      value: JSON.stringify(serialCode)
+      value: JSON.stringify(serialCode),
     });
-    
+
     if (!normalizedSerialCode || normalizedSerialCode.length < 3) {
       console.error("[addProductInfoToQR] Serial code is empty or invalid:", {
         serialCode,
         normalized: normalizedSerialCode,
-        length: normalizedSerialCode.length
+        length: normalizedSerialCode.length,
       });
       // Don't render if serial code is invalid - return QR without text
       return canvas.toBuffer("image/png");
     }
-    
+
     // Additional validation: ensure serial code doesn't contain only zeros or invalid characters
     if (normalizedSerialCode.match(/^0+$/)) {
-      console.error("[addProductInfoToQR] Serial code contains only zeros - this is invalid:", normalizedSerialCode);
+      console.error(
+        "[addProductInfoToQR] Serial code contains only zeros - this is invalid:",
+        normalizedSerialCode
+      );
       return canvas.toBuffer("image/png");
     }
-    
-    // CRITICAL FIX: Use LARGER font size and multiple rendering techniques for maximum visibility
-    // Increase font size significantly for better visibility
-    const fontSize = 24; // Increased from 18px to 24px for better visibility
+
+    const fontSize = 24;
     ctx.fillStyle = "#000000"; // Pure black
     ctx.strokeStyle = "#000000";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    ctx.lineWidth = 3; // Increased line width for better stroke visibility
-    
-    // Use larger monospace font - guaranteed to work in all Node.js environments
-    ctx.font = `bold ${fontSize}px monospace`;
-    
-    // Test font rendering by measuring text
-    const testMetrics = ctx.measureText(normalizedSerialCode);
-    console.log("[addProductInfoToQR] Font metrics:", {
-      width: testMetrics.width,
-      font: ctx.font,
-      serialCode: normalizedSerialCode
-    });
-    
-    // ALWAYS use character-by-character rendering for maximum reliability
-    // This ensures text renders correctly even if font measurement fails
-    const charWidth = fontSize * 0.6; // Approximate character width for monospace (60% of font size)
-    const totalTextWidth = normalizedSerialCode.length * charWidth;
-    const startX = textX - (totalTextWidth / 2);
-    
-    // CRITICAL FIX: Use ULTRA-SIMPLE text rendering with multiple font fallbacks
-    // Try multiple font approaches to ensure text renders
+    ctx.lineWidth = 3;
+    ctx.font = `${fontSize}px "${QR_FONT_FAMILY}"`;
+
+    // Render each character individually using bundled font
     ctx.save();
-    
-    // Approach 1: Try with system default fonts first (most reliable)
-    const fontOptions = [
-      `${fontSize}px monospace`,           // System monospace
-      `bold ${fontSize}px monospace`,      // Bold monospace
-      `${fontSize}px "Courier New"`,       // Courier New
-      `bold ${fontSize}px "Courier New"`,  // Bold Courier New
-      `${fontSize}px Arial`,               // Arial fallback
-      `bold ${fontSize}px Arial`,          // Bold Arial
-    ];
-    
-    let textRendered = false;
-    
-    for (const fontOption of fontOptions) {
-      try {
-        ctx.font = fontOption;
-        ctx.fillStyle = "#000000";
-        ctx.strokeStyle = "#000000";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.lineWidth = 2;
-        
-        // Test if font works by measuring
-        const testMetrics = ctx.measureText(normalizedSerialCode);
-        if (testMetrics.width > 0) {
-          // Render with both fill and stroke for maximum visibility
-          ctx.fillText(normalizedSerialCode, textX, currentY);
-          ctx.strokeText(normalizedSerialCode, textX, currentY);
-          
-          // Verify rendering
-          const imageData = ctx.getImageData(textX - 100, currentY - 15, 200, 30);
-          const hasPixels = imageData.data.some((pixel: number, index: number) => index % 4 === 0 && pixel < 200);
-          
-          if (hasPixels) {
-            console.log("[addProductInfoToQR] Text rendered successfully with font:", fontOption);
-            textRendered = true;
-            break;
-          }
-        }
-      } catch (error) {
-        console.warn(`[addProductInfoToQR] Font ${fontOption} failed:`, error);
-        continue;
-      }
+    const metrics2 = ctx.measureText("0");
+    const charWidth2 = metrics2.width || fontSize * 0.6;
+    const totalWidth2 = normalizedSerialCode.length * charWidth2;
+    const startX2 = textX - totalWidth2 / 2;
+
+    for (let i = 0; i < normalizedSerialCode.length; i++) {
+      const char = normalizedSerialCode[i];
+      if (!char) continue;
+      const charX = startX2 + i * charWidth2;
+      ctx.fillText(char, charX, currentY);
+      ctx.strokeText(char, charX, currentY);
     }
-    
-    // If all fonts failed, try manual character rendering as last resort
-    if (!textRendered) {
-      console.error("[addProductInfoToQR] All font attempts failed, trying manual character rendering...");
-      ctx.font = `${fontSize}px monospace`;
-      ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
-      
-      const metrics = ctx.measureText("0"); // Measure a single character
-      const charWidth = metrics.width || fontSize * 0.6;
-      const totalWidth = normalizedSerialCode.length * charWidth;
-      const startX = textX - totalWidth / 2;
-      
-      // Render each character individually
-      for (let i = 0; i < normalizedSerialCode.length; i++) {
-        const char = normalizedSerialCode[i];
-        if (char) {
-          const charX = startX + (i * charWidth);
-          // Multiple passes for visibility
-          ctx.fillStyle = "#000000";
-          ctx.fillText(char, charX, currentY);
-          ctx.strokeText(char, charX, currentY);
-          ctx.fillText(char, charX + 0.5, currentY + 0.5); // Bold effect
-        }
-      }
-    }
-    
+
     console.log("[addProductInfoToQR] Final text rendering status:", {
       serialCode: normalizedSerialCode,
-      rendered: textRendered,
       position: { x: textX, y: currentY },
-      canvasSize: { width: canvas.width, height: canvas.height }
+      canvasSize: { width: canvas.width, height: canvas.height },
     });
-    
+
     ctx.restore();
-    
+
     console.log("[addProductInfoToQR] Text rendered character-by-character:", {
       serialCode: normalizedSerialCode,
       characters: normalizedSerialCode.length,
-      startX,
-      charWidth
     });
-    
+
     // Log successful rendering with detailed information
     console.log("[addProductInfoToQR] Serial code rendered successfully:", {
       serialCode: normalizedSerialCode,
@@ -464,7 +337,7 @@ export async function addProductInfoToQR(
       textY: currentY,
       environment: process.env.NODE_ENV,
       railwayEnv: process.env.RAILWAY_ENVIRONMENT,
-      canvasAvailable: typeof createCanvas !== "undefined"
+      canvasAvailable: typeof createCanvas !== "undefined",
     });
 
     // Convert canvas to buffer
@@ -484,7 +357,7 @@ export async function generateAndStoreQR(
   console.log(">>> [generateAndStoreQR] Starting QR generation for serial:", serialCode, {
     productName,
   });
-  
+
   // STEP 1: Generate raw QR code buffer
   const qrBuffer = await QRCode.toBuffer(targetUrl, {
     width: 600,
@@ -492,13 +365,13 @@ export async function generateAndStoreQR(
     color: { dark: "#0c0c0c", light: "#ffffff" },
     margin: 2,
   });
-  
+
   console.log(">>> [generateAndStoreQR] QR buffer generated, size:", qrBuffer.length);
-  
+
   // STEP 2: Add product info (name + serial) using shared renderer to guarantee consistency
   const labelName = productName?.trim() || serialCode;
   const pngBuffer = await addProductInfoToQR(qrBuffer, serialCode, labelName);
-  
+
   console.log(">>> [generateAndStoreQR] Final QR (with label) size:", pngBuffer.length, {
     hasProductName: !!productName,
     labelName,
@@ -507,14 +380,14 @@ export async function generateAndStoreQR(
   // STEP 3: Upload FINAL PNG (with QR + text) to R2
   if (r2Available && r2Client) {
     const objectKey = `qr/${serialCode}.png`;
-    
+
     console.log(">>> Uploading to R2:", {
       bucket: R2_BUCKET,
       key: objectKey,
       bufferSize: pngBuffer.length,
-      serialCode
+      serialCode,
     });
-    
+
     try {
       await r2Client.send(
         new PutObjectCommand({
@@ -546,11 +419,11 @@ export async function generateAndStoreQR(
   // In production (Railway), public folder is read-only after build
   // Use API route for QR generation instead of file system
   const isProduction = process.env.NODE_ENV === "production" || process.env.RAILWAY_ENVIRONMENT;
-  
+
   if (isProduction) {
     // Return API route URL for on-the-fly generation
     const baseUrl = getBaseUrl();
-    
+
     return {
       url: `${baseUrl}/api/qr/${serialCode}`,
       mode: "LOCAL",
@@ -572,7 +445,7 @@ export async function generateAndStoreQR(
     // If file write fails (e.g., in production), fallback to API route
     console.warn("Failed to write QR to file system, using API route:", error);
     const baseUrl = getBaseUrl();
-    
+
     return {
       url: `${baseUrl}/api/qr/${serialCode}`,
       mode: "LOCAL",
