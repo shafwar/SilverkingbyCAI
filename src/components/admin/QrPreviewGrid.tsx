@@ -541,6 +541,16 @@ export function QrPreviewGrid() {
               </motion.button>
             )}
             <motion.button
+              onClick={handleRegenerateAll}
+              disabled={isRegenerating}
+              className="group inline-flex items-center gap-2 rounded-full border border-blue-400/60 bg-blue-400/10 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-all hover:border-blue-400 hover:bg-blue-400/20 hover:shadow-[0_0_20px_rgba(96,165,250,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
+              whileHover={{ scale: isRegenerating ? 1 : 1.02 }}
+              whileTap={{ scale: isRegenerating ? 1 : 0.98 }}
+            >
+              <RefreshCw className={`h-4 w-4 transition-transform ${isRegenerating ? "animate-spin" : "group-hover:rotate-180"}`} />
+              {isRegenerating ? "Regenerating..." : "Regenerate All QR"}
+            </motion.button>
+            <motion.button
               onClick={handleDownloadAll}
               disabled={isDownloadingAll}
               className="group inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-all hover:border-[#FFD700]/40 hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
