@@ -62,19 +62,31 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
     const qrY = padding;
     ctx.drawImage(qrImage, qrX, qrY);
     
-    // Validate and normalize serialCode first
+    // Validate and normalize serialCode first - CRITICAL: Ensure we have a valid serial code
     const normalizedSerialCode = String(serialCode || "").trim().toUpperCase();
     
     console.log("[addSerialNumberToQR] Rendering serial code:", {
       original: serialCode,
       normalized: normalizedSerialCode,
       length: normalizedSerialCode.length,
-      isValid: normalizedSerialCode.length >= 3
+      isValid: normalizedSerialCode.length >= 3,
+      type: typeof serialCode,
+      value: JSON.stringify(serialCode)
     });
     
     if (!normalizedSerialCode || normalizedSerialCode.length < 3) {
-      console.error("[addSerialNumberToQR] Serial code is empty or invalid:", serialCode);
-      // Don't render if serial code is invalid
+      console.error("[addSerialNumberToQR] Serial code is empty or invalid:", {
+        serialCode,
+        normalized: normalizedSerialCode,
+        length: normalizedSerialCode.length
+      });
+      // Don't render if serial code is invalid - return QR without text
+      return canvas.toBuffer("image/png");
+    }
+    
+    // Additional validation: ensure serial code doesn't contain only zeros or invalid characters
+    if (normalizedSerialCode.match(/^0+$/)) {
+      console.error("[addSerialNumberToQR] Serial code contains only zeros - this is invalid:", normalizedSerialCode);
       return canvas.toBuffer("image/png");
     }
     
@@ -221,19 +233,31 @@ export async function addProductInfoToQR(
     // Draw serial code below product name - smaller, monospace
     currentY += titleHeight / 2 + spacing + serialHeight / 2;
     
-    // Validate and normalize serialCode
+    // Validate and normalize serialCode - CRITICAL: Ensure we have a valid serial code
     const normalizedSerialCode = String(serialCode || "").trim().toUpperCase();
     
     console.log("[addProductInfoToQR] Rendering serial code:", {
       original: serialCode,
       normalized: normalizedSerialCode,
       length: normalizedSerialCode.length,
-      isValid: normalizedSerialCode.length >= 3
+      isValid: normalizedSerialCode.length >= 3,
+      type: typeof serialCode,
+      value: JSON.stringify(serialCode)
     });
     
     if (!normalizedSerialCode || normalizedSerialCode.length < 3) {
-      console.error("[addProductInfoToQR] Serial code is empty or invalid:", serialCode);
-      // Don't render if serial code is invalid
+      console.error("[addProductInfoToQR] Serial code is empty or invalid:", {
+        serialCode,
+        normalized: normalizedSerialCode,
+        length: normalizedSerialCode.length
+      });
+      // Don't render if serial code is invalid - return QR without text
+      return canvas.toBuffer("image/png");
+    }
+    
+    // Additional validation: ensure serial code doesn't contain only zeros or invalid characters
+    if (normalizedSerialCode.match(/^0+$/)) {
+      console.error("[addProductInfoToQR] Serial code contains only zeros - this is invalid:", normalizedSerialCode);
       return canvas.toBuffer("image/png");
     }
     

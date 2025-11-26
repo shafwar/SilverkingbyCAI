@@ -41,8 +41,25 @@ export async function GET(
     }
 
     // Ensure we use the serialCode from database (normalized)
-    const finalSerialCode = product.serialCode || serialCode;
-
+    // CRITICAL: Always use product.serialCode from database, never fallback to params
+    const finalSerialCode = product.serialCode;
+    
+    // Validate finalSerialCode is not empty or invalid
+    if (!finalSerialCode || finalSerialCode.trim().length < 3) {
+      console.error("[QR Download] Invalid finalSerialCode from database:", {
+        finalSerialCode,
+        productSerialCode: product.serialCode,
+        paramSerialCode: serialCode
+      });
+      return new NextResponse("Invalid serial code in database", { status: 400 });
+    }
+    
+    console.log("[QR Download] Using serial code from database:", {
+      finalSerialCode,
+      length: finalSerialCode.length,
+      productName: product.name
+    });
+    
     // Get verify URL using centralized function
     const verifyUrl = getVerifyUrl(finalSerialCode);
 
