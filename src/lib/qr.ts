@@ -52,8 +52,9 @@ const r2Client = r2Available
 const QR_FOLDER = path.join(process.cwd(), "public", "qr");
 
 // Register bundled font for QR labels so text renders consistently in all environments
+// We use SF Mono Regular from /public/fonts and expose it as "SKMono" family for QR rendering.
 const QR_FONT_FAMILY = "SKMono";
-const QR_FONT_PATH = path.join(process.cwd(), "public", "fonts", "SKMono-Regular.ttf");
+const QR_FONT_PATH = path.join(process.cwd(), "public", "fonts", "SFMono-Regular.otf");
 
 try {
   registerFont(QR_FONT_PATH, { family: QR_FONT_FAMILY });
