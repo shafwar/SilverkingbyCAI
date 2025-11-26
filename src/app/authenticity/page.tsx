@@ -352,50 +352,133 @@ export default function AuthenticityPage() {
     { scope: heroRef }
   );
 
-  // Video autoplay handling
+  // Optimal video autoplay handling - ensure video never pauses or breaks
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
+    // Force play function with error handling and retry mechanism
     const forcePlay = async () => {
       try {
         if (video.paused && !video.ended) {
           await video.play();
         }
       } catch (error) {
-        console.warn("[AuthenticityPage] Video autoplay prevented:", error);
+        console.warn("[AuthenticityPage] Video autoplay prevented, retrying:", error);
+        // Retry after a short delay with exponential backoff
+        setTimeout(() => {
+          video.play().catch(() => {
+            // Second retry after longer delay
+            setTimeout(() => {
+              video.play().catch(() => {
+                console.warn("[AuthenticityPage] Video autoplay failed after multiple retries");
+              });
+            }, 500);
+          });
+        }, 100);
       }
     };
 
+    // Handle video ready states
+    const handleCanPlay = () => {
+      setIsVideoLoaded(true);
+      forcePlay();
+    };
+
+    const handleLoadedData = () => {
+      setIsVideoLoaded(true);
+      forcePlay();
+    };
+
+    // Handle video errors
+    const handleError = () => {
+      setIsVideoLoaded(false);
+      console.warn("[AuthenticityPage] Video error occurred");
+    };
+
+    // Resume video if it pauses (prevent breaks)
     const handlePause = () => {
       if (!video.ended) {
+        // Small delay to avoid infinite loop
+        setTimeout(() => {
+          if (video.paused && !video.ended) {
+            forcePlay();
+          }
+        }, 50);
+      }
+    };
+
+    // Handle visibility change - resume video when page becomes visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden && video.paused && !video.ended) {
         forcePlay();
       }
     };
 
+    // Handle video end - restart immediately for seamless loop
     const handleEnded = () => {
       video.currentTime = 0;
       forcePlay();
     };
 
+    // Handle video waiting/buffering - resume when ready
+    const handleWaiting = () => {
+      // Video is buffering, will resume automatically when ready
+      // But we can also try to play if it's paused
+      if (video.paused && !video.ended) {
+        setTimeout(() => {
+          forcePlay();
+        }, 100);
+      }
+    };
+
+    // Check if video is already loaded
+    if (video.readyState >= 2) {
+      setIsVideoLoaded(true);
+    }
+
+    // Initial play attempt
     forcePlay();
 
+    // Event listeners
+    video.addEventListener("canplay", handleCanPlay);
+    video.addEventListener("loadeddata", handleLoadedData);
+    video.addEventListener("error", handleError);
     video.addEventListener("pause", handlePause);
     video.addEventListener("ended", handleEnded);
+    video.addEventListener("waiting", handleWaiting);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
+    // Force load video to ensure it starts loading immediately
+    video.load();
+
+    // Periodic check to ensure video is playing (fallback mechanism)
+    const playCheckInterval = setInterval(() => {
+      if (video.paused && !video.ended && !document.hidden) {
+        forcePlay();
+      }
+    }, 2000); // Check every 2 seconds
+
+    // Cleanup
     return () => {
+      video.removeEventListener("canplay", handleCanPlay);
+      video.removeEventListener("loadeddata", handleLoadedData);
+      video.removeEventListener("error", handleError);
       video.removeEventListener("pause", handlePause);
       video.removeEventListener("ended", handleEnded);
+      video.removeEventListener("waiting", handleWaiting);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearInterval(playCheckInterval);
     };
   }, []);
 
   const handleScanSuccess = async (decodedText: string) => {
     try {
       if (!decodedText || !decodedText.trim()) return;
-      
+
       setShowScanner(false);
       let serialCode = decodedText.trim();
-      
+
       if (serialCode.includes("/verify/")) {
         const urlMatch = serialCode.match(/\/verify\/([A-Z0-9]+)/i);
         if (urlMatch && urlMatch[1]) {
@@ -405,14 +488,14 @@ export default function AuthenticityPage() {
         const urlParts = serialCode.split("/");
         serialCode = urlParts[urlParts.length - 1] || serialCode;
       }
-      
+
       const normalizedSerial = serialCode.toUpperCase().replace(/[^A-Z0-9]/g, "");
-      
+
       if (!normalizedSerial || normalizedSerial.length < 3) {
         alert("Invalid QR code format. Please scan a valid Silver King QR code.");
         return;
       }
-      
+
       window.location.href = `/verify/${normalizedSerial}`;
     } catch (error) {
       console.error("[Authenticity] Error handling scan success:", error);
@@ -435,17 +518,20 @@ export default function AuthenticityPage() {
         alert("Please enter a serial number");
         return;
       }
-      
-      let serialCode = serialNumber.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
-      
+
+      let serialCode = serialNumber
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "");
+
       if (!serialCode || serialCode.length < 3) {
         alert("Invalid serial number format. Please enter a valid serial code (e.g., SKA000001)");
         return;
       }
-      
+
       setShowManualInput(false);
       setSerialNumber("");
-      
+
       window.location.href = `/verify/${serialCode}`;
     } catch (error) {
       console.error("[Authenticity] Error in handleManualVerify:", error);
@@ -475,7 +561,7 @@ export default function AuthenticityPage() {
         {/* Video Background */}
         <div className="absolute inset-0 z-0 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-luxury-black via-luxury-black/95 to-luxury-black z-0" />
-          
+
           <video
             ref={videoRef}
             autoPlay
@@ -483,6 +569,8 @@ export default function AuthenticityPage() {
             muted
             playsInline
             preload="auto"
+            disablePictureInPicture
+            disableRemotePlayback
             className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 will-change-transform z-10 ${
               isVideoLoaded ? "opacity-100" : "opacity-0"
             }`}
@@ -490,9 +578,6 @@ export default function AuthenticityPage() {
               transform: "scale(1.05)",
               transformOrigin: "center center",
             }}
-            onError={() => setIsVideoLoaded(false)}
-            onCanPlay={() => setIsVideoLoaded(true)}
-            onLoadedData={() => setIsVideoLoaded(true)}
           >
             <source src={getR2UrlClient("/videos/hero/mobile scanning qr.mp4")} type="video/mp4" />
           </video>

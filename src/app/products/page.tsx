@@ -563,7 +563,7 @@ export default function ProductsPage() {
     const video = videoRef.current;
     if (!video) return;
 
-    // Force play function with error handling and retry
+    // Force play function with error handling and retry mechanism
     const forcePlay = async () => {
       try {
         if (video.paused && !video.ended) {
@@ -571,10 +571,15 @@ export default function ProductsPage() {
         }
       } catch (error) {
         console.warn("[ProductsPage] Video autoplay prevented, retrying:", error);
-        // Retry after a short delay
+        // Retry after a short delay with exponential backoff
         setTimeout(() => {
           video.play().catch(() => {
-            console.warn("[ProductsPage] Video autoplay failed after retry");
+            // Second retry after longer delay
+            setTimeout(() => {
+              video.play().catch(() => {
+                console.warn("[ProductsPage] Video autoplay failed after multiple retries");
+              });
+            }, 500);
           });
         }, 100);
       }
@@ -597,7 +602,23 @@ export default function ProductsPage() {
     // Resume video if it pauses (prevent breaks)
     const handlePause = () => {
       if (!video.ended) {
-        forcePlay();
+        // Small delay to avoid infinite loop
+        setTimeout(() => {
+          if (video.paused && !video.ended) {
+            forcePlay();
+          }
+        }, 50);
+      }
+    };
+
+    // Handle video waiting/buffering - resume when ready
+    const handleWaiting = () => {
+      // Video is buffering, will resume automatically when ready
+      // But we can also try to play if it's paused
+      if (video.paused && !video.ended) {
+        setTimeout(() => {
+          forcePlay();
+        }, 100);
       }
     };
 
@@ -628,24 +649,27 @@ export default function ProductsPage() {
     video.addEventListener("error", handleError);
     video.addEventListener("pause", handlePause);
     video.addEventListener("ended", handleEnded);
+    video.addEventListener("waiting", handleWaiting);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // Force load
+    // Force load video to ensure it starts loading immediately
     video.load();
 
-    // Periodic check to ensure video is playing (fallback)
+    // Periodic check to ensure video is playing (fallback mechanism)
     const playCheckInterval = setInterval(() => {
-      if (video.paused && !video.ended) {
+      if (video.paused && !video.ended && !document.hidden) {
         forcePlay();
       }
-    }, 2000);
+    }, 2000); // Check every 2 seconds
 
+    // Cleanup
     return () => {
       video.removeEventListener("canplay", handleCanPlay);
       video.removeEventListener("loadeddata", handleLoadedData);
       video.removeEventListener("error", handleError);
       video.removeEventListener("pause", handlePause);
       video.removeEventListener("ended", handleEnded);
+      video.removeEventListener("waiting", handleWaiting);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       clearInterval(playCheckInterval);
     };
@@ -926,21 +950,14 @@ export default function ProductsPage() {
             muted
             playsInline
             preload="auto"
+            disablePictureInPicture
+            disableRemotePlayback
             className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 will-change-transform z-10 ${
               isVideoLoaded ? "opacity-100" : "opacity-0"
             }`}
             style={{
               transform: "scale(1.05)",
               transformOrigin: "center center",
-            }}
-            onError={() => {
-              setIsVideoLoaded(false);
-            }}
-            onCanPlay={() => {
-              setIsVideoLoaded(true);
-            }}
-            onLoadedData={() => {
-              setIsVideoLoaded(true);
             }}
           >
             <source src={getR2UrlClient("/videos/hero/gold-stone.mp4")} type="video/mp4" />

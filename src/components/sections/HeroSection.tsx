@@ -148,37 +148,62 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
     const video = videoRef.current;
     if (!video) return;
 
-    // Force play function with error handling
+    // Force play function with error handling and retry mechanism
     const forcePlay = async () => {
       try {
-        if (video.paused) {
+        if (video.paused && !video.ended) {
           await video.play();
         }
       } catch (error) {
         console.warn("[HeroSection] Video autoplay prevented, retrying:", error);
-        // Retry after a short delay
+        // Retry after a short delay with exponential backoff
         setTimeout(() => {
           video.play().catch(() => {
-            console.warn("[HeroSection] Video autoplay failed after retry");
+            // Second retry after longer delay
+            setTimeout(() => {
+              video.play().catch(() => {
+                console.warn("[HeroSection] Video autoplay failed after multiple retries");
+              });
+            }, 500);
           });
         }, 100);
       }
     };
 
-    // Ensure video plays when loaded
+    // Handle video ready states
     const handleCanPlay = () => {
       forcePlay();
     };
 
-    // Ensure video plays when data is loaded
     const handleLoadedData = () => {
       forcePlay();
+    };
+
+    // Handle video errors
+    const handleError = () => {
+      console.warn("[HeroSection] Video error occurred");
     };
 
     // Resume video if it pauses (prevent breaks)
     const handlePause = () => {
       if (!video.ended) {
-        forcePlay();
+        // Small delay to avoid infinite loop
+        setTimeout(() => {
+          if (video.paused && !video.ended) {
+            forcePlay();
+          }
+        }, 50);
+      }
+    };
+
+    // Handle video waiting/buffering - resume when ready
+    const handleWaiting = () => {
+      // Video is buffering, will resume automatically when ready
+      // But we can also try to play if it's paused
+      if (video.paused && !video.ended) {
+        setTimeout(() => {
+          forcePlay();
+        }, 100);
       }
     };
 
@@ -201,23 +226,30 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
     // Event listeners
     video.addEventListener("canplay", handleCanPlay);
     video.addEventListener("loadeddata", handleLoadedData);
+    video.addEventListener("error", handleError);
     video.addEventListener("pause", handlePause);
     video.addEventListener("ended", handleEnded);
+    video.addEventListener("waiting", handleWaiting);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // Periodic check to ensure video is playing (fallback)
+    // Force load video to ensure it starts loading immediately
+    video.load();
+
+    // Periodic check to ensure video is playing (fallback mechanism)
     const playCheckInterval = setInterval(() => {
-      if (video.paused && !video.ended) {
+      if (video.paused && !video.ended && !document.hidden) {
         forcePlay();
       }
-    }, 2000);
+    }, 2000); // Check every 2 seconds
 
     // Cleanup
     return () => {
       video.removeEventListener("canplay", handleCanPlay);
       video.removeEventListener("loadeddata", handleLoadedData);
+      video.removeEventListener("error", handleError);
       video.removeEventListener("pause", handlePause);
       video.removeEventListener("ended", handleEnded);
+      video.removeEventListener("waiting", handleWaiting);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       clearInterval(playCheckInterval);
     };
@@ -390,6 +422,8 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             muted
             playsInline
             preload="auto"
+            disablePictureInPicture
+            disableRemotePlayback
             className="absolute inset-0 h-full w-full object-cover"
           >
             <source src={getR2UrlClient("/videos/hero/hero-background.mp4")} type="video/mp4" />

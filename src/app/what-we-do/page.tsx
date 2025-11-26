@@ -621,47 +621,108 @@ export default function WhatWeDoPage() {
           <video
             ref={(video) => {
               if (video) {
+                // Optimal video autoplay handling - ensure video never pauses or breaks
                 const forcePlay = async () => {
                   try {
                     if (video.paused && !video.ended) {
                       await video.play();
                     }
                   } catch (error) {
+                    console.warn("[WhatWeDoPage] Video autoplay prevented, retrying:", error);
+                    // Retry after a short delay with exponential backoff
                     setTimeout(() => {
-                      video.play().catch(() => {});
+                      video.play().catch(() => {
+                        // Second retry after longer delay
+                        setTimeout(() => {
+                          video.play().catch(() => {
+                            console.warn("[WhatWeDoPage] Video autoplay failed after multiple retries");
+                          });
+                        }, 500);
+                      });
                     }, 100);
                   }
                 };
 
-                const handlePause = () => {
-                  if (!video.ended) forcePlay();
-                };
-
-                const handleEnded = () => {
-                  video.currentTime = 0;
+                // Handle video ready states
+                const handleCanPlay = () => {
                   forcePlay();
                 };
 
+                const handleLoadedData = () => {
+                  forcePlay();
+                };
+
+                // Handle video errors
+                const handleError = () => {
+                  console.warn("[WhatWeDoPage] Video error occurred");
+                };
+
+                // Resume video if it pauses (prevent breaks)
+                const handlePause = () => {
+                  if (!video.ended) {
+                    // Small delay to avoid infinite loop
+                    setTimeout(() => {
+                      if (video.paused && !video.ended) {
+                        forcePlay();
+                      }
+                    }, 50);
+                  }
+                };
+
+                // Handle visibility change - resume video when page becomes visible
                 const handleVisibilityChange = () => {
                   if (!document.hidden && video.paused && !video.ended) {
                     forcePlay();
                   }
                 };
 
+                // Handle video end - restart immediately for seamless loop
+                const handleEnded = () => {
+                  video.currentTime = 0;
+                  forcePlay();
+                };
+
+                // Handle video waiting/buffering - resume when ready
+                const handleWaiting = () => {
+                  // Video is buffering, will resume automatically when ready
+                  // But we can also try to play if it's paused
+                  if (video.paused && !video.ended) {
+                    setTimeout(() => {
+                      forcePlay();
+                    }, 100);
+                  }
+                };
+
+                // Initial play attempt
                 forcePlay();
+
+                // Event listeners
+                video.addEventListener("canplay", handleCanPlay);
+                video.addEventListener("loadeddata", handleLoadedData);
+                video.addEventListener("error", handleError);
                 video.addEventListener("pause", handlePause);
                 video.addEventListener("ended", handleEnded);
+                video.addEventListener("waiting", handleWaiting);
                 document.addEventListener("visibilitychange", handleVisibilityChange);
 
+                // Force load video to ensure it starts loading immediately
+                video.load();
+
+                // Periodic check to ensure video is playing (fallback mechanism)
                 const playCheckInterval = setInterval(() => {
-                  if (video.paused && !video.ended) {
+                  if (video.paused && !video.ended && !document.hidden) {
                     forcePlay();
                   }
-                }, 2000);
+                }, 2000); // Check every 2 seconds
 
+                // Cleanup stored on video element
                 (video as any).__cleanup = () => {
+                  video.removeEventListener("canplay", handleCanPlay);
+                  video.removeEventListener("loadeddata", handleLoadedData);
+                  video.removeEventListener("error", handleError);
                   video.removeEventListener("pause", handlePause);
                   video.removeEventListener("ended", handleEnded);
+                  video.removeEventListener("waiting", handleWaiting);
                   document.removeEventListener("visibilitychange", handleVisibilityChange);
                   clearInterval(playCheckInterval);
                 };
@@ -843,47 +904,108 @@ export default function WhatWeDoPage() {
           <video
             ref={(video) => {
               if (video) {
+                // Optimal video autoplay handling - ensure video never pauses or breaks
                 const forcePlay = async () => {
                   try {
                     if (video.paused && !video.ended) {
                       await video.play();
                     }
                   } catch (error) {
+                    console.warn("[WhatWeDoPage] Video autoplay prevented, retrying:", error);
+                    // Retry after a short delay with exponential backoff
                     setTimeout(() => {
-                      video.play().catch(() => {});
+                      video.play().catch(() => {
+                        // Second retry after longer delay
+                        setTimeout(() => {
+                          video.play().catch(() => {
+                            console.warn("[WhatWeDoPage] Video autoplay failed after multiple retries");
+                          });
+                        }, 500);
+                      });
                     }, 100);
                   }
                 };
 
-                const handlePause = () => {
-                  if (!video.ended) forcePlay();
-                };
-
-                const handleEnded = () => {
-                  video.currentTime = 0;
+                // Handle video ready states
+                const handleCanPlay = () => {
                   forcePlay();
                 };
 
+                const handleLoadedData = () => {
+                  forcePlay();
+                };
+
+                // Handle video errors
+                const handleError = () => {
+                  console.warn("[WhatWeDoPage] Video error occurred");
+                };
+
+                // Resume video if it pauses (prevent breaks)
+                const handlePause = () => {
+                  if (!video.ended) {
+                    // Small delay to avoid infinite loop
+                    setTimeout(() => {
+                      if (video.paused && !video.ended) {
+                        forcePlay();
+                      }
+                    }, 50);
+                  }
+                };
+
+                // Handle visibility change - resume video when page becomes visible
                 const handleVisibilityChange = () => {
                   if (!document.hidden && video.paused && !video.ended) {
                     forcePlay();
                   }
                 };
 
+                // Handle video end - restart immediately for seamless loop
+                const handleEnded = () => {
+                  video.currentTime = 0;
+                  forcePlay();
+                };
+
+                // Handle video waiting/buffering - resume when ready
+                const handleWaiting = () => {
+                  // Video is buffering, will resume automatically when ready
+                  // But we can also try to play if it's paused
+                  if (video.paused && !video.ended) {
+                    setTimeout(() => {
+                      forcePlay();
+                    }, 100);
+                  }
+                };
+
+                // Initial play attempt
                 forcePlay();
+
+                // Event listeners
+                video.addEventListener("canplay", handleCanPlay);
+                video.addEventListener("loadeddata", handleLoadedData);
+                video.addEventListener("error", handleError);
                 video.addEventListener("pause", handlePause);
                 video.addEventListener("ended", handleEnded);
+                video.addEventListener("waiting", handleWaiting);
                 document.addEventListener("visibilitychange", handleVisibilityChange);
 
+                // Force load video to ensure it starts loading immediately
+                video.load();
+
+                // Periodic check to ensure video is playing (fallback mechanism)
                 const playCheckInterval = setInterval(() => {
-                  if (video.paused && !video.ended) {
+                  if (video.paused && !video.ended && !document.hidden) {
                     forcePlay();
                   }
-                }, 2000);
+                }, 2000); // Check every 2 seconds
 
+                // Cleanup stored on video element
                 (video as any).__cleanup = () => {
+                  video.removeEventListener("canplay", handleCanPlay);
+                  video.removeEventListener("loadeddata", handleLoadedData);
+                  video.removeEventListener("error", handleError);
                   video.removeEventListener("pause", handlePause);
                   video.removeEventListener("ended", handleEnded);
+                  video.removeEventListener("waiting", handleWaiting);
                   document.removeEventListener("visibilitychange", handleVisibilityChange);
                   clearInterval(playCheckInterval);
                 };
