@@ -437,15 +437,15 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         </motion.div>
       </motion.div>
 
-      {/* Content - Optimized untuk semua device termasuk iPhone 11 Pro */}
-      <div className="relative z-10 flex h-full items-center pt-[calc(env(safe-area-inset-top)+0.5rem)] xs:pt-[calc(env(safe-area-inset-top)+1rem)] sm:pt-8 md:pt-0 pb-12 sm:pb-16 md:pb-0">
-        <div className="mx-auto w-full max-w-[1600px] px-4 xs:px-5 sm:px-6 md:px-10 lg:px-14 xl:px-20">
-          {/* Main content - left side - Optimized spacing */}
-          <div className="max-w-[900px] -translate-y-3 xs:-translate-y-2 sm:-translate-y-3 md:translate-y-0">
-            {/* Headline - Optimized untuk iPhone 11 Pro dan semua device */}
+      {/* Content - UNIVERSAL untuk SEMUA device mobile */}
+      <div className="relative z-10 flex h-full items-center pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:pt-8 md:pt-0 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-16 md:pb-0">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 md:px-10 lg:px-14 xl:px-20">
+          {/* Main content - Optimized untuk semua mobile */}
+          <div className="max-w-[900px] -translate-y-2 sm:-translate-y-3 md:translate-y-0">
+            {/* Headline - Universal responsive */}
             <h1
               ref={headlineRef}
-              className="mb-1.5 xs:mb-2 sm:mb-3 md:mb-5 font-sans text-[1.65rem] xs:text-[1.75rem] sm:text-[2.25rem] md:text-[3rem] lg:text-[3.5rem] xl:text-[4rem] 2xl:text-[4.5rem] font-semibold tracking-tight md:tracking-[-0.03em] leading-[1.15] xs:leading-tight sm:leading-[1.2] md:leading-[1.25] text-white"
+              className="mb-2 sm:mb-3 md:mb-5 font-sans text-[1.7rem] sm:text-[2.25rem] md:text-[3rem] lg:text-[3.5rem] xl:text-[4rem] 2xl:text-[4.5rem] font-semibold tracking-tight md:tracking-[-0.03em] leading-[1.2] sm:leading-[1.2] md:leading-[1.25] text-white"
               style={{ perspective: "1000px" }}
             >
               {/* Fragment 1 - Precious metals */}
@@ -483,10 +483,10 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
               </span>
             </h1>
 
-            {/* Subtitle - Optimized untuk semua device */}
+            {/* Subtitle - Universal responsive */}
             <p
               ref={subtitleRef}
-              className="max-w-[95%] xs:max-w-[92%] sm:max-w-[88%] md:max-w-[85%] font-sans text-[0.8125rem] xs:text-[0.875rem] sm:text-[0.9375rem] md:text-[1rem] lg:text-[1.0625rem] leading-[1.6] xs:leading-relaxed sm:leading-[1.65] md:leading-[1.7] font-light text-white/75 mt-3 xs:mt-3.5 sm:mt-5 md:mt-0"
+              className="max-w-[92%] sm:max-w-[88%] md:max-w-[85%] font-sans text-[0.875rem] sm:text-[0.9375rem] md:text-[1rem] lg:text-[1.0625rem] leading-[1.65] sm:leading-[1.65] md:leading-[1.7] font-light text-white/75 mt-3.5 sm:mt-5 md:mt-0"
             >
               Expert manufacturing of{" "}
               <span className="font-medium text-white/90">gold, silver, and palladium</span>{" "}
@@ -497,7 +497,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             </p>
           </div>
 
-          {/* Desktop: Insight stack - minimal + precise */}
+          {/* Desktop: Insight stack */}
           <div className="hidden md:flex absolute right-3 lg:right-8 xl:right-12 top-1/2 -translate-y-1/2 pointer-events-auto z-20">
             <div ref={statsRef} className="flex flex-col gap-5 text-right items-end max-w-[360px]">
               {featuresData.map((item, index) => (
@@ -521,13 +521,12 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         </div>
       </div>
 
-      {/* Mobile: Scrolling Features - DINAIKKAN untuk menyesuaikan QR Card */}
-      {/* Menggunakan responsive positioning yang lebih baik */}
-      <div className="md:hidden absolute left-0 right-0 bottom-[160px] xs:bottom-[168px] sm:bottom-[175px] z-20 px-3.5 xs:px-4 sm:px-6">
+      {/* Mobile: Scrolling Features - UNIVERSAL positioning dengan calc() */}
+      <div className="md:hidden absolute left-0 right-0 bottom-[calc(90px+env(safe-area-inset-bottom))] sm:bottom-[calc(95px+env(safe-area-inset-bottom))] z-20 px-4 sm:px-6">
         <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate} />
       </div>
 
-      {/* QR verification feature card - DINAIKKAN LEBIH TINGGI agar tidak terpotong */}
+      {/* QR Card - UNIVERSAL dengan env(safe-area-inset-bottom) */}
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.97 }}
         animate={{
@@ -536,23 +535,23 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
           scale: shouldAnimate ? 1 : 0.97,
         }}
         transition={{ duration: 1, delay: 1.1, ease: "easeOut" }}
-        className="absolute bottom-[22px] xs:bottom-[26px] sm:bottom-8 md:bottom-8 inset-x-0 z-30 flex justify-center px-3 xs:px-3.5 sm:px-4"
+        className="absolute bottom-[calc(8px+env(safe-area-inset-bottom))] sm:bottom-[calc(12px+env(safe-area-inset-bottom))] md:bottom-8 inset-x-0 z-30 flex justify-center px-3.5 sm:px-4"
       >
         <a
           href="/authenticity"
-          className="group inline-flex items-center gap-2 xs:gap-2.5 sm:gap-3 text-left w-full max-w-[345px] xs:max-w-[355px] sm:max-w-[370px] backdrop-blur-sm bg-black/50 border border-white/10 rounded-2xl p-2.5 xs:p-3 sm:p-3.5 transition-all duration-300 hover:bg-black/60 hover:border-white/20"
+          className="group inline-flex items-center gap-2.5 sm:gap-3 text-left w-full max-w-[min(calc(100vw-28px),360px)] sm:max-w-[370px] backdrop-blur-sm bg-black/50 border border-white/10 rounded-2xl p-3 sm:p-3.5 transition-all duration-300 hover:bg-black/60 hover:border-white/20"
         >
-          <div className="flex h-8 w-8 xs:h-8 xs:w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border border-white/20 bg-black/40">
-            <QrCode className="h-4 w-4 xs:h-4 xs:w-4 sm:h-5 sm:w-5 text-white" />
+          <div className="flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border border-white/20 bg-black/40">
+            <QrCode className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[0.4rem] xs:text-[0.45rem] sm:text-[0.5rem] uppercase tracking-[0.35em] xs:tracking-[0.4em] sm:tracking-[0.45em] text-white/55">
+            <p className="text-[0.45rem] sm:text-[0.5rem] uppercase tracking-[0.4em] sm:tracking-[0.45em] text-white/55">
               Scan & Verify
             </p>
-            <p className="mt-0.5 text-[0.7rem] xs:text-[0.75rem] sm:text-[0.8125rem] md:text-[0.95rem] font-semibold text-white tracking-tight leading-tight">
+            <p className="mt-0.5 text-[0.75rem] sm:text-[0.8125rem] md:text-[0.95rem] font-semibold text-white tracking-tight leading-tight">
               Tap to launch Silver King QR scanner
             </p>
-            <p className="mt-0.5 text-[0.575rem] xs:text-[0.6rem] sm:text-[0.625rem] text-white/60 leading-[1.5] xs:leading-relaxed line-clamp-2">
+            <p className="mt-0.5 text-[0.6rem] sm:text-[0.625rem] text-white/60 leading-relaxed line-clamp-2">
               Capture the QR seal to view purity & provenance. "Product authenticated" badge appears
               once functionality is live.
             </p>
@@ -560,7 +559,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         </a>
       </motion.div>
 
-      {/* Bottom Fade - Optimized for mobile layout */}
+      {/* Bottom Fade */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
