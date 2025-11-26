@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import QRCode from "qrcode";
-import { createCanvas, loadImage } from "@napi-rs/canvas";
+import { createCanvas, loadImage } from "canvas";
 import { addProductInfoToQR } from "@/lib/qr";
 import { getVerifyUrl } from "@/utils/constants";
 import { prisma } from "@/lib/prisma";
@@ -36,10 +36,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (products.length === 0) {
-      return NextResponse.json(
-        { error: "No products with QR codes found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "No products with QR codes found" }, { status: 404 });
     }
 
     // QR code dimensions
@@ -48,12 +45,12 @@ export async function GET(request: NextRequest) {
     const padding = 30; // Padding around each QR
     const spacing = 20; // Space between QR codes
     const textHeight = 80; // Space for product name and serial below QR
-    
+
     // Calculate grid dimensions
     const rows = Math.ceil(products.length / qrPerRow);
     const qrWithTextWidth = qrSize + padding * 2;
     const qrWithTextHeight = qrSize + textHeight + padding * 2;
-    
+
     const totalWidth = qrPerRow * (qrWithTextWidth + spacing) - spacing + padding * 2;
     const totalHeight = rows * (qrWithTextHeight + spacing) - spacing + padding * 2 + 100; // Extra space for header
 
@@ -70,7 +67,7 @@ export async function GET(request: NextRequest) {
     ctx.font = "bold 32px Arial, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("Silver King - All QR Codes", totalWidth / 2, 50);
-    
+
     ctx.font = "18px Arial, sans-serif";
     ctx.fillText(`Total Products: ${products.length}`, totalWidth / 2, 85);
 
@@ -93,11 +90,7 @@ export async function GET(request: NextRequest) {
         });
 
         // Add product information (name and serial) below QR code
-        const pngBuffer = await addProductInfoToQR(
-          qrBuffer,
-          product.serialCode,
-          product.name
-        );
+        const pngBuffer = await addProductInfoToQR(qrBuffer, product.serialCode, product.name);
 
         // Load QR image
         const qrImage = await loadImage(pngBuffer);
@@ -108,7 +101,6 @@ export async function GET(request: NextRequest) {
 
         // Draw QR code
         ctx.drawImage(qrImage, x, y, qrSize, qrSize);
-
       } catch (error) {
         console.error(`Failed to generate QR for ${product.serialCode}:`, error);
         // Continue with next product
@@ -135,4 +127,3 @@ export async function GET(request: NextRequest) {
     return new NextResponse("Failed to generate PNG grid", { status: 500 });
   }
 }
-

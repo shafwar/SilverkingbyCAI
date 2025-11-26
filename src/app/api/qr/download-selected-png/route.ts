@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import QRCode from "qrcode";
-import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { addProductInfoToQR } from "@/lib/qr";
 import { getVerifyUrl } from "@/utils/constants";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { createCanvas, loadImage } from "canvas";
 
 /**
  * Generate single PNG image with selected QR codes in a grid layout
