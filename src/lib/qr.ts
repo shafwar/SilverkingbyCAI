@@ -134,49 +134,53 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
     const totalTextWidth = normalizedSerialCode.length * charWidth;
     const startX = textX - (totalTextWidth / 2);
     
-    // DEBUG: Draw a test rectangle to verify positioning
-    ctx.fillStyle = "#ff0000"; // Red background for debugging
-    ctx.fillRect(startX - 5, textY - 15, totalTextWidth + 10, 30);
-    console.log("[addSerialNumberToQR] DEBUG Rectangle drawn at:", {
-      x: startX - 5,
-      y: textY - 15,
-      width: totalTextWidth + 10,
-      height: 30,
-      textY,
-      textX,
-      totalTextWidth
+    // CRITICAL FIX: Use SIMPLE, DIRECT text rendering approach
+    // Reset all context properties to ensure clean state
+    ctx.save();
+    
+    // Set text properties
+    ctx.fillStyle = "#000000";
+    ctx.strokeStyle = "#000000";
+    ctx.textAlign = "center"; // Center align for simplicity
+    ctx.textBaseline = "middle";
+    ctx.font = `bold ${fontSize}px monospace`;
+    
+    // Render text directly using fillText (simplest approach)
+    // This should work in all environments
+    ctx.fillText(normalizedSerialCode, textX, textY);
+    
+    // Also render with stroke for better visibility
+    ctx.lineWidth = 2;
+    ctx.strokeText(normalizedSerialCode, textX, textY);
+    
+    // Verify text was rendered by checking canvas
+    const imageData = ctx.getImageData(textX - 50, textY - 10, 100, 20);
+    const hasPixels = imageData.data.some((pixel, index) => index % 4 === 0 && pixel < 255);
+    
+    console.log("[addSerialNumberToQR] Text rendering verification:", {
+      serialCode: normalizedSerialCode,
+      position: { x: textX, y: textY },
+      font: ctx.font,
+      hasPixels: hasPixels,
+      canvasSize: { width: canvas.width, height: canvas.height }
     });
     
-    // Render each character individually with MULTIPLE passes for maximum visibility
-    // CRITICAL FIX: Remove char.trim() check - it filters out valid characters like numbers
-    for (let i = 0; i < normalizedSerialCode.length; i++) {
-      const char = normalizedSerialCode[i];
-      // Only skip if char is null/undefined, NOT if it's a space or number
-      if (char !== null && char !== undefined) {
-        const charX = startX + (i * charWidth);
-        
-        console.log(`[addSerialNumberToQR] Rendering char ${i}: "${char}" at (${charX.toFixed(2)}, ${textY.toFixed(2)})`);
-        
-        // MULTIPLE rendering passes for maximum visibility and reliability
-        // 1. White background stroke (outline) for contrast
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 4;
-        ctx.strokeText(char, charX, textY);
-        
-        // 2. Black stroke (outline) - makes text visible even if fill fails
-        ctx.strokeStyle = "#000000";
-        ctx.lineWidth = 3;
-        ctx.strokeText(char, charX, textY);
-        
-        // 3. Fill (solid) - main text
-        ctx.fillStyle = "#000000";
-        ctx.fillText(char, charX, textY);
-        
-        // 4. Additional fill slightly offset for bold effect
-        ctx.fillText(char, charX + 0.5, textY + 0.5);
-        ctx.fillText(char, charX - 0.5, textY - 0.5);
+    if (!hasPixels) {
+      console.error("[addSerialNumberToQR] WARNING: Text may not have rendered! Trying alternative method...");
+      // Fallback: Try rendering character by character with explicit positioning
+      ctx.textAlign = "left";
+      const metrics = ctx.measureText(normalizedSerialCode);
+      const startX = textX - metrics.width / 2;
+      for (let i = 0; i < normalizedSerialCode.length; i++) {
+        const char = normalizedSerialCode[i];
+        if (char) {
+          const charMetrics = ctx.measureText(char);
+          ctx.fillText(char, startX + (i * charWidth), textY);
+        }
       }
     }
+    
+    ctx.restore();
     
     console.log("[addSerialNumberToQR] Text rendered character-by-character:", {
       serialCode: normalizedSerialCode,
@@ -322,49 +326,53 @@ export async function addProductInfoToQR(
     const totalTextWidth = normalizedSerialCode.length * charWidth;
     const startX = textX - (totalTextWidth / 2);
     
-    // DEBUG: Draw a test rectangle to verify positioning
-    ctx.fillStyle = "#ff0000"; // Red background for debugging
-    ctx.fillRect(startX - 5, currentY - 15, totalTextWidth + 10, 30);
-    console.log("[addProductInfoToQR] DEBUG Rectangle drawn at:", {
-      x: startX - 5,
-      y: currentY - 15,
-      width: totalTextWidth + 10,
-      height: 30,
-      currentY,
-      textX,
-      totalTextWidth
+    // CRITICAL FIX: Use SIMPLE, DIRECT text rendering approach
+    // Reset all context properties to ensure clean state
+    ctx.save();
+    
+    // Set text properties
+    ctx.fillStyle = "#000000";
+    ctx.strokeStyle = "#000000";
+    ctx.textAlign = "center"; // Center align for simplicity
+    ctx.textBaseline = "middle";
+    ctx.font = `bold ${fontSize}px monospace`;
+    
+    // Render text directly using fillText (simplest approach)
+    // This should work in all environments
+    ctx.fillText(normalizedSerialCode, textX, currentY);
+    
+    // Also render with stroke for better visibility
+    ctx.lineWidth = 2;
+    ctx.strokeText(normalizedSerialCode, textX, currentY);
+    
+    // Verify text was rendered by checking canvas
+    const imageData = ctx.getImageData(textX - 50, currentY - 10, 100, 20);
+    const hasPixels = imageData.data.some((pixel, index) => index % 4 === 0 && pixel < 255);
+    
+    console.log("[addProductInfoToQR] Text rendering verification:", {
+      serialCode: normalizedSerialCode,
+      position: { x: textX, y: currentY },
+      font: ctx.font,
+      hasPixels: hasPixels,
+      canvasSize: { width: canvas.width, height: canvas.height }
     });
     
-    // Render each character individually with MULTIPLE passes for maximum visibility
-    // CRITICAL FIX: Remove char.trim() check - it filters out valid characters like numbers
-    for (let i = 0; i < normalizedSerialCode.length; i++) {
-      const char = normalizedSerialCode[i];
-      // Only skip if char is null/undefined, NOT if it's a space or number
-      if (char !== null && char !== undefined) {
-        const charX = startX + (i * charWidth);
-        
-        console.log(`[addProductInfoToQR] Rendering char ${i}: "${char}" at (${charX.toFixed(2)}, ${currentY.toFixed(2)})`);
-        
-        // MULTIPLE rendering passes for maximum visibility and reliability
-        // 1. White background stroke (outline) for contrast
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 4;
-        ctx.strokeText(char, charX, currentY);
-        
-        // 2. Black stroke (outline) - makes text visible even if fill fails
-        ctx.strokeStyle = "#000000";
-        ctx.lineWidth = 3;
-        ctx.strokeText(char, charX, currentY);
-        
-        // 3. Fill (solid) - main text
-        ctx.fillStyle = "#000000";
-        ctx.fillText(char, charX, currentY);
-        
-        // 4. Additional fill slightly offset for bold effect
-        ctx.fillText(char, charX + 0.5, currentY + 0.5);
-        ctx.fillText(char, charX - 0.5, currentY - 0.5);
+    if (!hasPixels) {
+      console.error("[addProductInfoToQR] WARNING: Text may not have rendered! Trying alternative method...");
+      // Fallback: Try rendering character by character with explicit positioning
+      ctx.textAlign = "left";
+      const metrics = ctx.measureText(normalizedSerialCode);
+      const startX = textX - metrics.width / 2;
+      for (let i = 0; i < normalizedSerialCode.length; i++) {
+        const char = normalizedSerialCode[i];
+        if (char) {
+          const charMetrics = ctx.measureText(char);
+          ctx.fillText(char, startX + (i * charWidth), currentY);
+        }
       }
     }
+    
+    ctx.restore();
     
     console.log("[addProductInfoToQR] Text rendered character-by-character:", {
       serialCode: normalizedSerialCode,
