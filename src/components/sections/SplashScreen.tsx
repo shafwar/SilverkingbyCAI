@@ -126,7 +126,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 0.4, y: 0 }}
           transition={{ duration: 1, delay: 2.5 }}
-          className="mt-6 font-sans text-[0.75rem] md:text-[0.875rem] font-light tracking-[0.3em] uppercase text-white/40"
+          className="mt-6 font-sans text-[0.75rem] md:text-[0.875rem] font-light tracking-[0.3em] via-whitewhite/40"
         >
           Precious Metals Excellence
         </motion.div>

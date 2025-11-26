@@ -144,7 +144,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
   // Optimal video autoplay handling - ensure video never pauses or breaks
   useEffect(() => {
     setIsLoaded(true);
-    
+
     const video = videoRef.current;
     if (!video) return;
 
@@ -296,12 +296,12 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             rotationX: 0,
             scale: 1,
             filter: "blur(0px)",
-            duration: 1.6, // Slightly faster (was 1.8)
-            stagger: { amount: 1.0, from: "start", ease: "power3.inOut" }, // Faster stagger (was 1.2)
+            duration: 1.6,
+            stagger: { amount: 1.0, from: "start", ease: "power3.inOut" },
             ease: "expo.out",
             transformOrigin: "center bottom",
           },
-          0.1 // Start almost immediately (was 0.3)
+          0.1
         );
       }
 
@@ -319,10 +319,10 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
           y: 0,
           clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%)",
           filter: "blur(0px)",
-          duration: 1.4, // Faster (was 1.6)
+          duration: 1.4,
           ease: "expo.out",
         },
-        1.0 // Start earlier (was 1.2)
+        1.0
       );
 
       // Insight container entrance
@@ -437,15 +437,15 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         </motion.div>
       </motion.div>
 
-      {/* Content */}
-      <div className="relative z-10 flex h-full items-center pt-14 sm:pt-18 md:pt-0 pb-16 sm:pb-20 md:pb-0">
+      {/* Content - KONTEN UTAMA TETAP DI POSISI SEMULA */}
+      <div className="relative z-10 flex h-full items-center pt-[calc(env(safe-area-inset-top)+1rem)] sm:pt-8 md:pt-0 pb-12 sm:pb-16 md:pb-0">
         <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 md:px-10 lg:px-14 xl:px-20">
-          {/* Main content - left side */}
-          <div className="max-w-[900px]">
-            {/* Headline - Fragmented & Powerful - Better mobile sizing */}
+          {/* Main content - left side - POSISI SEPERTI SEMULA */}
+          <div className="max-w-[900px] -translate-y-2 sm:-translate-y-3 md:translate-y-0">
+            {/* Headline - Fragmented & Powerful - Optimized mobile spacing */}
             <h1
               ref={headlineRef}
-              className="mb-3 sm:mb-4 md:mb-5 font-sans text-[1.75rem] sm:text-[2.25rem] md:text-[3rem] lg:text-[3.5rem] xl:text-[4rem] 2xl:text-[4.5rem] font-semibold tracking-[-0.03em] leading-[1.2] sm:leading-[1.25] text-white"
+              className="mb-2 sm:mb-3 md:mb-5 font-sans text-[1.75rem] sm:text-[2.25rem] md:text-[3rem] lg:text-[3.5rem] xl:text-[4rem] 2xl:text-[4.5rem] font-semibold tracking-tight md:tracking-[-0.03em] leading-tight sm:leading-[1.2] md:leading-[1.25] text-white"
               style={{ perspective: "1000px" }}
             >
               {/* Fragment 1 - Precious metals */}
@@ -483,10 +483,10 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
               </span>
             </h1>
 
-            {/* Subtitle - Better mobile sizing */}
+            {/* Subtitle - Optimized mobile spacing and typography */}
             <p
               ref={subtitleRef}
-              className="max-w-[95%] sm:max-w-[90%] md:max-w-[85%] font-sans text-[0.875rem] sm:text-[0.9375rem] md:text-[1rem] lg:text-[1.0625rem] leading-[1.6] sm:leading-[1.65] md:leading-[1.7] font-light text-white/75 mb-8 sm:mb-10 md:mb-0"
+              className="max-w-[92%] sm:max-w-[88%] md:max-w-[85%] font-sans text-[0.875rem] sm:text-[0.9375rem] md:text-[1rem] lg:text-[1.0625rem] leading-relaxed sm:leading-[1.65] md:leading-[1.7] font-light text-white/75 mt-4 sm:mt-5 md:mt-0"
             >
               Expert manufacturing of{" "}
               <span className="font-medium text-white/90">gold, silver, and palladium</span>{" "}
@@ -495,12 +495,6 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
               <span className="font-medium text-white/90">QR-verified authenticity</span>
               —redefining trust in precious metals.
             </p>
-          </div>
-
-          {/* Mobile: Scrolling Features - Continuous horizontal scroll animation */}
-          {/* Positioned above QR card with proper spacing - adjusted for no-scroll mobile */}
-          <div className="md:hidden absolute left-0 right-0 bottom-28 sm:bottom-32 z-20 px-4 sm:px-6">
-            <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate} />
           </div>
 
           {/* Desktop: Insight stack - minimal + precise */}
@@ -527,20 +521,27 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         </div>
       </div>
 
-      {/* QR verification feature card - Better mobile sizing - adjusted for no-scroll mobile */}
+      {/* Mobile: Scrolling Features - NAIK LEBIH TINGGI, LEBIH DEKAT DENGAN SUBTITLE */}
+      {/* Positioned with gap ~32-36px from subtitle for better proportion */}
+      <div className="md:hidden absolute left-0 right-0 bottom-[132px] sm:bottom-[148px] z-20 px-4 sm:px-6">
+        <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate} />
+      </div>
+
+      {/* QR verification feature card - DEKAT DENGAN SCROLLING FEATURES */}
+      {/* Gap from ScrollingFeatures ~16-20px */}
       <motion.div
-        initial={{ opacity: 0, y: 35, scale: 0.97 }}
+        initial={{ opacity: 0, y: 20, scale: 0.97 }}
         animate={{
           opacity: shouldAnimate ? 1 : 0,
-          y: shouldAnimate ? 0 : 35,
+          y: shouldAnimate ? 0 : 20,
           scale: shouldAnimate ? 1 : 0.97,
         }}
         transition={{ duration: 1, delay: 1.1, ease: "easeOut" }}
-        className="absolute bottom-2 sm:bottom-3 md:bottom-8 inset-x-0 z-30 flex justify-center px-3 sm:px-4"
+        className="absolute bottom-6 sm:bottom-8 md:bottom-8 inset-x-0 z-30 flex justify-center px-3 sm:px-4"
       >
         <a
           href="/authenticity"
-          className="group inline-flex items-center gap-2.5 sm:gap-3 text-left w-[min(340px,calc(100vw-24px))] sm:w-[min(360px,calc(100vw-48px))]"
+          className="group inline-flex items-center gap-2.5 sm:gap-3 text-left w-[min(340px,calc(100vw-24px))] sm:w-[min(360px,calc(100vw-48px))] backdrop-blur-sm bg-black/50 border border-white/10 rounded-2xl p-3 sm:p-3.5 transition-all duration-300 hover:bg-black/60 hover:border-white/20"
         >
           <div className="flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border border-white/20 bg-black/40">
             <QrCode className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
@@ -560,12 +561,12 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         </a>
       </motion.div>
 
-      {/* Bottom Fade - Adjusted for mobile no-scroll */}
+      {/* Bottom Fade - Optimized for mobile layout */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 2, delay: 1 }}
-        className="absolute bottom-0 left-0 right-0 h-24 sm:h-28 md:h-36 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none"
+        className="absolute bottom-0 left-0 right-0 h-20 sm:h-24 md:h-36 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none"
       />
     </section>
   );

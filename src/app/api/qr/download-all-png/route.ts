@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     // addProductInfoToQR creates: width = qrBaseSize + innerPadding*2, height = qrBaseSize + titleHeight + serialHeight + innerPadding*2 + textSpacing
     const qrWithTextWidth = qrBaseSize + innerPadding * 2;
     const qrWithTextHeight = qrBaseSize + titleHeight + serialHeight + innerPadding * 2 + textSpacing;
-    
+
     // Calculate grid dimensions
     const rows = Math.ceil(products.length / qrPerRow);
 
