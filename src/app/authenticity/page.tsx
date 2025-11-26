@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   QrCode,
   Search,
@@ -70,14 +70,37 @@ const useIsMobile = () => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
-
+    
     checkMobile();
     window.addEventListener("resize", checkMobile);
-
+    
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   return isMobile;
+};
+
+// Check if user prefers reduced motion
+const usePrefersReducedMotion = () => {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+      setPrefersReducedMotion(mediaQuery.matches);
+      
+      const handleChange = (e: MediaQueryListEvent | MediaQueryList) => {
+        setPrefersReducedMotion(e.matches);
+      };
+      
+      if (mediaQuery.addEventListener) {
+        mediaQuery.addEventListener('change', handleChange as any);
+        return () => mediaQuery.removeEventListener('change', handleChange as any);
+      }
+    }
+  }, []);
+  
+  return prefersReducedMotion;
 };
 
 function CTASection() {
@@ -117,21 +140,20 @@ function CTASection() {
   );
 }
 
-// Optimized WorkflowTimeline with reduced animations for mobile
+// Optimized WorkflowTimeline
 function WorkflowTimeline() {
   const timelineRef = useRef<HTMLDivElement>(null);
   const pathRef = useRef<SVGPathElement>(null);
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [activeStep, setActiveStep] = useState<number | null>(null);
   const isMobile = useIsMobile();
-  const prefersReducedMotion = useReducedMotion();
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   useGSAP(
     () => {
       if (!timelineRef.current || prefersReducedMotion) return;
 
       const ctx = gsap.context(() => {
-        // Only animate path on desktop
+        // Animate path on desktop only
         if (!isMobile && pathRef.current) {
           const path = pathRef.current;
           const pathLength = path.getTotalLength();
@@ -150,14 +172,13 @@ function WorkflowTimeline() {
           });
         }
 
-        // Simplified step animations for mobile
-        stepRefs.current.forEach((stepRef, index) => {
+        // Step animations
+        stepRefs.current.forEach((stepRef) => {
           if (!stepRef) return;
 
           const stepCard = stepRef.querySelector("[data-step-card]");
           if (!stepCard) return;
 
-          // Simple fade in only
           gsap.fromTo(
             stepCard,
             { opacity: 0, y: 20 },
@@ -184,9 +205,9 @@ function WorkflowTimeline() {
 
   return (
     <div ref={timelineRef} className="relative">
-      {/* SVG Path - Simplified for mobile */}
-      {!isMobile && (
-        <div className="absolute left-1/2 top-0 hidden h-full w-0.5 md:block">
+      {/* Desktop SVG Path */}
+      <div className="absolute left-8 top-0 h-full w-0.5 md:left-1/2 md:-translate-x-1/2">
+        {!isMobile ? (
           <svg className="h-full w-full" viewBox="0 0 2 1000" preserveAspectRatio="none">
             <defs>
               <linearGradient id="workflow-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -203,13 +224,10 @@ function WorkflowTimeline() {
               fill="none"
             />
           </svg>
-        </div>
-      )}
-
-      {/* Mobile simple line */}
-      {isMobile && (
-        <div className="absolute left-8 top-0 h-full w-0.5 bg-gradient-to-b from-luxury-gold/20 via-luxury-gold/40 to-luxury-gold/20" />
-      )}
+        ) : (
+          <div className="h-full w-full bg-gradient-to-b from-luxury-gold/20 via-luxury-gold/40 to-luxury-gold/20" />
+        )}
+      </div>
 
       {/* Steps */}
       <div className="relative space-y-12 md:space-y-20">
@@ -266,10 +284,11 @@ export default function AuthenticityPage() {
   const [showManualInput, setShowManualInput] = useState(false);
   const [serialNumber, setSerialNumber] = useState("");
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
+  const [videoError, setVideoError] = useState(false);
   const heroRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const isMobile = useIsMobile();
-  const prefersReducedMotion = useReducedMotion();
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   // Simplified hero animations
   useGSAP(
@@ -302,16 +321,10 @@ export default function AuthenticityPage() {
     { scope: heroRef, dependencies: [prefersReducedMotion] }
   );
 
-  // Optimized video handling for mobile
+  // Video handling - Simplified for mobile
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
-
-    // On mobile, don't autoplay video to save bandwidth and performance
-    if (isMobile) {
-      video.pause();
-      return;
-    }
+    if (!video || isMobile) return; // Skip video on mobile
 
     const forcePlay = async () => {
       try {
@@ -320,20 +333,19 @@ export default function AuthenticityPage() {
         }
       } catch (error) {
         console.warn("[AuthenticityPage] Video autoplay prevented:", error);
+        setVideoError(true);
       }
     };
 
     const handlePause = () => {
-      if (!video.ended && !isMobile) {
+      if (!video.ended) {
         forcePlay();
       }
     };
 
     const handleEnded = () => {
       video.currentTime = 0;
-      if (!isMobile) {
-        forcePlay();
-      }
+      forcePlay();
     };
 
     forcePlay();
@@ -349,37 +361,29 @@ export default function AuthenticityPage() {
 
   const handleScanSuccess = useCallback(async (decodedText: string) => {
     try {
-      console.log("[Authenticity] QR code scanned:", decodedText);
-
-      if (!decodedText || !decodedText.trim()) {
-        console.error("[Authenticity] Empty QR code scanned");
-        return;
-      }
-
+      if (!decodedText || !decodedText.trim()) return;
+      
       setShowScanner(false);
-
       let serialCode = decodedText.trim();
-
+      
       if (serialCode.includes("/verify/")) {
         const urlMatch = serialCode.match(/\/verify\/([A-Z0-9]+)/i);
-        if (urlMatch && urlMatch[1]) {
-          serialCode = urlMatch[1];
-        }
+        if (urlMatch && urlMatch[1]) serialCode = urlMatch[1];
       } else if (serialCode.includes("http")) {
         const urlParts = serialCode.split("/");
         serialCode = urlParts[urlParts.length - 1] || serialCode;
       }
-
+      
       const normalizedSerial = serialCode.toUpperCase().replace(/[^A-Z0-9]/g, "");
-
+      
       if (!normalizedSerial || normalizedSerial.length < 3) {
         alert("Invalid QR code format. Please scan a valid Silver King QR code.");
         return;
       }
-
+      
       window.location.href = `/verify/${normalizedSerial}`;
     } catch (error) {
-      console.error("[Authenticity] Error handling scan success:", error);
+      console.error("[Authenticity] Error handling scan:", error);
       setShowScanner(false);
       alert("Failed to process QR code. Please try again.");
     }
@@ -391,36 +395,22 @@ export default function AuthenticityPage() {
         alert("Please enter a serial number");
         return;
       }
-
-      const serialCode = serialNumber
-        .trim()
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, "");
-
+      
+      const serialCode = serialNumber.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+      
       if (!serialCode || serialCode.length < 3) {
-        alert("Invalid serial number format. Please enter a valid serial code (e.g., SKA000001)");
+        alert("Invalid serial number format");
         return;
       }
-
+      
       setShowManualInput(false);
       setSerialNumber("");
-
       window.location.href = `/verify/${serialCode}`;
     } catch (error) {
-      console.error("[Authenticity] Error in handleManualVerify:", error);
+      console.error("[Authenticity] Error in verify:", error);
       alert("Failed to verify. Please try again.");
     }
   }, [serialNumber]);
-
-  // Memoized animation variants
-  const fadeInVariant = useMemo(
-    () => ({
-      initial: { opacity: 0, y: 20 },
-      animate: { opacity: 1, y: 0 },
-      transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const },
-    }),
-    []
-  );
 
   return (
     <div className="min-h-screen bg-luxury-black text-white">
@@ -428,17 +418,18 @@ export default function AuthenticityPage() {
 
       <Navbar />
 
-      {/* Hero Section - Optimized */}
+      {/* Hero Section */}
       <section
         ref={heroRef}
         className="relative flex min-h-[75vh] md:min-h-[85vh] items-center justify-center overflow-hidden px-6 pt-24 pb-12"
       >
-        {/* Background - Conditional rendering for mobile */}
+        {/* Background with video fallback */}
         <div className="absolute inset-0 z-0 overflow-hidden">
+          {/* Base gradient background - ALWAYS VISIBLE */}
           <div className="absolute inset-0 bg-gradient-to-br from-luxury-black via-luxury-black/95 to-luxury-black z-0" />
-
-          {/* Video only on desktop or when explicitly loaded */}
-          {!isMobile && (
+          
+          {/* Video - Desktop only, with error fallback */}
+          {!isMobile && !videoError && (
             <video
               ref={videoRef}
               autoPlay
@@ -451,30 +442,36 @@ export default function AuthenticityPage() {
               }`}
               onCanPlay={() => setIsVideoLoaded(true)}
               onLoadedData={() => setIsVideoLoaded(true)}
+              onError={() => setVideoError(true)}
             >
-              <source
-                src={getR2UrlClient("/videos/hero/mobile scanning qr.mp4")}
-                type="video/mp4"
-              />
+              <source src={getR2UrlClient("/videos/hero/mobile scanning qr.mp4")} type="video/mp4" />
             </video>
           )}
 
-          {/* Overlays */}
+          {/* Overlays - ALWAYS VISIBLE */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70 z-20" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.8)_100%)] z-20" />
           <div className="absolute inset-x-0 bottom-0 h-40 md:h-52 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-transparent z-20" />
         </div>
 
-        {/* Content */}
+        {/* Content - ALWAYS VISIBLE */}
         <div className="relative z-20 mx-auto w-full max-w-3xl text-center">
-          <motion.div {...fadeInVariant} data-hero className="mb-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            data-hero
+            className="mb-4"
+          >
             <div className="mx-auto mb-4 flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-full border border-luxury-gold/30 bg-luxury-gold/5">
               <QrCode className="h-8 w-8 md:h-10 md:w-10 text-luxury-gold" />
             </div>
           </motion.div>
 
           <motion.h1
-            {...fadeInVariant}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
             data-hero
             className="mb-4 text-3xl sm:text-4xl md:text-5xl font-light leading-tight text-white"
           >
@@ -485,7 +482,9 @@ export default function AuthenticityPage() {
           </motion.h1>
 
           <motion.p
-            {...fadeInVariant}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
             data-hero
             className="mx-auto mb-8 max-w-xl text-sm sm:text-base leading-relaxed text-luxury-silver/70"
           >
@@ -494,7 +493,9 @@ export default function AuthenticityPage() {
           </motion.p>
 
           <motion.div
-            {...fadeInVariant}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
             data-hero
             className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center"
           >
@@ -523,7 +524,7 @@ export default function AuthenticityPage() {
 
       <CTASection />
 
-      {/* Verification Workflow Section */}
+      {/* Verification Workflow Section - ALWAYS VISIBLE */}
       <section
         data-verification-section
         className="relative overflow-hidden border-t border-white/10 bg-gradient-to-b from-luxury-black/50 to-luxury-black py-16 md:py-24 px-6"
@@ -656,21 +657,9 @@ export default function AuthenticityPage() {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
             {[
-              {
-                icon: Sparkles,
-                title: "Authenticity",
-                desc: "Verify genuine Silver King products instantly",
-              },
-              {
-                icon: QrCode,
-                title: "Traceability",
-                desc: "Complete provenance and manufacturing details",
-              },
-              {
-                icon: Shield,
-                title: "Security",
-                desc: "Encrypted QR codes prevent counterfeiting",
-              },
+              { icon: Sparkles, title: "Authenticity", desc: "Verify genuine Silver King products instantly" },
+              { icon: QrCode, title: "Traceability", desc: "Complete provenance and manufacturing details" },
+              { icon: Shield, title: "Security", desc: "Encrypted QR codes prevent counterfeiting" }
             ].map((item, i) => (
               <motion.div
                 key={item.title}
@@ -696,28 +685,16 @@ export default function AuthenticityPage() {
         <div className="relative z-10 mx-auto max-w-[1320px] flex flex-col md:flex-row items-start md:items-end justify-between gap-6">
           <div className="flex flex-wrap items-center gap-4 md:gap-6">
             <span className="text-white/40 text-sm">×</span>
-            <Link
-              href="/what-we-do"
-              className="text-sm font-medium text-white/80 hover:text-white transition-colors"
-            >
+            <Link href="/what-we-do" className="text-sm font-medium text-white/80 hover:text-white transition-colors">
               What we do
             </Link>
-            <Link
-              href="/authenticity"
-              className="text-sm font-medium text-white/80 hover:text-white transition-colors"
-            >
+            <Link href="/authenticity" className="text-sm font-medium text-white/80 hover:text-white transition-colors">
               Authenticity
             </Link>
-            <Link
-              href="/products"
-              className="text-sm font-medium text-white/80 hover:text-white transition-colors"
-            >
+            <Link href="/products" className="text-sm font-medium text-white/80 hover:text-white transition-colors">
               Products
             </Link>
-            <Link
-              href="/about"
-              className="text-sm font-medium text-white/80 hover:text-white transition-colors"
-            >
+            <Link href="/about" className="text-sm font-medium text-white/80 hover:text-white transition-colors">
               About us
             </Link>
           </div>
@@ -728,7 +705,7 @@ export default function AuthenticityPage() {
               { icon: Instagram, href: "https://instagram.com" },
               { icon: Twitter, href: "https://twitter.com" },
               { icon: Linkedin, href: "https://linkedin.com" },
-              { icon: Youtube, href: "https://youtube.com" },
+              { icon: Youtube, href: "https://youtube.com" }
             ].map((social) => (
               <a
                 key={social.href}
