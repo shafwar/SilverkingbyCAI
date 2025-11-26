@@ -521,12 +521,12 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         </div>
       </div>
 
-      {/* Mobile: Scrolling Features - UNIVERSAL positioning dengan calc() */}
-      <div className="md:hidden absolute left-0 right-0 bottom-[calc(90px+env(safe-area-inset-bottom))] sm:bottom-[calc(95px+env(safe-area-inset-bottom))] z-20 px-4 sm:px-6">
+      {/* Mobile: Scrolling Features - DINAIKKAN untuk proporsi dengan QR Card baru */}
+      <div className="md:hidden absolute left-0 right-0 bottom-[calc(140px+env(safe-area-inset-bottom))] sm:bottom-[calc(148px+env(safe-area-inset-bottom))] z-20 px-4 sm:px-6">
         <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate} />
       </div>
 
-      {/* QR Card - UNIVERSAL dengan env(safe-area-inset-bottom) */}
+      {/* QR Card - SUPER SAFE POSITION untuk SEMUA device dan browser */}
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.97 }}
         animate={{
@@ -535,11 +535,11 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
           scale: shouldAnimate ? 1 : 0.97,
         }}
         transition={{ duration: 1, delay: 1.1, ease: "easeOut" }}
-        className="absolute bottom-[calc(8px+env(safe-area-inset-bottom))] sm:bottom-[calc(12px+env(safe-area-inset-bottom))] md:bottom-8 inset-x-0 z-30 flex justify-center px-3.5 sm:px-4"
+        className="absolute bottom-[calc(50px+env(safe-area-inset-bottom))] sm:bottom-[calc(55px+env(safe-area-inset-bottom))] md:bottom-8 inset-x-0 z-30 flex justify-center px-3.5 sm:px-4"
       >
         <a
           href="/authenticity"
-          className="group inline-flex items-center gap-2.5 sm:gap-3 text-left w-full max-w-[min(calc(100vw-28px),360px)] sm:max-w-[370px] backdrop-blur-sm bg-black/50 border border-white/10 rounded-2xl p-3 sm:p-3.5 transition-all duration-300 hover:bg-black/60 hover:border-white/20"
+          className="group inline-flex items-center gap-2.5 sm:gap-3 text-left w-full max-w-[min(calc(100vw-28px),358px)] sm:max-w-[368px] backdrop-blur-sm bg-black/50 border border-white/10 rounded-2xl p-3 sm:p-3.5 transition-all duration-300 hover:bg-black/60 hover:border-white/20"
         >
           <div className="flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border border-white/20 bg-black/40">
             <QrCode className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
