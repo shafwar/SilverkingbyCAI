@@ -282,13 +282,13 @@ function WorkflowTimeline() {
   return (
     <div ref={timelineRef} className="relative">
       {/* SVG Path - Desktop */}
-      <div className="absolute left-8 top-0 hidden h-full w-0.5 md:left-1/2 md:block">
+      <div className="absolute left-8 top-0 hidden h-full w-0.5 md:left-1/2 md:block z-0">
         <svg className="h-full w-full" viewBox="0 0 2 1000" preserveAspectRatio="none">
           <defs>
             <linearGradient id="workflow-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.2" />
-              <stop offset="50%" stopColor="#D4AF37" stopOpacity="0.6" />
-              <stop offset="100%" stopColor="#D4AF37" stopOpacity="0.2" />
+              <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.3" />
+              <stop offset="50%" stopColor="#D4AF37" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#D4AF37" stopOpacity="0.3" />
             </linearGradient>
             <filter id="glow">
               <feGaussianBlur stdDeviation="4" result="coloredBlur" />
@@ -310,16 +310,16 @@ function WorkflowTimeline() {
       </div>
 
       {/* SVG Path - Mobile */}
-      <div className="absolute left-7 top-0 block h-full w-0.5 md:hidden">
+      <div className="absolute left-7 top-0 block h-full w-0.5 md:hidden z-0">
         <svg className="h-full w-full" viewBox="0 0 2 1000" preserveAspectRatio="none">
           <defs>
             <linearGradient id="workflow-gradient-mobile" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.2" />
-              <stop offset="50%" stopColor="#D4AF37" stopOpacity="0.6" />
-              <stop offset="100%" stopColor="#D4AF37" stopOpacity="0.2" />
+              <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.3" />
+              <stop offset="50%" stopColor="#D4AF37" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#D4AF37" stopOpacity="0.3" />
             </linearGradient>
             <filter id="glow-mobile">
-              <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+              <feGaussianBlur stdDeviation="3" result="coloredBlur" />
               <feMerge>
                 <feMergeNode in="coloredBlur" />
                 <feMergeNode in="SourceGraphic" />
@@ -338,7 +338,7 @@ function WorkflowTimeline() {
       </div>
 
       {/* Steps */}
-      <div className="relative space-y-8 md:space-y-20">
+      <div className="relative space-y-10 md:space-y-20 z-10">
         {workflowSteps.map((step, index) => {
           const Icon = step.icon;
           const isEven = index % 2 === 0;
@@ -349,58 +349,94 @@ function WorkflowTimeline() {
               ref={(el) => {
                 stepRefs.current[index] = el;
               }}
-              className={`relative flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-8 ${
-                isEven ? "md:flex-row" : "md:flex-row-reverse"
-              }`}
+              className="relative"
             >
-              {/* Step Content with Enhanced Card */}
-              <motion.div
-                data-step-card
-                className={`flex-1 w-full md:w-auto pl-16 md:pl-0 ${isEven ? "md:pr-16 md:text-right" : "md:pl-16"}`}
-                onHoverStart={() => !isMobile && setActiveStep(index)}
-                onHoverEnd={() => !isMobile && setActiveStep(null)}
-                whileHover={!isMobile ? { scale: 1.03, x: isEven ? -10 : 10 } : {}}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              {/* Mobile Layout: Icon + Content Side by Side */}
+              <div className="flex md:hidden items-start gap-4">
+                {/* Icon - Mobile */}
+                <div className="relative flex-shrink-0 mt-1">
+                  <motion.div
+                    className="relative"
+                    animate={{
+                      scale: 1,
+                    }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                  >
+                    <motion.div
+                      data-step-icon
+                      className="relative flex h-14 w-14 items-center justify-center rounded-full border-2 border-luxury-gold/50 bg-gradient-to-br from-luxury-gold/20 via-luxury-gold/10 to-luxury-black shadow-[0_10px_30px_-10px_rgba(212,175,55,0.5)] backdrop-blur-sm"
+                    >
+                      <Icon className="h-6 w-6 text-luxury-gold" />
+                    </motion.div>
+                    <motion.div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-luxury-gold to-luxury-lightGold text-[10px] font-bold text-black shadow-lg">
+                      {step.id}
+                    </motion.div>
+                  </motion.div>
+                </div>
+
+                {/* Content Card - Mobile */}
+                <motion.div data-step-card className="flex-1 min-w-0">
+                  <div className="group relative cursor-pointer rounded-xl border border-white/10 bg-gradient-to-br from-white/5 via-white/[0.03] to-transparent p-4 backdrop-blur-xl">
+                    <div className="relative z-10">
+                      <h3 className="mb-1.5 text-base font-semibold text-white">{step.title}</h3>
+                      <p className="text-xs text-luxury-silver/70 leading-relaxed">
+                        {step.description}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+
+              {/* Desktop Layout: Alternating Left/Right */}
+              <div
+                className={`hidden md:flex items-center gap-8 ${
+                  isEven ? "flex-row" : "flex-row-reverse"
+                }`}
               >
-                <div
-                  className={`group relative cursor-pointer rounded-2xl md:rounded-3xl border transition-all duration-500 p-5 md:p-8 backdrop-blur-xl ${
-                    activeStep === index
-                      ? "border-luxury-gold/60 bg-gradient-to-br from-luxury-gold/10 via-white/5 to-transparent shadow-[0px_25px_70px_-30px_rgba(212,175,55,0.6)]"
-                      : "border-white/10 bg-gradient-to-br from-white/5 via-white/[0.03] to-transparent hover:border-luxury-gold/40 hover:shadow-[0px_20px_60px_-30px_rgba(212,175,55,0.4)]"
-                  }`}
+                {/* Step Content with Enhanced Card - Desktop */}
+                <motion.div
+                  data-step-card
+                  className={`flex-1 ${isEven ? "pr-16 text-right" : "pl-16"}`}
+                  onHoverStart={() => setActiveStep(index)}
+                  onHoverEnd={() => setActiveStep(null)}
+                  whileHover={{ scale: 1.03, x: isEven ? -10 : 10 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
                 >
-                  {!isMobile && (
+                  <div
+                    className={`group relative cursor-pointer rounded-3xl border transition-all duration-500 p-8 backdrop-blur-xl ${
+                      activeStep === index
+                        ? "border-luxury-gold/60 bg-gradient-to-br from-luxury-gold/10 via-white/5 to-transparent shadow-[0px_25px_70px_-30px_rgba(212,175,55,0.6)]"
+                        : "border-white/10 bg-gradient-to-br from-white/5 via-white/[0.03] to-transparent hover:border-luxury-gold/40 hover:shadow-[0px_20px_60px_-30px_rgba(212,175,55,0.4)]"
+                    }`}
+                  >
                     <div
                       className={`absolute -inset-px rounded-3xl bg-gradient-to-br from-luxury-gold/20 via-luxury-lightGold/20 to-luxury-gold/20 blur-xl transition-opacity duration-500 ${
                         activeStep === index ? "opacity-50" : "opacity-0 group-hover:opacity-30"
                       }`}
                     />
-                  )}
-                  <div className="relative z-10">
-                    <motion.h3
-                      className="mb-2 md:mb-3 text-lg md:text-2xl font-semibold text-white transition-colors group-hover:text-luxury-gold"
-                      animate={{ color: activeStep === index ? "#D4AF37" : "#FFFFFF" }}
-                    >
-                      {step.title}
-                    </motion.h3>
-                    <p className="text-sm md:text-sm text-luxury-silver/70 leading-relaxed transition-colors group-hover:text-luxury-silver/90">
-                      {step.description}
-                    </p>
+                    <div className="relative z-10">
+                      <motion.h3
+                        className="mb-3 text-2xl font-semibold text-white transition-colors group-hover:text-luxury-gold"
+                        animate={{ color: activeStep === index ? "#D4AF37" : "#FFFFFF" }}
+                      >
+                        {step.title}
+                      </motion.h3>
+                      <p className="text-sm text-luxury-silver/70 leading-relaxed transition-colors group-hover:text-luxury-silver/90">
+                        {step.description}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </motion.div>
+                </motion.div>
 
-              {/* Step Icon with Enhanced Interactions */}
-              <div className="absolute left-0 top-1 md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2">
-                <motion.div
-                  className="relative"
-                  animate={{
-                    scale: !isMobile && activeStep === index ? 1.15 : 1,
-                  }}
-                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                >
-                  {/* Glowing Pulse Circle - Desktop only */}
-                  {!isMobile && (
+                {/* Step Icon with Enhanced Interactions - Desktop */}
+                <div className="absolute left-1/2 -translate-x-1/2">
+                  <motion.div
+                    className="relative"
+                    animate={{
+                      scale: activeStep === index ? 1.15 : 1,
+                    }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                  >
                     <motion.div
                       data-step-glow
                       className="absolute inset-0 -z-10 rounded-full bg-luxury-gold/30 blur-2xl"
@@ -410,50 +446,44 @@ function WorkflowTimeline() {
                       }}
                       transition={{ duration: 0.3 }}
                     />
-                  )}
-
-                  {/* Icon Circle with Gradient */}
-                  <motion.div
-                    data-step-icon
-                    className="relative flex h-16 w-16 md:h-24 md:w-24 items-center justify-center rounded-full border-2 bg-gradient-to-br from-luxury-gold/20 via-luxury-gold/10 to-luxury-black shadow-[0_10px_30px_-10px_rgba(212,175,55,0.5)] backdrop-blur-sm"
-                    animate={{
-                      borderColor:
-                        !isMobile && activeStep === index
-                          ? "rgba(212,175,55,0.8)"
-                          : "rgba(212,175,55,0.5)",
-                      boxShadow:
-                        !isMobile && activeStep === index
-                          ? "0 0 40px rgba(212,175,55,0.7)"
-                          : "0 10px 30px -10px rgba(212,175,55,0.5)",
-                    }}
-                    transition={{ duration: 0.3 }}
-                  >
                     <motion.div
+                      data-step-icon
+                      className="relative flex h-24 w-24 items-center justify-center rounded-full border-2 bg-gradient-to-br from-luxury-gold/20 via-luxury-gold/10 to-luxury-black shadow-[0_10px_30px_-10px_rgba(212,175,55,0.5)] backdrop-blur-sm"
                       animate={{
-                        rotate: !isMobile && activeStep === index ? [0, 5, -5, 0] : 0,
+                        borderColor:
+                          activeStep === index ? "rgba(212,175,55,0.8)" : "rgba(212,175,55,0.5)",
+                        boxShadow:
+                          activeStep === index
+                            ? "0 0 40px rgba(212,175,55,0.7)"
+                            : "0 10px 30px -10px rgba(212,175,55,0.5)",
+                      }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <motion.div
+                        animate={{
+                          rotate: activeStep === index ? [0, 5, -5, 0] : 0,
+                        }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        <Icon className="h-10 w-10 text-luxury-gold" />
+                      </motion.div>
+                    </motion.div>
+                    <motion.div
+                      className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-luxury-gold to-luxury-lightGold text-xs font-bold text-black shadow-lg"
+                      animate={{
+                        scale: activeStep === index ? 1.2 : 1,
+                        rotate: activeStep === index ? 360 : 0,
                       }}
                       transition={{ duration: 0.5 }}
                     >
-                      <Icon className="h-7 w-7 md:h-10 md:w-10 text-luxury-gold" />
+                      {step.id}
                     </motion.div>
                   </motion.div>
+                </div>
 
-                  {/* Step Number Badge */}
-                  <motion.div
-                    className="absolute -bottom-1 -right-1 flex h-6 w-6 md:h-8 md:w-8 items-center justify-center rounded-full bg-gradient-to-br from-luxury-gold to-luxury-lightGold text-[10px] md:text-xs font-bold text-black shadow-lg"
-                    animate={{
-                      scale: !isMobile && activeStep === index ? 1.2 : 1,
-                      rotate: !isMobile && activeStep === index ? 360 : 0,
-                    }}
-                    transition={{ duration: 0.5 }}
-                  >
-                    {step.id}
-                  </motion.div>
-                </motion.div>
+                {/* Spacer */}
+                <div className="flex-1" />
               </div>
-
-              {/* Spacer */}
-              <div className="hidden flex-1 md:block" />
             </div>
           );
         })}
