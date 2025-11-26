@@ -63,7 +63,7 @@ async function main() {
 
     // Use centralized function to get verify URL
     const verifyUrl = getVerifyUrl(item.serialCode);
-    const { url } = await generateAndStoreQR(item.serialCode, verifyUrl);
+    const { url } = await generateAndStoreQR(item.serialCode, verifyUrl, item.name);
 
     await prisma.qrRecord.create({
       data: {

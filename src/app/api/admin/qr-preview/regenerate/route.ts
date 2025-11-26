@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       }
 
       const verifyUrl = getVerifyUrl(product.serialCode);
-      const { url: qrImageUrl } = await generateAndStoreQR(product.serialCode, verifyUrl);
+      const { url: qrImageUrl } = await generateAndStoreQR(product.serialCode, verifyUrl, product.name);
 
       // Update or create QR record
       if (product.qrRecord) {
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
       }
 
       const verifyUrl = getVerifyUrl(serialCode);
-      const { url: qrImageUrl } = await generateAndStoreQR(serialCode, verifyUrl);
+      const { url: qrImageUrl } = await generateAndStoreQR(serialCode, verifyUrl, product.name);
 
       if (product.qrRecord) {
         await prisma.qrRecord.update({
@@ -112,7 +112,7 @@ export async function POST(request: Request) {
         }
 
         const verifyUrl = getVerifyUrl(product.serialCode);
-        const { url: qrImageUrl } = await generateAndStoreQR(product.serialCode, verifyUrl);
+        const { url: qrImageUrl } = await generateAndStoreQR(product.serialCode, verifyUrl, product.name);
 
         if (product.qrRecord) {
           await prisma.qrRecord.update({

@@ -93,7 +93,7 @@ export async function POST(request: Request) {
         const verifyUrl = getVerifyUrl(serialCode);
 
         // Generate QR code for each product
-        const { url: qrImageUrl } = await generateAndStoreQR(serialCode, verifyUrl);
+        const { url: qrImageUrl } = await generateAndStoreQR(serialCode, verifyUrl, payload.name);
 
         // Create product with stock = 1 (one unit per serial number)
         // Price is optional - if not provided, set to null
@@ -142,7 +142,7 @@ export async function POST(request: Request) {
     }
 
     const verifyUrl = getVerifyUrl(serialCode);
-    const { url: qrImageUrl } = await generateAndStoreQR(serialCode, verifyUrl);
+    const { url: qrImageUrl } = await generateAndStoreQR(serialCode, verifyUrl, payload.name);
 
     // Price is optional - if not provided, set to null
     const product = await prisma.product.create({

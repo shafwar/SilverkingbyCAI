@@ -42,6 +42,7 @@ export async function PATCH(
 
   let newSerial = existing.serialCode;
   let qrImageUrl = existing.qrRecord?.qrImageUrl;
+  const nextName = payload.name ?? existing.name;
 
   if (payload.serialCode) {
     newSerial = normalizeSerialCode(payload.serialCode);
@@ -52,14 +53,14 @@ export async function PATCH(
   if (serialChanged) {
     await deleteQrAsset(existing.serialCode, existing.qrRecord?.qrImageUrl);
     const verifyUrl = getVerifyUrl(newSerial);
-    const qrResult = await generateAndStoreQR(newSerial, verifyUrl);
+    const qrResult = await generateAndStoreQR(newSerial, verifyUrl, nextName);
     qrImageUrl = qrResult.url;
   }
 
   const updatedProduct = await prisma.product.update({
     where: { id: existing.id },
     data: {
-      name: payload.name ?? existing.name,
+      name: nextName,
       weight: payload.weight ?? existing.weight,
       price: payload.price ?? existing.price,
       stock: payload.stock ?? existing.stock,
