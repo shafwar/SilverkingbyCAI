@@ -279,8 +279,23 @@ export function QrPreviewGrid() {
     return <LoadingSkeleton className="h-64 w-full" />;
   }
 
-  if (error || !data) {
-    return <p className="text-sm text-red-400">Unable to load QR assets.</p>;
+  if (error) {
+    console.error("QR Preview Error:", error);
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 p-8">
+        <p className="text-sm text-red-400">Unable to load QR assets.</p>
+        <button
+          onClick={() => mutate()}
+          className="rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm text-white transition hover:border-white/40 hover:bg-white/10"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return <LoadingSkeleton className="h-64 w-full" />;
   }
 
   return (
