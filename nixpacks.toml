@@ -12,7 +12,7 @@ cmds = [
 ]
 
 [phases.build]
-cmds = ["npm run build"]
+cmds = ["prisma generate && npm run build"]
 
 [phases.start]
 cmd = "npm start"
