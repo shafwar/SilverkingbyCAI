@@ -143,21 +143,19 @@ const NarrativeImageSection = forwardRef<
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Optimized preload strategy - immediate preload for first images with better performance
+  // Optimized preload strategy - preload all first images immediately for desktop, staggered for mobile
   useEffect(() => {
-    // Preload first image for each card immediately with optimized settings
+    // Preload first image for each card with optimized settings
     cards.forEach((card, idx) => {
       if (card.images[0]) {
         const imageUrl = card.images[0];
         
-        // Use link preload with fetchpriority for critical images
+        // Use link preload with fetchpriority for all first images (critical for desktop 3-column layout)
         const link = document.createElement("link");
         link.rel = "preload";
         link.as = "image";
         link.href = imageUrl;
-        if (idx === 0) {
-          link.setAttribute("fetchpriority", "high");
-        }
+        link.setAttribute("fetchpriority", "high");
         document.head.appendChild(link);
 
         // Preload with Image object for faster decode and rendering
@@ -169,7 +167,8 @@ const NarrativeImageSection = forwardRef<
           img.crossOrigin = "anonymous";
         }
         
-        // Use requestIdleCallback for non-critical images to not block main thread
+        // Decode all first images immediately for desktop (3-column layout needs all images)
+        // For mobile, only first image is critical
         const preloadImage = () => {
           img.decode()
             .then(() => {
@@ -184,15 +183,17 @@ const NarrativeImageSection = forwardRef<
             });
         };
 
-        if (idx === 0) {
-          // First image: decode immediately
+        // Desktop: decode all first images immediately (they're all visible)
+        // Mobile: decode first image immediately, others can wait
+        if (!isMobile || idx === 0) {
+          // Desktop or mobile first image: decode immediately
           preloadImage();
         } else if (typeof window !== "undefined" && window.requestIdleCallback) {
-          // Other images: decode when browser is idle
-          window.requestIdleCallback(preloadImage, { timeout: 2000 });
+          // Mobile other images: decode when browser is idle
+          window.requestIdleCallback(preloadImage, { timeout: 1000 });
         } else {
           // Fallback for browsers without requestIdleCallback
-          setTimeout(preloadImage, 100 * idx);
+          setTimeout(preloadImage, 200 * idx);
         }
       }
     });
@@ -205,7 +206,7 @@ const NarrativeImageSection = forwardRef<
         }
       });
     };
-  }, [cards]);
+  }, [cards, isMobile]);
 
   // Reduced timeout for faster feedback (4 seconds instead of 8)
   useEffect(() => {
@@ -341,15 +342,15 @@ const NarrativeImageSection = forwardRef<
                           alt={card.label}
                           fill
                           className="object-cover"
-                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 420px"
-                          priority={idx === 0 && currentImageIndex === 0}
-                          loading={idx === 0 && currentImageIndex === 0 ? "eager" : "lazy"}
-                          quality={isMobile ? 75 : 85}
+                          sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 440px"
+                          priority={currentImageIndex === 0}
+                          loading={currentImageIndex === 0 ? "eager" : "lazy"}
+                          quality={isMobile ? 80 : 90}
                           unoptimized={false}
                           placeholder="blur"
                           blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
                           decoding="async"
-                          fetchPriority={idx === 0 && currentImageIndex === 0 ? "high" : "auto"}
+                          fetchPriority={currentImageIndex === 0 ? "high" : "auto"}
                           onLoad={(e) => {
                             const imageKey = `${idx}-${currentImageIndex}`;
                             if (process.env.NODE_ENV === 'development') {
@@ -500,7 +501,7 @@ const NarrativeImageSection = forwardRef<
               className="object-cover"
               sizes="100vw"
               priority
-              quality={80}
+              quality={85}
               loading="eager"
               unoptimized={false}
               placeholder="blur"
