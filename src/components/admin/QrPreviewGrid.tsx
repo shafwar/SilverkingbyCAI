@@ -745,19 +745,17 @@ export function QrPreviewGrid() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                        src={product.qrImageUrl || `/api/qr/${product.serialCode}`}
-                  alt={product.name}
-                  className="h-28 w-28 rounded-2xl border border-white/10 bg-white p-3 object-contain"
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`/api/qr/${product.serialCode}?t=${Date.now()}`}
+                        alt={product.name}
+                        className="h-28 w-28 rounded-2xl border border-white/10 bg-white p-3 object-contain"
                         onError={(e) => {
-                          // Fallback to API route if image fails to load
+                          // Fallback: try with different timestamp
                           const target = e.target as HTMLImageElement;
-                          if (target.src !== `/api/qr/${product.serialCode}`) {
-                            target.src = `/api/qr/${product.serialCode}`;
-                          }
+                          target.src = `/api/qr/${product.serialCode}?t=${Date.now()}`;
                         }}
-                />
+                      />
                 <button
                   className="ml-auto inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 transition hover:border-[#FFD700]/40 hover:text-white"
                   onClick={() => setSelected(product)}
@@ -779,15 +777,13 @@ export function QrPreviewGrid() {
           <div className="flex flex-col items-center gap-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={selected.qrImageUrl || `/api/qr/${selected.serialCode}`}
+              src={`/api/qr/${selected.serialCode}?t=${Date.now()}`}
               alt={selected.name}
               className="h-72 w-72 rounded-3xl border border-white/10 bg-white p-4 text-md object-contain"
               onError={(e) => {
-                // Fallback to API route if image fails to load
+                // Fallback: try with different timestamp
                 const target = e.target as HTMLImageElement;
-                if (target.src !== `/api/qr/${selected.serialCode}`) {
-                  target.src = `/api/qr/${selected.serialCode}`;
-                }
+                target.src = `/api/qr/${selected.serialCode}?t=${Date.now()}`;
               }}
             />
             <p className="font-mono text-md text-white/70">{selected.serialCode}</p>

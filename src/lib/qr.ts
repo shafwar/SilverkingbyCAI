@@ -362,7 +362,9 @@ export async function generateAndStoreQR(
         Key: key,
         Body: pngBuffer,
         ContentType: "image/png",
-        CacheControl: "public, max-age=31536000, immutable",
+        // CRITICAL: Use shorter cache for QR codes to allow updates
+        // QR codes are sensitive and may need updates without regeneration
+        CacheControl: "public, max-age=3600, must-revalidate",
       })
     );
 

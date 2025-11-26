@@ -72,11 +72,15 @@ export async function GET(
     const uint8Array = new Uint8Array(pngBuffer);
 
     // Return as PNG image
+    // CRITICAL: Use shorter cache to allow updates when serial number rendering is fixed
+    // QR codes are sensitive and may need updates
     return new NextResponse(uint8Array, {
       status: 200,
       headers: {
         "Content-Type": "image/png",
-        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cache-Control": "public, max-age=3600, must-revalidate",
+        // Add ETag based on serial code to enable proper cache invalidation
+        "ETag": `"${finalSerialCode}"`,
       },
     });
   } catch (error) {
