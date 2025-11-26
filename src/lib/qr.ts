@@ -480,37 +480,117 @@ export async function generateAndStoreQR(
   serialCode: string,
   targetUrl: string
 ): Promise<QRStorageResult> {
-  // Generate QR code buffer
+  console.log(">>> [generateAndStoreQR] Starting QR generation for serial:", serialCode);
+  
+  // STEP 1: Generate raw QR code buffer
   const qrBuffer = await QRCode.toBuffer(targetUrl, {
-    width: 560,
+    width: 600,
     errorCorrectionLevel: "H",
     color: { dark: "#0c0c0c", light: "#ffffff" },
-    margin: 1,
+    margin: 2,
   });
   
-  // Add serial number text below QR code
-  const pngBuffer = await addSerialNumberToQR(qrBuffer, serialCode);
+  console.log(">>> [generateAndStoreQR] QR buffer generated, size:", qrBuffer.length);
+  
+  // STEP 2: Load QR into canvas and add text BEFORE saving
+  // This ensures the final PNG includes both QR and text
+  const qrImage = await loadImage(qrBuffer);
+  const qrSize = 600;
+  const textHeight = 60; // Space for serial number text
+  const padding = 20;
+  
+  // Create canvas with extra space for text
+  const canvas = createCanvas(qrSize + padding * 2, qrSize + textHeight + padding * 2);
+  const ctx = canvas.getContext("2d");
+  
+  // White background
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Draw QR code at the top
+  ctx.drawImage(qrImage, padding, padding, qrSize, qrSize);
+  
+  // STEP 3: Draw serial number text BELOW QR code
+  // Use safe built-in font that works in all environments
+  ctx.fillStyle = "#000000";
+  ctx.font = "bold 36px sans-serif"; // Safe built-in font
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  
+  const textX = canvas.width / 2;
+  const textY = qrSize + padding + textHeight / 2;
+  
+  console.log(">>> SERIAL USED:", serialCode);
+  console.log(">>> Text position:", { x: textX, y: textY });
+  
+  // Render text with multiple passes for visibility
+  ctx.fillText(serialCode, textX, textY);
+  ctx.strokeStyle = "#000000";
+  ctx.lineWidth = 1;
+  ctx.strokeText(serialCode, textX, textY);
+  
+  // Verify text was rendered
+  const imageData = ctx.getImageData(textX - 100, textY - 15, 200, 30);
+  const hasText = imageData.data.some((pixel, index) => index % 4 === 0 && pixel < 200);
+  
+  console.log(">>> Text rendering verification:", {
+    serialCode,
+    hasText,
+    font: ctx.font,
+    position: { x: textX, y: textY }
+  });
+  
+  if (!hasText) {
+    console.error(">>> WARNING: Text may not have rendered! Trying alternative font...");
+    // Fallback to monospace
+    ctx.font = "bold 36px monospace";
+    ctx.fillText(serialCode, textX, textY);
+    ctx.strokeText(serialCode, textX, textY);
+  }
+  
+  // STEP 4: Export final PNG buffer (with QR + text)
+  const pngBuffer = canvas.toBuffer("image/png");
+  
+  console.log(">>> CANVAS EXPORT COMPLETED");
+  console.log(">>> FINAL FILE SIZE:", pngBuffer.length);
 
+  // STEP 5: Upload FINAL PNG (with QR + text) to R2
   if (r2Available && r2Client) {
-    const key = `qr/${serialCode}.png`;
-    await r2Client.send(
-      new PutObjectCommand({
-        Bucket: R2_BUCKET,
-        Key: key,
-        Body: pngBuffer,
-        ContentType: "image/png",
-        // CRITICAL: Use shorter cache for QR codes to allow updates
-        // QR codes are sensitive and may need updates without regeneration
-        CacheControl: "public, max-age=3600, must-revalidate",
-      })
-    );
+    const objectKey = `qr/${serialCode}.png`;
+    
+    console.log(">>> Uploading to R2:", {
+      bucket: R2_BUCKET,
+      key: objectKey,
+      bufferSize: pngBuffer.length,
+      serialCode
+    });
+    
+    try {
+      await r2Client.send(
+        new PutObjectCommand({
+          Bucket: R2_BUCKET,
+          Key: objectKey,
+          Body: pngBuffer, // This is the FINAL PNG with QR + text
+          ContentType: "image/png",
+          // CRITICAL: Use shorter cache for QR codes to allow updates
+          CacheControl: "public, max-age=3600, must-revalidate",
+        })
+      );
 
-    const base = R2_PUBLIC_URL!.endsWith("/") ? R2_PUBLIC_URL!.slice(0, -1) : R2_PUBLIC_URL!;
+      const base = R2_PUBLIC_URL!.endsWith("/") ? R2_PUBLIC_URL!.slice(0, -1) : R2_PUBLIC_URL!;
+      const finalUrl = `${base}/${objectKey}`;
 
-    return {
-      url: `${base}/${key}`,
-      mode: "R2",
-    };
+      console.log(">>> R2 Upload successful:", finalUrl);
+      console.log(">>> Object key includes serial:", objectKey.includes(serialCode));
+
+      return {
+        url: finalUrl,
+        mode: "R2",
+      };
+    } catch (error) {
+      console.error(">>> R2 Upload failed:", error);
+      throw error;
+    }
   }
 
   // In production (Railway), public folder is read-only after build
