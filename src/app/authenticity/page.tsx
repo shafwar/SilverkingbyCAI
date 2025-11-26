@@ -64,26 +64,6 @@ const workflowSteps = [
   },
 ];
 
-// Client-side mobile detection
-function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-
-  return { isMobile, mounted };
-}
-
 function CTASection() {
   const scrollToVerification = () => {
     try {
@@ -129,23 +109,20 @@ function CTASection() {
   );
 }
 
-// Desktop: Full featured timeline with all animations
-// Mobile: Simplified timeline for performance
 function WorkflowTimeline() {
   const timelineRef = useRef<HTMLDivElement>(null);
   const pathRef = useRef<SVGPathElement>(null);
   const pathMobileRef = useRef<SVGPathElement>(null);
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [activeStep, setActiveStep] = useState<number | null>(null);
-  const { isMobile, mounted } = useIsMobile();
 
   useGSAP(
     () => {
       if (!timelineRef.current) return;
 
       const ctx = gsap.context(() => {
-        // Desktop: Animate path drawing
-        if (!isMobile && pathRef.current) {
+        // Animate desktop path drawing
+        if (pathRef.current) {
           const path = pathRef.current;
           const pathLength = path.getTotalLength();
           path.style.strokeDasharray = `${pathLength}`;
@@ -163,8 +140,8 @@ function WorkflowTimeline() {
           });
         }
 
-        // Mobile: Animate path drawing (simplified)
-        if (isMobile && pathMobileRef.current) {
+        // Animate mobile path drawing
+        if (pathMobileRef.current) {
           const pathMobile = pathMobileRef.current;
           const pathMobileLength = pathMobile.getTotalLength();
           pathMobile.style.strokeDasharray = `${pathMobileLength}`;
@@ -182,7 +159,7 @@ function WorkflowTimeline() {
           });
         }
 
-        // Animate step cards
+        // Animate step cards with enhanced interactions
         stepRefs.current.forEach((stepRef, index) => {
           if (!stepRef) return;
 
@@ -192,103 +169,77 @@ function WorkflowTimeline() {
 
           if (!stepCard || !stepIcon) return;
 
-          // Desktop: Full animations
-          if (!isMobile) {
-            // Fade in card with scale
-            gsap.fromTo(
-              stepCard,
-              { opacity: 0, y: 40, scale: 0.95 },
-              {
-                opacity: 1,
-                y: 0,
-                scale: 1,
-                duration: 0.8,
-                ease: "power3.out",
-                scrollTrigger: {
-                  trigger: stepRef,
-                  start: "top 75%",
-                  toggleActions: "play none none reverse",
-                },
-              }
-            );
-
-            // Animate icon with bounce
-            gsap.fromTo(
-              stepIcon,
-              { scale: 0, opacity: 0, rotation: -180 },
-              {
-                scale: 1,
-                opacity: 1,
-                rotation: 0,
-                duration: 0.8,
-                ease: "back.out(1.7)",
-                delay: 0.2,
-                scrollTrigger: {
-                  trigger: stepRef,
-                  start: "top 75%",
-                  toggleActions: "play none none reverse",
-                },
-              }
-            );
-
-            // Pulsing glow effect
-            if (stepGlow) {
-              gsap.to(stepGlow, {
-                scale: 1.4,
-                opacity: 0.8,
-                duration: 2,
-                repeat: -1,
-                yoyo: true,
-                ease: "sine.inOut",
-                scrollTrigger: {
-                  trigger: stepRef,
-                  start: "top 75%",
-                  toggleActions: "play none none reverse",
-                },
-              });
+          // Fade in card with scale
+          gsap.fromTo(
+            stepCard,
+            { opacity: 0, y: 40, scale: 0.95 },
+            {
+              opacity: 1,
+              y: 0,
+              scale: 1,
+              duration: 0.8,
+              ease: "power3.out",
+              scrollTrigger: {
+                trigger: stepRef,
+                start: "top 75%",
+                toggleActions: "play none none reverse",
+              },
             }
-          } else {
-            // Mobile: Simple fade only
-            gsap.fromTo(
-              stepCard,
-              { opacity: 0, y: 20 },
-              {
-                opacity: 1,
-                y: 0,
-                duration: 0.6,
-                ease: "power2.out",
-                scrollTrigger: {
-                  trigger: stepRef,
-                  start: "top 80%",
-                  toggleActions: "play none none none",
-                  once: true,
-                },
-              }
-            );
+          );
+
+          // Animate icon with bounce
+          gsap.fromTo(
+            stepIcon,
+            { scale: 0, opacity: 0, rotation: -180 },
+            {
+              scale: 1,
+              opacity: 1,
+              rotation: 0,
+              duration: 0.8,
+              ease: "back.out(1.7)",
+              delay: 0.2,
+              scrollTrigger: {
+                trigger: stepRef,
+                start: "top 75%",
+                toggleActions: "play none none reverse",
+              },
+            }
+          );
+
+          // Pulsing glow effect
+          if (stepGlow) {
+            gsap.to(stepGlow, {
+              scale: 1.4,
+              opacity: 0.8,
+              duration: 2,
+              repeat: -1,
+              yoyo: true,
+              ease: "sine.inOut",
+              scrollTrigger: {
+                trigger: stepRef,
+                start: "top 75%",
+                toggleActions: "play none none reverse",
+              },
+            });
           }
         });
       }, timelineRef);
 
       return () => ctx.revert();
     },
-    { scope: timelineRef, dependencies: [isMobile, mounted] }
+    { scope: timelineRef }
   );
-
-  // Don't render until client-side mounted to avoid hydration mismatch
-  if (!mounted) {
-    return <div className="h-96" />; // Placeholder
-  }
 
   return (
     <div ref={timelineRef} className="relative">
-      {/* SVG Path - Desktop */}
+      {/* SVG Path - Desktop with animated drawing */}
       <div className="absolute left-8 top-0 hidden h-full w-0.5 md:left-1/2 md:block z-0">
         <svg className="h-full w-full" viewBox="0 0 2 1000" preserveAspectRatio="none">
           <defs>
             <linearGradient id="workflow-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.3" />
-              <stop offset="50%" stopColor="#D4AF37" stopOpacity="0.8" />
-              <stop offset="100%" stopColor="#D4AF37" stopOpacity="0.3" />
+              <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.2" />
+              <stop offset="50%" stopColor="#D4AF37" stopOpacity="0.6" />
+              <stop offset="100%" stopColor="#D4AF37" stopOpacity="0.2" />
             </linearGradient>
             <filter id="glow">
               <feGaussianBlur stdDeviation="4" result="coloredBlur" />
@@ -309,17 +260,17 @@ function WorkflowTimeline() {
         </svg>
       </div>
 
-      {/* SVG Path - Mobile */}
-      <div className="absolute left-7 top-0 block h-full w-0.5 md:hidden z-0">
+      {/* SVG Path - Mobile with animated drawing */}
+      <div className="absolute left-8 top-0 block h-full w-0.5 md:hidden z-0">
         <svg className="h-full w-full" viewBox="0 0 2 1000" preserveAspectRatio="none">
           <defs>
             <linearGradient id="workflow-gradient-mobile" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.3" />
-              <stop offset="50%" stopColor="#D4AF37" stopOpacity="0.8" />
-              <stop offset="100%" stopColor="#D4AF37" stopOpacity="0.3" />
+              <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.2" />
+              <stop offset="50%" stopColor="#D4AF37" stopOpacity="0.6" />
+              <stop offset="100%" stopColor="#D4AF37" stopOpacity="0.2" />
             </linearGradient>
             <filter id="glow-mobile">
-              <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+              <feGaussianBlur stdDeviation="4" result="coloredBlur" />
               <feMerge>
                 <feMergeNode in="coloredBlur" />
                 <feMergeNode in="SourceGraphic" />
@@ -338,7 +289,7 @@ function WorkflowTimeline() {
       </div>
 
       {/* Steps */}
-      <div className="relative space-y-10 md:space-y-20 z-10">
+      <div className="relative space-y-12 md:space-y-20 z-10">
         {workflowSteps.map((step, index) => {
           const Icon = step.icon;
           const isEven = index % 2 === 0;
@@ -349,141 +300,103 @@ function WorkflowTimeline() {
               ref={(el) => {
                 stepRefs.current[index] = el;
               }}
-              className="relative"
+              className={`relative flex items-center gap-8 ${
+                isEven ? "md:flex-row" : "md:flex-row-reverse"
+              }`}
             >
-              {/* Mobile Layout: Icon + Content Side by Side */}
-              <div className="flex md:hidden items-start gap-4">
-                {/* Icon - Mobile */}
-                <div className="relative flex-shrink-0 mt-1">
-                  <motion.div
-                    className="relative"
-                    animate={{
-                      scale: 1,
-                    }}
-                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                  >
-                    <motion.div
-                      data-step-icon
-                      className="relative flex h-14 w-14 items-center justify-center rounded-full border-2 border-luxury-gold/50 bg-gradient-to-br from-luxury-gold/20 via-luxury-gold/10 to-luxury-black shadow-[0_10px_30px_-10px_rgba(212,175,55,0.5)] backdrop-blur-sm"
-                    >
-                      <Icon className="h-6 w-6 text-luxury-gold" />
-                    </motion.div>
-                    <motion.div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-luxury-gold to-luxury-lightGold text-[10px] font-bold text-black shadow-lg">
-                      {step.id}
-                    </motion.div>
-                  </motion.div>
-                </div>
-
-                {/* Content Card - Mobile */}
-                <motion.div data-step-card className="flex-1 min-w-0">
-                  <div className="group relative cursor-pointer rounded-xl border border-white/10 bg-gradient-to-br from-white/5 via-white/[0.03] to-transparent p-4 backdrop-blur-xl">
-                    <div className="relative z-10">
-                      <h3 className="mb-1.5 text-base font-semibold text-white">{step.title}</h3>
-                      <p className="text-xs text-luxury-silver/70 leading-relaxed">
-                        {step.description}
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-
-              {/* Desktop Layout: Alternating Left/Right */}
-              <div
-                className={`hidden md:flex items-center gap-8 ${
-                  isEven ? "flex-row" : "flex-row-reverse"
-                }`}
+              {/* Step Content with Enhanced Card - ALWAYS VISIBLE */}
+              <motion.div
+                data-step-card
+                className={`flex-1 pl-20 md:pl-0 ${isEven ? "md:pr-16 md:text-right" : "md:pl-16"}`}
+                onHoverStart={() => setActiveStep(index)}
+                onHoverEnd={() => setActiveStep(null)}
+                whileHover={{ scale: 1.03, x: isEven ? -10 : 10 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
               >
-                {/* Step Content with Enhanced Card - Desktop */}
-                <motion.div
-                  data-step-card
-                  className={`flex-1 ${isEven ? "pr-16 text-right" : "pl-16"}`}
-                  onHoverStart={() => setActiveStep(index)}
-                  onHoverEnd={() => setActiveStep(null)}
-                  whileHover={{ scale: 1.03, x: isEven ? -10 : 10 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                <div
+                  className={`group relative cursor-pointer rounded-3xl border transition-all duration-500 p-6 md:p-8 backdrop-blur-xl ${
+                    activeStep === index
+                      ? "border-luxury-gold/60 bg-gradient-to-br from-luxury-gold/10 via-white/5 to-transparent shadow-[0px_25px_70px_-30px_rgba(212,175,55,0.6)]"
+                      : "border-white/10 bg-gradient-to-br from-white/5 via-white/[0.03] to-transparent hover:border-luxury-gold/40 hover:shadow-[0px_20px_60px_-30px_rgba(212,175,55,0.4)]"
+                  }`}
                 >
                   <div
-                    className={`group relative cursor-pointer rounded-3xl border transition-all duration-500 p-8 backdrop-blur-xl ${
-                      activeStep === index
-                        ? "border-luxury-gold/60 bg-gradient-to-br from-luxury-gold/10 via-white/5 to-transparent shadow-[0px_25px_70px_-30px_rgba(212,175,55,0.6)]"
-                        : "border-white/10 bg-gradient-to-br from-white/5 via-white/[0.03] to-transparent hover:border-luxury-gold/40 hover:shadow-[0px_20px_60px_-30px_rgba(212,175,55,0.4)]"
+                    className={`absolute -inset-px rounded-3xl bg-gradient-to-br from-luxury-gold/20 via-luxury-lightGold/20 to-luxury-gold/20 blur-xl transition-opacity duration-500 ${
+                      activeStep === index ? "opacity-50" : "opacity-0 group-hover:opacity-30"
                     }`}
-                  >
-                    <div
-                      className={`absolute -inset-px rounded-3xl bg-gradient-to-br from-luxury-gold/20 via-luxury-lightGold/20 to-luxury-gold/20 blur-xl transition-opacity duration-500 ${
-                        activeStep === index ? "opacity-50" : "opacity-0 group-hover:opacity-30"
-                      }`}
-                    />
-                    <div className="relative z-10">
-                      <motion.h3
-                        className="mb-3 text-2xl font-semibold text-white transition-colors group-hover:text-luxury-gold"
-                        animate={{ color: activeStep === index ? "#D4AF37" : "#FFFFFF" }}
-                      >
-                        {step.title}
-                      </motion.h3>
-                      <p className="text-sm text-luxury-silver/70 leading-relaxed transition-colors group-hover:text-luxury-silver/90">
-                        {step.description}
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Step Icon with Enhanced Interactions - Desktop */}
-                <div className="absolute left-1/2 -translate-x-1/2">
-                  <motion.div
-                    className="relative"
-                    animate={{
-                      scale: activeStep === index ? 1.15 : 1,
-                    }}
-                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                  >
-                    <motion.div
-                      data-step-glow
-                      className="absolute inset-0 -z-10 rounded-full bg-luxury-gold/30 blur-2xl"
-                      animate={{
-                        scale: activeStep === index ? 1.5 : 1.2,
-                        opacity: activeStep === index ? 0.6 : 0.3,
-                      }}
-                      transition={{ duration: 0.3 }}
-                    />
-                    <motion.div
-                      data-step-icon
-                      className="relative flex h-24 w-24 items-center justify-center rounded-full border-2 bg-gradient-to-br from-luxury-gold/20 via-luxury-gold/10 to-luxury-black shadow-[0_10px_30px_-10px_rgba(212,175,55,0.5)] backdrop-blur-sm"
-                      animate={{
-                        borderColor:
-                          activeStep === index ? "rgba(212,175,55,0.8)" : "rgba(212,175,55,0.5)",
-                        boxShadow:
-                          activeStep === index
-                            ? "0 0 40px rgba(212,175,55,0.7)"
-                            : "0 10px 30px -10px rgba(212,175,55,0.5)",
-                      }}
-                      transition={{ duration: 0.3 }}
+                  />
+                  <div className="relative z-10">
+                    <motion.h3
+                      className="mb-2 md:mb-3 text-lg md:text-2xl font-semibold text-white transition-colors group-hover:text-luxury-gold"
+                      animate={{ color: activeStep === index ? "#D4AF37" : "#FFFFFF" }}
                     >
-                      <motion.div
-                        animate={{
-                          rotate: activeStep === index ? [0, 5, -5, 0] : 0,
-                        }}
-                        transition={{ duration: 0.5 }}
-                      >
-                        <Icon className="h-10 w-10 text-luxury-gold" />
-                      </motion.div>
-                    </motion.div>
+                      {step.title}
+                    </motion.h3>
+                    <p className="text-xs md:text-sm text-luxury-silver/70 leading-relaxed transition-colors group-hover:text-luxury-silver/90">
+                      {step.description}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Step Icon with Enhanced Interactions */}
+              <div className="absolute left-0 md:left-1/2 md:-translate-x-1/2 z-20">
+                <motion.div
+                  className="relative"
+                  animate={{
+                    scale: activeStep === index ? 1.15 : 1,
+                  }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                >
+                  {/* Glowing Pulse Circle */}
+                  <motion.div
+                    data-step-glow
+                    className="absolute inset-0 -z-10 rounded-full bg-luxury-gold/30 blur-2xl"
+                    animate={{
+                      scale: activeStep === index ? 1.5 : 1.2,
+                      opacity: activeStep === index ? 0.6 : 0.3,
+                    }}
+                    transition={{ duration: 0.3 }}
+                  />
+
+                  {/* Icon Circle with Gradient */}
+                  <motion.div
+                    data-step-icon
+                    className="relative flex h-20 w-20 md:h-24 md:w-24 items-center justify-center rounded-full border-2 bg-gradient-to-br from-luxury-gold/20 via-luxury-gold/10 to-luxury-black shadow-[0_10px_30px_-10px_rgba(212,175,55,0.5)] backdrop-blur-sm"
+                    animate={{
+                      borderColor:
+                        activeStep === index ? "rgba(212,175,55,0.8)" : "rgba(212,175,55,0.5)",
+                      boxShadow:
+                        activeStep === index
+                          ? "0 0 40px rgba(212,175,55,0.7)"
+                          : "0 10px 30px -10px rgba(212,175,55,0.5)",
+                    }}
+                    transition={{ duration: 0.3 }}
+                  >
                     <motion.div
-                      className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-luxury-gold to-luxury-lightGold text-xs font-bold text-black shadow-lg"
-                      animate={{
-                        scale: activeStep === index ? 1.2 : 1,
-                        rotate: activeStep === index ? 360 : 0,
-                      }}
+                      animate={{ rotate: activeStep === index ? [0, 5, -5, 0] : 0 }}
                       transition={{ duration: 0.5 }}
                     >
-                      {step.id}
+                      <Icon className="h-8 w-8 md:h-10 md:w-10 text-luxury-gold" />
                     </motion.div>
                   </motion.div>
-                </div>
 
-                {/* Spacer */}
-                <div className="flex-1" />
+                  {/* Step Number Badge */}
+                  <motion.div
+                    className="absolute -bottom-1 -right-1 flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full bg-gradient-to-br from-luxury-gold to-luxury-lightGold text-xs font-bold text-black shadow-lg"
+                    animate={{
+                      scale: activeStep === index ? 1.2 : 1,
+                      rotate: activeStep === index ? 360 : 0,
+                    }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    {step.id}
+                  </motion.div>
+                </motion.div>
               </div>
+
+              {/* Spacer */}
+              <div className="hidden flex-1 md:block" />
             </div>
           );
         })}
@@ -500,7 +413,6 @@ export default function AuthenticityPage() {
   const heroRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const router = useRouter();
-  const { isMobile, mounted } = useIsMobile();
 
   useGSAP(
     () => {
@@ -520,22 +432,20 @@ export default function AuthenticityPage() {
             }
           );
 
-          // Desktop: Minimal floating particles animation
-          if (!isMobile) {
-            const particles = heroRef.current?.querySelectorAll("[data-particle]");
-            if (particles) {
-              particles.forEach((particle, index) => {
-                gsap.to(particle, {
-                  y: -15,
-                  x: Math.sin(index) * 10,
-                  opacity: 0.4,
-                  duration: 4 + index * 0.5,
-                  repeat: -1,
-                  yoyo: true,
-                  ease: "sine.inOut",
-                });
+          // Minimal floating particles animation
+          const particles = heroRef.current?.querySelectorAll("[data-particle]");
+          if (particles) {
+            particles.forEach((particle, index) => {
+              gsap.to(particle, {
+                y: -15,
+                x: Math.sin(index) * 10,
+                opacity: 0.4,
+                duration: 4 + index * 0.5,
+                repeat: -1,
+                yoyo: true,
+                ease: "sine.inOut",
               });
-            }
+            });
           }
         }, heroRef);
 
@@ -544,10 +454,10 @@ export default function AuthenticityPage() {
         console.error("GSAP animation error:", error);
       }
     },
-    { scope: heroRef, dependencies: [isMobile, mounted] }
+    { scope: heroRef }
   );
 
-  // Video autoplay handling
+  // Optimal video autoplay handling
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -587,10 +497,10 @@ export default function AuthenticityPage() {
   const handleScanSuccess = async (decodedText: string) => {
     try {
       if (!decodedText || !decodedText.trim()) return;
-
+      
       setShowScanner(false);
       let serialCode = decodedText.trim();
-
+      
       if (serialCode.includes("/verify/")) {
         const urlMatch = serialCode.match(/\/verify\/([A-Z0-9]+)/i);
         if (urlMatch && urlMatch[1]) {
@@ -600,19 +510,28 @@ export default function AuthenticityPage() {
         const urlParts = serialCode.split("/");
         serialCode = urlParts[urlParts.length - 1] || serialCode;
       }
-
+      
       const normalizedSerial = serialCode.toUpperCase().replace(/[^A-Z0-9]/g, "");
-
+      
       if (!normalizedSerial || normalizedSerial.length < 3) {
-        alert("Invalid QR code format");
+        alert("Invalid QR code format. Please scan a valid Silver King QR code.");
         return;
       }
-
+      
       window.location.href = `/verify/${normalizedSerial}`;
     } catch (error) {
-      console.error("Error handling scan:", error);
+      console.error("[Authenticity] Error handling scan success:", error);
       setShowScanner(false);
+      alert("Failed to process QR code. Please try again.");
     }
+  };
+
+  const handleOpenScanner = () => {
+    setShowScanner(true);
+  };
+
+  const handleOpenManualInput = () => {
+    setShowManualInput(true);
   };
 
   const handleManualVerify = async () => {
@@ -621,40 +540,82 @@ export default function AuthenticityPage() {
         alert("Please enter a serial number");
         return;
       }
-
-      const serialCode = serialNumber
-        .trim()
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, "");
-
+      
+      let serialCode = serialNumber.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+      
       if (!serialCode || serialCode.length < 3) {
-        alert("Invalid serial number format");
+        alert("Invalid serial number format. Please enter a valid serial code (e.g., SKA000001)");
         return;
       }
-
+      
       setShowManualInput(false);
       setSerialNumber("");
+      
       window.location.href = `/verify/${serialCode}`;
     } catch (error) {
-      console.error("Error in handleManualVerify:", error);
+      console.error("[Authenticity] Error in handleManualVerify:", error);
+      alert("Failed to verify. Please try again.");
     }
   };
 
+  const pageRef = useRef<HTMLDivElement>(null);
+  const sectionsRef = useRef<(HTMLDivElement | null)[]>([]);
+
+  useGSAP(
+    () => {
+      if (!pageRef.current) return;
+
+      try {
+        const ctx = gsap.context(() => {
+          sectionsRef.current.forEach((section) => {
+            if (!section) return;
+            const targets = section.querySelectorAll("[data-reveal]");
+
+            ScrollTrigger.batch(targets, {
+              start: "top 85%",
+              onEnter: (batch) =>
+                gsap.to(batch, {
+                  opacity: 1,
+                  y: 0,
+                  duration: 0.5,
+                  stagger: 0.1,
+                  ease: "power2.out",
+                }),
+              once: true,
+            });
+          });
+        }, pageRef);
+
+        return () => ctx.revert();
+      } catch (error) {
+        console.error("GSAP ScrollTrigger error:", error);
+      }
+    },
+    { scope: pageRef }
+  );
+
   return (
-    <div className="min-h-screen bg-luxury-black text-white">
+    <div ref={pageRef} className="min-h-screen bg-luxury-black text-white">
+      {/* Simplified Background */}
       <div className="pointer-events-none fixed inset-0 bg-gradient-to-b from-luxury-black via-[#0a0a0a] to-luxury-black" />
 
       <Navbar />
 
-      {/* Hero Section */}
+      {/* Hero Section with Video Background */}
       <section
-        ref={heroRef}
+        ref={(element) => {
+          const divElement = element as HTMLDivElement | null;
+          sectionsRef.current[0] = divElement;
+          heroRef.current = divElement;
+        }}
         className="relative flex min-h-[80vh] md:min-h-[85vh] lg:min-h-[90vh] items-center justify-center overflow-hidden px-6 pt-24 pb-12"
       >
         {/* Video Background */}
         <div className="absolute inset-0 z-0 overflow-hidden">
+          {/* Fallback gradient background */}
           <div className="absolute inset-0 bg-gradient-to-br from-luxury-black via-luxury-black/95 to-luxury-black z-0" />
-
+          
+          {/* Video */}
           <video
             ref={videoRef}
             autoPlay
@@ -669,35 +630,44 @@ export default function AuthenticityPage() {
               transform: "scale(1.05)",
               transformOrigin: "center center",
             }}
-            onError={() => setIsVideoLoaded(false)}
-            onCanPlay={() => setIsVideoLoaded(true)}
-            onLoadedData={() => setIsVideoLoaded(true)}
+            onError={() => {
+              setIsVideoLoaded(false);
+            }}
+            onCanPlay={() => {
+              setIsVideoLoaded(true);
+            }}
+            onLoadedData={() => {
+              setIsVideoLoaded(true);
+            }}
           >
             <source src={getR2UrlClient("/videos/hero/mobile scanning qr.mp4")} type="video/mp4" />
           </video>
 
+          {/* Dark overlays for better text readability */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70 z-20" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(10,10,10,0.6)_100%)] z-20" />
+          
+          {/* Vignette effect */}
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.8)_100%)] z-20" />
+          
+          {/* Soft fading at bottom for smooth transition */}
           <div className="absolute inset-x-0 bottom-0 h-40 md:h-52 lg:h-64 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-transparent pointer-events-none z-20" />
         </div>
 
-        {/* Particles - Desktop only */}
-        {!isMobile && mounted && (
-          <div className="absolute inset-0 pointer-events-none z-[15]">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <motion.div
-                key={i}
-                data-particle
-                className="absolute h-1.5 w-1.5 rounded-full bg-luxury-gold/30 pointer-events-none"
-                style={{
-                  left: `${((i * 17) % 90) + 5}%`,
-                  top: `${((i * 23) % 80) + 10}%`,
-                }}
-              />
-            ))}
-          </div>
-        )}
+        {/* Minimal Particles */}
+        <div className="absolute inset-0 pointer-events-none z-[15]">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <motion.div
+              key={i}
+              data-particle
+              className="absolute h-1.5 w-1.5 rounded-full bg-luxury-gold/30 pointer-events-none"
+              style={{
+                left: `${((i * 17) % 90) + 5}%`,
+                top: `${((i * 23) % 80) + 10}%`,
+              }}
+            />
+          ))}
+        </div>
 
         {/* Content */}
         <div className="relative z-20 mx-auto w-full max-w-3xl text-center">
@@ -733,7 +703,7 @@ export default function AuthenticityPage() {
               type="button"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => setShowScanner(true)}
+              onClick={handleOpenScanner}
               className="group relative z-20 inline-flex w-full items-center justify-center gap-2 rounded-full bg-luxury-gold px-8 py-3.5 text-sm font-semibold text-black transition-all hover:bg-luxury-lightGold sm:w-auto cursor-pointer active:scale-95"
             >
               <QrCode className="h-4 w-4" />
@@ -746,7 +716,7 @@ export default function AuthenticityPage() {
               type="button"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => setShowManualInput(true)}
+              onClick={handleOpenManualInput}
               className="relative z-20 inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-8 py-3.5 text-sm font-semibold text-white transition-all hover:border-white/30 hover:bg-white/10 sm:w-auto cursor-pointer active:scale-95"
             >
               <Search className="h-4 w-4" />
@@ -756,34 +726,41 @@ export default function AuthenticityPage() {
         </div>
       </section>
 
+      {/* CTA Section */}
       <CTASection />
 
       {/* Verification Workflow Section */}
       <section
         data-verification-section
-        className="relative overflow-hidden border-t border-white/10 bg-gradient-to-b from-luxury-black/50 via-luxury-black to-luxury-black/50 py-16 px-4 md:py-32 md:px-6"
+        ref={(element) => {
+          sectionsRef.current[1] = element as HTMLDivElement | null;
+        }}
+        className="relative overflow-hidden border-t border-white/10 bg-gradient-to-b from-luxury-black/50 via-luxury-black to-luxury-black/50 py-24 px-6 md:py-32"
       >
+        {/* Background Decoration */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(212,175,55,0.03)_0%,transparent_70%)]" />
 
         <div className="relative z-10 mx-auto max-w-6xl">
+          {/* Section Header with Animation */}
           <motion.div
-            className="mb-12 md:mb-20 text-center"
+            className="mb-20 text-center"
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
           >
-            <h2 className="mb-3 md:mb-4 text-2xl md:text-4xl lg:text-5xl font-light text-white">
+            <h2 className="mb-4 text-4xl font-light text-white md:text-5xl">
               Verification{" "}
               <span className="bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text font-semibold text-transparent">
                 Process
               </span>
             </h2>
-            <p className="mx-auto max-w-2xl text-sm md:text-base lg:text-lg text-luxury-silver/70 px-2">
+            <p className="mx-auto max-w-2xl text-base text-luxury-silver/70 md:text-lg">
               Simple four-step verification for your Silver King bar
             </p>
           </motion.div>
 
+          {/* Workflow Timeline */}
           <WorkflowTimeline />
         </div>
       </section>
@@ -792,22 +769,33 @@ export default function AuthenticityPage() {
       <AnimatePresence mode="wait">
         {showScanner && (
           <motion.div
+            key="scanner-modal"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
             className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6"
-            onClick={() => setShowScanner(false)}
+            onClick={() => {
+              setShowScanner(false);
+            }}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              transition={{ duration: 0.3 }}
-              onClick={(e) => e.stopPropagation()}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
               className="relative z-[10000] w-full max-w-md"
             >
-              <Scanner onScanSuccess={handleScanSuccess} onClose={() => setShowScanner(false)} />
+              <Scanner
+                key="scanner-component"
+                onScanSuccess={handleScanSuccess}
+                onClose={() => {
+                  setShowScanner(false);
+                }}
+              />
             </motion.div>
           </motion.div>
         )}
@@ -817,6 +805,7 @@ export default function AuthenticityPage() {
       <AnimatePresence mode="wait">
         {showManualInput && (
           <motion.div
+            key="manual-input-modal"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -831,7 +820,7 @@ export default function AuthenticityPage() {
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
               onClick={(e) => e.stopPropagation()}
               className="w-full max-w-md"
             >
@@ -877,7 +866,12 @@ export default function AuthenticityPage() {
       </AnimatePresence>
 
       {/* Benefits Section */}
-      <section className="relative overflow-hidden border-t border-white/5 py-20 px-6">
+      <section
+        ref={(element) => {
+          sectionsRef.current[2] = element as HTMLDivElement | null;
+        }}
+        className="relative overflow-hidden border-t border-white/5 py-20 px-6"
+      >
         <div className="relative z-10 mx-auto max-w-5xl">
           <div className="mb-12 text-center">
             <h2 className="mb-3 text-3xl font-light text-white md:text-4xl">
@@ -892,109 +886,169 @@ export default function AuthenticityPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            {[
-              {
-                icon: Sparkles,
-                title: "Authenticity",
-                desc: "Verify genuine Silver King products instantly",
-              },
-              {
-                icon: QrCode,
-                title: "Traceability",
-                desc: "Complete provenance and manufacturing details",
-              },
-              {
-                icon: Shield,
-                title: "Security",
-                desc: "Encrypted QR codes prevent counterfeiting",
-              },
-            ].map((item, i) => (
-              <motion.div
-                key={item.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="group rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm transition-all hover:border-luxury-gold/40 hover:bg-white/10"
-              >
-                <div className="mb-4 inline-flex rounded-xl bg-luxury-gold/10 p-3">
-                  <item.icon className="h-5 w-5 text-luxury-gold" />
-                </div>
-                <h3 className="mb-2 text-lg font-semibold text-white">{item.title}</h3>
-                <p className="text-sm text-luxury-silver/70 leading-relaxed">{item.desc}</p>
-              </motion.div>
-            ))}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0 }}
+              className="group cursor-default rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm transition-all hover:border-luxury-gold/40 hover:bg-white/10"
+            >
+              <div className="mb-4 inline-flex rounded-xl bg-luxury-gold/10 p-3">
+                <Sparkles className="h-5 w-5 text-luxury-gold" />
+              </div>
+              <h3 className="mb-2 text-lg font-semibold text-white">Authenticity</h3>
+              <p className="text-sm text-luxury-silver/70 leading-relaxed">
+                Verify genuine Silver King products instantly
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="group cursor-default rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm transition-all hover:border-luxury-gold/40 hover:bg-white/10"
+            >
+              <div className="mb-4 inline-flex rounded-xl bg-luxury-silver/10 p-3">
+                <QrCode className="h-5 w-5 text-luxury-silver" />
+              </div>
+              <h3 className="mb-2 text-lg font-semibold text-white">Traceability</h3>
+              <p className="text-sm text-luxury-silver/70 leading-relaxed">
+                Complete provenance and manufacturing details
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+              className="group cursor-default rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm transition-all hover:border-luxury-gold/40 hover:bg-white/10"
+            >
+              <div className="mb-4 inline-flex rounded-xl bg-luxury-gold/10 p-3">
+                <Shield className="h-5 w-5 text-luxury-gold" />
+              </div>
+              <h3 className="mb-2 text-lg font-semibold text-white">Security</h3>
+              <p className="text-sm text-luxury-silver/70 leading-relaxed">
+                Encrypted QR codes prevent counterfeiting
+              </p>
+            </motion.div>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <motion.section
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.6 }}
-        className="relative border-t border-white/10 px-6 md:px-8 lg:px-12 py-16 md:py-20"
-      >
-        <div className="relative z-10 mx-auto w-full max-w-[1320px] flex flex-col md:flex-row items-start md:items-end justify-between gap-8 md:gap-0">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="flex flex-wrap items-center gap-6 md:gap-8"
-          >
-            <span className="text-white/40 text-sm">×</span>
-            {["What we do", "Authenticity", "Products", "About us"].map((link) => (
-              <Link
-                key={link}
-                href={`/${link.toLowerCase().replace(" ", "-")}`}
-                className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
-              >
-                {link}
-              </Link>
-            ))}
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="flex items-center gap-4 md:gap-5"
-          >
-            {[
-              { icon: Github, href: "https://github.com" },
-              { icon: Instagram, href: "https://instagram.com" },
-              { icon: Twitter, href: "https://twitter.com" },
-              { icon: Linkedin, href: "https://linkedin.com" },
-              { icon: Youtube, href: "https://youtube.com" },
-            ].map((social) => (
-              <a
-                key={social.href}
-                href={social.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-white/80 hover:text-white transition-colors duration-300"
-              >
-                <social.icon className="h-5 w-5 md:h-6 md:w-6" />
-              </a>
-            ))}
-          </motion.div>
-        </div>
-
-        <motion.div
+      {/* Footer Section */}
+      <AnimatePresence>
+        <motion.section
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="mt-12 text-center"
+          transition={{ duration: 0.6 }}
+          className="relative border-t border-white/10 px-6 md:px-8 lg:px-12 py-16 md:py-20"
         >
-          <p className="text-xs font-extralight text-white/25 tracking-[0.1em] uppercase">
-            © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
-          </p>
-        </motion.div>
-      </motion.section>
+          <div className="relative z-10 mx-auto w-full max-w-[1320px] flex flex-col md:flex-row items-start md:items-end justify-between gap-8 md:gap-0">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className="flex flex-wrap items-center gap-6 md:gap-8"
+            >
+              <span className="text-white/40 text-sm">×</span>
+              <Link
+                href="/what-we-do"
+                className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
+              >
+                What we do
+              </Link>
+              <Link
+                href="/authenticity"
+                className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
+              >
+                Authenticity
+              </Link>
+              <Link
+                href="/products"
+                className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
+              >
+                Products
+              </Link>
+              <Link
+                href="/about"
+                className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
+              >
+                About us
+              </Link>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              className="flex items-center gap-4 md:gap-5"
+            >
+              <a
+                href="https://github.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/80 hover:text-white transition-colors duration-300"
+                aria-label="GitHub"
+              >
+                <Github className="h-5 w-5 md:h-6 md:w-6" />
+              </a>
+              <a
+                href="https://instagram.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/80 hover:text-white transition-colors duration-300"
+                aria-label="Instagram"
+              >
+                <Instagram className="h-5 w-5 md:h-6 md:w-6" />
+              </a>
+              <a
+                href="https://twitter.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/80 hover:text-white transition-colors duration-300"
+                aria-label="Twitter"
+              >
+                <Twitter className="h-5 w-5 md:h-6 md:w-6" />
+              </a>
+              <a
+                href="https://linkedin.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/80 hover:text-white transition-colors duration-300"
+                aria-label="LinkedIn"
+              >
+                <Linkedin className="h-5 w-5 md:h-6 md:w-6" />
+              </a>
+              <a
+                href="https://youtube.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/80 hover:text-white transition-colors duration-300"
+                aria-label="YouTube"
+              >
+                <Youtube className="h-5 w-5 md:h-6 md:w-6" />
+              </a>
+            </motion.div>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="mt-12 text-center"
+          >
+            <p className="text-xs font-extralight text-white/25 tracking-[0.1em] uppercase">
+              © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
+            </p>
+          </motion.div>
+        </motion.section>
+      </AnimatePresence>
     </div>
   );
 }
