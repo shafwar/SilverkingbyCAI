@@ -134,14 +134,66 @@ const NarrativeImageSection = forwardRef<
   const [imageIndices, setImageIndices] = useState<number[]>([0, 0, 0]);
   const [imageLoaded, setImageLoaded] = useState<{ [key: string]: boolean }>({});
   const [imageError, setImageError] = useState<{ [key: string]: boolean }>({});
+  const [retryCount, setRetryCount] = useState<{ [key: string]: number }>({});
 
-  // Timeout handler to prevent infinite loading states
+  // Detect mobile for quality optimization
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Optimized preload strategy - immediate preload for first images
+  useEffect(() => {
+    // Preload first image for each card immediately
+    cards.forEach((card, idx) => {
+      if (card.images[0]) {
+        // Use link preload for better performance
+        const link = document.createElement("link");
+        link.rel = "preload";
+        link.as = "image";
+        link.href = card.images[0];
+        document.head.appendChild(link);
+
+        // Also preload with Image object for decode
+        const img = new window.Image();
+        img.src = card.images[0];
+        img.crossOrigin = "anonymous";
+        img.decode()
+          .then(() => {
+            // Image decoded successfully, mark as loaded
+            setImageLoaded((prev) => ({
+              ...prev,
+              [`${idx}-0`]: true,
+            }));
+          })
+          .catch(() => {
+            // Silent fail for preload, will be handled by Image component
+          });
+      }
+    });
+
+    return () => {
+      // Cleanup preload links
+      document.querySelectorAll('link[rel="preload"][as="image"]').forEach((link) => {
+        if (link.getAttribute("href")?.includes("/images/")) {
+          link.remove();
+        }
+      });
+    };
+  }, [cards]);
+
+  // Reduced timeout for faster feedback (4 seconds instead of 8)
   useEffect(() => {
     const timeouts: NodeJS.Timeout[] = [];
     
     columns.forEach((_, idx) => {
       const imageKey = `${idx}-0`;
-      // Set timeout for initial images (8 seconds)
+      // Reduced timeout to 4 seconds for faster feedback
       const timeout = setTimeout(() => {
         if (!imageLoaded[imageKey] && !imageError[imageKey]) {
           console.warn(`[NarrativeImageSection] Image loading timeout: ${imageKey}`);
@@ -150,7 +202,7 @@ const NarrativeImageSection = forwardRef<
             [imageKey]: true,
           }));
         }
-      }, 8000);
+      }, 4000);
       timeouts.push(timeout);
     });
 
@@ -158,25 +210,6 @@ const NarrativeImageSection = forwardRef<
       timeouts.forEach((timeout) => clearTimeout(timeout));
     };
   }, [columns.length, imageLoaded, imageError]);
-
-  // Preload first image for each card on mount for better performance
-  useEffect(() => {
-    const preloadImages = () => {
-      cards.forEach((card, idx) => {
-        if (card.images[0]) {
-          const img = new window.Image();
-          img.src = card.images[0];
-          img.loading = "eager";
-          img.decode().catch(() => {
-            // Silent fail for preload
-          });
-        }
-      });
-    };
-    // Delay preload slightly to not block initial render
-    const timeoutId = setTimeout(preloadImages, 100);
-    return () => clearTimeout(timeoutId);
-  }, [cards]);
 
   // Auto-rotate images on hover for desktop with smooth slide transition
   useEffect(() => {
@@ -197,9 +230,15 @@ const NarrativeImageSection = forwardRef<
           
           // Preload next image before switching (with decode for better performance)
           if (card.images[nextIndex]) {
+            const link = document.createElement("link");
+            link.rel = "preload";
+            link.as = "image";
+            link.href = card.images[nextIndex];
+            document.head.appendChild(link);
+            
             const img = new window.Image();
             img.src = card.images[nextIndex];
-            img.loading = "eager";
+            img.crossOrigin = "anonymous";
             img.decode().catch(() => {
               // Silent fail for preload
             });
@@ -264,29 +303,31 @@ const NarrativeImageSection = forwardRef<
                     
                     <AnimatePresence mode="wait" initial={false}>
                       {!imageError[`${idx}-${currentImageIndex}`] && (
-                        <motion.div
-                          key={`${idx}-${currentImageIndex}`}
+                      <motion.div
+                        key={`${idx}-${currentImageIndex}`}
                           initial={{ opacity: 0 }}
-                          animate={{ 
+                        animate={{ 
                             opacity: imageLoaded[`${idx}-${currentImageIndex}`] ? 1 : 0
                           }}
                           exit={{ opacity: 0 }}
-                          transition={{
+                        transition={{
                             duration: 0.3,
                             ease: "easeOut",
-                          }}
-                          className="absolute inset-0"
-                        >
-                          <Image
-                            src={currentImage}
-                            alt={card.label}
-                            fill
+                        }}
+                        className="absolute inset-0"
+                      >
+                        <Image
+                          src={currentImage}
+                          alt={card.label}
+                          fill
                             className="object-cover"
-                            sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                             priority={idx === 0 && currentImageIndex === 0}
                             loading={idx === 0 && currentImageIndex === 0 ? "eager" : "lazy"}
-                            quality={70}
-                            unoptimized={false}
+                            quality={isMobile ? 60 : 75}
+                          unoptimized={false}
+                            placeholder="blur"
+                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
                             onLoad={(e) => {
                               const imageKey = `${idx}-${currentImageIndex}`;
                               setImageLoaded((prev) => ({
@@ -301,11 +342,47 @@ const NarrativeImageSection = forwardRef<
                             }}
                             onError={(e) => {
                               const imageKey = `${idx}-${currentImageIndex}`;
-                              console.warn(`[NarrativeImageSection] Failed to load image: ${currentImage}`);
-                              setImageError((prev) => ({
-                                ...prev,
-                                [imageKey]: true,
-                              }));
+                              const currentRetry = retryCount[imageKey] || 0;
+                              
+                              // Retry up to 2 times
+                              if (currentRetry < 2) {
+                                console.warn(`[NarrativeImageSection] Failed to load image, retrying (${currentRetry + 1}/2): ${currentImage}`);
+                                setRetryCount((prev) => ({
+                                  ...prev,
+                                  [imageKey]: currentRetry + 1,
+                                }));
+                                
+                                // Retry after delay
+                                setTimeout(() => {
+                                  const img = new window.Image();
+                                  img.src = currentImage;
+                                  img.onload = () => {
+                                    setImageLoaded((prev) => ({
+                                      ...prev,
+                                      [imageKey]: true,
+                                    }));
+                                    setImageError((prev) => {
+                                      const newState = { ...prev };
+                                      delete newState[imageKey];
+                                      return newState;
+                                    });
+                                  };
+                                  img.onerror = () => {
+                                    if (currentRetry + 1 >= 2) {
+                                      setImageError((prev) => ({
+                                        ...prev,
+                                        [imageKey]: true,
+                                      }));
+                                    }
+                                  };
+                                }, 1000 * (currentRetry + 1));
+                              } else {
+                                console.warn(`[NarrativeImageSection] Failed to load image after retries: ${currentImage}`);
+                                setImageError((prev) => ({
+                                  ...prev,
+                                  [imageKey]: true,
+                                }));
+                              }
                             }}
                             onLoadingComplete={() => {
                               const imageKey = `${idx}-${currentImageIndex}`;
@@ -314,8 +391,8 @@ const NarrativeImageSection = forwardRef<
                                 [imageKey]: true,
                               }));
                             }}
-                          />
-                        </motion.div>
+                        />
+                      </motion.div>
                       )}
                     </AnimatePresence>
                     
@@ -323,7 +400,7 @@ const NarrativeImageSection = forwardRef<
                     {imageError[`${idx}-${currentImageIndex}`] && (
                       <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-black/80 to-black/60 z-10">
                         <p className="text-xs sm:text-sm text-white/60 px-4 text-center">Image unavailable</p>
-                      </div>
+                  </div>
                     )}
                   </div>
                   {/* Vignette overlay - properly contained and optimized */}
@@ -385,16 +462,18 @@ const NarrativeImageSection = forwardRef<
             
             {/* Image with error handling - Optimized for mobile */}
             {!imageError["mobile-0"] && (
-              <Image
-                src={cards[0].images[0]}
-                alt={cards[0].label}
-                fill
-                className="object-cover"
-                sizes="100vw"
-                priority
-                quality={70}
-                loading="eager"
+            <Image
+              src={cards[0].images[0]}
+              alt={cards[0].label}
+              fill
+              className="object-cover"
+              sizes="100vw"
+              priority
+                quality={60}
+              loading="eager"
                 unoptimized={false}
+                placeholder="blur"
+                blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
                 onLoad={(e) => {
                   setImageLoaded((prev) => ({
                     ...prev,
@@ -407,11 +486,48 @@ const NarrativeImageSection = forwardRef<
                   });
                 }}
                 onError={(e) => {
-                  console.warn(`[NarrativeImageSection] Failed to load mobile image: ${cards[0].images[0]}`);
-                  setImageError((prev) => ({
-                    ...prev,
-                    "mobile-0": true,
-                  }));
+                  const currentRetry = retryCount["mobile-0"] || 0;
+                  
+                  // Retry up to 2 times
+                  if (currentRetry < 2) {
+                    console.warn(`[NarrativeImageSection] Failed to load mobile image, retrying (${currentRetry + 1}/2): ${cards[0].images[0]}`);
+                    setRetryCount((prev) => ({
+                      ...prev,
+                      "mobile-0": currentRetry + 1,
+                    }));
+                    
+                    // Retry after delay
+                    setTimeout(() => {
+                      const img = new window.Image();
+                      img.src = cards[0].images[0];
+                      img.onload = () => {
+                        setImageLoaded((prev) => ({
+                          ...prev,
+                          "mobile-0": true,
+                        }));
+                        setImageError((prev) => {
+                          const newState = { ...prev };
+                          delete newState["mobile-0"];
+                          return newState;
+                        });
+                      };
+                      img.onerror = () => {
+                        if (currentRetry + 1 >= 2) {
+                          console.warn(`[NarrativeImageSection] Failed to load mobile image after retries: ${cards[0].images[0]}`);
+                          setImageError((prev) => ({
+                            ...prev,
+                            "mobile-0": true,
+                          }));
+                        }
+                      };
+                    }, 1000 * (currentRetry + 1));
+                  } else {
+                    console.warn(`[NarrativeImageSection] Failed to load mobile image after retries: ${cards[0].images[0]}`);
+                    setImageError((prev) => ({
+                      ...prev,
+                      "mobile-0": true,
+                    }));
+                  }
                 }}
                 onLoadingComplete={() => {
                   setImageLoaded((prev) => ({
@@ -688,7 +804,7 @@ export default function WhatWeDoPage() {
                   // But we can also try to play if it's paused
                   if (video.paused && !video.ended) {
                     setTimeout(() => {
-                      forcePlay();
+                    forcePlay();
                     }, 100);
                   }
                 };
@@ -971,7 +1087,7 @@ export default function WhatWeDoPage() {
                   // But we can also try to play if it's paused
                   if (video.paused && !video.ended) {
                     setTimeout(() => {
-                      forcePlay();
+                    forcePlay();
                     }, 100);
                   }
                 };
