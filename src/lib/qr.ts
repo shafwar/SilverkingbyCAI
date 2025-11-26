@@ -59,7 +59,7 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
     // Calculate dimensions
     const qrWidth = qrImage.width;
     const qrHeight = qrImage.height;
-    const textHeight = 40; // Space for text below QR
+    const textHeight = 50; // Increased space for text below QR (larger font)
     const padding = 20; // Padding around QR and text
     const totalWidth = qrWidth + padding * 2;
     const totalHeight = qrHeight + textHeight + padding * 2;
@@ -205,10 +205,10 @@ export async function addProductInfoToQR(
     // Calculate dimensions
     const qrWidth = qrImage.width;
     const qrHeight = qrImage.height;
-    const titleHeight = 30; // Space for product name
-    const serialHeight = 25; // Space for serial code
+    const titleHeight = 35; // Increased space for product name
+    const serialHeight = 35; // Increased space for serial code (larger font)
     const padding = 20; // Padding around QR and text
-    const spacing = 8; // Space between title and serial
+    const spacing = 12; // Increased space between title and serial
     const totalWidth = qrWidth + padding * 2;
     const totalHeight = qrHeight + titleHeight + serialHeight + padding * 2 + spacing;
 
