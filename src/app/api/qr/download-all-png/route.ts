@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import QRCode from "qrcode";
-import { createCanvas, loadImage } from "@napi-rs/canvas";
+import { createCanvas, loadImage } from "canvas";
 import { addProductInfoToQR } from "@/lib/qr";
 import { getVerifyUrl } from "@/utils/constants";
 import { prisma } from "@/lib/prisma";
@@ -36,26 +36,31 @@ export async function GET(request: NextRequest) {
     });
 
     if (products.length === 0) {
-      return NextResponse.json(
-        { error: "No products with QR codes found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "No products with QR codes found" }, { status: 404 });
     }
 
-    // QR code dimensions
-    const qrSize = 300; // Size of each QR code
+    // QR code dimensions - match with addProductInfoToQR function
+    const qrBaseSize = 560; // Base QR code size from QRCode.toBuffer
     const qrPerRow = 3; // 3 QR codes per row
-    const padding = 30; // Padding around each QR
-    const spacing = 20; // Space between QR codes
-    const textHeight = 80; // Space for product name and serial below QR
+    const innerPadding = 20; // Padding inside addProductInfoToQR (matches lib/qr.ts)
+    const gridSpacing = 40; // Space between QR codes in grid
+    const titleHeight = 35; // Space for product name (from lib/qr.ts)
+    const serialHeight = 35; // Space for serial code (from lib/qr.ts)
+    const textSpacing = 12; // Space between title and serial (from lib/qr.ts)
+    const outerPadding = 40; // Outer padding around the entire grid
+    
+    // Calculate dimensions for QR with text (matches addProductInfoToQR output)
+    // addProductInfoToQR creates: width = qrBaseSize + innerPadding*2, height = qrBaseSize + titleHeight + serialHeight + innerPadding*2 + textSpacing
+    const qrWithTextWidth = qrBaseSize + innerPadding * 2;
+    const qrWithTextHeight = qrBaseSize + titleHeight + serialHeight + innerPadding * 2 + textSpacing;
     
     // Calculate grid dimensions
     const rows = Math.ceil(products.length / qrPerRow);
-    const qrWithTextWidth = qrSize + padding * 2;
-    const qrWithTextHeight = qrSize + textHeight + padding * 2;
-    
-    const totalWidth = qrPerRow * (qrWithTextWidth + spacing) - spacing + padding * 2;
-    const totalHeight = rows * (qrWithTextHeight + spacing) - spacing + padding * 2 + 100; // Extra space for header
+
+    // Total width = outerPadding (left) + (qrWithTextWidth + gridSpacing) * qrPerRow - gridSpacing (last one doesn't need spacing) + outerPadding (right)
+    const totalWidth = outerPadding * 2 + qrPerRow * qrWithTextWidth + (qrPerRow - 1) * gridSpacing;
+    // Total height = header space + outerPadding (top) + rows * qrWithTextHeight + (rows - 1) * gridSpacing + outerPadding (bottom)
+    const totalHeight = 120 + outerPadding * 2 + rows * qrWithTextHeight + (rows - 1) * gridSpacing;
 
     // Create main canvas
     const canvas = createCanvas(totalWidth, totalHeight);
@@ -70,7 +75,7 @@ export async function GET(request: NextRequest) {
     ctx.font = "bold 32px Arial, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("Silver King - All QR Codes", totalWidth / 2, 50);
-    
+
     ctx.font = "18px Arial, sans-serif";
     ctx.fillText(`Total Products: ${products.length}`, totalWidth / 2, 85);
 
@@ -93,22 +98,20 @@ export async function GET(request: NextRequest) {
         });
 
         // Add product information (name and serial) below QR code
-        const pngBuffer = await addProductInfoToQR(
-          qrBuffer,
-          product.serialCode,
-          product.name
-        );
+        const pngBuffer = await addProductInfoToQR(qrBuffer, product.serialCode, product.name);
 
         // Load QR image
         const qrImage = await loadImage(pngBuffer);
 
-        // Calculate position
-        const x = padding + col * (qrWithTextWidth + spacing);
-        const y = padding + 100 + row * (qrWithTextHeight + spacing); // 100 for header
+        // Calculate position in grid
+        // x = outerPadding + col * (qrWithTextWidth + gridSpacing)
+        const x = outerPadding + col * (qrWithTextWidth + gridSpacing);
+        // y = header space + outerPadding + row * (qrWithTextHeight + gridSpacing)
+        const y = 120 + outerPadding + row * (qrWithTextHeight + gridSpacing);
 
-        // Draw QR code
-        ctx.drawImage(qrImage, x, y, qrSize, qrSize);
-
+        // Draw QR code with text at exact size (qrImage already has correct dimensions from addProductInfoToQR)
+        // Use actual image dimensions to ensure proper scaling
+        ctx.drawImage(qrImage, x, y, qrWithTextWidth, qrWithTextHeight);
       } catch (error) {
         console.error(`Failed to generate QR for ${product.serialCode}:`, error);
         // Continue with next product
@@ -135,4 +138,3 @@ export async function GET(request: NextRequest) {
     return new NextResponse("Failed to generate PNG grid", { status: 500 });
   }
 }
-

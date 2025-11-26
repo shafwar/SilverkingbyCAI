@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import QRCode from "qrcode";
-import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { addProductInfoToQR } from "@/lib/qr";
 import { getVerifyUrl } from "@/utils/constants";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { createCanvas, loadImage } from "canvas";
 
 /**
  * Generate single PNG image with selected QR codes in a grid layout
@@ -60,10 +60,10 @@ export async function POST(request: NextRequest) {
     const qrBaseSize = 560; // Base QR code size from QRCode.toBuffer
     const qrPerRow = 3; // 3 QR codes per row
     const innerPadding = 20; // Padding inside addProductInfoToQR (matches lib/qr.ts)
-    const gridSpacing = 40; // Space between QR codes in grid (increased for better spacing)
-    const titleHeight = 30; // Space for product name (from lib/qr.ts)
-    const serialHeight = 25; // Space for serial code (from lib/qr.ts)
-    const textSpacing = 8; // Space between title and serial (from lib/qr.ts)
+    const gridSpacing = 40; // Space between QR codes in grid
+    const titleHeight = 35; // Space for product name (from lib/qr.ts)
+    const serialHeight = 35; // Space for serial code (from lib/qr.ts)
+    const textSpacing = 12; // Space between title and serial (from lib/qr.ts)
     const outerPadding = 40; // Outer padding around the entire grid
     
     // Calculate dimensions for QR with text (matches addProductInfoToQR output)
