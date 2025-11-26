@@ -26,37 +26,33 @@ if (typeof window !== "undefined") {
 }
 
 const revealVariants: Variants = {
-  initial: { opacity: 0, y: 40 },
+  initial: { opacity: 0, y: 20 },
   animate: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1], staggerChildren: 0.15 },
+    transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1], staggerChildren: 0.1 },
   },
 };
 
 const presenceVariants: Variants = {
-  initial: { opacity: 0, y: 32, scale: 0.96, filter: "blur(8px)" },
+  initial: { opacity: 0, y: 20 },
   animate: (index = 0) => ({
     opacity: 1,
     y: 0,
-    scale: 1,
-    filter: "blur(0px)",
     transition: {
-      duration: 0.6,
-      ease: [0.22, 1, 0.36, 1],
-      delay: Number(index) * 0.08,
+      duration: 0.4,
+      ease: [0.25, 0.1, 0.25, 1],
+      delay: Number(index) * 0.05,
     },
   }),
 };
 
 const glassPanelVariants: Variants = {
-  initial: { opacity: 0, scale: 0.94, y: 28, filter: "blur(10px)" },
+  initial: { opacity: 0, y: 20 },
   animate: (index = 0) => ({
     opacity: 1,
-    scale: 1,
     y: 0,
-    filter: "blur(0px)",
-    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: Number(index) * 0.08 },
+    transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1], delay: Number(index) * 0.05 },
   }),
 };
 
@@ -147,33 +143,57 @@ const NarrativeImageSection = forwardRef<
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Optimized preload strategy - immediate preload for first images
+  // Optimized preload strategy - immediate preload for first images with better performance
   useEffect(() => {
-    // Preload first image for each card immediately
+    // Preload first image for each card immediately with optimized settings
     cards.forEach((card, idx) => {
       if (card.images[0]) {
-        // Use link preload for better performance
+        const imageUrl = card.images[0];
+        
+        // Use link preload with fetchpriority for critical images
         const link = document.createElement("link");
         link.rel = "preload";
         link.as = "image";
-        link.href = card.images[0];
+        link.href = imageUrl;
+        if (idx === 0) {
+          link.setAttribute("fetchpriority", "high");
+        }
         document.head.appendChild(link);
 
-        // Also preload with Image object for decode
+        // Preload with Image object for faster decode and rendering
         const img = new window.Image();
-        img.src = card.images[0];
-        img.crossOrigin = "anonymous";
-        img.decode()
-          .then(() => {
-            // Image decoded successfully, mark as loaded
-            setImageLoaded((prev) => ({
-              ...prev,
-              [`${idx}-0`]: true,
-            }));
-          })
-          .catch(() => {
-            // Silent fail for preload, will be handled by Image component
-          });
+        img.src = imageUrl;
+        img.loading = "eager";
+        // Only set crossOrigin if it's a remote URL
+        if (imageUrl.startsWith("http") && !imageUrl.includes("localhost")) {
+          img.crossOrigin = "anonymous";
+        }
+        
+        // Use requestIdleCallback for non-critical images to not block main thread
+        const preloadImage = () => {
+          img.decode()
+            .then(() => {
+              // Image decoded successfully, mark as loaded immediately
+              setImageLoaded((prev) => ({
+                ...prev,
+                [`${idx}-0`]: true,
+              }));
+            })
+            .catch(() => {
+              // Silent fail - will be handled by Image component
+            });
+        };
+
+        if (idx === 0) {
+          // First image: decode immediately
+          preloadImage();
+        } else if (typeof window !== "undefined" && window.requestIdleCallback) {
+          // Other images: decode when browser is idle
+          window.requestIdleCallback(preloadImage, { timeout: 2000 });
+        } else {
+          // Fallback for browsers without requestIdleCallback
+          setTimeout(preloadImage, 100 * idx);
+        }
       }
     });
 
@@ -310,9 +330,9 @@ const NarrativeImageSection = forwardRef<
                             opacity: imageLoaded[`${idx}-${currentImageIndex}`] ? 1 : 0
                           }}
                           exit={{ opacity: 0 }}
-                        transition={{
-                            duration: 0.3,
-                            ease: "easeOut",
+                          transition={{
+                            duration: 0.2,
+                            ease: [0.25, 0.1, 0.25, 1],
                         }}
                         className="absolute inset-0"
                       >
@@ -320,77 +340,88 @@ const NarrativeImageSection = forwardRef<
                           src={currentImage}
                           alt={card.label}
                           fill
-                            className="object-cover"
-                            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                            priority={idx === 0 && currentImageIndex === 0}
-                            loading={idx === 0 && currentImageIndex === 0 ? "eager" : "lazy"}
-                            quality={isMobile ? 60 : 75}
+                          className="object-cover"
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 420px"
+                          priority={idx === 0 && currentImageIndex === 0}
+                          loading={idx === 0 && currentImageIndex === 0 ? "eager" : "lazy"}
+                          quality={isMobile ? 75 : 85}
                           unoptimized={false}
-                            placeholder="blur"
-                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
-                            onLoad={(e) => {
-                              const imageKey = `${idx}-${currentImageIndex}`;
-                              setImageLoaded((prev) => ({
+                          placeholder="blur"
+                          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
+                          decoding="async"
+                          fetchPriority={idx === 0 && currentImageIndex === 0 ? "high" : "auto"}
+                          onLoad={(e) => {
+                            const imageKey = `${idx}-${currentImageIndex}`;
+                            if (process.env.NODE_ENV === 'development') {
+                              console.log(`[NarrativeImageSection] Image loaded successfully: ${imageKey}`, currentImage);
+                            }
+                            setImageLoaded((prev) => ({
+                              ...prev,
+                              [imageKey]: true,
+                            }));
+                            setImageError((prev) => {
+                              const newState = { ...prev };
+                              delete newState[imageKey];
+                              return newState;
+                            });
+                          }}
+                          onError={(e) => {
+                            const imageKey = `${idx}-${currentImageIndex}`;
+                            const currentRetry = retryCount[imageKey] || 0;
+                            
+                            console.error(`[NarrativeImageSection] Image load error (attempt ${currentRetry + 1}): ${currentImage}`, e);
+                            
+                            // Retry up to 2 times
+                            if (currentRetry < 2) {
+                              console.warn(`[NarrativeImageSection] Retrying image load (${currentRetry + 1}/2): ${currentImage}`);
+                              setRetryCount((prev) => ({
                                 ...prev,
-                                [imageKey]: true,
+                                [imageKey]: currentRetry + 1,
                               }));
-                              setImageError((prev) => {
-                                const newState = { ...prev };
-                                delete newState[imageKey];
-                                return newState;
-                              });
-                            }}
-                            onError={(e) => {
-                              const imageKey = `${idx}-${currentImageIndex}`;
-                              const currentRetry = retryCount[imageKey] || 0;
                               
-                              // Retry up to 2 times
-                              if (currentRetry < 2) {
-                                console.warn(`[NarrativeImageSection] Failed to load image, retrying (${currentRetry + 1}/2): ${currentImage}`);
-                                setRetryCount((prev) => ({
-                                  ...prev,
-                                  [imageKey]: currentRetry + 1,
-                                }));
-                                
-                                // Retry after delay
-                                setTimeout(() => {
-                                  const img = new window.Image();
-                                  img.src = currentImage;
-                                  img.onload = () => {
-                                    setImageLoaded((prev) => ({
+                              // Retry after delay
+                              setTimeout(() => {
+                                const img = new window.Image();
+                                img.src = currentImage;
+                                img.onload = () => {
+                                  if (process.env.NODE_ENV === 'development') {
+                                    console.log(`[NarrativeImageSection] Retry successful for: ${imageKey}`);
+                                  }
+                                  setImageLoaded((prev) => ({
+                                    ...prev,
+                                    [imageKey]: true,
+                                  }));
+                                  setImageError((prev) => {
+                                    const newState = { ...prev };
+                                    delete newState[imageKey];
+                                    return newState;
+                                  });
+                                };
+                                img.onerror = () => {
+                                  console.error(`[NarrativeImageSection] Retry failed for: ${imageKey}`);
+                                  if (currentRetry + 1 >= 2) {
+                                    setImageError((prev) => ({
                                       ...prev,
                                       [imageKey]: true,
                                     }));
-                                    setImageError((prev) => {
-                                      const newState = { ...prev };
-                                      delete newState[imageKey];
-                                      return newState;
-                                    });
-                                  };
-                                  img.onerror = () => {
-                                    if (currentRetry + 1 >= 2) {
-                                      setImageError((prev) => ({
-                                        ...prev,
-                                        [imageKey]: true,
-                                      }));
-                                    }
-                                  };
-                                }, 1000 * (currentRetry + 1));
-                              } else {
-                                console.warn(`[NarrativeImageSection] Failed to load image after retries: ${currentImage}`);
-                                setImageError((prev) => ({
-                                  ...prev,
-                                  [imageKey]: true,
-                                }));
-                              }
-                            }}
-                            onLoadingComplete={() => {
-                              const imageKey = `${idx}-${currentImageIndex}`;
-                              setImageLoaded((prev) => ({
+                                  }
+                                };
+                              }, 1000 * (currentRetry + 1));
+                            } else {
+                              console.error(`[NarrativeImageSection] Failed to load image after ${currentRetry + 1} retries: ${currentImage}`);
+                              setImageError((prev) => ({
                                 ...prev,
                                 [imageKey]: true,
                               }));
-                            }}
+                            }
+                          }}
+                          onLoadingComplete={() => {
+                            const imageKey = `${idx}-${currentImageIndex}`;
+                            setImageLoaded((prev) => ({
+                              ...prev,
+                              [imageKey]: true,
+                            }));
+                          }}
                         />
                       </motion.div>
                       )}
@@ -469,77 +500,86 @@ const NarrativeImageSection = forwardRef<
               className="object-cover"
               sizes="100vw"
               priority
-                quality={60}
+              quality={80}
               loading="eager"
-                unoptimized={false}
-                placeholder="blur"
-                blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
-                onLoad={(e) => {
-                  setImageLoaded((prev) => ({
+              unoptimized={false}
+              placeholder="blur"
+              blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
+              decoding="async"
+              fetchPriority="high"
+              onLoad={(e) => {
+                if (process.env.NODE_ENV === 'development') {
+                  console.log(`[NarrativeImageSection] Mobile image loaded successfully:`, cards[0].images[0]);
+                }
+                setImageLoaded((prev) => ({
+                  ...prev,
+                  "mobile-0": true,
+                }));
+                setImageError((prev) => {
+                  const newState = { ...prev };
+                  delete newState["mobile-0"];
+                  return newState;
+                });
+              }}
+              onError={(e) => {
+                const currentRetry = retryCount["mobile-0"] || 0;
+                console.error(`[NarrativeImageSection] Mobile image load error (attempt ${currentRetry + 1}): ${cards[0].images[0]}`, e);
+                
+                // Retry up to 2 times
+                if (currentRetry < 2) {
+                  console.warn(`[NarrativeImageSection] Retrying mobile image load (${currentRetry + 1}/2): ${cards[0].images[0]}`);
+                  setRetryCount((prev) => ({
                     ...prev,
-                    "mobile-0": true,
+                    "mobile-0": currentRetry + 1,
                   }));
-                  setImageError((prev) => {
-                    const newState = { ...prev };
-                    delete newState["mobile-0"];
-                    return newState;
-                  });
-                }}
-                onError={(e) => {
-                  const currentRetry = retryCount["mobile-0"] || 0;
                   
-                  // Retry up to 2 times
-                  if (currentRetry < 2) {
-                    console.warn(`[NarrativeImageSection] Failed to load mobile image, retrying (${currentRetry + 1}/2): ${cards[0].images[0]}`);
-                    setRetryCount((prev) => ({
-                      ...prev,
-                      "mobile-0": currentRetry + 1,
-                    }));
-                    
-                    // Retry after delay
-                    setTimeout(() => {
-                      const img = new window.Image();
-                      img.src = cards[0].images[0];
-                      img.onload = () => {
-                        setImageLoaded((prev) => ({
+                  // Retry after delay
+                  setTimeout(() => {
+                    const img = new window.Image();
+                    img.src = cards[0].images[0];
+                    img.onload = () => {
+                      if (process.env.NODE_ENV === 'development') {
+                        console.log(`[NarrativeImageSection] Mobile retry successful`);
+                      }
+                      setImageLoaded((prev) => ({
+                        ...prev,
+                        "mobile-0": true,
+                      }));
+                      setImageError((prev) => {
+                        const newState = { ...prev };
+                        delete newState["mobile-0"];
+                        return newState;
+                      });
+                    };
+                    img.onerror = () => {
+                      console.error(`[NarrativeImageSection] Mobile retry failed`);
+                      if (currentRetry + 1 >= 2) {
+                        setImageError((prev) => ({
                           ...prev,
                           "mobile-0": true,
                         }));
-                        setImageError((prev) => {
-                          const newState = { ...prev };
-                          delete newState["mobile-0"];
-                          return newState;
-                        });
-                      };
-                      img.onerror = () => {
-                        if (currentRetry + 1 >= 2) {
-                          console.warn(`[NarrativeImageSection] Failed to load mobile image after retries: ${cards[0].images[0]}`);
-                          setImageError((prev) => ({
-                            ...prev,
-                            "mobile-0": true,
-                          }));
-                        }
-                      };
-                    }, 1000 * (currentRetry + 1));
-                  } else {
-                    console.warn(`[NarrativeImageSection] Failed to load mobile image after retries: ${cards[0].images[0]}`);
-                    setImageError((prev) => ({
-                      ...prev,
-                      "mobile-0": true,
-                    }));
-                  }
-                }}
-                onLoadingComplete={() => {
-                  setImageLoaded((prev) => ({
+                      }
+                    };
+                  }, 1000 * (currentRetry + 1));
+                } else {
+                  console.error(`[NarrativeImageSection] Failed to load mobile image after ${currentRetry + 1} retries: ${cards[0].images[0]}`);
+                  setImageError((prev) => ({
                     ...prev,
                     "mobile-0": true,
                   }));
-                }}
-                style={{
-                  opacity: imageLoaded["mobile-0"] ? 1 : 0,
-                  transition: "opacity 0.3s ease-out",
-                }}
-              />
+                }
+              }}
+              onLoadingComplete={() => {
+                setImageLoaded((prev) => ({
+                  ...prev,
+                  "mobile-0": true,
+                }));
+              }}
+              style={{
+                opacity: imageLoaded["mobile-0"] ? 1 : 0,
+                transition: "opacity 0.3s ease-out",
+              }}
+            />
             )}
             
             {/* Error fallback */}
@@ -632,15 +672,20 @@ export default function WhatWeDoPage() {
     },
   ] as const;
 
+  // Helper to get image URL - will use R2 if configured, otherwise fallback to local path
+  const getImageUrl = (path: string): string => {
+    return getR2UrlClient(path);
+  };
+
   const narrativeCards = [
     {
       label: "Gold fabrication lines",
       caption:
         "High‑throughput casting, edge finishing, and surface treatment tuned for bullion batches.",
       images: [
-        getR2UrlClient("/images/pexels-3d-render-1058120333-33539240.jpg"),
-        getR2UrlClient("/images/pexels-sejio402-29336321.jpg"),
-        getR2UrlClient("/images/silverking-gold.jpeg"),
+        getImageUrl("/images/pexels-3d-render-1058120333-33539240.jpg"),
+        getImageUrl("/images/pexels-sejio402-29336321.jpg"),
+        getImageUrl("/images/silverking-gold.jpeg"),
       ],
     },
     {
@@ -648,9 +693,9 @@ export default function WhatWeDoPage() {
       caption:
         "Spectrometry‑backed purification with ISO‑aligned quality controls for industrial and retail bars.",
       images: [
-        getR2UrlClient("/images/pexels-michael-steinberg-95604-386318.jpg"),
-        getR2UrlClient("/images/pexels-sejio402-29336326.jpg"),
-        getR2UrlClient("/images/silverking-gold.jpeg"),
+        getImageUrl("/images/pexels-michael-steinberg-95604-386318.jpg"),
+        getImageUrl("/images/pexels-sejio402-29336326.jpg"),
+        getImageUrl("/images/silverking-gold.jpeg"),
       ],
     },
     {
@@ -658,9 +703,9 @@ export default function WhatWeDoPage() {
       caption:
         "QR issuance, scan logging, and risk signals wired directly into Silver King Command.",
       images: [
-        getR2UrlClient("/images/pexels-sejio402-29336327.jpg"),
-        getR2UrlClient("/images/pexels-sejio402-29336321.jpg"),
-        getR2UrlClient("/images/silverking-gold.jpeg"),
+        getImageUrl("/images/pexels-sejio402-29336327.jpg"),
+        getImageUrl("/images/pexels-sejio402-29336321.jpg"),
+        getImageUrl("/images/silverking-gold.jpeg"),
       ],
     },
   ] as const;
@@ -670,32 +715,32 @@ export default function WhatWeDoPage() {
       if (!pageRef.current) return;
 
       const ctx = gsap.context(() => {
-        gsap.set("[data-reveal]", { autoAlpha: 0, y: 40 });
+        gsap.set("[data-reveal]", { autoAlpha: 0, y: 20 });
 
         sectionsRef.current.forEach((section) => {
           if (!section) return;
           const targets = section.querySelectorAll("[data-reveal]");
 
           ScrollTrigger.batch(targets, {
-            start: "top 80%",
+            start: "top 85%",
             onEnter: (batch) =>
               gsap.to(batch, {
                 autoAlpha: 1,
                 y: 0,
-                duration: 0.6,
-                stagger: 0.12,
-                ease: "power3.out",
+                duration: 0.4,
+                stagger: 0.08,
+                ease: "power2.out",
               }),
             once: true,
           });
         });
 
         if (heroRef.current) {
-          const heroTimeline = gsap.timeline({ defaults: { ease: "power3.out" } });
+          const heroTimeline = gsap.timeline({ defaults: { ease: "power2.out" } });
           heroTimeline.fromTo(
             heroRef.current.querySelectorAll("[data-hero]") || [],
-            { autoAlpha: 0, y: 40 },
-            { autoAlpha: 1, y: 0, duration: 0.8, stagger: 0.15 }
+            { autoAlpha: 0, y: 20 },
+            { autoAlpha: 1, y: 0, duration: 0.5, stagger: 0.1 }
           );
         }
       }, pageRef);
