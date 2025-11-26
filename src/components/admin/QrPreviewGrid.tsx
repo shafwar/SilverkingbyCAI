@@ -234,45 +234,14 @@ export function QrPreviewGrid() {
   }, [filteredProducts, selectedItems.size]);
 
   // Update select all to work with filtered products
-  const handleRegenerateAll = async () => {
-    if (!data?.products || data.products.length === 0) {
-      alert("No products available to regenerate.");
-      return;
-    }
-
-    const confirmMessage = `Are you sure you want to regenerate ALL ${data.products.length} QR codes?\n\nThis will update all QR codes with correct serial numbers from the database.`;
-    if (!confirm(confirmMessage)) {
-      return;
-    }
-
+  const handleRefresh = async () => {
     setIsRegenerating(true);
     try {
-      const response = await fetch("/api/admin/qr-preview/regenerate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ regenerateAll: true }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to regenerate QR codes");
-      }
-
-      const result = await response.json();
-      
-      // Refresh the data
+      // Simply refresh the data from server (no regeneration)
+      // This will fetch latest QR codes with correct serial numbers from database
       await mutate();
-      
-      alert(
-        `Successfully regenerated ${result.regenerated} QR code(s)!\n` +
-        (result.failed > 0 ? `Failed: ${result.failed}\n` : "") +
-        `Total processed: ${result.total}`
-      );
     } catch (error: any) {
-      console.error("Failed to regenerate QR codes:", error);
-      alert(`Failed to regenerate QR codes: ${error.message || "Please try again"}`);
+      console.error("Failed to refresh QR codes:", error);
     } finally {
       setIsRegenerating(false);
     }
@@ -541,14 +510,14 @@ export function QrPreviewGrid() {
               </motion.button>
             )}
             <motion.button
-              onClick={handleRegenerateAll}
+              onClick={handleRefresh}
               disabled={isRegenerating}
-              className="group inline-flex items-center gap-2 rounded-full border border-blue-400/60 bg-blue-400/10 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-all hover:border-blue-400 hover:bg-blue-400/20 hover:shadow-[0_0_20px_rgba(96,165,250,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-all hover:border-white/40 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
               whileHover={{ scale: isRegenerating ? 1 : 1.02 }}
               whileTap={{ scale: isRegenerating ? 1 : 0.98 }}
             >
               <RefreshCw className={`h-4 w-4 transition-transform ${isRegenerating ? "animate-spin" : "group-hover:rotate-180"}`} />
-              {isRegenerating ? "Regenerating..." : "Regenerate All QR"}
+              {isRegenerating ? "Refreshing..." : "Refresh"}
             </motion.button>
             <motion.button
               onClick={handleDownloadAll}
@@ -746,8 +715,8 @@ export function QrPreviewGrid() {
               filteredProducts.map((product, index) => {
                 const isItemSelected = selectedItems.has(product.id);
                 return (
-                  <AnimatedCard key={product.id} delay={index * 0.04}>
-                    <div className="flex items-center justify-between">
+          <AnimatedCard key={product.id} delay={index * 0.04}>
+            <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <button
                           type="button"
@@ -760,27 +729,27 @@ export function QrPreviewGrid() {
                             <Square className="h-5 w-5 text-white/40" />
                           )}
                         </button>
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.4em] text-white/60">Serial</p>
-                          <p className="mt-1 font-mono text-lg text-white">{product.serialCode}</p>
+              <div>
+                <p className="text-xs uppercase tracking-[0.4em] text-white/60">Serial</p>
+                <p className="mt-1 font-mono text-lg text-white">{product.serialCode}</p>
                         </div>
-                      </div>
-                      <div className="rounded-full border border-white/10 p-3">
-                        <QrCode className="h-5 w-5 text-[#FFD700]" />
-                      </div>
-                    </div>
-                    <p className="mt-4 text-2xl font-semibold">{product.name}</p>
-                    <p className="text-sm text-white/60">{product.weight} gr</p>
-                    <motion.div
-                      className="mt-6 flex items-center gap-4 rounded-2xl border border-white/5 bg-black/40 p-4"
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
+              </div>
+              <div className="rounded-full border border-white/10 p-3">
+                <QrCode className="h-5 w-5 text-[#FFD700]" />
+              </div>
+            </div>
+            <p className="mt-4 text-2xl font-semibold">{product.name}</p>
+            <p className="text-sm text-white/60">{product.weight} gr</p>
+              <motion.div
+                className="mt-6 flex items-center gap-4 rounded-2xl border border-white/5 bg-black/40 p-4"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                         src={product.qrImageUrl || `/api/qr/${product.serialCode}`}
-                        alt={product.name}
-                        className="h-28 w-28 rounded-2xl border border-white/10 bg-white p-3 object-contain"
+                  alt={product.name}
+                  className="h-28 w-28 rounded-2xl border border-white/10 bg-white p-3 object-contain"
                         onError={(e) => {
                           // Fallback to API route if image fails to load
                           const target = e.target as HTMLImageElement;
@@ -788,15 +757,15 @@ export function QrPreviewGrid() {
                             target.src = `/api/qr/${product.serialCode}`;
                           }
                         }}
-                      />
-                      <button
-                        className="ml-auto inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 transition hover:border-[#FFD700]/40 hover:text-white"
-                        onClick={() => setSelected(product)}
-                      >
-                        <Maximize2 className="h-4 w-4" />
-                        Enlarge
-                      </button>
-                    </motion.div>
+                />
+                <button
+                  className="ml-auto inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 transition hover:border-[#FFD700]/40 hover:text-white"
+                  onClick={() => setSelected(product)}
+                >
+                  <Maximize2 className="h-4 w-4" />
+                  Enlarge
+                </button>
+              </motion.div>
                   </AnimatedCard>
                 );
               })
