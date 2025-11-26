@@ -19,7 +19,8 @@ export function AdminNav({ email }: { email?: string | null }) {
 
   const handleSignOut = async () => {
     await signOut({ redirect: false });
-    router.push("/admin/login");
+    // Redirect to homepage after logout
+    window.location.href = "https://cahayasilverking.id/";
   };
 
   return (

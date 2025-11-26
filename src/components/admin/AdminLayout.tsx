@@ -39,7 +39,8 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
 
   const handleSignOut = async () => {
     await signOut({ redirect: false });
-    router.push("/admin/login");
+    // Redirect to homepage after logout
+    window.location.href = "https://cahayasilverking.id/";
   };
 
   const renderLinks = (orientation: "row" | "col") =>
