@@ -93,65 +93,45 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
     const textX = totalWidth / 2;
     const textY = qrHeight + padding + textHeight / 2;
     
-    // CRITICAL FIX: Use robust text rendering with guaranteed font fallback
-    // Render text using the most reliable method possible
+    // CRITICAL FIX: Use ultra-robust text rendering that works in all environments
+    // Always use character-by-character rendering for maximum reliability
     ctx.fillStyle = "#000000"; // Pure black
     ctx.strokeStyle = "#000000";
-    ctx.textAlign = "center";
+    ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
     
-    // Use the most basic, guaranteed-to-work font first
-    // Start with simple monospace which should always work
+    // Use simple monospace font - guaranteed to work in all Node.js environments
     ctx.font = "bold 22px monospace";
     
-    // Verify font works by measuring
-    const testMetrics = ctx.measureText(normalizedSerialCode);
-    const hasValidWidth = testMetrics.width > 0;
+    // ALWAYS use character-by-character rendering for maximum reliability
+    // This ensures text renders correctly even if font measurement fails
+    const charWidth = 13.2; // Fixed width for monospace 22px font
+    const totalTextWidth = normalizedSerialCode.length * charWidth;
+    const startX = textX - (totalTextWidth / 2);
     
-    console.log("[addSerialNumberToQR] Font test:", {
-      serialCode: normalizedSerialCode,
-      measuredWidth: testMetrics.width,
-      hasValidWidth,
-      font: ctx.font
-    });
-    
-    if (hasValidWidth) {
-      // Render text multiple times for visibility and reliability
-      // First with stroke (outline) for better visibility
-      ctx.strokeText(normalizedSerialCode, textX, textY);
-      // Then with fill (solid) for the main text
-      ctx.fillText(normalizedSerialCode, textX, textY);
-      // Render again slightly offset for bold effect
-      ctx.fillText(normalizedSerialCode, textX + 0.5, textY + 0.5);
-      
-      console.log("[addSerialNumberToQR] Text rendered successfully with monospace font");
-    } else {
-      // Fallback: character-by-character rendering with fixed width
-      console.warn("[addSerialNumberToQR] Font measurement failed, using character-by-character fallback");
-      
-      ctx.textAlign = "left";
-      ctx.font = "bold 22px monospace";
-      
-      // Use fixed character width for monospace (approximately 13.2px for 22px font)
-      const charWidth = 13.2;
-      const totalTextWidth = normalizedSerialCode.length * charWidth;
-      const startX = textX - (totalTextWidth / 2);
-      
-      // Render each character individually with stroke and fill
-      for (let i = 0; i < normalizedSerialCode.length; i++) {
-        const char = normalizedSerialCode[i];
-        if (char) {
-          const charX = startX + (i * charWidth);
-          
-          // Render with stroke first, then fill
-          ctx.strokeText(char, charX, textY);
-          ctx.fillText(char, charX, textY);
-        }
+    // Render each character individually with multiple passes for visibility
+    for (let i = 0; i < normalizedSerialCode.length; i++) {
+      const char = normalizedSerialCode[i];
+      if (char) {
+        const charX = startX + (i * charWidth);
+        
+        // Multiple rendering passes for maximum visibility and reliability
+        // 1. Stroke (outline) - makes text visible even if fill fails
+        ctx.strokeText(char, charX, textY);
+        // 2. Fill (solid) - main text
+        ctx.fillText(char, charX, textY);
+        // 3. Additional fill slightly offset for bold effect
+        ctx.fillText(char, charX + 0.3, textY + 0.3);
       }
-      
-      console.log("[addSerialNumberToQR] Text rendered character-by-character");
     }
+    
+    console.log("[addSerialNumberToQR] Text rendered character-by-character:", {
+      serialCode: normalizedSerialCode,
+      characters: normalizedSerialCode.length,
+      startX,
+      charWidth
+    });
     
     // Log successful rendering
     console.log("[addSerialNumberToQR] Serial code rendered successfully:", {
@@ -261,65 +241,45 @@ export async function addProductInfoToQR(
       return canvas.toBuffer("image/png");
     }
     
-    // CRITICAL FIX: Use robust text rendering with guaranteed font fallback
-    // Render text using the most reliable method possible
+    // CRITICAL FIX: Use ultra-robust text rendering that works in all environments
+    // Always use character-by-character rendering for maximum reliability
     ctx.fillStyle = "#000000"; // Pure black
     ctx.strokeStyle = "#000000";
-    ctx.textAlign = "center";
+    ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
     
-    // Use the most basic, guaranteed-to-work font first
-    // Start with simple monospace which should always work
+    // Use simple monospace font - guaranteed to work in all Node.js environments
     ctx.font = "bold 18px monospace";
     
-    // Verify font works by measuring
-    const testMetrics = ctx.measureText(normalizedSerialCode);
-    const hasValidWidth = testMetrics.width > 0;
+    // ALWAYS use character-by-character rendering for maximum reliability
+    // This ensures text renders correctly even if font measurement fails
+    const charWidth = 10.8; // Fixed width for monospace 18px font
+    const totalTextWidth = normalizedSerialCode.length * charWidth;
+    const startX = textX - (totalTextWidth / 2);
     
-    console.log("[addProductInfoToQR] Font test:", {
-      serialCode: normalizedSerialCode,
-      measuredWidth: testMetrics.width,
-      hasValidWidth,
-      font: ctx.font
-    });
-    
-    if (hasValidWidth) {
-      // Render text multiple times for visibility and reliability
-      // First with stroke (outline) for better visibility
-      ctx.strokeText(normalizedSerialCode, textX, currentY);
-      // Then with fill (solid) for the main text
-      ctx.fillText(normalizedSerialCode, textX, currentY);
-      // Render again slightly offset for bold effect
-      ctx.fillText(normalizedSerialCode, textX + 0.5, currentY + 0.5);
-      
-      console.log("[addProductInfoToQR] Text rendered successfully with monospace font");
-    } else {
-      // Fallback: character-by-character rendering with fixed width
-      console.warn("[addProductInfoToQR] Font measurement failed, using character-by-character fallback");
-      
-      ctx.textAlign = "left";
-      ctx.font = "bold 18px monospace";
-      
-      // Use fixed character width for monospace (approximately 10.8px for 18px font)
-      const charWidth = 10.8;
-      const totalTextWidth = normalizedSerialCode.length * charWidth;
-      const startX = textX - (totalTextWidth / 2);
-      
-      // Render each character individually with stroke and fill
-      for (let i = 0; i < normalizedSerialCode.length; i++) {
-        const char = normalizedSerialCode[i];
-        if (char) {
-          const charX = startX + (i * charWidth);
-          
-          // Render with stroke first, then fill
-          ctx.strokeText(char, charX, currentY);
-          ctx.fillText(char, charX, currentY);
-        }
+    // Render each character individually with multiple passes for visibility
+    for (let i = 0; i < normalizedSerialCode.length; i++) {
+      const char = normalizedSerialCode[i];
+      if (char) {
+        const charX = startX + (i * charWidth);
+        
+        // Multiple rendering passes for maximum visibility and reliability
+        // 1. Stroke (outline) - makes text visible even if fill fails
+        ctx.strokeText(char, charX, currentY);
+        // 2. Fill (solid) - main text
+        ctx.fillText(char, charX, currentY);
+        // 3. Additional fill slightly offset for bold effect
+        ctx.fillText(char, charX + 0.3, currentY + 0.3);
       }
-      
-      console.log("[addProductInfoToQR] Text rendered character-by-character");
     }
+    
+    console.log("[addProductInfoToQR] Text rendered character-by-character:", {
+      serialCode: normalizedSerialCode,
+      characters: normalizedSerialCode.length,
+      startX,
+      charWidth
+    });
     
     // Log successful rendering
     console.log("[addProductInfoToQR] Serial code rendered successfully:", {
