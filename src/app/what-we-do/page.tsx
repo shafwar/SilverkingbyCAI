@@ -135,6 +135,30 @@ const NarrativeImageSection = forwardRef<
   const [imageLoaded, setImageLoaded] = useState<{ [key: string]: boolean }>({});
   const [imageError, setImageError] = useState<{ [key: string]: boolean }>({});
 
+  // Timeout handler to prevent infinite loading states
+  useEffect(() => {
+    const timeouts: NodeJS.Timeout[] = [];
+    
+    columns.forEach((_, idx) => {
+      const imageKey = `${idx}-0`;
+      // Set timeout for initial images (8 seconds)
+      const timeout = setTimeout(() => {
+        if (!imageLoaded[imageKey] && !imageError[imageKey]) {
+          console.warn(`[NarrativeImageSection] Image loading timeout: ${imageKey}`);
+          setImageError((prev) => ({
+            ...prev,
+            [imageKey]: true,
+          }));
+        }
+      }, 8000);
+      timeouts.push(timeout);
+    });
+
+    return () => {
+      timeouts.forEach((timeout) => clearTimeout(timeout));
+    };
+  }, [columns.length, imageLoaded, imageError]);
+
   // Preload first image for each card on mount for better performance
   useEffect(() => {
     const preloadImages = () => {
@@ -143,10 +167,15 @@ const NarrativeImageSection = forwardRef<
           const img = new window.Image();
           img.src = card.images[0];
           img.loading = "eager";
+          img.decode().catch(() => {
+            // Silent fail for preload
+          });
         }
       });
     };
-    preloadImages();
+    // Delay preload slightly to not block initial render
+    const timeoutId = setTimeout(preloadImages, 100);
+    return () => clearTimeout(timeoutId);
   }, [cards]);
 
   // Auto-rotate images on hover for desktop with smooth slide transition
@@ -162,15 +191,18 @@ const NarrativeImageSection = forwardRef<
         const newIndices = [...prev];
         const card = cards[hoveredColumnIndex];
         if (card) {
-          // Sequential rotation for smoother experience
           const currentIndex = prev[hoveredColumnIndex];
           const nextIndex = (currentIndex + 1) % card.images.length;
           newIndices[hoveredColumnIndex] = nextIndex;
           
-          // Preload next image before switching
+          // Preload next image before switching (with decode for better performance)
           if (card.images[nextIndex]) {
             const img = new window.Image();
             img.src = card.images[nextIndex];
+            img.loading = "eager";
+            img.decode().catch(() => {
+              // Silent fail for preload
+            });
           }
         }
         return newIndices;
@@ -183,7 +215,7 @@ const NarrativeImageSection = forwardRef<
   return (
     <section
       ref={ref}
-      className="relative border-t border-white/5 bg-gradient-to-b from-[#050505] via-[#050505] to-[#030303] px-4 sm:px-6 md:px-6 py-12 sm:py-16 md:py-20 lg:py-24"
+      className="relative border-t border-white/5 bg-gradient-to-b from-[#050505] via-[#050505] to-[#030303] px-4 sm:px-6 md:px-6 py-12 sm:py-16 md:py-20 lg:py-24 overflow-hidden isolate"
     >
       <div className="relative z-10 mx-auto max-w-[1320px]">
         {/* Desktop: 3-column grid with dynamic hover images - Pixelmatters style */}
@@ -222,11 +254,11 @@ const NarrativeImageSection = forwardRef<
                   style={{ aspectRatio: "3/2" }}
                 >
                   {/* Image container with optimized loading and error handling */}
-                  <div className="relative w-full h-full overflow-hidden bg-black/40">
-                    {/* Loading placeholder */}
+                  <div className="relative w-full h-full overflow-hidden bg-black/40 isolate">
+                    {/* Loading placeholder with timeout */}
                     {!imageLoaded[`${idx}-${currentImageIndex}`] && !imageError[`${idx}-${currentImageIndex}`] && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-black/60 to-black/40">
-                        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+                      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-black/60 to-black/40 z-10">
+                        <div className="h-6 w-6 sm:h-8 sm:w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
                       </div>
                     )}
                     
@@ -234,36 +266,26 @@ const NarrativeImageSection = forwardRef<
                       {!imageError[`${idx}-${currentImageIndex}`] && (
                         <motion.div
                           key={`${idx}-${currentImageIndex}`}
-                          initial={{ opacity: 0, x: 30, scale: 1.05 }}
+                          initial={{ opacity: 0 }}
                           animate={{ 
-                            opacity: imageLoaded[`${idx}-${currentImageIndex}`] ? 1 : 0, 
-                            x: 0, 
-                            scale: 1
+                            opacity: imageLoaded[`${idx}-${currentImageIndex}`] ? 1 : 0
                           }}
-                          exit={{ 
-                            opacity: 0, 
-                            x: -30, 
-                            scale: 0.95
-                          }}
+                          exit={{ opacity: 0 }}
                           transition={{
-                            duration: 0.5,
-                            ease: [0.22, 1, 0.36, 1],
+                            duration: 0.3,
+                            ease: "easeOut",
                           }}
                           className="absolute inset-0"
-                          style={{ 
-                            willChange: "transform, opacity",
-                            backfaceVisibility: "hidden",
-                          }}
                         >
                           <Image
                             src={currentImage}
                             alt={card.label}
                             fill
-                            className="object-cover transition-opacity duration-300"
+                            className="object-cover"
                             sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
                             priority={idx === 0 && currentImageIndex === 0}
                             loading={idx === 0 && currentImageIndex === 0 ? "eager" : "lazy"}
-                            quality={idx === 0 ? 85 : 75}
+                            quality={70}
                             unoptimized={false}
                             onLoad={(e) => {
                               const imageKey = `${idx}-${currentImageIndex}`;
@@ -271,7 +293,6 @@ const NarrativeImageSection = forwardRef<
                                 ...prev,
                                 [imageKey]: true,
                               }));
-                              // Remove error state if image loads successfully
                               setImageError((prev) => {
                                 const newState = { ...prev };
                                 delete newState[imageKey];
@@ -280,8 +301,15 @@ const NarrativeImageSection = forwardRef<
                             }}
                             onError={(e) => {
                               const imageKey = `${idx}-${currentImageIndex}`;
-                              console.warn(`[NarrativeImageSection] Failed to load image: ${currentImage}`, imageKey);
+                              console.warn(`[NarrativeImageSection] Failed to load image: ${currentImage}`);
                               setImageError((prev) => ({
+                                ...prev,
+                                [imageKey]: true,
+                              }));
+                            }}
+                            onLoadingComplete={() => {
+                              const imageKey = `${idx}-${currentImageIndex}`;
+                              setImageLoaded((prev) => ({
                                 ...prev,
                                 [imageKey]: true,
                               }));
@@ -293,14 +321,15 @@ const NarrativeImageSection = forwardRef<
                     
                     {/* Error fallback */}
                     {imageError[`${idx}-${currentImageIndex}`] && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-black/80 to-black/60">
-                        <p className="text-sm text-white/60">Image unavailable</p>
+                      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-black/80 to-black/60 z-10">
+                        <p className="text-xs sm:text-sm text-white/60 px-4 text-center">Image unavailable</p>
                       </div>
                     )}
                   </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent pointer-events-none" />
+                  {/* Vignette overlay - properly contained and optimized */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent pointer-events-none z-[1] rounded-lg" />
 
-                  <div className="absolute inset-x-0 bottom-0 p-4 md:p-5 pointer-events-none">
+                  <div className="absolute inset-x-0 bottom-0 p-4 md:p-5 pointer-events-none z-[2]">
                     <p className="text-sm md:text-base font-semibold text-white mb-1">
                       {card.label}
                     </p>
@@ -343,7 +372,7 @@ const NarrativeImageSection = forwardRef<
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.2 }}
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] overflow-hidden bg-black/40"
+            className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] overflow-hidden bg-black/40 isolate"
             style={{ aspectRatio: "4/3" }}
             data-reveal
           >
@@ -354,16 +383,16 @@ const NarrativeImageSection = forwardRef<
               </div>
             )}
             
-            {/* Image with error handling */}
+            {/* Image with error handling - Optimized for mobile */}
             {!imageError["mobile-0"] && (
               <Image
                 src={cards[0].images[0]}
                 alt={cards[0].label}
                 fill
-                className="object-cover transition-opacity duration-500"
+                className="object-cover"
                 sizes="100vw"
                 priority
-                quality={80}
+                quality={70}
                 loading="eager"
                 unoptimized={false}
                 onLoad={(e) => {
@@ -371,7 +400,6 @@ const NarrativeImageSection = forwardRef<
                     ...prev,
                     "mobile-0": true,
                   }));
-                  // Remove error state if image loads successfully
                   setImageError((prev) => {
                     const newState = { ...prev };
                     delete newState["mobile-0"];
@@ -385,8 +413,15 @@ const NarrativeImageSection = forwardRef<
                     "mobile-0": true,
                   }));
                 }}
+                onLoadingComplete={() => {
+                  setImageLoaded((prev) => ({
+                    ...prev,
+                    "mobile-0": true,
+                  }));
+                }}
                 style={{
                   opacity: imageLoaded["mobile-0"] ? 1 : 0,
+                  transition: "opacity 0.3s ease-out",
                 }}
               />
             )}
@@ -401,9 +436,10 @@ const NarrativeImageSection = forwardRef<
               </div>
             )}
             
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent pointer-events-none z-0" />
+            {/* Vignette overlay - properly contained and optimized for mobile */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent pointer-events-none z-[1]" />
 
-            <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 z-10 pointer-events-none">
+            <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 z-[2] pointer-events-none">
               <p className="text-sm sm:text-base font-semibold text-white mb-1 sm:mb-1.5">
                 {cards[0].label}
               </p>
@@ -559,14 +595,14 @@ export default function WhatWeDoPage() {
       className="min-h-screen bg-luxury-black text-white selection:bg-luxury-gold/20 selection:text-white"
       style={{ backgroundImage: premiumGradient }}
     >
-      {/* Global Background Noise & Gradient */}
+      {/* Global Background Noise & Gradient - properly contained */}
       <div
         ref={noiseOverlay}
-        className="pointer-events-none fixed inset-0 z-0 opacity-60 mix-blend-soft-light"
+        className="pointer-events-none fixed inset-0 z-0 opacity-60 mix-blend-soft-light overflow-hidden"
       />
       <div
         ref={gradientOverlay}
-        className="pointer-events-none fixed inset-0 z-0 opacity-90"
+        className="pointer-events-none fixed inset-0 z-0 opacity-90 overflow-hidden"
         style={{
           background:
             "linear-gradient(180deg, rgba(18,18,18,0.7) 0%, rgba(10,10,10,0.85) 45%, rgba(4,4,4,0.95) 100%)",
@@ -577,8 +613,8 @@ export default function WhatWeDoPage() {
       <Navbar />
 
       {/* Hero Background – metal crafting hands video, matching products hero style */}
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute inset-0">
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden isolate">
+        <div className="absolute inset-0 overflow-hidden">
           {/* Fallback dark gradient */}
           <div className="absolute inset-0 bg-gradient-to-br from-luxury-black via-luxury-black/95 to-luxury-black z-0" />
 
@@ -644,10 +680,10 @@ export default function WhatWeDoPage() {
             <source src={getR2UrlClient("/videos/hero/metal crafting hands.mp4")} type="video/mp4" />
           </video>
 
-          {/* Dark overlays for readability */}
+          {/* Dark overlays for readability - properly contained */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/45 to-black/65 z-20" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(10,10,10,0.6)_100%)] z-20" />
-          <div className="absolute inset-x-0 bottom-0 h-40 md:h-52 lg:h-64 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-transparent pointer-events-none z-20" />
+          <div className="absolute inset-x-0 bottom-0 left-0 right-0 h-40 md:h-52 lg:h-64 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-transparent pointer-events-none z-20" />
         </div>
       </div>
 
@@ -699,7 +735,7 @@ export default function WhatWeDoPage() {
         ref={(element) => {
           sectionsRef.current[2] = element as HTMLDivElement | null;
         }}
-        className="relative border-t border-white/10 bg-gradient-to-b from-[#050505] via-[#050505] to-[#020202] px-4 sm:px-6 md:px-6 py-12 sm:py-16 md:py-24 lg:py-28"
+        className="relative border-t border-white/10 bg-gradient-to-b from-[#050505] via-[#050505] to-[#020202] px-4 sm:px-6 md:px-6 py-12 sm:py-16 md:py-24 lg:py-28 overflow-hidden isolate"
       >
         <div className="relative mx-auto flex max-w-[1320px] flex-col gap-10 sm:gap-12 md:gap-16 md:flex-row md:items-start md:justify-between">
           {/* Left title block */}
@@ -768,11 +804,11 @@ export default function WhatWeDoPage() {
         ref={(element) => {
           sectionsRef.current[3] = element as HTMLDivElement | null;
         }}
-        className="relative overflow-hidden py-12 sm:py-16 md:py-28 lg:py-32 px-4 sm:px-6 md:px-6"
+        className="relative overflow-hidden py-12 sm:py-16 md:py-28 lg:py-32 px-4 sm:px-6 md:px-6 isolate"
       >
-        {/* Soft background without hard band at the top */}
+        {/* Soft background without hard band at the top - properly contained */}
         <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#111111] via-[#060606] to-[#020202]" />
-        <div className="absolute inset-x-0 bottom-0 h-24 sm:h-28 md:h-32 bg-gradient-to-t from-luxury-black via-transparent to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 left-0 right-0 h-24 sm:h-28 md:h-32 bg-gradient-to-t from-luxury-black via-transparent to-transparent pointer-events-none z-0" />
 
         <div className="relative z-10 mx-auto max-w-[1320px]">
           <motion.div className="mb-12 sm:mb-16 md:mb-20 text-center" data-reveal>
@@ -800,10 +836,10 @@ export default function WhatWeDoPage() {
         ref={(element) => {
           sectionsRef.current[4] = element as HTMLDivElement | null;
         }}
-        className="relative min-h-[50vh] sm:min-h-[60vh] md:min-h-[70vh] flex flex-col justify-between px-4 sm:px-6 md:px-8 lg:px-12 py-12 sm:py-16 md:py-20 lg:py-24 overflow-hidden"
+        className="relative min-h-[50vh] sm:min-h-[60vh] md:min-h-[70vh] flex flex-col justify-between px-4 sm:px-6 md:px-8 lg:px-12 py-12 sm:py-16 md:py-20 lg:py-24 overflow-hidden isolate"
       >
-        {/* Video Background */}
-        <div className="absolute inset-0 z-0">
+        {/* Video Background - properly contained */}
+        <div className="absolute inset-0 z-0 overflow-hidden">
           <video
             ref={(video) => {
               if (video) {
@@ -864,8 +900,8 @@ export default function WhatWeDoPage() {
           >
             <source src={getR2UrlClient("/videos/hero/molten metal slow motion.mp4")} type="video/mp4" />
           </video>
-          {/* Dark overlay for text readability */}
-          <div className="absolute inset-0 bg-gradient-to-b from-luxury-black/85 via-luxury-black/75 to-luxury-black/85" />
+          {/* Dark overlay for text readability - properly contained */}
+          <div className="absolute inset-0 bg-gradient-to-b from-luxury-black/85 via-luxury-black/75 to-luxury-black/85 z-10" />
         </div>
 
         {/* Main Content - Centered - Mobile optimized */}

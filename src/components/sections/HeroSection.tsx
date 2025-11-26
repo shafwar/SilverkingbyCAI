@@ -521,13 +521,13 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         </div>
       </div>
 
-      {/* Mobile: Scrolling Features - OPTIMIZED untuk iPhone 11 Pro dan semua device */}
+      {/* Mobile: Scrolling Features - DINAIKKAN untuk menyesuaikan QR Card */}
       {/* Menggunakan responsive positioning yang lebih baik */}
-      <div className="md:hidden absolute left-0 right-0 bottom-[140px] xs:bottom-[145px] sm:bottom-[155px] z-20 px-3.5 xs:px-4 sm:px-6">
+      <div className="md:hidden absolute left-0 right-0 bottom-[160px] xs:bottom-[168px] sm:bottom-[175px] z-20 px-3.5 xs:px-4 sm:px-6">
         <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate} />
       </div>
 
-      {/* QR verification feature card - OPTIMIZED untuk semua device */}
+      {/* QR verification feature card - DINAIKKAN LEBIH TINGGI agar tidak terpotong */}
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.97 }}
         animate={{
@@ -536,7 +536,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
           scale: shouldAnimate ? 1 : 0.97,
         }}
         transition={{ duration: 1, delay: 1.1, ease: "easeOut" }}
-        className="absolute bottom-5 xs:bottom-6 sm:bottom-8 md:bottom-8 inset-x-0 z-30 flex justify-center px-3 xs:px-3.5 sm:px-4"
+        className="absolute bottom-[22px] xs:bottom-[26px] sm:bottom-8 md:bottom-8 inset-x-0 z-30 flex justify-center px-3 xs:px-3.5 sm:px-4"
       >
         <a
           href="/authenticity"
