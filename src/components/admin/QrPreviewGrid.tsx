@@ -650,14 +650,13 @@ export function QrPreviewGrid() {
                               <div className="flex items-center gap-3">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
-                                  src={product.qrImageUrl || `/api/qr/${product.serialCode}`}
+                                  src={`/api/qr/${product.serialCode}?t=${Date.now()}`}
                                   alt={product.name}
                                   className="h-16 w-16 rounded-lg border border-white/10 bg-white p-2 object-contain"
                                   onError={(e) => {
+                                    // Fallback: try with different timestamp
                                     const target = e.target as HTMLImageElement;
-                                    if (target.src !== `/api/qr/${product.serialCode}`) {
-                                      target.src = `/api/qr/${product.serialCode}`;
-                                    }
+                                    target.src = `/api/qr/${product.serialCode}?t=${Date.now()}`;
                                   }}
                                 />
                               </div>
