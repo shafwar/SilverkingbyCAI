@@ -299,6 +299,40 @@
   .scrollbar-show::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.3);
   }
+
+  /* Admin scrollbar - visible and styled for Products and QR Preview pages */
+  .scrollbar-admin {
+    /* Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(212, 175, 55, 0.6) rgba(255, 255, 255, 0.1);
+  }
+
+  .scrollbar-admin::-webkit-scrollbar {
+    /* Chrome, Safari, Opera, Edge */
+    width: 10px;
+    height: 10px;
+  }
+
+  .scrollbar-admin::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    margin: 4px 0;
+  }
+
+  .scrollbar-admin::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(212, 175, 55, 0.8) 0%, rgba(212, 175, 55, 0.6) 100%);
+    border-radius: 10px;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    transition: background 0.2s ease;
+  }
+
+  .scrollbar-admin::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(212, 175, 55, 1) 0%, rgba(212, 175, 55, 0.8) 100%);
+  }
+
+  .scrollbar-admin::-webkit-scrollbar-thumb:active {
+    background: linear-gradient(180deg, rgba(212, 175, 55, 0.9) 0%, rgba(212, 175, 55, 0.7) 100%);
+  }
 }
 
 body.modal-active .site-navbar {

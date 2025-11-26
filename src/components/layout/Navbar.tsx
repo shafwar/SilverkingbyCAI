@@ -19,7 +19,8 @@ export default function Navbar() {
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      const scrollThreshold = 20;
+      const scrollThreshold = 10; // Lower threshold for mobile responsiveness
+      const scrollDelta = 5; // Minimum scroll delta to trigger hide/show
       
       // Update isScrolled for background styling
       setIsScrolled(currentScrollY > scrollThreshold);
@@ -31,17 +32,23 @@ export default function Navbar() {
         return;
       }
       
-      // Only hide navbar when scrolling down (never show again when scrolling up)
-      if (currentScrollY > lastScrollY && currentScrollY > scrollThreshold) {
-        // Scrolling down - hide navbar
+      // Calculate scroll direction with delta threshold
+      const scrollDifference = currentScrollY - lastScrollY;
+      
+      // Hide navbar when scrolling down (with delta threshold to prevent jitter)
+      if (scrollDifference > scrollDelta) {
         setIsVisible(false);
       }
-      // Note: We don't show navbar again when scrolling up - it stays hidden
+      // Show navbar when scrolling up (with delta threshold)
+      else if (scrollDifference < -scrollDelta) {
+        setIsVisible(true);
+      }
+      // If scroll difference is small, maintain current state
       
       setLastScrollY(currentScrollY);
     };
 
-    // Throttle scroll events for better performance
+    // Throttle scroll events for better performance (optimized for mobile)
     let ticking = false;
     const throttledHandleScroll = () => {
       if (!ticking) {
@@ -52,6 +59,9 @@ export default function Navbar() {
         ticking = true;
       }
     };
+
+    // Initial check
+    handleScroll();
 
     window.addEventListener("scroll", throttledHandleScroll, { passive: true });
     return () => window.removeEventListener("scroll", throttledHandleScroll);
@@ -114,11 +124,12 @@ export default function Navbar() {
         y: isModalOpen ? -100 : (isVisible ? 0 : -100),
       }}
       transition={{ 
-        duration: 0.4, 
-        ease: [0.22, 1, 0.36, 1], // Smooth easing curve
-        opacity: { duration: 0.3 },
+        duration: 0.35, 
+        ease: [0.25, 0.1, 0.25, 1], // Smooth cubic-bezier easing for mobile
+        opacity: { duration: 0.3, ease: "easeOut" },
+        y: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] },
       }}
-      className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${
+      className={`fixed top-0 left-0 right-0 z-[100] will-change-transform ${
         isScrolled
           ? "bg-black/90 backdrop-blur-2xl border-b border-white/[0.08] shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
           : "bg-transparent"

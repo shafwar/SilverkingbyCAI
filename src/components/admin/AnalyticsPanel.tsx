@@ -119,46 +119,58 @@ export function AnalyticsPanel() {
     }) ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-5 md:space-y-6">
       <AnimatedCard>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.35em] text-white/50">Signal control</p>
-            <h3 className="mt-2 text-2xl font-semibold text-white">Scans over time</h3>
+        <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] sm:text-xs uppercase tracking-[0.3em] sm:tracking-[0.35em] text-white/50">Signal control</p>
+            <h3 className="mt-1.5 sm:mt-2 text-lg sm:text-xl md:text-2xl font-semibold text-white leading-tight">Scans over time</h3>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 flex-shrink-0">
             <MonthYearPicker month={month} year={year} onChange={handleMonthYearChange} />
             <button
               onClick={() => window.open("/api/export/excel", "_blank")}
-              className="inline-flex items-center gap-2 rounded-full border border-[#FFD700]/40 px-4 py-2 text-sm text-white transition hover:border-[#FFD700]"
+              className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-[#FFD700]/40 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-white transition hover:border-[#FFD700]"
             >
-              <Download className="h-4 w-4" />
-              Export CSV
+              <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Export CSV</span>
+              <span className="sm:hidden">Export</span>
             </button>
           </div>
         </div>
-        <div className="mt-6 h-80">
+        <div className="mt-4 sm:mt-5 md:mt-6 h-64 sm:h-72 md:h-80">
           {trendLoadingState && <LoadingSkeleton className="h-full w-full" />}
           {!!trendSeries.length && (
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trendSeries}>
+              <LineChart data={trendSeries} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <CartesianGrid stroke="#ffffff10" vertical={false} />
-                <XAxis dataKey="date" stroke="#ffffff60" />
-                <YAxis stroke="#ffffff60" />
+                <XAxis 
+                  dataKey="date" 
+                  stroke="#ffffff60" 
+                  tick={{ fontSize: 11 }}
+                  interval="preserveStartEnd"
+                />
+                <YAxis 
+                  stroke="#ffffff60" 
+                  tick={{ fontSize: 11 }}
+                  width={40}
+                />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "#050505",
                     borderRadius: "12px",
                     border: "1px solid #ffffff20",
+                    fontSize: "12px",
+                    padding: "8px 12px",
                   }}
                 />
                 <Line
                   type="monotone"
                   dataKey="count"
                   stroke="#FFD700"
-                  strokeWidth={3}
+                  strokeWidth={2}
                   dot={false}
-                  activeDot={{ r: 6 }}
+                  activeDot={{ r: 5 }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -166,25 +178,25 @@ export function AnalyticsPanel() {
         </div>
       </AnimatedCard>
 
-      <div className="grid gap-6 lg:grid-cols-5">
+      <div className="grid gap-4 sm:gap-5 md:gap-6 lg:grid-cols-5">
         <AnimatedCard className="lg:col-span-3">
-          <div className="mb-4">
-            <p className="text-xs uppercase tracking-[0.35em] text-white/50">Aggregated metrics</p>
-            <h3 className="mt-2 text-2xl font-semibold text-white">Top performing SK bars</h3>
+          <div className="mb-3 sm:mb-4">
+            <p className="text-[10px] sm:text-xs uppercase tracking-[0.3em] sm:tracking-[0.35em] text-white/50">Aggregated metrics</p>
+            <h3 className="mt-1.5 sm:mt-2 text-lg sm:text-xl md:text-2xl font-semibold text-white leading-tight">Top performing SK bars</h3>
           </div>
           <DataTable columns={columns} data={tableData} isLoading={topLoadingState} />
         </AnimatedCard>
 
         <AnimatedCard className="lg:col-span-2">
-          <div className="mb-4">
-            <p className="text-xs uppercase tracking-[0.35em] text-white/50">Hourly heatmap</p>
-            <h3 className="mt-2 text-2xl font-semibold text-white">Activity intensity</h3>
+          <div className="mb-3 sm:mb-4">
+            <p className="text-[10px] sm:text-xs uppercase tracking-[0.3em] sm:tracking-[0.35em] text-white/50">Hourly heatmap</p>
+            <h3 className="mt-1.5 sm:mt-2 text-lg sm:text-xl md:text-2xl font-semibold text-white leading-tight">Activity intensity</h3>
           </div>
-          <div className="grid grid-cols-6 gap-2">
+          <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5 sm:gap-2">
             {heatmap.map((item) => (
               <motion.div
                 key={item.hour}
-                className="flex h-16 flex-col items-center justify-center rounded-2xl border border-white/5 text-xs text-white/60"
+                className="flex h-12 sm:h-14 md:h-16 flex-col items-center justify-center rounded-xl sm:rounded-2xl border border-white/5 text-[10px] sm:text-xs text-white/60"
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: item.hour * 0.01 }}
@@ -192,8 +204,8 @@ export function AnalyticsPanel() {
                   background: `linear-gradient(180deg, rgba(255,215,0,${item.intensity}) 0%, rgba(0,0,0,0.4) 100%)`,
                 }}
               >
-                <span className="font-semibold text-white">{item.count}</span>
-                <span>{item.hour}:00</span>
+                <span className="font-semibold text-white text-xs sm:text-sm">{item.count}</span>
+                <span className="text-[9px] sm:text-xs">{item.hour}:00</span>
               </motion.div>
             ))}
           </div>

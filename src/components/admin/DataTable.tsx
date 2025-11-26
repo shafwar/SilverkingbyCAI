@@ -67,7 +67,7 @@ export function DataTable<T extends Record<string, any>>({
   }
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-white/10">
+    <div className="overflow-hidden rounded-xl sm:rounded-2xl md:rounded-3xl border border-white/10">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-white/10">
           <thead>
@@ -78,16 +78,16 @@ export function DataTable<T extends Record<string, any>>({
                   scope="col"
                   onClick={() => handleSort(column)}
                   className={clsx(
-                    "px-4 py-3 text-left text-xs font-light uppercase tracking-[0.3em] text-white/60",
+                    "px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 text-left text-[10px] sm:text-xs font-light uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/60",
                     column.align === "center" && "text-center",
                     column.align === "right" && "text-right",
                     column.sortable && "cursor-pointer select-none hover:text-white"
                   )}
                 >
-                  <span className="inline-flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 sm:gap-2">
                     {column.header}
                     {column.sortable && (
-                      <ArrowDownUp className="h-3 w-3 text-white/40" />
+                      <ArrowDownUp className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white/40" />
                     )}
                   </span>
                 </th>
@@ -103,13 +103,13 @@ export function DataTable<T extends Record<string, any>>({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -12 }}
                   transition={{ duration: 0.25, delay: rowIndex * 0.02 }}
-                  className="bg-white/[0.015] text-sm text-white/80"
+                  className="bg-white/[0.015] text-xs sm:text-sm text-white/80"
                 >
                   {columns.map((column) => (
                     <td
                       key={String(column.key)}
                       className={clsx(
-                        "px-4 py-4",
+                        "px-2 sm:px-3 md:px-4 py-2.5 sm:py-3 md:py-4",
                         column.align === "center" && "text-center",
                         column.align === "right" && "text-right"
                       )}

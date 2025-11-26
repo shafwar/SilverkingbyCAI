@@ -86,27 +86,27 @@ export function MonthYearPicker({ month, year, onChange }: MonthYearPickerProps)
     year === new Date().getFullYear() && month === new Date().getMonth() + 1;
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5 sm:gap-2">
       <button
         onClick={handlePrevious}
         disabled={!canGoPrevious}
         className={clsx(
-          "rounded-full border border-white/10 p-1.5 transition",
+          "rounded-full border border-white/10 p-1 sm:p-1.5 transition flex-shrink-0",
           canGoPrevious
             ? "text-white/60 hover:border-white/30 hover:text-white"
             : "cursor-not-allowed opacity-30"
         )}
         aria-label="Previous month"
       >
-        <ChevronLeft className="h-4 w-4" />
+        <ChevronLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
       </button>
 
-      <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2">
-        <span className="text-sm font-medium text-white">
+      <div className="flex items-center gap-1.5 sm:gap-2 rounded-full border border-white/10 bg-white/5 px-2.5 sm:px-4 py-1.5 sm:py-2 min-w-0">
+        <span className="text-xs sm:text-sm font-medium text-white truncate">
           {currentOption?.label || `${MONTHS[month - 1]} ${year}`}
         </span>
         {isCurrentMonth && (
-          <span className="text-xs text-white/50">(Current)</span>
+          <span className="text-[10px] sm:text-xs text-white/50 flex-shrink-0 hidden sm:inline">(Current)</span>
         )}
       </div>
 
@@ -114,14 +114,14 @@ export function MonthYearPicker({ month, year, onChange }: MonthYearPickerProps)
         onClick={handleNext}
         disabled={!canGoNext}
         className={clsx(
-          "rounded-full border border-white/10 p-1.5 transition",
+          "rounded-full border border-white/10 p-1 sm:p-1.5 transition flex-shrink-0",
           canGoNext
             ? "text-white/60 hover:border-white/30 hover:text-white"
             : "cursor-not-allowed opacity-30"
         )}
         aria-label="Next month"
       >
-        <ChevronRight className="h-4 w-4" />
+        <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
       </button>
     </div>
   );

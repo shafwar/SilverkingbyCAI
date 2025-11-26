@@ -12,8 +12,8 @@ export default async function ProductsPage() {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 h-[calc(100vh-8rem)] flex flex-col">
+      <div className="flex items-center justify-between flex-shrink-0">
         <div>
           <p className="text-xs uppercase tracking-[0.5em] text-white/60">Inventory</p>
           <h1 className="text-2xl font-semibold text-white">Products</h1>
@@ -25,23 +25,25 @@ export default async function ProductsPage() {
           Add Product
         </Link>
       </div>
-      <ProductTable
-        products={products.map((product) => ({
-          id: product.id,
-          name: product.name,
-          weight: product.weight,
-          serialCode: product.serialCode,
-          price: product.price,
-          stock: product.stock,
-          createdAt: product.createdAt.toISOString(),
-          qrRecord: product.qrRecord
-            ? {
-                qrImageUrl: product.qrRecord.qrImageUrl,
-                scanCount: product.qrRecord.scanCount,
-              }
-            : null,
-        }))}
-      />
+      <div className="flex-1 overflow-y-auto pr-2 scrollbar-admin">
+        <ProductTable
+          products={products.map((product) => ({
+            id: product.id,
+            name: product.name,
+            weight: product.weight,
+            serialCode: product.serialCode,
+            price: product.price,
+            stock: product.stock,
+            createdAt: product.createdAt.toISOString(),
+            qrRecord: product.qrRecord
+              ? {
+                  qrImageUrl: product.qrRecord.qrImageUrl,
+                  scanCount: product.qrRecord.scanCount,
+                }
+              : null,
+          }))}
+        />
+      </div>
     </div>
   );
 }
