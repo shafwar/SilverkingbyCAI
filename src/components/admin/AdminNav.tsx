@@ -3,19 +3,25 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { useTranslations, useLocale } from "next-intl";
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 
-const navLinks = [
-  { label: "Dashboard", href: "/admin" },
-  { label: "Products", href: "/admin/products" },
-  { label: "QR Preview", href: "/admin/qr-preview" },
-  { label: "Scan Logs", href: "/admin/logs" },
-  { label: "Export", href: "/admin/export" },
-];
-
 export function AdminNav({ email }: { email?: string | null }) {
+  const t = useTranslations('admin');
+  const tDashboard = useTranslations('admin.dashboard');
+  const tExport = useTranslations('admin.export');
+  const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
+
+  const navLinks = useMemo(() => [
+    { label: tDashboard('label'), href: "/admin" },
+    { label: t('products'), href: "/admin/products" },
+    { label: t('qrPreview'), href: "/admin/qr-preview" },
+    { label: t('logs'), href: "/admin/logs" },
+    { label: tExport('label'), href: "/admin/export" },
+  ], [t, tDashboard, tExport, locale]);
 
   const handleSignOut = async () => {
     await signOut({ redirect: false });
@@ -30,7 +36,7 @@ export function AdminNav({ email }: { email?: string | null }) {
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 text-sm text-white">
         <Link href="/admin" className="font-semibold tracking-[0.3em] uppercase text-xs text-white/70">
-          Silver King Admin
+          {t('silverKingAdmin')}
         </Link>
         <div className="hidden md:flex items-center gap-6">
           {navLinks.map((link) => (
@@ -51,7 +57,7 @@ export function AdminNav({ email }: { email?: string | null }) {
             onClick={handleSignOut}
             className="rounded-full border border-white/20 px-3 py-1 text-xs text-white/80 transition hover:border-white/50"
           >
-            Sign out
+            {t('signOut')}
           </button>
         </div>
       </div>

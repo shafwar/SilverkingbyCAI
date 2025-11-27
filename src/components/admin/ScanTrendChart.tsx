@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 
 type TrendPoint = {
   label: string;
@@ -8,17 +9,18 @@ type TrendPoint = {
 };
 
 export function ScanTrendChart({ data }: { data: TrendPoint[] }) {
+  const t = useTranslations('admin.charts');
   const max = Math.max(...data.map((d) => d.value), 1);
 
   return (
     <div className="rounded-3xl border border-white/5 bg-gradient-to-br from-white/[0.05] to-white/[0.01] p-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.5em] text-white/60">Seven-day scans</p>
-          <h3 className="mt-1 text-2xl font-semibold text-white">Verification heat</h3>
+          <p className="text-xs uppercase tracking-[0.5em] text-white/60">{t('sevenDayScans')}</p>
+          <h3 className="mt-1 text-2xl font-semibold text-white">{t('verificationHeat')}</h3>
         </div>
         <span className="rounded-full bg-white/5 px-3 py-1 text-xs text-white/60">
-          Real-time feed
+          {t('realTimeFeed')}
         </span>
       </div>
       <div className="mt-8 flex items-end gap-4">

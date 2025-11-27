@@ -1,0 +1,681 @@
+{
+  "nav": {
+    "whatWeDo": "Apa yang kami lakukan",
+    "authenticity": "Keaslian",
+    "products": "Produk",
+    "aboutUs": "Tentang kami",
+    "getInTouch": "Hubungi kami"
+  },
+  "common": {
+    "loading": "Memuat...",
+    "error": "Kesalahan",
+    "retry": "Coba lagi",
+    "close": "Tutup",
+    "save": "Simpan",
+    "cancel": "Batal",
+    "delete": "Hapus",
+    "edit": "Edit",
+    "create": "Buat",
+    "search": "Cari",
+    "filter": "Filter",
+    "export": "Ekspor",
+    "import": "Impor",
+    "download": "Unduh",
+    "upload": "Unggah",
+    "submit": "Kirim",
+    "back": "Kembali",
+    "next": "Selanjutnya",
+    "previous": "Sebelumnya",
+    "view": "Lihat",
+    "details": "Detail",
+    "tryAgain": "Silakan coba lagi"
+  },
+  "home": {
+    "title": "Silver King by CAI",
+    "tagline": "Keunggulan Logam Mulia",
+    "hero": {
+      "headline1": "Logam",
+      "headline2": "mulia.",
+      "headline3": "Nilai",
+      "headline4": "abadi.",
+      "headline5": "Presisi",
+      "headline6": "murni.",
+      "subtitle": "Pembuatan ahli dari produk <gold>emas, perak, dan paladium</gold>. <custom>Fabrikasi batangan khusus</custom>, kemurnian tanpa kompromi, dan <qr>keaslian terverifikasi QR</qr>—mendefinisikan ulang kepercayaan dalam logam mulia.",
+      "features": {
+        "chainOfCustody": {
+          "label": "Rantai Kepemilikan",
+          "title": "Pelacakan terkunci ledger",
+          "body": "Setiap gram dicatat dengan segel QR terenkripsi dan jejak audit yang dicerminkan."
+        },
+        "purityLab": {
+          "label": "Lab Kemurnian",
+          "title": "Jaminan berbasis spektrometri",
+          "body": "Pengujian molekuler internal mengkalibrasi batch bullion ke toleransi yang disesuaikan."
+        },
+        "globalTrust": {
+          "label": "Kepercayaan Global",
+          "title": "ISO 9001",
+          "body": "Fasilitas teraudit, kepatuhan transparan, dokumentasi tingkat konsier."
+        }
+      },
+      "qrCard": {
+        "label": "Pindai & Verifikasi",
+        "title": "Ketuk untuk meluncurkan pemindai QR Silver King",
+        "description": "Tangkap segel QR untuk melihat kemurnian & asal usul. Badge \"Produk terautentikasi\" muncul setelah fungsionalitas aktif."
+      }
+    }
+  },
+  "whatWeDo": {
+    "title": "Membuat dari bullion mentah",
+    "description": "Kami mengubah emas, perak, dan paladium yang bersumber secara bertanggung jawab menjadi batangan kelas investasi menggunakan jalur pemurnian dan pengecoran yang dikontrol ketat.",
+    "hero": {
+      "title": "Merekayasa siklus hidup",
+      "titleBold": "dari setiap batangan Silver King.",
+      "subtitle": "Dari pemilihan bijih dan pemurnian hingga pengkodean serial, penyegelan QR, dan verifikasi, kami mengkoreografikan setiap langkah sehingga setiap batangan membawa cerita yang dapat diverifikasi tentang asal usul dan kepemilikan."
+    },
+    "card1": {
+      "label": "Jalur fabrikasi emas",
+      "caption": "Pengecoran berkapasitas tinggi, penyelesaian tepi, dan perawatan permukaan yang disesuaikan untuk batch bullion."
+    },
+    "card2": {
+      "title": "Merekayasa keaslian ke setiap batangan",
+      "description": "Setiap potongan dilahirkan dengan nomor seri unik, data kemurnian yang didukung laboratorium, dan QR terenkripsi yang mengikat logam fisik dengan identitas digitalnya.",
+      "label": "Pemurnian perak & paladium",
+      "caption": "Pemurnian berbasis spektrometri dengan kontrol kualitas yang selaras ISO untuk batangan industri dan ritel."
+    },
+    "card3": {
+      "title": "Alur logam mulia terverifikasi skala",
+      "description": "Dari mint ke vault ke klien, telemetri dan peristiwa pemindaian menjaga mitra selaras tentang asal usul, penahanan, dan peristiwa siklus hidup.",
+      "label": "Stack verifikasi digital",
+      "caption": "Penerbitan QR, pencatatan pemindaian, dan sinyal risiko yang terhubung langsung ke Silver King Command."
+    },
+    "impact": {
+      "title": "Dampak",
+      "titleLine2": "yang dapat Anda harapkan",
+      "items": {
+        "traceable": {
+          "title": "Rantai pasokan yang dapat dilacak",
+          "body": "Setiap batangan Silver King membawa cerita yang dapat diverifikasi tentang asal usul, kepemilikan, dan peristiwa verifikasi, memberikan kepercayaan kepada mitra dalam setiap transfer."
+        },
+        "operational": {
+          "title": "Kejelasan operasional",
+          "body": "Telemetri langsung dari pemindaian mengubah pergerakan yang tersebar menjadi data terstruktur, membantu Anda melihat apa yang bergerak, di mana, dan melalui siapa."
+        },
+        "customer": {
+          "title": "Kepercayaan pelanggan dalam skala",
+          "body": "Satu ketukan pada QR mengungkapkan keaslian, asal usul, dan detail produk, membangun kepercayaan jangka panjang dengan kolektor dan institusi."
+        },
+        "compliance": {
+          "title": "Catatan siap kepatuhan",
+          "body": "Log yang ramah audit dan pengidentifikasi standar menyederhanakan pelaporan lintas yurisdiksi dan mendukung kerangka kerja regulasi yang ketat."
+        }
+      }
+    },
+    "capabilities": {
+      "title": "Kemampuan",
+      "titleBold": "Kami",
+      "subtitle": "Rekayasa presisi memenuhi standar kualitas tanpa kompromi",
+      "exploreButton": "Jelajahi keunggulan Silver King",
+      "features": {
+        "fabrication": {
+          "title": "Fabrikasi Emas, Perak & Paladium",
+          "description": "Pembuatan bullion kemurnian tinggi dari 5gr hingga 500gr. Kerajinan ahli yang memenuhi standar internasional."
+        },
+        "purityLab": {
+          "title": "Lab Kemurnian Canggih",
+          "description": "Pengujian spektrometri memastikan kualitas 99,99%. Fasilitas bersertifikat ISO 9001 dengan kepatuhan transparan."
+        },
+        "security": {
+          "title": "Keamanan Terautentikasi QR",
+          "description": "Setiap batangan terintegrasi dengan pelacakan terenkripsi yang unik. Sistem verifikasi siap blockchain."
+        }
+      }
+    },
+    "footer": {
+      "cta": "Mari kita tingkatkan standar,",
+      "ctaBold": "bersama."
+    }
+  },
+  "authenticity": {
+    "title": "Keaslian",
+    "verifyTitle": "Verifikasi Logam Mulia Anda",
+    "authenticateYour": "Verifikasi",
+    "silverKingBar": "Batangan Silver King Anda",
+    "heroDescription": "Pindai kode QR atau masukkan nomor seri untuk memverifikasi keaslian dan melihat detail asal usul",
+    "scanQR": "Pindai Kode QR",
+    "or": "atau",
+    "enterSerial": "Masukkan Nomor Seri",
+    "enterSerialNumber": "Masukkan Nomor Seri",
+    "enterSerialPlaceholder": "contoh: SKA000001",
+    "enterSerialHint": "Masukkan nomor seri yang ditemukan pada batangan Silver King Anda",
+    "verify": "Verifikasi",
+    "learnProcess": "Pelajari proses verifikasi",
+    "workflow": {
+      "title": "Proses",
+      "titleBold": "Verifikasi",
+      "subtitle": "Verifikasi empat langkah sederhana untuk batangan Silver King Anda",
+      "steps": {
+        "step1": {
+          "title": "Lokasi Kode QR",
+          "description": "Temukan kode QR pada kemasan batangan Silver King Anda"
+        },
+        "step2": {
+          "title": "Pindai Kode",
+          "description": "Gunakan kamera ponsel Anda atau pemindai kami"
+        },
+        "step3": {
+          "title": "Verifikasi",
+          "description": "Sistem memverifikasi nomor seri terenkripsi"
+        },
+        "step4": {
+          "title": "Konfirmasi",
+          "description": "Terima data keaslian & asal usul"
+        }
+      }
+    },
+    "benefits": {
+      "title": "Mengapa",
+      "titleBold": "Verifikasi?",
+      "subtitle": "Pelacakan lengkap untuk setiap batangan Silver King",
+      "authenticity": {
+        "title": "Keaslian",
+        "description": "Verifikasi produk Silver King asli secara instan"
+      },
+      "traceability": {
+        "title": "Pelacakan",
+        "description": "Detail asal usul dan manufaktur lengkap"
+      },
+      "security": {
+        "title": "Keamanan",
+        "description": "Kode QR terenkripsi mencegah pemalsuan"
+      }
+    }
+  },
+  "products": {
+    "title": "Produk",
+    "description": "Jelajahi koleksi produk logam mulia premium kami.",
+    "hero": {
+      "title": "Logam Mulia",
+      "titleBold": "Premium",
+      "subtitle": "Batangan kelas investasi yang dibuat dengan presisi tanpa kompromi dan keaslian terverifikasi."
+    },
+    "explore": "Jelajahi koleksi kami",
+    "hoverToView": "Arahkan untuk melihat produk",
+    "categories": {
+      "250gram": {
+        "title": "250 Gram",
+        "description": "Batangan logam mulia premium dengan kemurnian 99,99%. Ukuran besar sempurna untuk investor serius dan pembangunan portofolio jangka panjang."
+      },
+      "100gram": {
+        "title": "100 Gram",
+        "description": "Batangan logam mulia premium dengan kemurnian 99,99%. Ukuran ideal untuk portofolio investasi seimbang dan tujuan koleksi."
+      },
+      "50gram": {
+        "title": "50 Gram",
+        "description": "Batangan logam mulia premium dengan kemurnian 99,99%. Ukuran serbaguna cocok untuk investasi dan tujuan hadiah."
+      },
+      "25gram": {
+        "title": "25 Gram",
+        "description": "Batangan logam mulia premium dengan kemurnian 99,99%. Ukuran kompak sempurna untuk memulai perjalanan investasi logam mulia Anda."
+      },
+      "10gram": {
+        "title": "10 Gram",
+        "description": "Batangan logam mulia premium dengan kemurnian 99,99%. Ukuran tingkat pemula ideal untuk investor baru dan kolektor."
+      },
+      "5gram": {
+        "title": "5 Gram",
+        "description": "Batangan logam mulia premium dengan kemurnian 99,99%. Ukuran terkecil sempurna untuk hadiah dan koleksi pemula."
+      }
+    },
+    "product": {
+      "name": "Batangan Logam Mulia",
+      "rangeName": "Silver King",
+      "description": "Batangan logam mulia premium dengan kemurnian tertinggi, sertifikat autentikasi, dan verifikasi kode QR.",
+      "descriptionShort": "Batangan logam mulia premium dengan sertifikasi.",
+      "purity": "99,99%",
+      "memberPrice": "Harga Member",
+      "regularPrice": "Harga Reguler",
+      "viewDetails": "Lihat Detail"
+    },
+    "filters": {
+      "all": "Semua",
+      "awardWinning": "Pemenang Penghargaan",
+      "exclusives": "Eksklusif",
+      "large": "Batangan Besar",
+      "small": "Batangan Kecil",
+      "noProducts": "Tidak ada produk yang ditemukan."
+    },
+    "runningText": {
+      "premiumQuality": "Kualitas Premium 99,99% Murni",
+      "certified": "Keaslian Bersertifikat Terjamin",
+      "secure": "Portofolio Investasi Aman",
+      "trusted": "Dipercaya oleh Generasi",
+      "qrVerification": "Verifikasi Kode QR Tersedia"
+    },
+    "bottom": {
+      "crafted": "Dibuat dengan presisi",
+      "preserved": "Terpelihara dalam emas,",
+      "trusted": "dipercaya selama generasi.",
+      "scanVerify": "Pindai & Verifikasi",
+      "tapToLaunch": "Ketuk untuk meluncurkan pemindai QR Silver King",
+      "captureQR": "Tangkap segel QR untuk melihat kemurnian & asal usul"
+    }
+  },
+  "about": {
+    "title": "Tentang Kami",
+    "description": "Pelajari lebih lanjut tentang Silver King by CAI.",
+    "hero": {
+      "badge": "Didirikan 2024",
+      "title": "Warisan",
+      "subtitle": "Menciptakan keunggulan dalam logam mulia sejak 2024 dengan presisi tanpa kompromi dan teknologi verifikasi yang revolusioner."
+    },
+    "whyChoose": {
+      "title": "Mengapa Memilih",
+      "titleBold": "Silver King",
+      "subtitle": "Rasakan puncak autentikasi logam mulia dengan warisan kepercayaan dan inovasi modern.",
+      "features": {
+        "authenticity": {
+          "title": "Keaslian Terverifikasi",
+          "description": "Setiap produk dilengkapi dengan kode QR unik untuk verifikasi instan dan konfirmasi keaslian."
+        },
+        "quality": {
+          "title": "Kualitas Premium",
+          "description": "Jaminan kemurnian 99,99% pada semua produk logam mulia kami, dibuat dengan perhatian teliti terhadap detail."
+        },
+        "craftsmanship": {
+          "title": "Kerajinan Mewah",
+          "description": "Desain khusus dan manufaktur presisi membuat setiap potongan menjadi karya seni yang layak untuk koleksi Anda."
+        }
+      }
+    },
+    "howItWorks": {
+      "title": "Sederhana. Aman.",
+      "titleBold": "Terverifikasi.",
+      "subtitle": "Tiga langkah mudah untuk mengautentikasi investasi Anda dengan percaya diri.",
+      "steps": {
+        "step1": {
+          "number": "01",
+          "title": "Pindai Kode QR",
+          "description": "Cukup pindai kode QR unik pada produk Anda menggunakan kamera smartphone Anda."
+        },
+        "step2": {
+          "number": "02",
+          "title": "Verifikasi Instan",
+          "description": "Sistem kami secara instan memverifikasi keaslian produk dan menampilkan informasi detail."
+        },
+        "step3": {
+          "number": "03",
+          "title": "Terjamin Asli",
+          "description": "Terima konfirmasi bahwa logam mulia Anda 100% asli dan bersertifikat."
+        }
+      }
+    },
+    "story": {
+      "title": "Kisah Kami",
+      "paragraph1": "Silver King by CAI mewakili puncak manufaktur logam mulia. Kami mengkhususkan diri dalam menciptakan emas, perak, paladium mewah, dan batangan perak khusus yang mewujudkan kesempurnaan dalam setiap detail.",
+      "paragraph2": "Komitmen kami terhadap keunggulan tercermin dalam setiap produk yang kami buat. Dengan jaminan kemurnian 99,99% pada semua logam mulia kami, kami memastikan bahwa setiap potongan memenuhi standar kualitas dan kerajinan tertinggi.",
+      "paragraph3": "Setiap produk Silver King dilengkapi dengan sistem verifikasi kode QR unik, memungkinkan pelanggan kami untuk secara instan memverifikasi keaslian investasi mereka. Pendekatan inovatif ini menggabungkan kerajinan tradisional dengan teknologi modern.",
+      "values": {
+        "authenticity": {
+          "title": "Keaslian",
+          "description": "Setiap produk terverifikasi dan bersertifikat"
+        },
+        "excellence": {
+          "title": "Keunggulan",
+          "description": "Jaminan kemurnian 99,99%"
+        },
+        "precision": {
+          "title": "Presisi",
+          "description": "Perhatian teliti terhadap detail"
+        }
+      }
+    },
+    "cta": {
+      "title": "Siap untuk memverifikasi",
+      "titleBold": "logam mulia Anda?",
+      "subtitle": "Bergabunglah dengan ribuan pelanggan yang puas yang mempercayai Silver King untuk logam mulia yang autentik dan terverifikasi.",
+      "startVerification": "Mulai Verifikasi",
+      "backToHome": "Kembali ke Beranda"
+    }
+  },
+  "contact": {
+    "title": "Hubungi Kami",
+    "subtitle": "Halaman ini sedang dalam pengembangan.",
+    "getInTouch": "Hubungi Kami",
+    "description": "Kami ingin mendengar dari Anda. Kirimkan pesan kepada kami dan kami akan merespons sesegera mungkin.",
+    "formTitle": "Kirimkan pesan kepada kami",
+    "form": {
+      "name": "Nama",
+      "namePlaceholder": "Nama Anda",
+      "email": "Email",
+      "emailPlaceholder": "email.anda@contoh.com",
+      "message": "Pesan",
+      "messagePlaceholder": "Beritahu kami bagaimana kami dapat membantu Anda...",
+      "submit": "Kirim Pesan",
+      "submitting": "Mengirim..."
+    },
+    "successMessage": "Terima kasih! Pesan Anda telah terkirim. Kami akan segera menghubungi Anda.",
+    "infoTitle": "Hubungi kami",
+    "infoDescription": "Ada pertanyaan atau butuh bantuan? Kami siap membantu. Hubungi kami melalui salah satu saluran di bawah ini.",
+    "info": {
+      "email": "Email",
+      "phone": "Telepon",
+      "address": "Alamat",
+      "addressValue": "Jakarta, Indonesia"
+    },
+    "socialTitle": "Ikuti kami",
+    "footer": {
+      "rights": "Hak cipta dilindungi."
+    }
+  },
+  "admin": {
+    "products": "Produk",
+    "qrPreview": "Pratinjau QR",
+    "logs": "Log",
+    "analytics": "Analitik",
+    "logout": "Keluar",
+    "login": "Masuk",
+    "email": "Email",
+    "password": "Kata sandi",
+    "signIn": "Masuk",
+    "signOut": "Keluar",
+    "welcome": "Selamat Datang",
+    "adminConsole": "Konsol Admin",
+    "silverKing": "Silver King",
+    "silverKingAdmin": "Silver King Admin",
+    "command": {
+      "eyebrow": "Silver King Command",
+      "title": "Inteligensi anti-pemalsuan mewah",
+      "description": "Pantau rantai pasokan terautentikasi dengan telemetri pemindaian waktu nyata, kesehatan produk, dan postur risiko. Setiap widget di bawah ini berbicara langsung ke mesin verifikasi."
+    },
+    "metrics": {
+      "totalProducts": "Total Produk",
+      "totalQrCodes": "Total Kode QR",
+      "totalScans": "Total Pemindaian",
+      "scansToday": "Pemindaian Hari Ini",
+      "curatedBars": "+ batangan SK kurasi",
+      "mirroredSecure": "Tercermin & aman",
+      "lifetimeVerifications": "Verifikasi seumur hidup",
+      "liveInteractions": "Interaksi langsung",
+      "unableToLoad": "Tidak dapat memuat metrik dasbor."
+    },
+    "dashboard": {
+      "label": "Dasbor",
+      "actions": {
+        "operatorTools": "Alat operator",
+        "generateProduct": "Buat produk",
+        "generateProductDesc": "Buat SKU + QR secara instan",
+        "previewQR": "Pratinjau bank QR",
+        "previewQRDesc": "Semua aset QR dalam satu grid",
+        "exportIntelligence": "Ekspor intelijen",
+        "exportIntelligenceDesc": "Unduh laporan Excel lengkap",
+        "scanAnalytics": "Analitik pemindaian",
+        "scanAnalyticsDesc": "Selidiki umpan verifikasi"
+      },
+      "spotlight": {
+        "title": "Sorotan",
+        "subtitle": "Batangan berkinerja teratas",
+        "scans": "Pemindaian",
+        "qrStored": "Aset QR tersimpan",
+        "open": "Buka",
+        "noProducts": "Belum ada produk sorotan."
+      }
+    },
+    "months": {
+      "01": "Januari",
+      "02": "Februari",
+      "03": "Maret",
+      "04": "April",
+      "05": "Mei",
+      "06": "Juni",
+      "07": "Juli",
+      "08": "Agustus",
+      "09": "September",
+      "10": "Oktober",
+      "11": "November",
+      "12": "Desember"
+    },
+    "charts": {
+      "verificationVolume": "Volume Verifikasi",
+      "scanTrajectory": "Trajektori pemindaian",
+      "mostTrustedPieces": "Potongan paling tepercaya",
+      "topScannedProducts": "Produk terpindai teratas",
+      "globalFootprint": "Jejak global",
+      "scanDistribution": "Distribusi pemindaian",
+      "unableToLoadTop": "Tidak dapat memuat produk teratas saat ini.",
+      "unableToLoadDistribution": "Tidak dapat memuat distribusi pemindaian.",
+      "scans": "pemindaian",
+      "ofTotal": "% dari total",
+      "noData": "Tidak ada data pemindaian tersedia",
+      "scanPerformance": "Kinerja pemindaian",
+      "sevenDayScans": "Pemindaian tujuh hari",
+      "verificationHeat": "Panas verifikasi",
+      "realTimeFeed": "Umpan waktu nyata",
+      "viewMode": {
+        "7d": "7 Hari",
+        "30d": "30 Hari",
+        "month": "Bulan",
+        "current": "Saat Ini"
+      }
+    },
+    "activity": {
+      "liveFeed": "Umpan langsung",
+      "recentScanActivity": "Aktivitas pemindaian terkini",
+      "recentScans": "Pemindaian Terkini",
+      "unknownIP": "IP Tidak Dikenal",
+      "unknownAgent": "Agen tidak dikenal",
+      "unableToLoad": "Tidak dapat memuat umpan aktivitas.",
+      "verified": "TERVERIFIKASI"
+    },
+    "analyticsLabel": "Analitik",
+    "analytics": {
+      "title": "Analitik mendalam & intelijen yang dapat diekspor",
+      "eyebrow": "Telemetri lanjutan",
+      "description": "Potong data verifikasi volume tinggi berdasarkan kerangka waktu, amati intensitas per jam, dan ekspor wawasan kurasi untuk tim kepatuhan dan merek Anda.",
+      "security": "Keamanan",
+      "scanLogs": "Log pemindaian",
+      "logsEyebrow": "Telemetri keamanan",
+      "logsTitle": "Buku besar verifikasi fidelitas penuh",
+      "logsDescription": "Lacak setiap peristiwa autentikasi dengan metadata yang tepat, penyaringan, dan ekspor untuk tinjauan kepatuhan.",
+      "exportData": "Ekspor Data",
+      "search": "Cari",
+      "noResults": "Tidak ada hasil ditemukan",
+      "product": "Produk",
+      "scans": "Pemindaian",
+      "share": "Bagian",
+      "signalControl": "Kontrol sinyal",
+      "scansOverTime": "Pemindaian dari waktu ke waktu",
+      "exportCSV": "Ekspor CSV",
+      "export": "Ekspor",
+      "aggregatedMetrics": "Metrik agregat",
+      "topPerforming": "Batangan SK berkinerja teratas",
+      "hourlyHeatmap": "Peta panas per jam",
+      "activityIntensity": "Intensitas aktivitas",
+      "last7Days": "7 hari terakhir",
+      "last30Days": "30 hari terakhir",
+      "custom": "Kustom",
+      "noRecordsAvailable": "Tidak ada catatan tersedia."
+    },
+    "productsDetail": {
+      "title": "Produk",
+      "create": "Buat Produk",
+      "edit": "Edit Produk",
+      "inventory": "Inventori",
+      "addProduct": "Tambah Produk",
+      "search": "Cari produk...",
+      "searchPlaceholder": "Cari berdasarkan nama, serial, atau berat...",
+      "name": "Nama",
+      "weight": "Berat",
+      "serial": "Serial",
+      "price": "Harga",
+      "stock": "Stok",
+      "scans": "Pemindaian",
+      "actions": "Tindakan",
+      "editProduct": "Edit",
+      "deleteProduct": "Hapus",
+      "deleteAll": "Hapus Semua",
+      "deleteAllProducts": "Hapus Semua Produk",
+      "deletingAll": "Menghapus Semua…",
+      "noProducts": "Tidak ada produk ditemukan",
+      "noProductsMatching": "Tidak ada produk yang cocok dengan pencarian Anda.",
+      "noProductsAvailable": "Tidak ada produk tersedia.",
+      "deleteSuccess": "Produk berhasil dihapus",
+      "deleteSuccessDescription": "{name} telah dihapus dari inventori",
+      "deleteFailed": "Gagal menghapus produk",
+      "deleteAllSuccess": "Semua produk berhasil dihapus",
+      "deleteAllSuccessDescription": "{count} produk telah dihapus dari inventori",
+      "deleteAllFailed": "Gagal menghapus semua produk",
+      "deleteAllWarning": "Ini akan menghapus SEMUA produk secara permanen. Tindakan ini tidak dapat dibatalkan.",
+      "deleteAllWarningTitle": "⚠️ Hapus Semua Produk",
+      "deleteAllWarningText": "Tindakan ini tidak dapat dibatalkan!",
+      "deleteAllWarningDescription": "Anda akan menghapus {count} produk dari inventori Anda. Ini juga akan menghapus:",
+      "deleteAllWarningItem1": "Semua kode QR terkait",
+      "deleteAllWarningItem2": "Semua log pemindaian dan data analitik",
+      "deleteAllWarningItem3": "Semua gambar kode QR dari penyimpanan",
+      "typeToConfirm": "Ketik 'DELETE ALL' untuk mengonfirmasi",
+      "typeToConfirmPlaceholder": "Ketik DELETE ALL untuk mengonfirmasi",
+      "finalConfirmationTitle": "🔒 Konfirmasi Akhir Diperlukan",
+      "finalConfirmationText": "Untuk mengonfirmasi tindakan destruktif ini, silakan ketik DELETE ALL di kotak di bawah:",
+      "safetyMeasure": "Ini adalah langkah keamanan untuk mencegah penghapusan yang tidak disengaja",
+      "deleting": "Menghapus...",
+      "confirm": "Konfirmasi",
+      "cancel": "Batal",
+      "continue": "Lanjutkan",
+      "found": "Ditemukan",
+      "of": "dari",
+      "product": "produk",
+      "form": {
+        "basicInformation": "Informasi Dasar",
+        "productName": "Nama Produk",
+        "productNamePlaceholder": "misalnya, Silver King 100g",
+        "weight": "Berat (gram)",
+        "weightPlaceholder": "100",
+        "quantity": "Jumlah",
+        "quantityPlaceholder": "1",
+        "quantityInfoSingle": "Produk tunggal. Masukkan awalan serial (misalnya, SKT) untuk membuat format SKT000001 secara otomatis.",
+        "quantityInfoBatch": "Akan membuat {quantity} produk dengan nomor serial unik",
+        "serialNumberConfiguration": "Konfigurasi Nomor Serial",
+        "serialPrefix": "Awalan Serial",
+        "serialPrefixAutoGenerate": "(Membuat format SKT000001 secara otomatis)",
+        "serialPrefixPlaceholderSingle": "SKT (akan membuat SKT000001)",
+        "serialPrefixPlaceholderBatch": "SKA (akan membuat SKA000001, SKA000002...)",
+        "serialPrefixInfo": "Masukkan awalan (misalnya, SKT) untuk membuat nomor serial dalam format SKT000001 secara otomatis",
+        "serialCode": "Kode Serial",
+        "serialCodeOptional": "(opsional, dibuat otomatis jika kosong)",
+        "serialCodePlaceholder": "Dibuat otomatis atau masukkan kustom (misalnya, SKA12345)",
+        "price": "Harga (opsional)",
+        "pricePlaceholder": "250000000 (opsional)",
+        "batchCreationMode": "Mode Pembuatan Batch",
+        "batchCreationDescription": "{quantity} produk akan dibuat, masing-masing dengan nomor serial dan kode QR unik. Stok akan disetel ke 1 untuk setiap produk (satu unit per nomor serial).",
+        "checkingSerials": "Memeriksa serial yang ada...",
+        "foundExisting": "Ditemukan {count} produk yang ada",
+        "lastSerial": "Serial Terakhir",
+        "willContinueFrom": "Akan Melanjutkan Dari",
+        "preview": "Pratinjau",
+        "serialNumber": "Nomor Serial",
+        "newPrefix": "✨ Awalan baru, mulai dari 000001",
+        "serialRange": "Rentang Serial",
+        "willCreateSequential": "{quantity} produk akan dibuat dengan nomor serial berurutan",
+        "createProduct": "Buat Produk",
+        "updateProduct": "Perbarui Produk",
+        "createBatch": "Buat {quantity} Produk",
+        "creatingBatch": "Membuat {quantity} produk...",
+        "saving": "Menyimpan…",
+        "productCreated": "Produk berhasil dibuat!",
+        "productCreatedDescription": "{name} telah ditambahkan ke inventori",
+        "productUpdated": "Produk berhasil diperbarui!",
+        "productUpdatedDescription": "{name} telah diperbarui",
+        "batchCreated": "Berhasil membuat {count} produk!",
+        "batchCreatedDescription": "Nomor serial dibuat untuk {name}",
+        "saveFailed": "Gagal menyimpan produk",
+        "saveFailedDescription": "Silakan periksa input Anda dan coba lagi"
+      }
+    },
+    "products": "Produk",
+    "qrPreviewDetail": {
+      "eyebrow": "Vault QR",
+      "title": "Setiap artefak terserialisasi",
+      "description": "Aset QR fidelitas tinggi, siap dipindai.",
+      "item": "item",
+      "items": "item",
+      "totalAssets": "Total Aset",
+      "selected": "terpilih",
+      "searchPlaceholder": "Cari berdasarkan nama produk atau serial...",
+      "unableToLoad": "Tidak dapat memuat aset QR.",
+      "retry": "Coba Lagi",
+      "noProductsFound": "Tidak ada produk ditemukan",
+      "matching": "yang cocok",
+      "of": "dari",
+      "products": "produk",
+      "filtered": "terfilter",
+      "downloadSelected": "Unduh Terpilih",
+      "generating": "Membuat...",
+      "refresh": "Muat Ulang",
+      "refreshing": "Memuat ulang...",
+      "downloadAll": "Unduh Semua",
+      "generatingPng": "Membuat PNG...",
+      "serialCode": "Kode Serial",
+      "productName": "Nama Produk",
+      "weight": "Berat",
+      "qrPreview": "Pratinjau QR",
+      "actions": "Tindakan",
+      "enlarge": "Perbesar",
+      "download": "Unduh",
+      "downloading": "Mengunduh...",
+      "downloadQRCode": "Unduh Kode QR",
+      "close": "Tutup",
+      "view": "Lihat",
+      "downloadFailed": "Gagal mengunduh kode QR",
+      "downloadAllFailed": "Tidak ada produk tersedia untuk diunduh.",
+      "downloadSelectedFailed": "Silakan pilih setidaknya satu kode QR untuk diunduh.",
+      "downloadSuccess": "Berhasil mengunduh PNG dengan {count} kode QR!",
+      "downloadSelectedSuccess": "Berhasil mengunduh PNG dengan {count} kode QR terpilih!"
+    },
+    "qrPreview": "Pratinjau QR",
+    "logs": "Log",
+    "logsDetail": {
+      "product": "Produk",
+      "serial": "Serial",
+      "timestamp": "Waktu",
+      "ip": "IP",
+      "userAgent": "User Agent"
+    },
+    "pagination": {
+      "previous": "Sebelumnya",
+      "next": "Selanjutnya",
+      "page": "Halaman",
+      "of": "dari"
+    },
+    "export": {
+      "label": "Ekspor",
+      "title": "Ekspor",
+      "data": "Data",
+      "description": "Unduh seluruh dataset termasuk produk, catatan QR, dan jumlah pemindaian.",
+      "exportToExcel": "Ekspor ke Excel",
+      "exportSuccessful": "Ekspor berhasil",
+      "excelDownloaded": "File Excel telah diunduh",
+      "exportFailed": "Ekspor gagal",
+      "exportOpening": "Membuka ekspor di jendela baru...",
+      "tryAgain": "Silakan coba lagi"
+    },
+    "login": {
+      "title": "Konsol Admin",
+      "signingIn": "Masuk…",
+      "signIn": "Masuk",
+      "loginFailed": "Login gagal",
+      "invalidCredentials": "Email atau kata sandi tidak valid",
+      "loginSuccessful": "Login berhasil",
+      "welcomeBack": "Selamat datang kembali!",
+      "invalidCredentialsError": "Kredensial tidak valid"
+    },
+    "loading": {
+      "dashboard": "Memuat dasbor..."
+    },
+    "errors": {
+      "somethingWentWrong": "Terjadi kesalahan!",
+      "tryAgain": "Coba lagi",
+      "backToHome": "Kembali ke Beranda"
+    }
+  }
+}
+

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import useSWR from "swr";
+import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   QrCode,
@@ -34,6 +35,8 @@ type PreviewResponse = {
 };
 
 export function QrPreviewGrid() {
+  const t = useTranslations('admin.qrPreviewDetail');
+  const tCommon = useTranslations('common');
   const { data, error, isLoading, mutate } = useSWR<PreviewResponse>("/api/admin/qr-preview", fetcher, {
     refreshInterval: 60000,
   });
@@ -104,7 +107,7 @@ export function QrPreviewGrid() {
       window.URL.revokeObjectURL(url);
     } catch (error: any) {
       console.error("Failed to download QR code:", error);
-      alert(`Failed to download QR code: ${error.message || "Please try again"}`);
+      alert(`${t('downloadFailed')}: ${error.message || tCommon('tryAgain')}`);
     } finally {
       setIsDownloading(false);
     }
@@ -112,7 +115,7 @@ export function QrPreviewGrid() {
 
   const handleDownloadAll = async () => {
     if (!data?.products || data.products.length === 0) {
-      alert("No products available to download.");
+      alert(t('downloadAllFailed'));
       return;
     }
 
@@ -148,10 +151,10 @@ export function QrPreviewGrid() {
       window.URL.revokeObjectURL(url);
 
       // Show success message
-      alert(`Successfully downloaded PNG with ${data.products.length} QR code(s)!`);
+      alert(t('downloadSuccess', { count: data.products.length }));
     } catch (error: any) {
       console.error("Failed to download PNG:", error);
-      alert(`Failed to download PNG: ${error.message || "Please try again"}`);
+      alert(`${t('downloadFailed')}: ${error.message || tCommon('tryAgain')}`);
     } finally {
       setIsDownloadingAll(false);
     }
@@ -159,7 +162,7 @@ export function QrPreviewGrid() {
 
   const handleDownloadSelected = async () => {
     if (selectedItems.size === 0) {
-      alert("Please select at least one QR code to download.");
+      alert(t('downloadSelectedFailed'));
       return;
     }
 
@@ -207,10 +210,10 @@ export function QrPreviewGrid() {
       window.URL.revokeObjectURL(url);
 
       // Show success message
-      alert(`Successfully downloaded PNG with ${serialCodes.length} selected QR code(s)!`);
+      alert(t('downloadSelectedSuccess', { count: serialCodes.length }));
     } catch (error: any) {
       console.error("Failed to download selected PNG:", error);
-      alert(`Failed to download selected PNG: ${error.message || "Please try again"}`);
+      alert(`${t('downloadSelectedFailed')}: ${error.message || tCommon('tryAgain')}`);
     } finally {
       setIsDownloadingSelected(false);
     }
@@ -283,12 +286,12 @@ export function QrPreviewGrid() {
     console.error("QR Preview Error:", error);
     return (
       <div className="flex flex-col items-center justify-center gap-4 p-8">
-        <p className="text-sm text-red-400">Unable to load QR assets.</p>
+        <p className="text-sm text-red-400">{t('unableToLoad')}</p>
         <button
           onClick={() => mutate()}
           className="rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm text-white transition hover:border-white/40 hover:bg-white/10"
         >
-          Retry
+          {t('retry')}
         </button>
       </div>
     );
@@ -319,7 +322,7 @@ export function QrPreviewGrid() {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="text-xs font-medium uppercase tracking-[0.5em] text-white/40"
             >
-              QR Vault
+              {t('eyebrow')}
             </motion.p>
             <motion.h1
               initial={{ opacity: 0, y: 10 }}
@@ -327,25 +330,7 @@ export function QrPreviewGrid() {
               transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
               className="text-3xl md:text-4xl lg:text-5xl font-light tracking-[-0.02em] leading-[1.2] text-white"
             >
-              Every{" "}
-              <span className="relative inline-block">
-                <span className="relative z-10 bg-gradient-to-r from-[#FFD700] via-[#FFF8DC] to-[#FFD700] bg-clip-text text-transparent font-medium">
-                  serialized
-                </span>
-                <motion.span
-                  className="absolute inset-0 bg-gradient-to-r from-[#FFD700]/20 via-transparent to-[#FFD700]/20 blur-2xl"
-                  animate={{
-                    opacity: [0.4, 0.6, 0.4],
-                    scale: [1, 1.05, 1],
-                  }}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                />
-              </span>{" "}
-              artifact
+              {t('title')}
             </motion.h1>
             <motion.p
               initial={{ opacity: 0 }}
@@ -353,10 +338,10 @@ export function QrPreviewGrid() {
               transition={{ duration: 0.5, delay: 0.3 }}
               className="mt-2 text-sm leading-relaxed text-white/50 md:text-base"
             >
-              High-fidelity QR assets, ready to scan.
+              {t('description')}
               {filteredProducts.length > 0 && (
                 <span className="ml-1 text-[#FFD700]/80">
-                  {filteredProducts.length} {filteredProducts.length === 1 ? "item" : "items"}.
+                  {filteredProducts.length} {filteredProducts.length === 1 ? t('item') : t('items')}.
                 </span>
               )}
             </motion.p>
@@ -370,7 +355,7 @@ export function QrPreviewGrid() {
               transition={{ duration: 0.5, delay: 0.4 }}
               className="flex flex-col items-end gap-1 rounded-2xl border border-white/10 bg-white/5 px-6 py-4 backdrop-blur-sm"
             >
-              <p className="text-xs uppercase tracking-[0.2em] text-white/40">Total Assets</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-white/40">{t('totalAssets')}</p>
               <p className="text-3xl font-light tracking-tight text-white">
                 {data.products.length}
               </p>
@@ -380,7 +365,7 @@ export function QrPreviewGrid() {
                   animate={{ opacity: 1, y: 0 }}
                   className="text-xs font-medium text-[#FFD700]"
                 >
-                  {selectedItems.size} selected
+                  {selectedItems.size} {t('selected')}
                 </motion.p>
               )}
             </motion.div>
@@ -408,7 +393,7 @@ export function QrPreviewGrid() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by product name or serial..."
+                placeholder={t('searchPlaceholder')}
                 className="flex-1 bg-transparent text-sm font-light text-white placeholder:text-white/40 placeholder:font-light focus:outline-none"
               />
             </motion.div>
@@ -504,9 +489,9 @@ export function QrPreviewGrid() {
           <div className="flex items-center gap-2 text-xs font-light uppercase tracking-[0.1em] text-white/40">
             <span>
               {selectedItems.size > 0
-                ? `${selectedItems.size} of ${filteredProducts.length} selected`
-                : `${filteredProducts.length} of ${data.products.length} products`}
-              {searchQuery && ` (filtered)`}
+                ? `${selectedItems.size} ${t('of')} ${filteredProducts.length} ${t('selected')}`
+                : `${filteredProducts.length} ${t('of')} ${data.products.length} ${t('products')}`}
+              {searchQuery && ` (${t('filtered')})`}
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -520,8 +505,8 @@ export function QrPreviewGrid() {
               >
                 <Download className="h-4 w-4 transition-transform group-hover:translate-y-0.5" />
                 {isDownloadingSelected
-                  ? "Generating..."
-                  : `Download Selected (${selectedItems.size})`}
+                  ? t('generating')
+                  : `${t('downloadSelected')} (${selectedItems.size})`}
               </motion.button>
             )}
             <motion.button
@@ -532,7 +517,7 @@ export function QrPreviewGrid() {
               whileTap={{ scale: isRegenerating ? 1 : 0.98 }}
             >
               <RefreshCw className={`h-4 w-4 transition-transform ${isRegenerating ? "animate-spin" : "group-hover:rotate-180"}`} />
-              {isRegenerating ? "Refreshing..." : "Refresh"}
+              {isRegenerating ? t('refreshing') : t('refresh')}
             </motion.button>
             <motion.button
               onClick={handleDownloadAll}
@@ -542,7 +527,7 @@ export function QrPreviewGrid() {
               whileTap={{ scale: isDownloadingAll ? 1 : 0.98 }}
             >
               <FileText className="h-4 w-4 transition-transform group-hover:rotate-3" />
-              {isDownloadingAll ? "Generating PNG..." : `Download All (${data.products.length})`}
+              {isDownloadingAll ? t('generatingPng') : `${t('downloadAll')} (${data.products.length})`}
             </motion.button>
           </div>
         </motion.div>
@@ -590,31 +575,31 @@ export function QrPreviewGrid() {
                         scope="col"
                         className="px-4 py-3 text-left text-xs font-light uppercase tracking-[0.3em] text-white/60"
                       >
-                        Serial Code
+                        {t('serialCode')}
                       </th>
                       <th
                         scope="col"
                         className="px-4 py-3 text-left text-xs font-light uppercase tracking-[0.3em] text-white/60"
                       >
-                        Product Name
+                        {t('productName')}
                       </th>
                       <th
                         scope="col"
                         className="px-4 py-3 text-left text-xs font-light uppercase tracking-[0.3em] text-white/60"
                       >
-                        Weight
+                        {t('weight')}
                       </th>
                       <th
                         scope="col"
                         className="px-4 py-3 text-left text-xs font-light uppercase tracking-[0.3em] text-white/60"
                       >
-                        QR Preview
+                        {t('qrPreview')}
                       </th>
                       <th
                         scope="col"
                         className="px-4 py-3 text-right text-xs font-light uppercase tracking-[0.3em] text-white/60"
                       >
-                        Actions
+                        {t('actions')}
                       </th>
                     </tr>
                   </thead>
@@ -622,7 +607,7 @@ export function QrPreviewGrid() {
                     {filteredProducts.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="px-4 py-8 text-center text-sm text-white/60">
-                          No products found {searchQuery && `matching "${searchQuery}"`}
+                          {t('noProductsFound')} {searchQuery && `${t('matching')} "${searchQuery}"`}
                         </td>
                       </tr>
                     ) : (
@@ -691,7 +676,7 @@ export function QrPreviewGrid() {
                                   whileTap={{ scale: 0.95 }}
                                 >
                                   <Maximize2 className="h-3.5 w-3.5" />
-                                  Enlarge
+                                  {t('enlarge')}
                                 </motion.button>
                                 <motion.button
                                   onClick={() => handleDownload(product)}
@@ -701,7 +686,7 @@ export function QrPreviewGrid() {
                                   whileTap={{ scale: isDownloading ? 1 : 0.95 }}
                                 >
                                   <Download className="h-3.5 w-3.5" />
-                                  Download
+                                  {t('download')}
                                 </motion.button>
                               </div>
                             </td>
@@ -729,7 +714,7 @@ export function QrPreviewGrid() {
           >
             {filteredProducts.length === 0 ? (
               <div className="col-span-full rounded-2xl border border-white/10 bg-white/5 p-10 text-center text-white/60">
-                No products found {searchQuery && `matching "${searchQuery}"`}
+                {t('noProductsFound')} {searchQuery && `${t('matching')} "${searchQuery}"`}
               </div>
             ) : (
               filteredProducts.map((product, index) => {
@@ -787,7 +772,7 @@ export function QrPreviewGrid() {
                   onClick={() => setSelected(product)}
                 >
                   <Maximize2 className="h-4 w-4" />
-                  Enlarge
+                  {t('enlarge')}
                 </button>
               </motion.div>
                   </AnimatedCard>
@@ -840,7 +825,7 @@ export function QrPreviewGrid() {
               whileTap={{ scale: isDownloading ? 1 : 0.95 }}
             >
               <Download className="h-4 w-4" />
-              {isDownloading ? "Downloading..." : "Download QR Code"}
+              {isDownloading ? t('downloading') : t('downloadQRCode')}
             </motion.button>
           </div>
         )}

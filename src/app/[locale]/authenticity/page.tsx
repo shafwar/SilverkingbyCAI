@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useTranslations, useLocale } from "next-intl";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -37,34 +38,9 @@ if (typeof window !== "undefined") {
   }
 }
 
-const workflowSteps = [
-  {
-    id: 1,
-    title: "Locate QR Code",
-    description: "Find the QR code on your Silver King bar packaging",
-    icon: QrCode,
-  },
-  {
-    id: 2,
-    title: "Scan Code",
-    description: "Use your phone camera or our scanner",
-    icon: Camera,
-  },
-  {
-    id: 3,
-    title: "Verification",
-    description: "System verifies encrypted serial number",
-    icon: Shield,
-  },
-  {
-    id: 4,
-    title: "Confirmation",
-    description: "Receive authenticity & provenance data",
-    icon: CheckCircle2,
-  },
-];
+// workflowSteps will be created inside AuthenticityPage component using translations
 
-function CTASection() {
+function CTASection({ t }: { t: (key: string) => string }) {
   const scrollToVerification = () => {
     try {
       const verificationSection = document.querySelector("[data-verification-section]");
@@ -99,7 +75,7 @@ function CTASection() {
             }}
           >
             <span className="text-sm md:text-base font-light tracking-wide">
-              Learn verification process
+              {t('learnProcess')}
             </span>
             <ArrowDown className="h-4 w-4 md:h-5 md:w-5 transition-transform duration-300 group-hover:translate-y-1" />
           </motion.button>
@@ -110,7 +86,7 @@ function CTASection() {
 }
 
 // WorkflowTimeline - NO BLOCKING ANIMATIONS
-function WorkflowTimeline() {
+function WorkflowTimeline({ steps }: { steps: Array<{ id: number; title: string; description: string; icon: any }> }) {
   const timelineRef = useRef<HTMLDivElement>(null);
   const pathRef = useRef<SVGPathElement>(null);
   const pathMobileRef = useRef<SVGPathElement>(null);
@@ -226,7 +202,7 @@ function WorkflowTimeline() {
 
       {/* Steps - NO BLOCKING ANIMATIONS, ALWAYS VISIBLE */}
       <div className="relative space-y-12 md:space-y-20">
-        {workflowSteps.map((step, index) => {
+        {steps.map((step, index) => {
           const Icon = step.icon;
           const isEven = index % 2 === 0;
 
@@ -301,6 +277,36 @@ function WorkflowTimeline() {
 }
 
 export default function AuthenticityPage() {
+  const t = useTranslations('authenticity');
+  
+  const workflowSteps = [
+    {
+      id: 1,
+      title: t('workflow.steps.step1.title'),
+      description: t('workflow.steps.step1.description'),
+      icon: QrCode,
+    },
+    {
+      id: 2,
+      title: t('workflow.steps.step2.title'),
+      description: t('workflow.steps.step2.description'),
+      icon: Camera,
+    },
+    {
+      id: 3,
+      title: t('workflow.steps.step3.title'),
+      description: t('workflow.steps.step3.description'),
+      icon: Shield,
+    },
+    {
+      id: 4,
+      title: t('workflow.steps.step4.title'),
+      description: t('workflow.steps.step4.description'),
+      icon: CheckCircle2,
+    },
+  ];
+  const tNav = useTranslations('nav');
+  const locale = useLocale();
   const [showScanner, setShowScanner] = useState(false);
   const [showManualInput, setShowManualInput] = useState(false);
   const [serialNumber, setSerialNumber] = useState("");
@@ -615,9 +621,9 @@ export default function AuthenticityPage() {
             data-hero
             className="mb-4 text-4xl font-light leading-tight text-white sm:text-5xl md:text-6xl"
           >
-            Authenticate Your
+            {t('authenticateYour')}
             <span className="block bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text font-semibold text-transparent">
-              Silver King Bar
+              {t('silverKingBar')}
             </span>
           </motion.h1>
 
@@ -625,8 +631,7 @@ export default function AuthenticityPage() {
             data-hero
             className="mx-auto mb-8 max-w-xl text-base leading-relaxed text-luxury-silver/70 sm:text-lg"
           >
-            Scan the QR code or enter serial number to verify authenticity and view provenance
-            details
+            {t('heroDescription')}
           </motion.p>
 
           <motion.div
@@ -641,10 +646,10 @@ export default function AuthenticityPage() {
               className="group relative z-20 inline-flex w-full items-center justify-center gap-2 rounded-full bg-luxury-gold px-8 py-3.5 text-sm font-semibold text-black transition-all hover:bg-luxury-lightGold sm:w-auto cursor-pointer active:scale-95"
             >
               <QrCode className="h-4 w-4" />
-              Scan QR Code
+              {t('scanQR')}
             </motion.button>
 
-            <span className="relative z-20 text-sm text-white/40 font-light">or</span>
+            <span className="relative z-20 text-sm text-white/40 font-light">{t('or')}</span>
 
             <motion.button
               type="button"
@@ -654,13 +659,13 @@ export default function AuthenticityPage() {
               className="relative z-20 inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-8 py-3.5 text-sm font-semibold text-white transition-all hover:border-white/30 hover:bg-white/10 sm:w-auto cursor-pointer active:scale-95"
             >
               <Search className="h-4 w-4" />
-              Enter Serial
+              {t('enterSerial')}
             </motion.button>
           </motion.div>
         </div>
       </section>
 
-      <CTASection />
+      <CTASection t={t} />
 
       {/* Verification Workflow Section - ALWAYS VISIBLE */}
       <section
@@ -681,17 +686,17 @@ export default function AuthenticityPage() {
             transition={{ duration: 0.8 }}
           >
             <h2 className="mb-4 text-4xl font-light text-white md:text-5xl">
-              Verification{" "}
+              {t('workflow.title')}{" "}
               <span className="bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text font-semibold text-transparent">
-                Process
+                {t('workflow.titleBold')}
               </span>
             </h2>
             <p className="mx-auto max-w-2xl text-base text-luxury-silver/70 md:text-lg">
-              Simple four-step verification for your Silver King bar
+              {t('workflow.subtitle')}
             </p>
           </motion.div>
 
-          <WorkflowTimeline />
+          <WorkflowTimeline steps={workflowSteps} />
         </div>
       </section>
 
@@ -755,14 +760,14 @@ export default function AuthenticityPage() {
                   <X className="h-5 w-5" />
                 </button>
 
-                <h2 className="mb-6 text-2xl font-semibold text-white">Enter Serial Number</h2>
+                <h2 className="mb-6 text-2xl font-semibold text-white">{t('enterSerialNumber')}</h2>
                 <div className="mb-6 flex gap-3">
                   <input
                     type="text"
                     value={serialNumber}
                     onChange={(e) => setSerialNumber(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleManualVerify()}
-                    placeholder="e.g., SKA000001"
+                    placeholder={t('enterSerialPlaceholder')}
                     className="flex-1 rounded-lg border border-white/20 bg-white/5 px-4 py-3 font-mono text-sm text-white placeholder:text-white/40 focus:border-luxury-gold focus:outline-none focus:ring-2 focus:ring-luxury-gold/30"
                     autoFocus
                   />
@@ -773,11 +778,11 @@ export default function AuthenticityPage() {
                     disabled={!serialNumber.trim()}
                     className="rounded-lg bg-gradient-to-r from-luxury-gold to-luxury-lightGold px-6 py-3 text-sm font-semibold text-black transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Verify
+                    {t('verify')}
                   </motion.button>
                 </div>
                 <p className="text-xs text-white/50 text-center">
-                  Enter the serial number found on your Silver King bar
+                  {t('enterSerialHint')}
                 </p>
               </div>
             </motion.div>
@@ -795,13 +800,13 @@ export default function AuthenticityPage() {
         <div className="relative z-10 mx-auto max-w-5xl">
           <div className="mb-12 text-center">
             <h2 className="mb-3 text-3xl font-light text-white md:text-4xl">
-              Why{" "}
+              {t('benefits.title')}{" "}
               <span className="bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text font-semibold text-transparent">
-                Verify?
+                {t('benefits.titleBold')}
               </span>
             </h2>
             <p className="text-sm text-luxury-silver/60 md:text-base">
-              Complete traceability for every Silver King bar
+              {t('benefits.subtitle')}
             </p>
           </div>
 
@@ -816,9 +821,9 @@ export default function AuthenticityPage() {
               <div className="mb-4 inline-flex rounded-xl bg-luxury-gold/10 p-3">
                 <Sparkles className="h-5 w-5 text-luxury-gold" />
               </div>
-              <h3 className="mb-2 text-lg font-semibold text-white">Authenticity</h3>
+              <h3 className="mb-2 text-lg font-semibold text-white">{t('benefits.authenticity.title')}</h3>
               <p className="text-sm text-luxury-silver/70 leading-relaxed">
-                Verify genuine Silver King products instantly
+                {t('benefits.authenticity.description')}
               </p>
             </motion.div>
 
@@ -832,9 +837,9 @@ export default function AuthenticityPage() {
               <div className="mb-4 inline-flex rounded-xl bg-luxury-silver/10 p-3">
                 <QrCode className="h-5 w-5 text-luxury-silver" />
               </div>
-              <h3 className="mb-2 text-lg font-semibold text-white">Traceability</h3>
+              <h3 className="mb-2 text-lg font-semibold text-white">{t('benefits.traceability.title')}</h3>
               <p className="text-sm text-luxury-silver/70 leading-relaxed">
-                Complete provenance and manufacturing details
+                {t('benefits.traceability.description')}
               </p>
             </motion.div>
 
@@ -848,9 +853,9 @@ export default function AuthenticityPage() {
               <div className="mb-4 inline-flex rounded-xl bg-luxury-gold/10 p-3">
                 <Shield className="h-5 w-5 text-luxury-gold" />
               </div>
-              <h3 className="mb-2 text-lg font-semibold text-white">Security</h3>
+              <h3 className="mb-2 text-lg font-semibold text-white">{t('benefits.security.title')}</h3>
               <p className="text-sm text-luxury-silver/70 leading-relaxed">
-                Encrypted QR codes prevent counterfeiting
+                {t('benefits.security.description')}
               </p>
             </motion.div>
           </div>
@@ -876,28 +881,28 @@ export default function AuthenticityPage() {
             >
               <span className="text-white/40 text-sm">×</span>
               <Link
-                href="/what-we-do"
+                href={`/${locale}/what-we-do`}
                 className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
               >
-                What we do
+                {tNav('whatWeDo')}
               </Link>
               <Link
-                href="/authenticity"
+                href={`/${locale}/authenticity`}
                 className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
               >
-                Authenticity
+                {tNav('authenticity')}
               </Link>
               <Link
-                href="/products"
+                href={`/${locale}/products`}
                 className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
               >
-                Products
+                {tNav('products')}
               </Link>
               <Link
-                href="/about"
+                href={`/${locale}/about`}
                 className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
               >
-                About us
+                {tNav('aboutUs')}
               </Link>
             </motion.div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { ShieldCheck, Clock } from "lucide-react";
 
 type TimelineEntry = {
@@ -13,9 +14,11 @@ type TimelineEntry = {
 };
 
 export function RecentScansTimeline({ logs }: { logs: TimelineEntry[] }) {
+  const t = useTranslations('admin.activity');
+  
   return (
     <div className="rounded-3xl border border-white/5 bg-white/[0.02] p-6">
-      <p className="text-xs uppercase tracking-[0.5em] text-white/60">Recent Scans</p>
+      <p className="text-xs uppercase tracking-[0.5em] text-white/60">{t('recentScans')}</p>
       <div className="mt-4 space-y-4">
         {logs.map((log, index) => (
           <motion.div
@@ -37,7 +40,7 @@ export function RecentScansTimeline({ logs }: { logs: TimelineEntry[] }) {
               {new Date(log.scannedAt).toLocaleString("id-ID")}
             </div>
             <p className="mt-2 text-[0.7rem] text-white/40">
-              {log.ip ?? "Unknown IP"} • {log.userAgent?.slice(0, 60) ?? "Unknown agent"}
+              {log.ip ?? t('unknownIP')} • {log.userAgent?.slice(0, 60) ?? t('unknownAgent')}
             </p>
           </motion.div>
         ))}

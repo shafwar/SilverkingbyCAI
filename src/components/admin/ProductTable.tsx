@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Modal } from "./Modal";
 import { Trash2, AlertTriangle, Search, X } from "lucide-react";
@@ -21,6 +22,7 @@ type ProductRow = {
 };
 
 export function ProductTable({ products }: { products: ProductRow[] }) {
+  const t = useTranslations('admin.productsDetail');
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -48,17 +50,17 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
 
   async function handleDelete(id: number) {
     const product = products.find((p) => p.id === id);
-    const productName = product?.name || "Product";
+    const productName = product?.name || t('product');
 
     setDeletingId(id);
     try {
       const res = await fetch(`/api/products/delete/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || "Delete failed");
+        throw new Error(errorData.error || t('deleteFailed'));
       }
 
-      toast.success("Product deleted successfully", {
+      toast.success(t('deleteSuccess'), {
         description: `${productName} has been removed from inventory`,
         duration: 3000,
       });
@@ -66,8 +68,8 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
       startTransition(() => router.refresh());
     } catch (error: any) {
       console.error(error);
-      toast.error("Failed to delete product", {
-        description: error.message || "Please try again",
+      toast.error(t('deleteFailed'), {
+        description: error.message || t('tryAgain'),
         duration: 4000,
       });
     } finally {
@@ -77,7 +79,7 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
 
   async function handleDeleteAll() {
     if (products.length === 0) {
-      toast.info("No products to delete");
+      toast.info(t('noProducts'));
       return;
     }
 
@@ -88,8 +90,8 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
   async function confirmDeleteAll() {
     // Second confirmation: Require typing "DELETE ALL"
     if (confirmText !== "DELETE ALL") {
-      toast.error("Please type 'DELETE ALL' to confirm", {
-        description: "This is a safety measure to prevent accidental deletion",
+      toast.error(t('typeToConfirm'), {
+        description: t('safetyMeasure'),
         duration: 4000,
       });
       return;
@@ -104,13 +106,13 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
       
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || errorData.message || "Delete all failed");
+        throw new Error(errorData.error || errorData.message || t('deleteAllFailed'));
       }
 
       const data = await res.json();
 
-      toast.success("All products deleted successfully", {
-        description: `${data.deletedCount || products.length} product(s) have been removed from inventory`,
+      toast.success(t('deleteAllSuccess'), {
+        description: t('deleteAllSuccessDescription', { count: data.deletedCount || products.length }),
         duration: 5000,
       });
 
@@ -121,8 +123,8 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
       startTransition(() => router.refresh());
     } catch (error: any) {
       console.error(error);
-      toast.error("Failed to delete all products", {
-        description: error.message || "Please try again",
+      toast.error(t('deleteAllFailed'), {
+        description: error.message || t('tryAgain'),
         duration: 5000,
       });
     } finally {
@@ -146,7 +148,7 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by name, serial, or weight..."
+            placeholder={t('searchPlaceholder')}
             className="w-full rounded-full border border-white/15 bg-white/5 px-10 py-2 text-sm text-white placeholder:text-white/40 focus:border-[#FFD700] focus:outline-none focus:ring-2 focus:ring-[#FFD700]/20"
           />
           {searchQuery && (
@@ -166,14 +168,14 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
           className="flex items-center gap-2 rounded-full border border-red-400/40 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 transition hover:border-red-400 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Trash2 className="h-4 w-4" />
-          {isDeletingAll ? "Deleting All…" : "Delete All Products"}
+          {isDeletingAll ? t('deletingAll') : t('deleteAllProducts')}
         </button>
       </div>
 
       {/* Search Results Count */}
       {searchQuery && (
         <div className="mb-4 text-sm text-white/60">
-          Found {filteredProducts.length} of {products.length} product(s)
+          {t('found')} {filteredProducts.length} {t('of')} {products.length} {t('product')}
         </div>
       )}
 
@@ -183,21 +185,20 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
         onClose={() => {
           setShowDeleteAllModal(false);
         }}
-        title="⚠️ Delete All Products"
+        title={t('deleteAllWarningTitle')}
       >
         <div className="space-y-6">
           <div className="flex items-start gap-4 rounded-2xl border border-red-500/30 bg-red-500/10 p-4">
             <AlertTriangle className="h-6 w-6 flex-shrink-0 text-red-400" />
             <div className="space-y-2">
-              <p className="font-semibold text-red-300">This action cannot be undone!</p>
+              <p className="font-semibold text-red-300">{t('deleteAllWarningText')}</p>
               <p className="text-sm text-white/70">
-                You are about to delete <strong className="text-white">{products.length}</strong> product(s) from your inventory.
-                This will also delete:
+                {t('deleteAllWarningDescription', { count: products.length })}
               </p>
               <ul className="ml-4 list-disc space-y-1 text-sm text-white/60">
-                <li>All associated QR codes</li>
-                <li>All scan logs and analytics data</li>
-                <li>All QR code images from storage</li>
+                <li>{t('deleteAllWarningItem1')}</li>
+                <li>{t('deleteAllWarningItem2')}</li>
+                <li>{t('deleteAllWarningItem3')}</li>
               </ul>
             </div>
           </div>
@@ -207,13 +208,13 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
               onClick={() => setShowDeleteAllModal(false)}
               className="flex-1 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               onClick={handleFirstConfirm}
               className="flex-1 rounded-full border border-red-400/40 bg-red-500/20 px-4 py-2 text-sm font-medium text-red-300 transition hover:bg-red-500/30"
             >
-              Continue
+              {t('continue')}
             </button>
           </div>
         </div>
@@ -226,18 +227,18 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
           setShowConfirmModal(false);
           setConfirmText("");
         }}
-        title="🔒 Final Confirmation Required"
+        title={t('finalConfirmationTitle')}
       >
         <div className="space-y-6">
           <div className="space-y-2">
             <p className="text-sm text-white/70">
-              To confirm this destructive action, please type <strong className="text-white">DELETE ALL</strong> in the box below:
+              {t('finalConfirmationText')}
             </p>
             <input
               type="text"
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="Type DELETE ALL to confirm"
+              placeholder={t('typeToConfirmPlaceholder')}
               className="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-[#FFD700] focus:outline-none focus:ring-2 focus:ring-[#FFD700]/20"
               autoFocus
               onKeyDown={(e) => {
@@ -256,14 +257,14 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
               }}
               className="flex-1 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               onClick={confirmDeleteAll}
               disabled={confirmText !== "DELETE ALL"}
               className="flex-1 rounded-full border border-red-400/40 bg-red-500/20 px-4 py-2 text-sm font-medium text-red-300 transition hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Delete All Products
+              {t('deleteAllProducts')}
             </button>
           </div>
         </div>
@@ -275,18 +276,18 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
           <table className="w-full text-sm text-white/70">
             <thead>
               <tr className="bg-white/[0.03] text-left text-xs uppercase tracking-[0.4em] text-white/40">
-                <th className="px-4 lg:px-6 py-4">Product</th>
-                <th className="px-4 lg:px-6 py-4">Serial</th>
-                <th className="px-4 lg:px-6 py-4">Weight</th>
-                <th className="px-4 lg:px-6 py-4">Scans</th>
-                <th className="px-4 lg:px-6 py-4 text-right">Actions</th>
+                <th className="px-4 lg:px-6 py-4">{t('name')}</th>
+                <th className="px-4 lg:px-6 py-4">{t('serial')}</th>
+                <th className="px-4 lg:px-6 py-4">{t('weight')}</th>
+                <th className="px-4 lg:px-6 py-4">{t('scans')}</th>
+                <th className="px-4 lg:px-6 py-4 text-right">{t('actions')}</th>
               </tr>
             </thead>
             <tbody>
               {filteredProducts.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-white/40">
-                    {searchQuery ? "No products found matching your search." : "No products available."}
+                    {searchQuery ? t('noProducts') : t('noProducts')}
                   </td>
                 </tr>
               ) : (
@@ -304,14 +305,14 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
                         onClick={() => router.push(`/admin/products/create?id=${product.id}`)}
                         className="mr-3 rounded-full border border-white/15 px-3 py-1 text-xs text-white/70 hover:border-white/40"
                       >
-                        Edit
+                        {t('editProduct')}
                       </button>
                       <button
                         disabled={isPending && deletingId === product.id}
                         onClick={() => handleDelete(product.id)}
                         className="rounded-full border border-red-400/40 px-3 py-1 text-xs text-red-300 hover:border-red-400"
                       >
-                        {isPending && deletingId === product.id ? "Deleting…" : "Delete"}
+                        {isPending && deletingId === product.id ? t('deleting') : t('deleteProduct')}
                       </button>
                     </td>
                   </tr>
@@ -325,7 +326,7 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
         <div className="md:hidden divide-y divide-white/5">
           {filteredProducts.length === 0 ? (
             <div className="px-4 py-12 text-center text-white/40">
-              {searchQuery ? "No products found matching your search." : "No products available."}
+              {searchQuery ? t('noProductsMatching') : t('noProducts')}
             </div>
           ) : (
             filteredProducts.map((product) => (
@@ -347,21 +348,21 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
                       onClick={() => handleDelete(product.id)}
                       className="rounded-full border border-red-400/40 px-3 py-1.5 text-xs text-red-300 hover:border-red-400 disabled:opacity-50"
                     >
-                      {isPending && deletingId === product.id ? "Deleting…" : "Delete"}
+                      {isPending && deletingId === product.id ? t('deleting') : t('deleteProduct')}
                     </button>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
-                    <p className="text-white/40 text-xs uppercase tracking-wide mb-1">Serial</p>
+                    <p className="text-white/40 text-xs uppercase tracking-wide mb-1">{t('serial')}</p>
                     <p className="font-mono text-white/80">{product.serialCode}</p>
                   </div>
                   <div>
-                    <p className="text-white/40 text-xs uppercase tracking-wide mb-1">Weight</p>
+                    <p className="text-white/40 text-xs uppercase tracking-wide mb-1">{t('weight')}</p>
                     <p className="text-white/80">{product.weight} gr</p>
                   </div>
                   <div>
-                    <p className="text-white/40 text-xs uppercase tracking-wide mb-1">Scans</p>
+                    <p className="text-white/40 text-xs uppercase tracking-wide mb-1">{t('scans')}</p>
                     <p className="text-white/80">{product.qrRecord?.scanCount ?? 0}</p>
                   </div>
                 </div>

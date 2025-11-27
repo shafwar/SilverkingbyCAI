@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import clsx from "clsx";
 
 export type DateRangeOption = "7d" | "30d" | "custom";
@@ -12,13 +13,14 @@ type DateRangePickerProps = {
 };
 
 export function DateRangePicker({ value, onChange, onCustomSelect }: DateRangePickerProps) {
+  const t = useTranslations('admin.analytics');
   const options: { label: string; value: DateRangeOption }[] = useMemo(
     () => [
-      { label: "Last 7 days", value: "7d" },
-      { label: "Last 30 days", value: "30d" },
-      { label: "Custom", value: "custom" },
+      { label: t('last7Days'), value: "7d" },
+      { label: t('last30Days'), value: "30d" },
+      { label: t('custom'), value: "custom" },
     ],
-    []
+    [t]
   );
 
   const handleClick = (option: DateRangeOption) => {

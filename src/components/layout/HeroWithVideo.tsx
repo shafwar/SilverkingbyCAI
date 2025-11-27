@@ -77,9 +77,9 @@ export default function HeroWithVideo({
     };
 
     const handleLoadedData = () => {
-      setIsVideoLoaded(true);
+    setIsVideoLoaded(true);
       forcePlay();
-    };
+  };
 
     // Handle video errors
     const handleError = () => {

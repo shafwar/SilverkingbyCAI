@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import useSWR from "swr";
+import { useTranslations } from "next-intl";
 import {
   ResponsiveContainer,
   LineChart,
@@ -29,6 +30,7 @@ type TrendResponse = {
 type ViewMode = "7d" | "30d" | "month";
 
 export function LineChartScans() {
+  const t = useTranslations('admin.charts');
   const now = new Date();
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [month, setMonth] = useState(now.getMonth() + 1); // 1-indexed
@@ -88,8 +90,8 @@ export function LineChartScans() {
     <AnimatedCard>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.35em] text-white/50">Verification Volume</p>
-          <h3 className="mt-2 text-2xl font-semibold text-white">Scan trajectory</h3>
+          <p className="text-xs uppercase tracking-[0.35em] text-white/50">{t('verificationVolume')}</p>
+          <h3 className="mt-2 text-2xl font-semibold text-white">{t('scanTrajectory')}</h3>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {/* Quick range buttons */}
@@ -103,7 +105,7 @@ export function LineChartScans() {
                   : "text-white/60 hover:text-white hover:bg-white/10"
               )}
             >
-              7 Days
+              {t('viewMode.7d')}
             </button>
             <button
               onClick={() => handleViewModeChange("30d")}
@@ -114,7 +116,7 @@ export function LineChartScans() {
                   : "text-white/60 hover:text-white hover:bg-white/10"
               )}
             >
-              30 Days
+              {t('viewMode.30d')}
             </button>
             <button
               onClick={() => handleViewModeChange("month")}
@@ -125,7 +127,7 @@ export function LineChartScans() {
                   : "text-white/60 hover:text-white hover:bg-white/10"
               )}
             >
-              Month
+              {t('viewMode.month')}
             </button>
           </div>
           {/* Month/Year picker - only show when in month view */}

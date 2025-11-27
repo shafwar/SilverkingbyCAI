@@ -1,13 +1,17 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 export default function ExportPage() {
+  const t = useTranslations('admin.export');
+  const tCommon = useTranslations('common');
+
   async function handleExport() {
     try {
       const res = await fetch("/api/export/excel");
       if (!res.ok) {
-        throw new Error("Export failed");
+        throw new Error(t('exportFailed'));
       }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -19,13 +23,13 @@ export default function ExportPage() {
       link.remove();
       URL.revokeObjectURL(url);
 
-      toast.success("Export successful", {
-        description: "Excel file has been downloaded",
+      toast.success(t('exportSuccessful'), {
+        description: t('excelDownloaded'),
         duration: 3000,
       });
     } catch (error: any) {
-      toast.error("Failed to export", {
-        description: error.message || "Please try again",
+      toast.error(t('exportFailed'), {
+        description: error.message || tCommon('tryAgain'),
         duration: 4000,
       });
     }
@@ -34,17 +38,17 @@ export default function ExportPage() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs uppercase tracking-[0.5em] text-white/60">Data</p>
-        <h1 className="text-2xl font-semibold text-white">Export</h1>
+        <p className="text-xs uppercase tracking-[0.5em] text-white/60">{t('data')}</p>
+        <h1 className="text-2xl font-semibold text-white">{t('title')}</h1>
         <p className="text-sm text-white/50">
-          Download the entire dataset including products, QR records, and scan counts.
+          {t('description')}
         </p>
       </div>
       <button
         onClick={handleExport}
         className="rounded-full bg-gradient-to-r from-[#FFD700] to-[#C0C0C0] px-6 py-3 text-black font-semibold"
       >
-        Export to Excel
+        {t('exportToExcel')}
       </button>
     </div>
   );

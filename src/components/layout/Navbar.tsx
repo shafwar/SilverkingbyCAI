@@ -7,6 +7,10 @@ import { ArrowRight, X, QrCode } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigationTransition } from "./NavigationTransitionProvider";
 import { getR2UrlClient } from "@/utils/r2-url";
+import { useTranslations, useLocale } from "next-intl";
+import { usePathname, useRouter } from "@/i18n/routing";
+import { routing } from "@/i18n/routing";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -15,6 +19,10 @@ export default function Navbar() {
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const { beginTransition } = useNavigationTransition();
+  const t = useTranslations('nav');
+  const locale = useLocale();
+  const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -98,11 +106,22 @@ export default function Navbar() {
     };
   }, [isMobileMenuOpen]);
 
+  // Build nav links with proper locale handling
+  const getLocalizedPath = (path: string) => {
+    if (locale === routing.defaultLocale) {
+      // Default locale: no prefix
+      return path;
+    } else {
+      // Non-default locale: add prefix
+      return `/${locale}${path}`;
+    }
+  };
+
   const navLinks = [
-    { name: "What we do", href: "/what-we-do" },
-    { name: "Authenticity", href: "/authenticity" },
-    { name: "Products", href: "/products" },
-    { name: "About us", href: "/about" },
+    { name: t('whatWeDo'), href: getLocalizedPath('/what-we-do') },
+    { name: t('authenticity'), href: getLocalizedPath('/authenticity') },
+    { name: t('products'), href: getLocalizedPath('/products') },
+    { name: t('aboutUs'), href: getLocalizedPath('/about') },
   ];
 
   const handleNavClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
@@ -140,7 +159,7 @@ export default function Navbar() {
       <nav className="mx-auto max-w-[1440px] px-4 sm:px-6 md:px-10 lg:px-16 xl:px-20">
         <div className="flex items-center justify-between h-[4.5rem] sm:h-[5rem] md:h-[5.5rem]">
           {/* Logo - Smaller for mobile */}
-          <Link href="/" className="group relative flex items-center">
+          <Link href={locale === routing.defaultLocale ? '/' : `/${locale}`} className="group relative flex items-center">
             <div className="relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-[8deg]">
               <Image
                 src={getR2UrlClient("/images/cai-logo.png")}
@@ -176,15 +195,16 @@ export default function Navbar() {
             ))}
           </div>
 
-          {/* CTA Button - Powerful & Bold */}
-          <div className="hidden md:flex items-center">
+          {/* CTA Button & Language Switcher */}
+          <div className="hidden md:flex items-center gap-4">
+            <LanguageSwitcher />
             <Link
-              href="/contact"
-              onClick={(event) => handleNavClick(event, "/contact")}
+              href={getLocalizedPath('/contact')}
+              onClick={(event) => handleNavClick(event, getLocalizedPath('/contact'))}
               className="group relative overflow-hidden inline-flex items-center gap-2.5 rounded-full bg-gradient-to-r from-white/[0.12] to-white/[0.08] backdrop-blur-xl border border-white/[0.15] px-6 py-3 font-sans text-[0.9375rem] font-semibold text-white shadow-[0_8px_32px_rgba(0,0,0,0.12)] transition-all duration-500 hover:shadow-[0_8px_32px_rgba(212,175,55,0.25)] hover:scale-105 hover:border-luxury-gold/30"
             >
               <span className="relative z-10 transition-colors duration-300 group-hover:text-luxury-gold">
-                Get in touch
+                {t('getInTouch')}
               </span>
               <ArrowRight className="relative z-10 h-4 w-4 transition-all duration-300 group-hover:translate-x-1 group-hover:text-luxury-gold" />
               {/* Gradient overlay on hover */}
@@ -241,7 +261,7 @@ export default function Navbar() {
                   {/* Header - Logo & Close Button */}
                   <div className="flex items-center justify-between mb-12 sm:mb-16">
                     <Link
-                      href="/"
+                      href={locale === routing.defaultLocale ? '/' : `/${locale}`}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="flex items-center"
                     >
@@ -293,6 +313,11 @@ export default function Navbar() {
                     ))}
                   </nav>
 
+                  {/* Language Switcher in Mobile Menu */}
+                  <div className="mb-6">
+                    <LanguageSwitcher />
+                  </div>
+
                   {/* Featured Card - Scan & Verify (Like Pixelmatters Case Study - Compact) */}
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -301,7 +326,7 @@ export default function Navbar() {
                     className="mb-6 sm:mb-8"
                   >
                     <Link
-                      href="/authenticity"
+                      href={getLocalizedPath('/authenticity')}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="group block relative overflow-hidden rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all duration-300 hover:border-white/20"
                     >
@@ -335,9 +360,9 @@ export default function Navbar() {
                     className="mb-8"
                   >
                     <Link
-                      href="/contact"
+                      href={getLocalizedPath('/contact')}
                       onClick={(event) => {
-                        handleNavClick(event, "/contact");
+                        handleNavClick(event, getLocalizedPath('/contact'));
                         setIsMobileMenuOpen(false);
                       }}
                       className="group flex items-center justify-center gap-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/20 px-6 py-4 font-sans text-base font-semibold text-white transition-all duration-300 hover:scale-[1.02]"

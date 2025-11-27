@@ -1,6 +1,7 @@
 "use client";
 
 import useSWR from "swr";
+import { useTranslations } from "next-intl";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
 import { AnimatedCard } from "./AnimatedCard";
 import { fetcher } from "@/lib/fetcher";
@@ -24,7 +25,7 @@ const COLORS = [
 ];
 
 // Custom tooltip component
-const CustomTooltip = ({ active, payload }: any) => {
+const CustomTooltip = ({ active, payload, t }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0];
     const total = payload.reduce((sum: number, item: any) => sum + item.value, 0);
@@ -33,8 +34,8 @@ const CustomTooltip = ({ active, payload }: any) => {
     return (
       <div className="bg-black/95 backdrop-blur-xl border border-white/20 rounded-xl p-3 shadow-2xl">
         <p className="text-white font-semibold mb-1">{data.name}</p>
-        <p className="text-[#FFD700] text-lg font-bold">{data.value} scans</p>
-        <p className="text-white/60 text-xs mt-1">{percentage}% of total</p>
+        <p className="text-[#FFD700] text-lg font-bold">{data.value} {t('scans')}</p>
+        <p className="text-white/60 text-xs mt-1">{percentage}{t('ofTotal')}</p>
       </div>
     );
   }
@@ -42,6 +43,7 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export function DonutChartDistribution() {
+  const t = useTranslations('admin.charts');
   const { data, error, isLoading } = useSWR<DistributionResponse>(
     "/api/admin/scans/top-products?view=distribution",
     fetcher,
@@ -60,15 +62,15 @@ export function DonutChartDistribution() {
   return (
     <AnimatedCard>
       <div className="mb-6">
-        <p className="text-xs uppercase tracking-[0.35em] text-white/50">Global footprint</p>
-        <h3 className="mt-2 text-2xl font-semibold text-white">Scan distribution</h3>
+        <p className="text-xs uppercase tracking-[0.35em] text-white/50">{t('globalFootprint')}</p>
+        <h3 className="mt-2 text-2xl font-semibold text-white">{t('scanDistribution')}</h3>
       </div>
 
       {loading && <LoadingSkeleton className="h-64 w-full" />}
 
       {hasError && (
         <div className="flex items-center justify-center h-64 rounded-xl border border-red-500/20 bg-red-500/5">
-          <p className="text-sm text-red-400">Unable to load scan distribution.</p>
+          <p className="text-sm text-red-400">{t('unableToLoadDistribution')}</p>
         </div>
       )}
 
@@ -94,8 +96,8 @@ export function DonutChartDistribution() {
               />
             </svg>
           </div>
-          <p className="text-white/60 text-sm font-medium">No scan data available</p>
-          <p className="text-white/40 text-xs mt-1">Scans will appear here once products are verified</p>
+          <p className="text-white/60 text-sm font-medium">{t('noData')}</p>
+          <p className="text-white/40 text-xs mt-1">{t('noData')}</p>
         </motion.div>
       )}
 
@@ -175,7 +177,7 @@ export function DonutChartDistribution() {
                 >
                   {totalScans}
                 </motion.p>
-                <p className="text-white/50 text-xs uppercase tracking-wider mt-1">Total Scans</p>
+                <p className="text-white/50 text-xs uppercase tracking-wider mt-1">{t('totalScans')}</p>
               </div>
             </div>
           </div>
@@ -204,7 +206,7 @@ export function DonutChartDistribution() {
                   <div className="flex-1 min-w-0">
                     <p className="text-white text-sm font-medium truncate">{entry.label}</p>
                     <p className="text-white/50 text-xs">
-                      {entry.value} scans · {percentage}%
+                      {entry.value} {t('scans')} · {percentage}%
                     </p>
                   </div>
                 </motion.div>
