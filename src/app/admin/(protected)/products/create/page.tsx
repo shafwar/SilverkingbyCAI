@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { ProductForm } from "@/components/admin/ProductForm";
 import { notFound } from "next/navigation";
+import { ProductCreatePageClient } from "./ProductCreatePageClient";
 
 // Force dynamic rendering - this page requires database access and authentication
 export const dynamic = "force-dynamic";
@@ -24,28 +25,21 @@ export default async function ProductCreatePage({ searchParams }: Props) {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-xs uppercase tracking-[0.5em] text-white/60">Inventory</p>
-        <h1 className="text-2xl font-semibold text-white">
-          {product ? "Edit Product" : "Create Product"}
-        </h1>
-      </div>
-      <ProductForm
-        defaultValues={
-          product
-            ? {
-                id: product.id,
-                name: product.name,
-                weight: product.weight,
-                serialCode: product.serialCode,
-                price: product.price ?? undefined,
-                stock: product.stock ?? undefined,
-              }
-            : undefined
-        }
-      />
-    </div>
+    <ProductCreatePageClient
+      product={
+        product
+          ? {
+              id: product.id,
+              name: product.name,
+              weight: product.weight,
+              serialCode: product.serialCode,
+              price: product.price ?? undefined,
+              stock: product.stock ?? undefined,
+            }
+          : undefined
+      }
+    />
   );
 }
+
 

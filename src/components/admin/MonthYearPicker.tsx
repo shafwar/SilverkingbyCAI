@@ -1,27 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import clsx from "clsx";
 
 // Launch date: November 2025
 const LAUNCH_YEAR = 2025;
 const LAUNCH_MONTH = 11; // November (1-indexed)
-
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
 
 type MonthYearPickerProps = {
   month: number; // 1-12
@@ -30,6 +16,9 @@ type MonthYearPickerProps = {
 };
 
 export function MonthYearPicker({ month, year, onChange }: MonthYearPickerProps) {
+  const t = useTranslations('admin.charts');
+  const tMonths = useTranslations('admin.months');
+  
   // Generate available months/years starting from launch date
   const availableOptions = useMemo(() => {
     const options: Array<{ month: number; year: number; label: string }> = [];
@@ -42,7 +31,8 @@ export function MonthYearPicker({ month, year, onChange }: MonthYearPickerProps)
     let m = LAUNCH_MONTH;
 
     while (y < currentYear || (y === currentYear && m <= currentMonth)) {
-      const monthName = MONTHS[m - 1];
+      const monthKey = m.toString().padStart(2, '0');
+      const monthName = tMonths(monthKey);
       options.push({
         month: m,
         year: y,
@@ -58,7 +48,7 @@ export function MonthYearPicker({ month, year, onChange }: MonthYearPickerProps)
     }
 
     return options.reverse(); // Most recent first
-  }, []);
+  }, [tMonths]);
 
   const currentIndex = availableOptions.findIndex(
     (opt) => opt.month === month && opt.year === year
@@ -103,10 +93,10 @@ export function MonthYearPicker({ month, year, onChange }: MonthYearPickerProps)
 
       <div className="flex items-center gap-1.5 sm:gap-2 rounded-full border border-white/10 bg-white/5 px-2.5 sm:px-4 py-1.5 sm:py-2 min-w-0">
         <span className="text-xs sm:text-sm font-medium text-white truncate">
-          {currentOption?.label || `${MONTHS[month - 1]} ${year}`}
+          {currentOption?.label || `${tMonths(month.toString().padStart(2, '0'))} ${year}`}
         </span>
         {isCurrentMonth && (
-          <span className="text-[10px] sm:text-xs text-white/50 flex-shrink-0 hidden sm:inline">(Current)</span>
+          <span className="text-[10px] sm:text-xs text-white/50 flex-shrink-0 hidden sm:inline">({t('viewMode.current')})</span>
         )}
       </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowDownUp } from "lucide-react";
 import clsx from "clsx";
@@ -25,8 +26,10 @@ export function DataTable<T extends Record<string, any>>({
   columns,
   data,
   isLoading,
-  emptyState = "No records available.",
+  emptyState,
 }: DataTableProps<T>) {
+  const t = useTranslations('admin.analytics');
+  const defaultEmptyState = emptyState ?? t('noRecordsAvailable');
   const [sortKey, setSortKey] = useState<TableColumn<T>["key"]>();
   const [direction, setDirection] = useState<"asc" | "desc">("asc");
 
@@ -61,7 +64,7 @@ export function DataTable<T extends Record<string, any>>({
   if (!sortedData.length) {
     return (
       <div className="rounded-3xl border border-white/5 bg-white/5 p-10 text-center text-white/60">
-        {emptyState}
+        {defaultEmptyState}
       </div>
     );
   }

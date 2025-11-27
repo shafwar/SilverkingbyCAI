@@ -1,6 +1,7 @@
 "use client";
 
 import useSWR from "swr";
+import { useTranslations } from "next-intl";
 import {
   ResponsiveContainer,
   BarChart,
@@ -19,6 +20,7 @@ type TopProductsResponse = {
 };
 
 export function BarChartTopProducts() {
+  const t = useTranslations('admin.charts');
   const { data, error, isLoading } = useSWR<TopProductsResponse>(
     "/api/admin/scans/top-products",
     fetcher,
@@ -32,15 +34,15 @@ export function BarChartTopProducts() {
   return (
     <AnimatedCard>
       <div className="mb-6">
-        <p className="text-xs uppercase tracking-[0.35em] text-white/50">Most trusted pieces</p>
-        <h3 className="mt-2 text-2xl font-semibold text-white">Top scanned products</h3>
+        <p className="text-xs uppercase tracking-[0.35em] text-white/50">{t('mostTrustedPieces')}</p>
+        <h3 className="mt-2 text-2xl font-semibold text-white">{t('topScannedProducts')}</h3>
       </div>
 
       {loading && <LoadingSkeleton className="h-64 w-full" />}
 
       {hasError && (
         <p className="text-sm text-red-400">
-          Unable to load top products right now.
+          {t('unableToLoadTop')}
         </p>
       )}
 

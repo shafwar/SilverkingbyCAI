@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -25,6 +26,8 @@ type ProductFormProps = {
 };
 
 export function ProductForm({ defaultValues }: ProductFormProps) {
+  const t = useTranslations('admin.productsDetail.form');
+  const tCommon = useTranslations('common');
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -110,7 +113,7 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || "Request failed");
+        throw new Error(errorData.error || t('saveFailed'));
       }
 
       const data = await res.json();
@@ -118,18 +121,18 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
       const isUpdate = !!defaultValues?.id;
 
       if (isUpdate) {
-        toast.success("Product updated successfully!", {
-          description: `${values.name} has been updated`,
+        toast.success(t('productUpdated'), {
+          description: t('productUpdatedDescription', { name: values.name }),
           duration: 3000,
         });
       } else if (isBatch && data.count) {
-        toast.success(`Successfully created ${data.count} products!`, {
-          description: `Serial numbers generated for ${values.name}`,
+        toast.success(t('batchCreated', { count: data.count }), {
+          description: t('batchCreatedDescription', { name: values.name }),
           duration: 3000,
         });
       } else {
-        toast.success("Product created successfully!", {
-          description: `${values.name} has been added to inventory`,
+        toast.success(t('productCreated'), {
+          description: t('productCreatedDescription', { name: values.name }),
           duration: 3000,
         });
       }
@@ -138,8 +141,8 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
       router.refresh();
     } catch (error: any) {
       console.error(error);
-      toast.error("Failed to save product", {
-        description: error.message || "Please check your input and try again",
+      toast.error(t('saveFailed'), {
+        description: error.message || t('saveFailedDescription'),
         duration: 4000,
       });
     } finally {
@@ -163,18 +166,18 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
           <div className="rounded-lg bg-blue-500/20 p-2">
             <Package className="h-4 w-4 text-blue-400" />
           </div>
-          <h3 className="text-sm font-semibold text-white">Basic Information</h3>
+          <h3 className="text-sm font-semibold text-white">{t('basicInformation')}</h3>
         </div>
         <div className="space-y-4">
           <div>
             <label className="mb-2 flex items-center gap-2 text-xs uppercase tracking-[0.4em] text-blue-300/80">
               <Package className="h-3 w-3 text-blue-400" />
-              Product Name
+              {t('productName')}
             </label>
             <input
               type="text"
               className="w-full rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-white transition-all placeholder:text-white/30 focus:border-blue-400/60 focus:bg-blue-500/20 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
-              placeholder="e.g., Silver King 100g"
+              placeholder={t('productNamePlaceholder')}
               {...form.register("name")}
             />
             {form.formState.errors.name && (
@@ -198,12 +201,12 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
         <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-transparent p-4 backdrop-blur-sm">
           <label className="mb-2 flex items-center gap-2 text-xs uppercase tracking-[0.4em] text-emerald-300/80">
             <Weight className="h-3 w-3 text-emerald-400" />
-            Weight (grams)
+            {t('weight')}
           </label>
           <input
             type="number"
             className="w-full rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-white transition-all placeholder:text-white/30 focus:border-emerald-400/60 focus:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-400/30"
-            placeholder="100"
+            placeholder={t('weightPlaceholder')}
             {...form.register("weight", { valueAsNumber: true })}
           />
           {form.formState.errors.weight && (
@@ -225,14 +228,14 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
           >
             <label className="mb-2 flex items-center gap-2 text-xs uppercase tracking-[0.4em] text-purple-300/80">
               <Boxes className="h-3 w-3 text-purple-400" />
-              Quantity
+              {t('quantity')}
             </label>
             <input
               type="number"
               min="1"
               max="10000"
               className="w-full rounded-lg border border-purple-500/30 bg-purple-500/10 px-4 py-3 text-white transition-all placeholder:text-white/30 focus:border-purple-400/60 focus:bg-purple-500/20 focus:outline-none focus:ring-2 focus:ring-purple-400/30"
-              placeholder="1"
+              placeholder={t('quantityPlaceholder')}
               {...form.register("quantity", { valueAsNumber: true })}
               onChange={(e) => {
                 const newQuantity = Number(e.target.value) || 1;
@@ -259,8 +262,8 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
               <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
               <span>
                 {quantity > 1
-                  ? `Will create ${quantity} products with unique serial numbers`
-                  : "Single product. Enter serial prefix (e.g., SKT) to auto-generate SKT000001 format."}
+                  ? t('quantityInfoBatch', { quantity })
+                  : t('quantityInfoSingle')}
               </span>
             </motion.p>
           </motion.div>
@@ -277,17 +280,17 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
             <div className="rounded-lg bg-amber-500/20 p-2">
               <QrCode className="h-4 w-4 text-amber-400" />
             </div>
-            <h3 className="text-sm font-semibold text-white">Serial Number Configuration</h3>
+            <h3 className="text-sm font-semibold text-white">{t('serialNumberConfiguration')}</h3>
           </div>
           <div className="space-y-4">
             {/* Serial Prefix Input */}
             <div>
               <label className="mb-2 flex items-center gap-2 text-xs uppercase tracking-[0.4em] text-amber-300/80">
                 <Hash className="h-3 w-3 text-amber-400" />
-                Serial Prefix
+                {t('serialPrefix')}
                 {quantity === 1 && (
                   <span className="ml-1 text-[10px] normal-case text-white/40">
-                    (Auto-generates SKT000001 format)
+                    {t('serialPrefixAutoGenerate')}
                   </span>
                 )}
               </label>
@@ -296,8 +299,8 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
                 className="w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-white uppercase transition-all placeholder:text-white/30 focus:border-amber-400/60 focus:bg-amber-500/20 focus:outline-none focus:ring-2 focus:ring-amber-400/30"
                 placeholder={
                   quantity === 1
-                    ? "SKT (will create SKT000001)"
-                    : "SKA (will create SKA000001, SKA000002...)"
+                    ? t('serialPrefixPlaceholderSingle')
+                    : t('serialPrefixPlaceholderBatch')
                 }
                 value={serialPrefix}
                 onChange={(e) => {
@@ -336,7 +339,7 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
                     className="mt-3 flex items-center gap-2 rounded-lg border border-white/5 bg-white/5 p-3"
                   >
                     <Loader2 className="h-4 w-4 animate-spin text-[#FFD700]" />
-                    <span className="text-xs text-white/60">Checking existing serials...</span>
+                    <span className="text-xs text-white/60">{t('checkingSerials')}</span>
                   </motion.div>
                 ) : serialInfo?.exists ? (
                   <motion.div
@@ -349,18 +352,18 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="h-4 w-4 text-blue-400" />
                       <p className="text-xs font-medium text-blue-300">
-                        Found {serialInfo.totalExisting} existing product(s)
+                        {t('foundExisting', { count: serialInfo.totalExisting })}
                       </p>
                     </div>
                     <div className="rounded-md bg-black/20 p-2.5">
                       <p className="text-[10px] uppercase tracking-wider text-white/50">
-                        Last Serial
+                        {t('lastSerial')}
                       </p>
                       <p className="mt-1 font-mono text-sm text-white">{serialInfo.lastSerial}</p>
                     </div>
                     <div className="rounded-md bg-gradient-to-r from-green-500/20 to-emerald-500/20 p-2.5">
                       <p className="text-[10px] uppercase tracking-wider text-green-300/70">
-                        Will Continue From
+                        {t('willContinueFrom')}
                       </p>
                       <p className="mt-1 font-mono text-sm text-green-300">
                         {serialPrefix}
@@ -385,19 +388,19 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
                   >
                     <div className="flex items-center gap-2 mb-2">
                       <Sparkles className="h-4 w-4 text-amber-400" />
-                      <p className="text-xs font-medium text-white/90">Preview</p>
+                      <p className="text-xs font-medium text-white/90">{t('preview')}</p>
                     </div>
                     {quantity === 1 ? (
                       <div className="rounded-md bg-black/30 p-3">
                         <p className="text-[10px] uppercase tracking-wider text-white/50">
-                          Serial Number
+                          {t('serialNumber')}
                         </p>
                         <p className="mt-1.5 font-mono text-lg text-amber-400">
                           {serialPrefix}000001
                         </p>
                         {serialInfo && !serialInfo.exists && (
                           <p className="mt-1.5 text-xs text-green-400">
-                            ✨ New prefix, starting from 000001
+                            {t('newPrefix')}
                           </p>
                         )}
                       </div>
@@ -405,7 +408,7 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
                       <div className="space-y-2">
                         <div className="rounded-md bg-black/30 p-3">
                           <p className="text-[10px] uppercase tracking-wider text-white/50">
-                            Serial Range
+                            {t('serialRange')}
                           </p>
                           <p className="mt-1.5 font-mono text-sm text-amber-400">
                             {serialPrefix}000001 to {serialPrefix}
@@ -413,7 +416,7 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
                           </p>
                         </div>
                         <p className="text-xs text-white/60">
-                          {quantity} products will be created with sequential serial numbers
+                          {t('willCreateSequential', { quantity })}
                         </p>
                       </div>
                     )}
@@ -428,7 +431,7 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
                   >
                     <Info className="h-4 w-4 mt-0.5 text-white/40" />
                     <p className="text-xs text-white/60">
-                      Enter a prefix (e.g., SKT) to auto-generate serial numbers in SKT000001 format
+                      {t('serialPrefixInfo')}
                     </p>
                   </motion.div>
                 )}
@@ -446,15 +449,15 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
                 >
                   <label className="mb-2 flex items-center gap-2 text-xs uppercase tracking-[0.4em] text-amber-300/80">
                     <Hash className="h-3 w-3 text-amber-400" />
-                    Serial Code
+                    {t('serialCode')}
                     <span className="ml-1 text-[10px] normal-case text-white/40">
-                      (optional, auto-generated if empty)
+                      {t('serialCodeOptional')}
                     </span>
                   </label>
                   <input
                     type="text"
                     className="w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-white uppercase transition-all placeholder:text-white/30 focus:border-amber-400/60 focus:bg-amber-500/20 focus:outline-none focus:ring-2 focus:ring-amber-400/30"
-                    placeholder="Auto-generated or enter custom (e.g., SKA12345)"
+                    placeholder={t('serialCodePlaceholder')}
                     {...form.register("serialCode")}
                     onInput={(e) => {
                       const target = e.target as HTMLInputElement;
@@ -494,7 +497,7 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
         >
           <label className="mb-2 flex items-center gap-2 text-xs uppercase tracking-[0.4em] text-amber-300/80">
             <Hash className="h-3 w-3 text-amber-400" />
-            Serial Code
+            {t('serialCode')}
           </label>
           <input
             type="text"
@@ -522,13 +525,13 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
         <div className="rounded-xl border border-green-500/20 bg-gradient-to-br from-green-500/5 to-transparent p-4 backdrop-blur-sm">
           <label className="mb-2 flex items-center gap-2 text-xs uppercase tracking-[0.4em] text-green-300/80">
             <DollarSign className="h-3 w-3 text-green-400" />
-            Price (optional)
+            {t('price')}
           </label>
           <input
             type="number"
             step="0.01"
             className="w-full rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-white transition-all placeholder:text-white/30 focus:border-green-400/60 focus:bg-green-500/20 focus:outline-none focus:ring-2 focus:ring-green-400/30"
-            placeholder="250000000 (optional)"
+            placeholder={t('pricePlaceholder')}
             {...form.register("price", { 
               setValueAs: (v) => {
                 if (v === "" || v === null || v === undefined) return undefined;
@@ -562,10 +565,9 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
                 <Boxes className="h-5 w-5 text-yellow-400" />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-yellow-300">Batch Creation Mode</p>
+                <p className="text-sm font-semibold text-yellow-300">{t('batchCreationMode')}</p>
                 <p className="mt-1.5 text-xs leading-relaxed text-white/70">
-                  {quantity} products will be created, each with a unique serial number and QR code.
-                  Stock will be set to 1 for each product (one unit per serial number).
+                  {t('batchCreationDescription', { quantity })}
                 </p>
               </div>
             </div>
@@ -590,19 +592,19 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
           {isSubmitting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              {isBatchMode ? `Creating ${quantity} products...` : "Saving…"}
+              {isBatchMode ? t('creatingBatch', { quantity }) : t('saving')}
             </>
           ) : isEditMode ? (
-            "Update Product"
+            t('updateProduct')
           ) : isBatchMode ? (
             <>
               <Sparkles className="h-4 w-4" />
-              Create {quantity} Products
+              {t('createBatch', { quantity })}
             </>
           ) : (
             <>
               <Package className="h-4 w-4" />
-              Create Product
+              {t('createProduct')}
             </>
           )}
         </span>

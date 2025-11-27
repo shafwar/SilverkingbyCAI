@@ -9,6 +9,7 @@ import {
   type Variants,
 } from "framer-motion";
 import Link from "next/link";
+import { useTranslations, useLocale } from "next-intl";
 import { getR2UrlClient } from "@/utils/r2-url";
 import {
   Shield,
@@ -229,6 +230,9 @@ const ValueCard = ({ value, index }: { value: ValueItem; index: number }) => {
 };
 
 export default function AboutPage() {
+  const t = useTranslations('about');
+  const tNav = useTranslations('nav');
+  const locale = useLocale();
   const pageRef = useRef<HTMLDivElement | null>(null);
   const heroRef = useRef<HTMLDivElement | null>(null);
   const noiseOverlay = useRef<HTMLDivElement | null>(null);
@@ -241,73 +245,69 @@ export default function AboutPage() {
     () => [
       {
         icon: Shield,
-        title: "Verified Authenticity",
-        description:
-          "Each product comes with a unique QR code for instant verification and authenticity confirmation.",
+        title: t('whyChoose.features.authenticity.title'),
+        description: t('whyChoose.features.authenticity.description'),
         gradient: "from-emerald-500 to-teal-600",
       },
       {
         icon: Sparkles,
-        title: "Premium Quality",
-        description:
-          "99.99% purity guarantee on all our precious metal products, crafted with meticulous attention to detail.",
+        title: t('whyChoose.features.quality.title'),
+        description: t('whyChoose.features.quality.description'),
         gradient: "from-luxury-gold to-luxury-lightGold",
       },
       {
         icon: Award,
-        title: "Luxury Craftsmanship",
-        description:
-          "Custom designs and precision manufacturing make every piece a work of art worthy of your collection.",
+        title: t('whyChoose.features.craftsmanship.title'),
+        description: t('whyChoose.features.craftsmanship.description'),
         gradient: "from-luxury-silver to-white",
       },
     ],
-    []
+    [t]
   );
 
   const stepItems = useMemo<StepItem[]>(
     () => [
       {
-        number: "01",
+        number: t('howItWorks.steps.step1.number'),
         icon: QrCode,
-        title: "Scan QR Code",
-        description: "Simply scan the unique QR code on your product using your smartphone camera.",
+        title: t('howItWorks.steps.step1.title'),
+        description: t('howItWorks.steps.step1.description'),
       },
       {
-        number: "02",
+        number: t('howItWorks.steps.step2.number'),
         icon: Eye,
-        title: "Instant Verification",
-        description:
-          "Our system instantly verifies the product's authenticity and displays detailed information.",
+        title: t('howItWorks.steps.step2.title'),
+        description: t('howItWorks.steps.step2.description'),
       },
       {
-        number: "03",
+        number: t('howItWorks.steps.step3.number'),
         icon: Shield,
-        title: "Guaranteed Authentic",
-        description: "Receive confirmation that your precious metal is 100% genuine and certified.",
+        title: t('howItWorks.steps.step3.title'),
+        description: t('howItWorks.steps.step3.description'),
       },
     ],
-    []
+    [t]
   );
 
   const valueItems = useMemo<ValueItem[]>(
     () => [
       {
         icon: Shield,
-        title: "Authenticity",
-        description: "Every product verified and certified",
+        title: t('story.values.authenticity.title'),
+        description: t('story.values.authenticity.description'),
       },
       {
         icon: Award,
-        title: "Excellence",
-        description: "99.99% purity guarantee",
+        title: t('story.values.excellence.title'),
+        description: t('story.values.excellence.description'),
       },
       {
         icon: Target,
-        title: "Precision",
-        description: "Meticulous attention to detail",
+        title: t('story.values.precision.title'),
+        description: t('story.values.precision.description'),
       },
     ],
-    []
+    [t]
   );
 
   const premiumGradient = useMemo(
@@ -592,7 +592,7 @@ export default function AboutPage() {
               data-hero
             >
               <span className="h-1 w-1 rounded-full bg-luxury-gold" data-hero-glow />
-              Est. 2024
+              {t('hero.badge')}
               <span className="h-1 w-1 rounded-full bg-luxury-gold" data-hero-glow />
             </motion.div>
             <motion.h1
@@ -600,15 +600,14 @@ export default function AboutPage() {
               data-hero
             >
               <span className="block text-base uppercase ml-5 tracking-[0.75em] text-luxury-silver/70 md:text-3xl">
-                The Legacy
+                {t('hero.title')}
               </span>
             </motion.h1>
             <motion.p
               className="mx-auto max-w-3xl text-sm font-light leading-relaxed text-luxury-silver/70 md:text-base"
               data-hero
             >
-              Crafting excellence in precious metals since 2024 with uncompromising precision and
-              ground-breaking verification technology.
+              {t('hero.subtitle')}
             </motion.p>
           </motion.div>
 
@@ -636,14 +635,13 @@ export default function AboutPage() {
         <div className="relative z-10 mx-auto max-w-[1320px]">
           <motion.div className="mb-20 text-center" data-reveal>
             <h2 className="mb-5 text-4xl md:text-5xl lg:text-6xl font-light tracking-tight">
-              <span className="text-white">Why Choose</span>{" "}
+              <span className="text-white">{t('whyChoose.title')}</span>{" "}
               <span className="bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text text-transparent">
-                Silver King
+                {t('whyChoose.titleBold')}
               </span>
             </h2>
             <p className="mx-auto max-w-3xl text-lg md:text-xl text-luxury-silver/70">
-              Experience the pinnacle of precious metal authentication with a heritage of trust and
-              modern innovation.
+              {t('whyChoose.subtitle')}
             </p>
           </motion.div>
 
@@ -669,13 +667,13 @@ export default function AboutPage() {
         <div className="relative mx-auto max-w-[1320px]">
           <div className="mb-20 text-center space-y-5" data-reveal>
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-light tracking-tight">
-              <span className="text-white">Simple. Secure.</span>{" "}
+              <span className="text-white">{t('howItWorks.title')}</span>{" "}
               <span className="bg-gradient-to-r from-luxury-gold to-luxury-silver bg-clip-text text-transparent">
-                Verified.
+                {t('howItWorks.titleBold')}
               </span>
             </h2>
             <p className="mx-auto max-w-3xl text-lg md:text-xl text-luxury-silver/70">
-              Three effortless steps to authenticate your investment with confidence.
+              {t('howItWorks.subtitle')}
             </p>
           </div>
 
@@ -703,23 +701,17 @@ export default function AboutPage() {
         <div className="relative mx-auto grid max-w-[1320px] grid-cols-1 items-center gap-16 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-8" data-reveal>
             <h2 className="text-4xl md:text-5xl font-light tracking-tight text-luxury-gold">
-              Our Story
+              {t('story.title')}
             </h2>
             <div className="space-y-5 text-base leading-relaxed text-luxury-silver/80">
               <p>
-                Silver King by CAI represents the pinnacle of precious metal manufacturing. We
-                specialize in creating luxury gold, silver, palladium, and custom silver bars that
-                embody perfection in every detail.
+                {t('story.paragraph1')}
               </p>
               <p>
-                Our commitment to excellence is reflected in every product we create. With a purity
-                guarantee of 99.99% on all our precious metals, we ensure that each piece meets the
-                highest standards of quality and craftsmanship.
+                {t('story.paragraph2')}
               </p>
               <p>
-                Every Silver King product comes with a unique QR code verification system, allowing
-                our customers to instantly verify the authenticity of their investment. This
-                innovative approach combines traditional craftsmanship with modern technology.
+                {t('story.paragraph3')}
               </p>
             </div>
           </div>
@@ -770,15 +762,14 @@ export default function AboutPage() {
 
             <div className="relative z-10 px-10 py-14 text-center md:px-16 md:py-16 lg:px-24 lg:py-20">
               <h2 className="mb-6 text-4xl md:text-5xl lg:text-6xl font-light tracking-tight">
-                <span className="text-white">Ready to verify</span>
+                <span className="text-white">{t('cta.title')}</span>
                 <br />
                 <span className="bg-gradient-to-r from-luxury-gold via-luxury-lightGold to-luxury-silver bg-clip-text text-transparent">
-                  your precious metals?
+                  {t('cta.titleBold')}
                 </span>
               </h2>
               <p className="mx-auto mb-12 max-w-2xl text-lg md:text-xl text-luxury-silver/75">
-                Join thousands of satisfied customers who trust Silver King for authentic, verified
-                precious metals.
+                {t('cta.subtitle')}
               </p>
 
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-center">
@@ -790,7 +781,7 @@ export default function AboutPage() {
                   className="group relative inline-flex items-center justify-center gap-3 overflow-hidden rounded-full bg-gradient-to-r from-luxury-gold to-luxury-lightGold px-9 py-4 text-base font-semibold text-black transition-all duration-300 hover:shadow-[0_35px_90px_-35px_rgba(212,175,55,0.8)]"
                 >
                   <Shield className="h-5 w-5" />
-                  <span>Start Verification</span>
+                  <span>{t('cta.startVerification')}</span>
                   <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
                   <motion.span
                     className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 opacity-0"
@@ -807,7 +798,7 @@ export default function AboutPage() {
                   }}
                   className="inline-flex items-center justify-center gap-3 rounded-full border border-white/20 bg-white/[0.04] px-8 py-4 text-base font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:border-white/40 hover:bg-white/10"
                 >
-                  Back to Home
+                  {t('cta.backToHome')}
                 </Link>
               </div>
             </div>
@@ -834,28 +825,28 @@ export default function AboutPage() {
           >
             <span className="text-white/40 text-sm">×</span>
             <Link
-              href="/what-we-do"
+              href={`/${locale}/what-we-do`}
               className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
             >
-              What we do
+              {tNav('whatWeDo')}
             </Link>
             <Link
-              href="/authenticity"
+              href={`/${locale}/authenticity`}
               className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
             >
-              Authenticity
+              {tNav('authenticity')}
             </Link>
             <Link
-              href="/products"
+              href={`/${locale}/products`}
               className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
             >
-              Products
+              {tNav('products')}
             </Link>
             <Link
-              href="/about"
+              href={`/${locale}/about`}
               className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
             >
-              About us
+              {tNav('aboutUs')}
             </Link>
           </motion.div>
 

@@ -1,74 +1,35 @@
-"use client";
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages } from 'next-intl/server';
+import { routing } from '@/i18n/routing';
+import { GeistSans } from "geist/font/sans";
+import { Playfair_Display } from "next/font/google";
+import "@/styles/globals.css";
+import { Providers } from "./providers";
+import { NavigationTransitionProvider } from "@/components/layout/NavigationTransitionProvider";
+import { PageTransitionOverlay } from "@/components/layout/PageTransitionOverlay";
+import RootPageContent from "./RootPageContent";
 
-import { useState, useEffect, useLayoutEffect } from "react";
-import Navbar from "@/components/layout/Navbar";
-import HeroSection from "@/components/sections/HeroSection";
-import SplashScreen from "@/components/sections/SplashScreen";
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-playfair",
+  display: "swap",
+  preload: true,
+});
 
-export default function HomePage() {
-  // Check sessionStorage immediately (client-side only, no delay)
-  const [showSplash, setShowSplash] = useState<boolean | null>(null);
-  const [splashComplete, setSplashComplete] = useState(false);
-
-  // IMMEDIATELY check if splash should be shown (no delay, no flicker)
-  useLayoutEffect(() => {
-    if (typeof window !== "undefined") {
-      const splashShown = sessionStorage.getItem("splashShown");
-      
-      if (splashShown === "true") {
-        // Skip splash entirely
-        setShowSplash(false);
-        setSplashComplete(true);
-      } else {
-        // Show splash
-        setShowSplash(true);
-      }
-    }
-  }, []);
-
-  const handleSplashComplete = () => {
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem("splashShown", "true");
-    }
-    setSplashComplete(true);
-  };
-
-  // Add home-page class to body for CSS targeting
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      document.body.classList.add("home-page");
-      return () => {
-        document.body.classList.remove("home-page");
-      };
-    }
-  }, []);
-
-  // Don't render anything until we know if splash should be shown (prevent flicker) 
-  if (showSplash === null) {
-    return (
-      <div className="fixed inset-0 bg-black" />
-    );
-  }
+// Root page - uses default locale without prefix
+export default async function RootPage() {
+  const locale = routing.defaultLocale;
+  const messages = await getMessages({ locale });
 
   return (
-    <>
-      {/* Splash Screen - conditional render based on sessionStorage */}
-      {showSplash && !splashComplete && (
-        <SplashScreen onComplete={handleSplashComplete} />
-      )}
-
-      {/* Main content - hidden during splash with INSTANT opacity change */}
-      <main
-        className={`h-screen overflow-hidden bg-black fixed inset-0 home-page-main ${
-          splashComplete 
-            ? "opacity-100 transition-opacity duration-500" 
-            : "opacity-0 pointer-events-none"
-        }`}
-      >
-        <Navbar />
-        {/* Pass splashComplete as shouldAnimate trigger */}
-        <HeroSection shouldAnimate={splashComplete} />
-      </main>
-    </>
+    <NextIntlClientProvider messages={messages}>
+      <NavigationTransitionProvider>
+        <Providers>
+          <RootPageContent />
+        </Providers>
+        <PageTransitionOverlay />
+      </NavigationTransitionProvider>
+    </NextIntlClientProvider>
   );
 }
+

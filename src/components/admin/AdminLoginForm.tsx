@@ -3,9 +3,12 @@
 import { FormEvent, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 export function AdminLoginForm() {
+  const t = useTranslations('admin.login');
+  const tCommon = useTranslations('common');
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -23,21 +26,21 @@ export function AdminLoginForm() {
         redirect: false,
       });
       if (res?.error) {
-        setError("Invalid credentials");
-        toast.error("Login failed", {
-          description: "Invalid email or password",
+        setError(t('invalidCredentialsError'));
+        toast.error(t('loginFailed'), {
+          description: t('invalidCredentials'),
           duration: 4000,
         });
         return;
       }
-      toast.success("Login successful", {
-        description: "Welcome back!",
+      toast.success(t('loginSuccessful'), {
+        description: t('welcomeBack'),
         duration: 2000,
       });
       router.push("/admin");
     } catch (error: any) {
-      toast.error("Login failed", {
-        description: error.message || "Please try again",
+      toast.error(t('loginFailed'), {
+        description: error.message || tCommon('tryAgain'),
         duration: 4000,
       });
     } finally {
@@ -51,7 +54,7 @@ export function AdminLoginForm() {
       className="w-full max-w-md space-y-4 rounded-3xl border border-white/10 bg-black/60 p-8 text-white"
     >
       <div>
-        <label className="text-xs uppercase tracking-[0.4em] text-white/40">Email</label>
+        <label className="text-xs uppercase tracking-[0.4em] text-white/40">{t('email')}</label>
         <input
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -60,7 +63,7 @@ export function AdminLoginForm() {
         />
       </div>
       <div>
-        <label className="text-xs uppercase tracking-[0.4em] text-white/40">Password</label>
+        <label className="text-xs uppercase tracking-[0.4em] text-white/40">{t('password')}</label>
         <input
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -74,7 +77,7 @@ export function AdminLoginForm() {
         disabled={loading}
         className="w-full rounded-full bg-gradient-to-r from-[#FFD700] to-[#C0C0C0] py-3 text-sm font-semibold tracking-wide text-black"
       >
-        {loading ? "Signing in…" : "Sign in"}
+        {loading ? t('signingIn') : t('signIn')}
       </button>
     </form>
   );

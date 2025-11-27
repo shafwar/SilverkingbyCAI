@@ -3,9 +3,6 @@ import { GeistSans } from "geist/font/sans";
 import { Playfair_Display } from "next/font/google";
 import "@/styles/globals.css";
 import { APP_NAME, APP_DESCRIPTION, getBaseUrl } from "@/utils/constants";
-import { Providers } from "./providers";
-import { NavigationTransitionProvider } from "@/components/layout/NavigationTransitionProvider";
-import { PageTransitionOverlay } from "@/components/layout/PageTransitionOverlay";
 import { getR2Url } from "@/utils/r2-url";
 
 const playfair = Playfair_Display({
@@ -50,14 +47,13 @@ export const metadata: Metadata = {
   },
 };
 
+// Root layout - handles root page (/) and admin/API routes
+// [locale] routes are handled by [locale]/layout.tsx
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${GeistSans.variable} ${playfair.variable}`}>
       <body className={`${GeistSans.className} antialiased`}>
-        <NavigationTransitionProvider>
-        <Providers>{children}</Providers>
-          <PageTransitionOverlay />
-        </NavigationTransitionProvider>
+        {children}
       </body>
     </html>
   );

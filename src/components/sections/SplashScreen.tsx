@@ -3,12 +3,14 @@
 import { useLayoutEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { gsap } from "gsap";
+import { useTranslations } from "next-intl";
 
 interface SplashScreenProps {
   onComplete: () => void;
 }
 
 export default function SplashScreen({ onComplete }: SplashScreenProps) {
+  const t = useTranslations("home");
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
 
@@ -124,21 +126,21 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
         {/* Subtle tagline */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 0.4, y: 0 }}
-          transition={{ duration: 1, delay: 2.5 }}
-          className="mt-6 font-sans text-[0.75rem] md:text-[0.875rem] font-light tracking-[0.3em] via-whitewhite/40"
+          animate={{ opacity: 0.85, y: 0 }}
+          transition={{ duration: 0.8, delay: 1.2, ease: "easeOut" }}
+          className="mt-6 font-sans text-[0.75rem] md:text-[0.875rem] font-light tracking-[0.3em] text-white/85"
         >
-          Precious Metals Excellence
+          {t("tagline")}
         </motion.div>
-      </div>
 
-      {/* Decorative elements */}
-      <motion.div
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: 1 }}
-        transition={{ duration: 1.5, delay: 1, ease: "easeInOut" }}
-        className="absolute bottom-20 left-1/2 -translate-x-1/2 w-32 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent"
-      />
+        {/* Decorative gradient line - positioned relative to tagline */}
+        <motion.div
+          initial={{ scaleX: 0, opacity: 0 }}
+          animate={{ scaleX: 1, opacity: 1 }}
+          transition={{ duration: 1.2, delay: 1.4, ease: "easeInOut" }}
+          className="mt-8 mx-auto w-32 md:w-40 h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent"
+        />
+      </div>
     </motion.div>
   );
 }

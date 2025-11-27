@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { Crown, QrCode } from "lucide-react";
 
 type SpotlightProduct = {
@@ -12,10 +13,12 @@ type SpotlightProduct = {
 };
 
 export function ProductSpotlight({ products }: { products: SpotlightProduct[] }) {
+  const t = useTranslations('admin.dashboard');
+  
   if (products.length === 0) {
     return (
       <div className="rounded-3xl border border-white/5 bg-white/[0.02] p-6 text-white/60">
-        No spotlight products yet.
+        {t('spotlight.noProducts')}
       </div>
     );
   }
@@ -25,8 +28,8 @@ export function ProductSpotlight({ products }: { products: SpotlightProduct[] })
       <div className="flex items-center gap-3 text-white">
         <Crown className="h-6 w-6 text-[#FFD700]" />
         <div>
-          <p className="text-xs uppercase tracking-[0.5em] text-white/60">Spotlight</p>
-          <h3 className="text-2xl font-semibold">Top performing bars</h3>
+          <p className="text-xs uppercase tracking-[0.5em] text-white/60">{t('spotlight.title')}</p>
+          <h3 className="text-2xl font-semibold">{t('spotlight.subtitle')}</h3>
         </div>
       </div>
       <div className="mt-6 grid gap-5 md:grid-cols-3">
@@ -48,12 +51,12 @@ export function ProductSpotlight({ products }: { products: SpotlightProduct[] })
               </div>
             </div>
             <div className="mt-4 text-sm text-white/80">
-              <p className="text-xs uppercase tracking-[0.3em] text-white/40">Scans</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-white/40">{t('spotlight.scans')}</p>
               <p className="text-2xl font-semibold text-white">{product.scanCount}</p>
             </div>
             {product.qrImageUrl && (
               <div className="mt-4 rounded-xl border border-white/5 bg-black/40 p-3 text-center text-xs text-white/50">
-                QR asset stored • <a href={product.qrImageUrl} className="text-white underline" target="_blank">Open</a>
+                {t('spotlight.qrStored')} • <a href={product.qrImageUrl} className="text-white underline" target="_blank">{t('spotlight.open')}</a>
               </div>
             )}
           </motion.div>

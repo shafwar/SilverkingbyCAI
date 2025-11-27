@@ -6,7 +6,8 @@ import Link from "next/link";
 import { Sparkles, Gem, ArrowRight, Shield, ArrowDown, QrCode } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { APP_NAME } from "@/utils/constants";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
+import { useTranslations, useLocale } from "next-intl";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
@@ -91,308 +92,21 @@ type ProductCategory = {
   products: Product[];
 };
 
-// Flatten all products with pricing and awards
-const allProducts: ProductWithPricing[] = [
-  // 250 Gram products
-  {
-    id: "250gr-1",
-    name: "Precious Metal Bar 250gr",
-    rangeName: "Silver King",
-    image: getR2UrlClient("/images/silverking-gold.jpeg"),
-    purity: "99.99%",
-    weight: "250gr",
-    description:
-      "Premium 250 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKA000001",
-    category: "250 Gram",
-    memberPrice: 18000000,
-    regularPrice: 22000000,
-    awards: ["gold", "trophy"],
-  },
-  {
-    id: "250gr-2",
-    name: "Precious Metal Bar 250gr",
-    rangeName: "Silver King",
-    image: getR2UrlClient("/images/silverking-gold.jpeg"),
-    purity: "99.99%",
-    weight: "250gr",
-    description: "Premium 250 gram precious metal bar with certification. SKU: SKA000002",
-    category: "250 Gram",
-    memberPrice: 18000000,
-    regularPrice: 22000000,
-    awards: ["gold", "silver"],
-  },
-  {
-    id: "250gr-3",
-    name: "Precious Metal Bar 250gr",
-    rangeName: "Silver King",
-    image: getR2UrlClient("/images/silverking-gold.jpeg"),
-    purity: "99.99%",
-    weight: "250gr",
-    description: "Premium 250 gram precious metal bar with certification. SKU: SKA000003",
-    category: "250 Gram",
-    memberPrice: 18000000,
-    regularPrice: 22000000,
-  },
-  // 100 Gram products
-  {
-    id: "100gr-1",
-    name: "Precious Metal Bar 100gr",
-    rangeName: "Silver King",
-    image: getR2UrlClient("/images/silverking-gold.jpeg"),
-    purity: "99.99%",
-    weight: "100gr",
-    description:
-      "Premium 100 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKP000001",
-    category: "100 Gram",
-    memberPrice: 7000000,
-    regularPrice: 7500000,
-    awards: ["gold", "silver", "bronze", "trophy"],
-  },
-  {
-    id: "100gr-2",
-    name: "Precious Metal Bar 100gr",
-    rangeName: "Silver King",
-    image: getR2UrlClient("/images/silverking-gold.jpeg"),
-    purity: "99.99%",
-    weight: "100gr",
-    description: "Premium 100 gram precious metal bar with certification. SKU: SKP000002",
-    category: "100 Gram",
-    memberPrice: 7000000,
-    regularPrice: 7500000,
-    awards: ["gold", "silver"],
-  },
-  {
-    id: "100gr-3",
-    name: "Precious Metal Bar 100gr",
-    rangeName: "Silver King",
-    image: getR2UrlClient("/images/silverking-gold.jpeg"),
-    purity: "99.99%",
-    weight: "100gr",
-    description: "Premium 100 gram precious metal bar with certification. SKU: SKP000003",
-    category: "100 Gram",
-    memberPrice: 7000000,
-    regularPrice: 7500000,
-  },
-  // 50 Gram products
-  {
-    id: "50gr-1",
-    name: "Precious Metal Bar 50gr",
-    rangeName: "Silver King",
-    image: getR2UrlClient("/images/silverking-gold.jpeg"),
-    purity: "99.99%",
-    weight: "50gr",
-    description:
-      "Premium 50 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKN000001",
-    category: "50 Gram",
-    memberPrice: 3500000,
-    regularPrice: 4000000,
-    awards: ["gold", "silver", "bronze"],
-  },
-  {
-    id: "50gr-2",
-    name: "Precious Metal Bar 50gr",
-    rangeName: "Silver King",
-    image: getR2UrlClient("/images/silverking-gold.jpeg"),
-    purity: "99.99%",
-    weight: "50gr",
-    description: "Premium 50 gram precious metal bar with certification. SKU: SKN000002",
-    category: "50 Gram",
-    memberPrice: 3500000,
-    regularPrice: 4000000,
-    awards: ["gold", "silver"],
-  },
-  {
-    id: "50gr-3",
-    name: "Precious Metal Bar 50gr",
-    rangeName: "Silver King",
-    image: getR2UrlClient("/images/silverking-gold.jpeg"),
-    purity: "99.99%",
-    weight: "50gr",
-    description: "Premium 50 gram precious metal bar with certification. SKU: SKN000003",
-    category: "50 Gram",
-    memberPrice: 3500000,
-    regularPrice: 4000000,
-  },
-  // 25 Gram products
-  {
-    id: "25gr-1",
-    name: "Precious Metal Bar 25gr",
-    rangeName: "Silver King",
-    image: getR2UrlClient("/images/silverking-gold.jpeg"),
-    purity: "99.99%",
-    weight: "25gr",
-    description:
-      "Premium 25 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKC000001",
-    category: "25 Gram",
-    memberPrice: 1800000,
-    regularPrice: 2200000,
-    awards: ["gold", "silver"],
-  },
-  {
-    id: "25gr-2",
-    name: "Precious Metal Bar 25gr",
-    rangeName: "Silver King",
-    image: getR2UrlClient("/images/silverking-gold.jpeg"),
-    purity: "99.99%",
-    weight: "25gr",
-    description: "Premium 25 gram precious metal bar with certification. SKU: SKC000002",
-    category: "25 Gram",
-    memberPrice: 1800000,
-    regularPrice: 2200000,
-  },
-  {
-    id: "25gr-3",
-    name: "Precious Metal Bar 25gr",
-    rangeName: "Silver King",
-    image: getR2UrlClient("/images/silverking-gold.jpeg"),
-    purity: "99.99%",
-    weight: "25gr",
-    description: "Premium 25 gram precious metal bar with certification. SKU: SKC000003",
-    category: "25 Gram",
-    memberPrice: 1800000,
-    regularPrice: 2200000,
-  },
-  // 10 Gram products
-  {
-    id: "10gr-1",
-    name: "Precious Metal Bar 10gr",
-    rangeName: "Silver King",
-    image: getR2UrlClient("/images/silverking-gold.jpeg"),
-    purity: "99.99%",
-    weight: "10gr",
-    description:
-      "Premium 10 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKI000001",
-    category: "10 Gram",
-    memberPrice: 700000,
-    regularPrice: 850000,
-    awards: ["gold", "silver"],
-  },
-  {
-    id: "10gr-2",
-    name: "Precious Metal Bar 10gr",
-    rangeName: "Silver King",
-    image: getR2UrlClient("/images/silverking-gold.jpeg"),
-    purity: "99.99%",
-    weight: "10gr",
-    description: "Premium 10 gram precious metal bar with certification. SKU: SKI000002",
-    category: "10 Gram",
-    memberPrice: 700000,
-    regularPrice: 850000,
-  },
-  {
-    id: "10gr-3",
-    name: "Precious Metal Bar 10gr",
-    rangeName: "Silver King",
-    image: getR2UrlClient("/images/silverking-gold.jpeg"),
-    purity: "99.99%",
-    weight: "10gr",
-    description: "Premium 10 gram precious metal bar with certification. SKU: SKI000003",
-    category: "10 Gram",
-    memberPrice: 700000,
-    regularPrice: 850000,
-  },
-  // 5 Gram products
-  {
-    id: "5gr-1",
-    name: "Precious Metal Bar 5gr",
-    rangeName: "Silver King",
-    image: getR2UrlClient("/images/silverking-gold.jpeg"),
-    purity: "99.99%",
-    weight: "5gr",
-    description:
-      "Premium 5 gram precious metal bar with the highest purity, authentication certificate, and QR code verification. SKU: SKT000001",
-    category: "5 Gram",
-    memberPrice: 350000,
-    regularPrice: 420000,
-    awards: ["gold", "silver"],
-  },
-  {
-    id: "5gr-2",
-    name: "Precious Metal Bar 5gr",
-    rangeName: "Silver King",
-    image: getR2UrlClient("/images/silverking-gold.jpeg"),
-    purity: "99.99%",
-    weight: "5gr",
-    description: "Premium 5 gram precious metal bar with certification. SKU: SKT000002",
-    category: "5 Gram",
-    memberPrice: 350000,
-    regularPrice: 420000,
-  },
-  {
-    id: "5gr-3",
-    name: "Precious Metal Bar 5gr",
-    rangeName: "Silver King",
-    image: getR2UrlClient("/images/silverking-gold.jpeg"),
-    purity: "99.99%",
-    weight: "5gr",
-    description: "Premium 5 gram precious metal bar with certification. SKU: SKT000003",
-    category: "5 Gram",
-    memberPrice: 350000,
-    regularPrice: 420000,
-  },
-];
+// allProducts will be created inside component using translations
 
-// Category list for filtering
-const productCategories: ProductCategory[] = [
-  {
-    icon: Gem,
-    title: "250 Gram",
-    description:
-      "Premium precious metal bar with 99.99% purity. Large size perfect for serious investors and long-term portfolio building.",
-    gradient: "from-luxury-gold to-luxury-lightGold",
-    products: [],
-  },
-  {
-    icon: Gem,
-    title: "100 Gram",
-    description:
-      "Premium precious metal bar with 99.99% purity. Ideal size for balanced investment portfolios and collection purposes.",
-    gradient: "from-luxury-gold via-luxury-lightGold to-luxury-gold",
-    products: [],
-  },
-  {
-    icon: Gem,
-    title: "50 Gram",
-    description:
-      "Premium precious metal bar with 99.99% purity. Versatile size suitable for both investment and gifting purposes.",
-    gradient: "from-luxury-gold to-luxury-silver",
-    products: [],
-  },
-  {
-    icon: Gem,
-    title: "25 Gram",
-    description:
-      "Premium precious metal bar with 99.99% purity. Compact size perfect for starting your precious metal investment journey.",
-    gradient: "from-luxury-silver to-luxury-lightSilver",
-    products: [],
-  },
-  {
-    icon: Gem,
-    title: "10 Gram",
-    description:
-      "Premium precious metal bar with 99.99% purity. Entry-level size ideal for new investors and collectors.",
-    gradient: "from-luxury-lightSilver to-luxury-silver",
-    products: [],
-  },
-  {
-    icon: Gem,
-    title: "5 Gram",
-    description:
-      "Premium precious metal bar with 99.99% purity. Smallest size perfect for gifts and starter collections.",
-    gradient: "from-luxury-silver via-luxury-gold to-luxury-lightSilver",
-    products: [],
-  },
-];
+// Category list for filtering - will be created inside component using translations
 
 // Product Category Grid Item with Hover Slideshow
 const CategoryGridItem = ({
   category,
   index,
   onProductSelect,
+  t,
 }: {
   category: ProductCategory;
   index: number;
   onProductSelect: (product: Product) => void;
+  t: (key: string) => string;
 }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
@@ -525,7 +239,7 @@ const CategoryGridItem = ({
         {!isHovered && category.products.length > 1 && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
             <div className="rounded-full bg-white/10 px-4 py-2 text-xs text-white/80 backdrop-blur-sm">
-              Hover to view products
+              {t('hoverToView')}
             </div>
           </div>
         )}
@@ -535,6 +249,9 @@ const CategoryGridItem = ({
 };
 
 export default function ProductsPage() {
+  const t = useTranslations('products');
+  const tNav = useTranslations('nav');
+  const locale = useLocale();
   const pageRef = useRef<HTMLDivElement | null>(null);
   const heroRef = useRef<HTMLDivElement | null>(null);
   const sectionsRef = useRef<(HTMLElement | null)[]>([]);
@@ -547,6 +264,293 @@ export default function ProductsPage() {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
+
+  // Product categories with translations
+  const productCategories = useMemo<ProductCategory[]>(
+    () => [
+      {
+        icon: Gem,
+        title: t('categories.250gram.title'),
+        description: t('categories.250gram.description'),
+        gradient: "from-luxury-gold to-luxury-lightGold",
+        products: [],
+      },
+      {
+        icon: Gem,
+        title: t('categories.100gram.title'),
+        description: t('categories.100gram.description'),
+        gradient: "from-luxury-gold via-luxury-lightGold to-luxury-gold",
+        products: [],
+      },
+      {
+        icon: Gem,
+        title: t('categories.50gram.title'),
+        description: t('categories.50gram.description'),
+        gradient: "from-luxury-gold to-luxury-silver",
+        products: [],
+      },
+      {
+        icon: Gem,
+        title: t('categories.25gram.title'),
+        description: t('categories.25gram.description'),
+        gradient: "from-luxury-silver to-luxury-lightSilver",
+        products: [],
+      },
+      {
+        icon: Gem,
+        title: t('categories.10gram.title'),
+        description: t('categories.10gram.description'),
+        gradient: "from-luxury-lightSilver to-luxury-silver",
+        products: [],
+      },
+      {
+        icon: Gem,
+        title: t('categories.5gram.title'),
+        description: t('categories.5gram.description'),
+        gradient: "from-luxury-silver via-luxury-gold to-luxury-lightSilver",
+        products: [],
+      },
+    ],
+    [t]
+  );
+
+  // All products with translations
+  const allProducts = useMemo<ProductWithPricing[]>(
+    () => [
+      // 250 Gram products
+      {
+        id: "250gr-1",
+        name: `${t('product.name')} 250gr`,
+        rangeName: t('product.rangeName'),
+        image: getR2UrlClient("/images/silverking-gold.jpeg"),
+        purity: t('product.purity'),
+        weight: "250gr",
+        description: `${t('product.description')} SKU: SKA000001`,
+        category: t('categories.250gram.title'),
+        memberPrice: 18000000,
+        regularPrice: 22000000,
+        awards: ["gold", "trophy"],
+      },
+      {
+        id: "250gr-2",
+        name: `${t('product.name')} 250gr`,
+        rangeName: t('product.rangeName'),
+        image: getR2UrlClient("/images/silverking-gold.jpeg"),
+        purity: t('product.purity'),
+        weight: "250gr",
+        description: `${t('product.descriptionShort')} SKU: SKA000002`,
+        category: t('categories.250gram.title'),
+        memberPrice: 18000000,
+        regularPrice: 22000000,
+        awards: ["gold", "silver"],
+      },
+      {
+        id: "250gr-3",
+        name: `${t('product.name')} 250gr`,
+        rangeName: t('product.rangeName'),
+        image: getR2UrlClient("/images/silverking-gold.jpeg"),
+        purity: t('product.purity'),
+        weight: "250gr",
+        description: `${t('product.descriptionShort')} SKU: SKA000003`,
+        category: t('categories.250gram.title'),
+        memberPrice: 18000000,
+        regularPrice: 22000000,
+      },
+      // 100 Gram products
+      {
+        id: "100gr-1",
+        name: `${t('product.name')} 100gr`,
+        rangeName: t('product.rangeName'),
+        image: getR2UrlClient("/images/silverking-gold.jpeg"),
+        purity: t('product.purity'),
+        weight: "100gr",
+        description: `${t('product.description')} SKU: SKP000001`,
+        category: t('categories.100gram.title'),
+        memberPrice: 7000000,
+        regularPrice: 7500000,
+        awards: ["gold", "silver", "bronze", "trophy"],
+      },
+      {
+        id: "100gr-2",
+        name: `${t('product.name')} 100gr`,
+        rangeName: t('product.rangeName'),
+        image: getR2UrlClient("/images/silverking-gold.jpeg"),
+        purity: t('product.purity'),
+        weight: "100gr",
+        description: `${t('product.descriptionShort')} SKU: SKP000002`,
+        category: t('categories.100gram.title'),
+        memberPrice: 7000000,
+        regularPrice: 7500000,
+        awards: ["gold", "silver"],
+      },
+      {
+        id: "100gr-3",
+        name: `${t('product.name')} 100gr`,
+        rangeName: t('product.rangeName'),
+        image: getR2UrlClient("/images/silverking-gold.jpeg"),
+        purity: t('product.purity'),
+        weight: "100gr",
+        description: `${t('product.descriptionShort')} SKU: SKP000003`,
+        category: t('categories.100gram.title'),
+        memberPrice: 7000000,
+        regularPrice: 7500000,
+      },
+      // 50 Gram products
+      {
+        id: "50gr-1",
+        name: `${t('product.name')} 50gr`,
+        rangeName: t('product.rangeName'),
+        image: getR2UrlClient("/images/silverking-gold.jpeg"),
+        purity: t('product.purity'),
+        weight: "50gr",
+        description: `${t('product.description')} SKU: SKN000001`,
+        category: t('categories.50gram.title'),
+        memberPrice: 3500000,
+        regularPrice: 4000000,
+        awards: ["gold", "silver", "bronze"],
+      },
+      {
+        id: "50gr-2",
+        name: `${t('product.name')} 50gr`,
+        rangeName: t('product.rangeName'),
+        image: getR2UrlClient("/images/silverking-gold.jpeg"),
+        purity: t('product.purity'),
+        weight: "50gr",
+        description: `${t('product.descriptionShort')} SKU: SKN000002`,
+        category: t('categories.50gram.title'),
+        memberPrice: 3500000,
+        regularPrice: 4000000,
+        awards: ["gold", "silver"],
+      },
+      {
+        id: "50gr-3",
+        name: `${t('product.name')} 50gr`,
+        rangeName: t('product.rangeName'),
+        image: getR2UrlClient("/images/silverking-gold.jpeg"),
+        purity: t('product.purity'),
+        weight: "50gr",
+        description: `${t('product.descriptionShort')} SKU: SKN000003`,
+        category: t('categories.50gram.title'),
+        memberPrice: 3500000,
+        regularPrice: 4000000,
+      },
+      // 25 Gram products
+      {
+        id: "25gr-1",
+        name: `${t('product.name')} 25gr`,
+        rangeName: t('product.rangeName'),
+        image: getR2UrlClient("/images/silverking-gold.jpeg"),
+        purity: t('product.purity'),
+        weight: "25gr",
+        description: `${t('product.description')} SKU: SKC000001`,
+        category: t('categories.25gram.title'),
+        memberPrice: 1800000,
+        regularPrice: 2200000,
+        awards: ["gold", "silver"],
+      },
+      {
+        id: "25gr-2",
+        name: `${t('product.name')} 25gr`,
+        rangeName: t('product.rangeName'),
+        image: getR2UrlClient("/images/silverking-gold.jpeg"),
+        purity: t('product.purity'),
+        weight: "25gr",
+        description: `${t('product.descriptionShort')} SKU: SKC000002`,
+        category: t('categories.25gram.title'),
+        memberPrice: 1800000,
+        regularPrice: 2200000,
+      },
+      {
+        id: "25gr-3",
+        name: `${t('product.name')} 25gr`,
+        rangeName: t('product.rangeName'),
+        image: getR2UrlClient("/images/silverking-gold.jpeg"),
+        purity: t('product.purity'),
+        weight: "25gr",
+        description: `${t('product.descriptionShort')} SKU: SKC000003`,
+        category: t('categories.25gram.title'),
+        memberPrice: 1800000,
+        regularPrice: 2200000,
+      },
+      // 10 Gram products
+      {
+        id: "10gr-1",
+        name: `${t('product.name')} 10gr`,
+        rangeName: t('product.rangeName'),
+        image: getR2UrlClient("/images/silverking-gold.jpeg"),
+        purity: t('product.purity'),
+        weight: "10gr",
+        description: `${t('product.description')} SKU: SKI000001`,
+        category: t('categories.10gram.title'),
+        memberPrice: 700000,
+        regularPrice: 850000,
+        awards: ["gold", "silver"],
+      },
+      {
+        id: "10gr-2",
+        name: `${t('product.name')} 10gr`,
+        rangeName: t('product.rangeName'),
+        image: getR2UrlClient("/images/silverking-gold.jpeg"),
+        purity: t('product.purity'),
+        weight: "10gr",
+        description: `${t('product.descriptionShort')} SKU: SKI000002`,
+        category: t('categories.10gram.title'),
+        memberPrice: 700000,
+        regularPrice: 850000,
+      },
+      {
+        id: "10gr-3",
+        name: `${t('product.name')} 10gr`,
+        rangeName: t('product.rangeName'),
+        image: getR2UrlClient("/images/silverking-gold.jpeg"),
+        purity: t('product.purity'),
+        weight: "10gr",
+        description: `${t('product.descriptionShort')} SKU: SKI000003`,
+        category: t('categories.10gram.title'),
+        memberPrice: 700000,
+        regularPrice: 850000,
+      },
+      // 5 Gram products
+      {
+        id: "5gr-1",
+        name: `${t('product.name')} 5gr`,
+        rangeName: t('product.rangeName'),
+        image: getR2UrlClient("/images/silverking-gold.jpeg"),
+        purity: t('product.purity'),
+        weight: "5gr",
+        description: `${t('product.description')} SKU: SKT000001`,
+        category: t('categories.5gram.title'),
+        memberPrice: 350000,
+        regularPrice: 420000,
+        awards: ["gold", "silver"],
+      },
+      {
+        id: "5gr-2",
+        name: `${t('product.name')} 5gr`,
+        rangeName: t('product.rangeName'),
+        image: getR2UrlClient("/images/silverking-gold.jpeg"),
+        purity: t('product.purity'),
+        weight: "5gr",
+        description: `${t('product.descriptionShort')} SKU: SKT000002`,
+        category: t('categories.5gram.title'),
+        memberPrice: 350000,
+        regularPrice: 420000,
+      },
+      {
+        id: "5gr-3",
+        name: `${t('product.name')} 5gr`,
+        rangeName: t('product.rangeName'),
+        image: getR2UrlClient("/images/silverking-gold.jpeg"),
+        purity: t('product.purity'),
+        weight: "5gr",
+        description: `${t('product.descriptionShort')} SKU: SKT000003`,
+        category: t('categories.5gram.title'),
+        memberPrice: 350000,
+        regularPrice: 420000,
+      },
+    ],
+    [t]
+  );
 
   const handleProductSelect = (product: Product) => {
     setSelectedProduct(product);
@@ -1004,9 +1008,9 @@ export default function ProductsPage() {
               className="text-[1.5rem] md:text-[3.5rem] lg:text-[2.5rem] xl:text-[3.5rem] 2xl:text-[4rem] font-light leading-[1.15] tracking-[-0.02em] md:tracking-[-0.03em] text-white"
               data-hero
             >
-              More than a decade crafting
+              {t('hero.title')}
               <br />
-              <span className="font-normal">future-proof precious metals.</span>
+              <span className="font-normal">{t('hero.titleBold')}</span>
             </motion.h1>
           </motion.div>
         </div>
@@ -1038,7 +1042,7 @@ export default function ProductsPage() {
               }}
             >
               <span className="text-sm md:text-base font-light tracking-wide">
-                Explore our collection
+                {t('explore')}
               </span>
               <ArrowDown className="h-4 w-4 md:h-5 md:w-5 transition-transform duration-300 group-hover:translate-y-1" />
             </motion.button>
@@ -1089,11 +1093,11 @@ export default function ProductsPage() {
                       filtered = filtered.filter((p) => p.awards?.includes("trophy"));
                     } else if (selectedFilter === "large") {
                       filtered = filtered.filter(
-                        (p) => p.category === "250 Gram" || p.category === "100 Gram"
+                        (p) => p.category === t('categories.250gram.title') || p.category === t('categories.100gram.title')
                       );
                     } else if (selectedFilter === "small") {
                       filtered = filtered.filter(
-                        (p) => p.category === "10 Gram" || p.category === "5 Gram"
+                        (p) => p.category === t('categories.10gram.title') || p.category === t('categories.5gram.title')
                       );
                     }
 
@@ -1123,7 +1127,7 @@ export default function ProductsPage() {
                       : "text-[#8b7355]/70 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
                   }`}
                 >
-                  All Products
+                  {t('filters.all')}
                 </button>
                 <button
                   onClick={() => {
@@ -1136,7 +1140,7 @@ export default function ProductsPage() {
                       : "text-[#8b7355]/50 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
                   }`}
                 >
-                  Award Winning
+                  {t('filters.awardWinning')}
                 </button>
                 <button
                   onClick={() => {
@@ -1149,7 +1153,7 @@ export default function ProductsPage() {
                       : "text-[#8b7355]/50 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
                   }`}
                 >
-                  Exclusives
+                  {t('filters.exclusives')}
                 </button>
                 <button
                   onClick={() => {
@@ -1162,7 +1166,7 @@ export default function ProductsPage() {
                       : "text-[#8b7355]/50 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
                   }`}
                 >
-                  Large Bars
+                  {t('filters.large')}
                 </button>
                 <button
                   onClick={() => {
@@ -1175,7 +1179,7 @@ export default function ProductsPage() {
                       : "text-[#8b7355]/50 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
                   }`}
                 >
-                  Small Bars
+                  {t('filters.small')}
                 </button>
               </motion.div>
             </motion.div>
@@ -1197,11 +1201,11 @@ export default function ProductsPage() {
                   filtered = filtered.filter((p) => p.awards?.includes("trophy"));
                 } else if (selectedFilter === "large") {
                   filtered = filtered.filter(
-                    (p) => p.category === "250 Gram" || p.category === "100 Gram"
+                    (p) => p.category === t('categories.250gram.title') || p.category === t('categories.100gram.title')
                   );
                 } else if (selectedFilter === "small") {
                   filtered = filtered.filter(
-                    (p) => p.category === "10 Gram" || p.category === "5 Gram"
+                    (p) => p.category === t('categories.10gram.title') || p.category === t('categories.5gram.title')
                   );
                 }
 
@@ -1211,7 +1215,7 @@ export default function ProductsPage() {
               if (filteredProducts.length === 0) {
                 return (
                   <div className="text-center py-20">
-                    <p className="text-[#8b7355]/60">No products found.</p>
+                    <p className="text-[#8b7355]/60">{t('filters.noProducts')}</p>
                   </div>
                 );
               }
@@ -1290,31 +1294,31 @@ export default function ProductsPage() {
                     ✦
                   </span>
                   <span className="text-xs md:text-sm font-extralight tracking-[0.2em] uppercase text-white/40">
-                    Premium Quality 99.99% Pure
+                    {t('runningText.premiumQuality')}
                   </span>
                   <span className="text-xs md:text-sm font-extralight tracking-[0.3em] uppercase text-white/30">
                     ✦
                   </span>
                   <span className="text-xs md:text-sm font-extralight tracking-[0.2em] uppercase text-white/40">
-                    Certified Authenticity Guaranteed
+                    {t('runningText.certified')}
                   </span>
                   <span className="text-xs md:text-sm font-extralight tracking-[0.3em] uppercase text-white/30">
                     ✦
                   </span>
                   <span className="text-xs md:text-sm font-extralight tracking-[0.2em] uppercase text-white/40">
-                    Secure Investment Portfolio
+                    {t('runningText.secure')}
                   </span>
                   <span className="text-xs md:text-sm font-extralight tracking-[0.3em] uppercase text-white/30">
                     ✦
                   </span>
                   <span className="text-xs md:text-sm font-extralight tracking-[0.2em] uppercase text-white/40">
-                    Trusted by Generations
+                    {t('runningText.trusted')}
                   </span>
                   <span className="text-xs md:text-sm font-extralight tracking-[0.3em] uppercase text-white/30">
                     ✦
                   </span>
                   <span className="text-xs md:text-sm font-extralight tracking-[0.2em] uppercase text-white/40">
-                    QR Code Verification Available
+                    {t('runningText.qrVerification')}
                   </span>
                   <span className="text-xs md:text-sm font-extralight tracking-[0.3em] uppercase text-white/30">
                     ✦
@@ -1378,16 +1382,16 @@ export default function ProductsPage() {
                 variants={textRevealVariants}
                 className="inline-block text-[0.7rem] md:text-sm font-extralight tracking-[0.3em] uppercase text-white/40 letter-spacing-wider"
               >
-                Crafted with precision
+                {t('bottom.crafted')}
               </motion.span>
 
               <motion.h2
                 variants={textRevealVariants}
                 className="text-5xl md:text-4xl lg:text-4xl xl:text-4xl font-extralight leading-[1.15] tracking-[-0.03em] text-white px-4 md:px-6"
               >
-                Preserved in gold,
+                {t('bottom.preserved')}
                 <br />
-                <span className="font-light">trusted for generations.</span>
+                <span className="font-light">{t('bottom.trusted')}</span>
               </motion.h2>
             </div>
           </motion.div>
@@ -1423,13 +1427,13 @@ export default function ProductsPage() {
                   </motion.div>
                   <div className="space-y-2.5">
                     <p className="text-[0.7rem] uppercase tracking-[0.25em] text-white/45 font-extralight letter-spacing-wider">
-                      Scan & Verify
+                      {t('bottom.scanVerify')}
                     </p>
                     <p className="text-lg md:text-lg font-extralight text-white/95 tracking-[-0.01em] leading-relaxed">
-                      Tap to launch Silver King QR scanner
+                      {t('bottom.tapToLaunch')}
                     </p>
                     <p className="text-xs md:text-xs text-white/35 font-extralight leading-relaxed max-w-md mx-auto tracking-wide">
-                      Capture the QR seal to view purity & provenance
+                      {t('bottom.captureQR')}
                     </p>
                   </div>
                 </motion.div>

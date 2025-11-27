@@ -1,6 +1,7 @@
 "use client";
 
 import useSWR from "swr";
+import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, MapPin } from "lucide-react";
 
@@ -26,6 +27,7 @@ type RecentActivityProps = {
 };
 
 export function RecentActivity({ compact = false }: RecentActivityProps) {
+  const t = useTranslations('admin.activity');
   const { data, error, isLoading } = useSWR<ActivityResponse>(
     "/api/admin/logs?limit=6",
     fetcher,
@@ -39,13 +41,13 @@ export function RecentActivity({ compact = false }: RecentActivityProps) {
   return (
     <AnimatedCard className={compact ? "max-h-[480px] overflow-hidden" : undefined}>
       <div className={compact ? "mb-4" : "mb-6"}>
-        <p className="text-xs uppercase tracking-[0.35em] text-white/50">Live feed</p>
-        <h3 className="mt-2 text-2xl font-semibold text-white">Recent scan activity</h3>
+        <p className="text-xs uppercase tracking-[0.35em] text-white/50">{t('liveFeed')}</p>
+        <h3 className="mt-2 text-2xl font-semibold text-white">{t('recentScanActivity')}</h3>
       </div>
 
       {loading && <LoadingSkeleton className="h-60 w-full" />}
 
-      {hasError && <p className="text-sm text-red-400">Unable to load activity feed.</p>}
+      {hasError && <p className="text-sm text-red-400">{t('unableToLoad')}</p>}
 
       <div
         className={`space-y-4 ${
@@ -68,7 +70,7 @@ export function RecentActivity({ compact = false }: RecentActivityProps) {
                   <p className={`font-semibold text-white ${compact ? "text-lg" : "text-xl"}`}>{item.serialCode}</p>
                 </div>
                 <div className="text-right text-xs uppercase tracking-[0.3em] text-[#FFD700]">
-                  VERIFIED
+                  {t('verified')}
                 </div>
               </div>
               <div

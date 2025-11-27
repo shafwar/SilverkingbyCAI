@@ -1,0 +1,674 @@
+{
+  "nav": {
+    "whatWeDo": "What we do",
+    "authenticity": "Authenticity",
+    "products": "Products",
+    "aboutUs": "About us",
+    "getInTouch": "Get in touch"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry",
+    "close": "Close",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "import": "Import",
+    "download": "Download",
+    "upload": "Upload",
+    "submit": "Submit",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "view": "View",
+    "details": "Details",
+    "tryAgain": "Please try again"
+  },
+  "home": {
+    "title": "Silver King by CAI",
+    "tagline": "Precious Metals Excellence",
+    "hero": {
+      "headline1": "Precious",
+      "headline2": "metals.",
+      "headline3": "Timeless",
+      "headline4": "value.",
+      "headline5": "Pure",
+      "headline6": "precision.",
+      "subtitle": "Expert manufacturing of <gold>gold, silver, and palladium</gold> products. <custom>Custom bar fabrication</custom>, uncompromising purity, and <qr>QR-verified authenticity</qr>—redefining trust in precious metals.",
+      "features": {
+        "chainOfCustody": {
+          "label": "Chain-of-Custody",
+          "title": "Ledger-locked traceability",
+          "body": "Every gram is recorded with encrypted QR seals and mirrored audit trails."
+        },
+        "purityLab": {
+          "label": "Purity Lab",
+          "title": "Spectrometry-backed assurance",
+          "body": "In-house molecular testing calibrates bullion batches to bespoke tolerances."
+        },
+        "globalTrust": {
+          "label": "Global Trust",
+          "title": "ISO 9001",
+          "body": "Audited facilities, transparent compliance, concierge-level documentation."
+        }
+      },
+      "qrCard": {
+        "label": "Scan & Verify",
+        "title": "Tap to launch Silver King QR scanner",
+        "description": "Capture the QR seal to view purity & provenance. \"Product authenticated\" badge appears once functionality is live."
+      }
+    }
+  },
+  "whatWeDo": {
+    "title": "Craft from raw bullion",
+    "description": "We transform responsibly sourced gold, silver, and palladium into investment-grade bars using tightly controlled refining and casting lines.",
+    "hero": {
+      "title": "Engineering the lifecycle",
+      "titleBold": "of every Silver King bar.",
+      "subtitle": "From ore selection and purification to serial coding, QR sealing, and verification, we choreograph each step so every bar carries a verifiable story of origin and custody."
+    },
+    "card1": {
+      "label": "Gold fabrication lines",
+      "caption": "High‑throughput casting, edge finishing, and surface treatment tuned for bullion batches."
+    },
+    "card2": {
+      "title": "Engineer authenticity into every bar",
+      "description": "Each piece is born with a unique serial, lab-backed purity data, and encrypted QR that ties physical metal to its digital identity.",
+      "label": "Silver & palladium refinement",
+      "caption": "Spectrometry‑backed purification with ISO‑aligned quality controls for industrial and retail bars."
+    },
+    "card3": {
+      "title": "Scale verified precious metal flows",
+      "description": "From mint to vault to client, telemetry and scan events keep partners aligned on provenance, custody, and lifecycle events.",
+      "label": "Digital verification stack",
+      "caption": "QR issuance, scan logging, and risk signals wired directly into Silver King Command."
+    },
+    "impact": {
+      "title": "The impact",
+      "titleLine2": "you can expect",
+      "items": {
+        "traceable": {
+          "title": "Traceable supply chains",
+          "body": "Every Silver King bar carries a verifiable story of origin, custody, and verification events, giving partners confidence in each transfer."
+        },
+        "operational": {
+          "title": "Operational clarity",
+          "body": "Live telemetry from scans turns scattered movements into structured data, helping you see what is moving, where, and through whom."
+        },
+        "customer": {
+          "title": "Customer trust at scale",
+          "body": "A single tap on the QR reveals authenticity, provenance, and product details, building long‑term trust with collectors and institutions."
+        },
+        "compliance": {
+          "title": "Compliance‑ready records",
+          "body": "Audit‑friendly logs and standardized identifiers simplify reporting across jurisdictions and support stringent regulatory frameworks."
+        }
+      }
+    },
+    "capabilities": {
+      "title": "Our",
+      "titleBold": "Capabilities",
+      "subtitle": "Precision engineering meets uncompromising quality standards",
+      "exploreButton": "Explore Silver King advantages",
+      "features": {
+        "fabrication": {
+          "title": "Gold, Silver & Palladium Fabrication",
+          "description": "High-purity bullion manufacturing from 5gr to 500gr. Expert craftsmanship meeting international standards."
+        },
+        "purityLab": {
+          "title": "Advanced Purity Lab",
+          "description": "Spectrometry testing ensuring 99.99% quality. ISO 9001 certified facilities with transparent compliance."
+        },
+        "security": {
+          "title": "QR-Authenticated Security",
+          "description": "Each bar integrated with unique, encrypted traceability. Blockchain-ready verification system."
+        }
+      }
+    },
+    "footer": {
+      "cta": "Let's raise the bar,",
+      "ctaBold": "together."
+    }
+  },
+  "authenticity": {
+    "title": "Authenticity",
+    "verifyTitle": "Verify Your Precious Metal",
+    "authenticateYour": "Authenticate Your",
+    "silverKingBar": "Silver King Bar",
+    "heroDescription": "Scan the QR code or enter serial number to verify authenticity and view provenance details",
+    "scanQR": "Scan QR Code",
+    "or": "or",
+    "enterSerial": "Enter Serial",
+    "enterSerialNumber": "Enter Serial Number",
+    "enterSerialPlaceholder": "e.g., SKA000001",
+    "enterSerialHint": "Enter the serial number found on your Silver King bar",
+    "verify": "Verify",
+    "learnProcess": "Learn verification process",
+    "workflow": {
+      "title": "Verification",
+      "titleBold": "Process",
+      "subtitle": "Simple four-step verification for your Silver King bar",
+      "steps": {
+        "step1": {
+          "title": "Locate QR Code",
+          "description": "Find the QR code on your Silver King bar packaging"
+        },
+        "step2": {
+          "title": "Scan Code",
+          "description": "Use your phone camera or our scanner"
+        },
+        "step3": {
+          "title": "Verification",
+          "description": "System verifies encrypted serial number"
+        },
+        "step4": {
+          "title": "Confirmation",
+          "description": "Receive authenticity & provenance data"
+        }
+      }
+    },
+    "benefits": {
+      "title": "Why",
+      "titleBold": "Verify?",
+      "subtitle": "Complete traceability for every Silver King bar",
+      "authenticity": {
+        "title": "Authenticity",
+        "description": "Verify genuine Silver King products instantly"
+      },
+      "traceability": {
+        "title": "Traceability",
+        "description": "Complete provenance and manufacturing details"
+      },
+      "security": {
+        "title": "Security",
+        "description": "Encrypted QR codes prevent counterfeiting"
+      }
+    }
+  },
+  "products": {
+    "title": "Products",
+    "description": "Browse our collection of premium precious metal products.",
+    "hero": {
+      "title": "Premium",
+      "titleBold": "Precious Metals",
+      "subtitle": "Investment-grade bars crafted with uncompromising precision and verified authenticity."
+    },
+    "explore": "Explore our collection",
+    "hoverToView": "Hover to view products",
+    "categories": {
+      "250gram": {
+        "title": "250 Gram",
+        "description": "Premium precious metal bar with 99.99% purity. Large size perfect for serious investors and long-term portfolio building."
+      },
+      "100gram": {
+        "title": "100 Gram",
+        "description": "Premium precious metal bar with 99.99% purity. Ideal size for balanced investment portfolios and collection purposes."
+      },
+      "50gram": {
+        "title": "50 Gram",
+        "description": "Premium precious metal bar with 99.99% purity. Versatile size suitable for both investment and gifting purposes."
+      },
+      "25gram": {
+        "title": "25 Gram",
+        "description": "Premium precious metal bar with 99.99% purity. Compact size perfect for starting your precious metal investment journey."
+      },
+      "10gram": {
+        "title": "10 Gram",
+        "description": "Premium precious metal bar with 99.99% purity. Entry-level size ideal for new investors and collectors."
+      },
+      "5gram": {
+        "title": "5 Gram",
+        "description": "Premium precious metal bar with 99.99% purity. Smallest size perfect for gifts and starter collections."
+      }
+    },
+    "product": {
+      "name": "Precious Metal Bar",
+      "rangeName": "Silver King",
+      "description": "Premium precious metal bar with the highest purity, authentication certificate, and QR code verification.",
+      "descriptionShort": "Premium precious metal bar with certification.",
+      "purity": "99.99%",
+      "memberPrice": "Member Price",
+      "regularPrice": "Regular Price",
+      "viewDetails": "View Details"
+    },
+    "filters": {
+      "all": "All",
+      "awardWinning": "Award-winning",
+      "exclusives": "Exclusives",
+      "large": "Large Bars",
+      "small": "Small Bars",
+      "noProducts": "No products found."
+    },
+    "runningText": {
+      "premiumQuality": "Premium Quality 99.99% Pure",
+      "certified": "Certified Authenticity Guaranteed",
+      "secure": "Secure Investment Portfolio",
+      "trusted": "Trusted by Generations",
+      "qrVerification": "QR Code Verification Available"
+    },
+    "bottom": {
+      "crafted": "Crafted with precision",
+      "preserved": "Preserved in gold,",
+      "trusted": "trusted for generations.",
+      "scanVerify": "Scan & Verify",
+      "tapToLaunch": "Tap to launch Silver King QR scanner",
+      "captureQR": "Capture the QR seal to view purity & provenance"
+    }
+  },
+  "about": {
+    "title": "About Us",
+    "description": "Learn more about Silver King by CAI.",
+    "hero": {
+      "badge": "Est. 2024",
+      "title": "The Legacy",
+      "subtitle": "Crafting excellence in precious metals since 2024 with uncompromising precision and ground-breaking verification technology."
+    },
+    "whyChoose": {
+      "title": "Why Choose",
+      "titleBold": "Silver King",
+      "subtitle": "Experience the pinnacle of precious metal authentication with a heritage of trust and modern innovation.",
+      "features": {
+        "authenticity": {
+          "title": "Verified Authenticity",
+          "description": "Each product comes with a unique QR code for instant verification and authenticity confirmation."
+        },
+        "quality": {
+          "title": "Premium Quality",
+          "description": "99.99% purity guarantee on all our precious metal products, crafted with meticulous attention to detail."
+        },
+        "craftsmanship": {
+          "title": "Luxury Craftsmanship",
+          "description": "Custom designs and precision manufacturing make every piece a work of art worthy of your collection."
+        }
+      }
+    },
+    "howItWorks": {
+      "title": "Simple. Secure.",
+      "titleBold": "Verified.",
+      "subtitle": "Three effortless steps to authenticate your investment with confidence.",
+      "steps": {
+        "step1": {
+          "number": "01",
+          "title": "Scan QR Code",
+          "description": "Simply scan the unique QR code on your product using your smartphone camera."
+        },
+        "step2": {
+          "number": "02",
+          "title": "Instant Verification",
+          "description": "Our system instantly verifies the product's authenticity and displays detailed information."
+        },
+        "step3": {
+          "number": "03",
+          "title": "Guaranteed Authentic",
+          "description": "Receive confirmation that your precious metal is 100% genuine and certified."
+        }
+      }
+    },
+    "story": {
+      "title": "Our Story",
+      "paragraph1": "Silver King by CAI represents the pinnacle of precious metal manufacturing. We specialize in creating luxury gold, silver, palladium, and custom silver bars that embody perfection in every detail.",
+      "paragraph2": "Our commitment to excellence is reflected in every product we create. With a purity guarantee of 99.99% on all our precious metals, we ensure that each piece meets the highest standards of quality and craftsmanship.",
+      "paragraph3": "Every Silver King product comes with a unique QR code verification system, allowing our customers to instantly verify the authenticity of their investment. This innovative approach combines traditional craftsmanship with modern technology.",
+      "values": {
+        "authenticity": {
+          "title": "Authenticity",
+          "description": "Every product verified and certified"
+        },
+        "excellence": {
+          "title": "Excellence",
+          "description": "99.99% purity guarantee"
+        },
+        "precision": {
+          "title": "Precision",
+          "description": "Meticulous attention to detail"
+        }
+      }
+    },
+    "cta": {
+      "title": "Ready to verify",
+      "titleBold": "your precious metals?",
+      "subtitle": "Join thousands of satisfied customers who trust Silver King for authentic, verified precious metals.",
+      "startVerification": "Start Verification",
+      "backToHome": "Back to Home"
+    }
+  },
+  "contact": {
+    "title": "Contact Us",
+    "subtitle": "This page is under construction.",
+    "getInTouch": "Get in Touch",
+    "description": "We'd love to hear from you. Send us a message and we'll respond as soon as possible.",
+    "formTitle": "Send us a message",
+    "form": {
+      "name": "Name",
+      "namePlaceholder": "Your name",
+      "email": "Email",
+      "emailPlaceholder": "your.email@example.com",
+      "message": "Message",
+      "messagePlaceholder": "Tell us how we can help you...",
+      "submit": "Send Message",
+      "submitting": "Sending..."
+    },
+    "successMessage": "Thank you! Your message has been sent. We'll get back to you soon.",
+    "infoTitle": "Get in touch",
+    "infoDescription": "Have questions or need assistance? We're here to help. Reach out to us through any of the channels below.",
+    "info": {
+      "email": "Email",
+      "phone": "Phone",
+      "address": "Address",
+      "addressValue": "Jakarta, Indonesia"
+    },
+    "socialTitle": "Follow us",
+    "footer": {
+      "rights": "All rights reserved."
+    }
+  },
+  "admin": {
+    "logout": "Logout",
+    "login": "Login",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign In",
+    "signOut": "Sign Out",
+    "welcome": "Welcome",
+    "adminConsole": "Admin Console",
+    "silverKing": "Silver King",
+    "silverKingAdmin": "Silver King Admin",
+    "command": {
+      "eyebrow": "Silver King Command",
+      "title": "Luxury anti-counterfeit intelligence",
+      "description": "Monitor authenticated supply chains with real-time scan telemetry, product health, and risk posture. Every widget below talks directly to the verification engine."
+    },
+    "metrics": {
+      "totalProducts": "Total Products",
+      "totalQrCodes": "Total QR Codes",
+      "totalScans": "Total Scans",
+      "scansToday": "Scans Today",
+      "curatedBars": "+ curated SK bars",
+      "mirroredSecure": "Mirrored & secure",
+      "lifetimeVerifications": "Lifetime verifications",
+      "liveInteractions": "Live interactions",
+      "unableToLoad": "Unable to load dashboard metrics."
+    },
+    "dashboard": {
+      "label": "Dashboard",
+      "actions": {
+        "operatorTools": "Operator tools",
+        "generateProduct": "Generate product",
+        "generateProductDesc": "Create SKU + QR instantly",
+        "previewQR": "Preview QR bank",
+        "previewQRDesc": "All QR assets in one grid",
+        "exportIntelligence": "Export intelligence",
+        "exportIntelligenceDesc": "Download full Excel report",
+        "scanAnalytics": "Scan analytics",
+        "scanAnalyticsDesc": "Investigate verification feed"
+      },
+      "spotlight": {
+        "title": "Spotlight",
+        "subtitle": "Top performing bars",
+        "scans": "Scans",
+        "qrStored": "QR asset stored",
+        "open": "Open",
+        "noProducts": "No spotlight products yet."
+      }
+    },
+    "months": {
+      "01": "January",
+      "02": "February",
+      "03": "March",
+      "04": "April",
+      "05": "May",
+      "06": "June",
+      "07": "July",
+      "08": "August",
+      "09": "September",
+      "10": "October",
+      "11": "November",
+      "12": "December"
+    },
+    "charts": {
+      "verificationVolume": "Verification Volume",
+      "scanTrajectory": "Scan trajectory",
+      "mostTrustedPieces": "Most trusted pieces",
+      "topScannedProducts": "Top scanned products",
+      "globalFootprint": "Global footprint",
+      "scanDistribution": "Scan distribution",
+      "unableToLoadTop": "Unable to load top products right now.",
+      "unableToLoadDistribution": "Unable to load scan distribution.",
+      "scans": "scans",
+      "ofTotal": "% of total",
+      "noData": "No scan data available",
+      "scanPerformance": "Scan performance",
+      "sevenDayScans": "Seven-day scans",
+      "verificationHeat": "Verification heat",
+      "realTimeFeed": "Real-time feed",
+      "viewMode": {
+        "7d": "7 Days",
+        "30d": "30 Days",
+        "month": "Month",
+        "current": "Current"
+      }
+    },
+    "activity": {
+      "liveFeed": "Live feed",
+      "recentScanActivity": "Recent scan activity",
+      "recentScans": "Recent Scans",
+      "unknownIP": "Unknown IP",
+      "unknownAgent": "Unknown agent",
+      "unableToLoad": "Unable to load activity feed.",
+      "verified": "VERIFIED"
+    },
+    "analyticsLabel": "Analytics",
+    "analytics": {
+      "title": "Deep analytics & exportable intelligence",
+      "eyebrow": "Advanced telemetry",
+      "description": "Slice high-volume verification data by timeframe, observe hourly intensity, and export curated insights for your compliance and brand teams.",
+      "security": "Security",
+      "scanLogs": "Scan logs",
+      "logsEyebrow": "Security telemetry",
+      "logsTitle": "Full-fidelity verification ledger",
+      "logsDescription": "Trace every authentication event with precise metadata, filtering, and exports for compliance reviews.",
+      "exportData": "Export Data",
+      "search": "Search",
+      "noResults": "No results found",
+      "product": "Product",
+      "scans": "Scans",
+      "share": "Share",
+      "signalControl": "Signal control",
+      "scansOverTime": "Scans over time",
+      "exportCSV": "Export CSV",
+      "export": "Export",
+      "aggregatedMetrics": "Aggregated metrics",
+      "topPerforming": "Top performing SK bars",
+      "hourlyHeatmap": "Hourly heatmap",
+      "activityIntensity": "Activity intensity",
+      "last7Days": "Last 7 days",
+      "last30Days": "Last 30 days",
+      "custom": "Custom",
+      "noRecordsAvailable": "No records available."
+    },
+    "productsDetail": {
+      "title": "Products",
+      "create": "Create Product",
+      "edit": "Edit Product",
+      "inventory": "Inventory",
+      "addProduct": "Add Product",
+      "search": "Search products...",
+      "searchPlaceholder": "Search by name, serial, or weight...",
+      "name": "Name",
+      "weight": "Weight",
+      "serial": "Serial",
+      "price": "Price",
+      "stock": "Stock",
+      "scans": "Scans",
+      "actions": "Actions",
+      "editProduct": "Edit",
+      "deleteProduct": "Delete",
+      "deleteAll": "Delete All",
+      "deleteAllProducts": "Delete All Products",
+      "deletingAll": "Deleting All…",
+      "noProducts": "No products found",
+      "noProductsMatching": "No products found matching your search.",
+      "noProductsAvailable": "No products available.",
+      "deleteSuccess": "Product deleted successfully",
+      "deleteSuccessDescription": "{name} has been removed from inventory",
+      "deleteFailed": "Failed to delete product",
+      "deleteAllSuccess": "All products deleted successfully",
+      "deleteAllSuccessDescription": "{count} product(s) have been removed from inventory",
+      "deleteAllFailed": "Failed to delete all products",
+      "deleteAllWarning": "This will permanently delete ALL products. This action cannot be undone.",
+      "deleteAllWarningTitle": "⚠️ Delete All Products",
+      "deleteAllWarningText": "This action cannot be undone!",
+      "deleteAllWarningDescription": "You are about to delete {count} product(s) from your inventory. This will also delete:",
+      "deleteAllWarningItem1": "All associated QR codes",
+      "deleteAllWarningItem2": "All scan logs and analytics data",
+      "deleteAllWarningItem3": "All QR code images from storage",
+      "typeToConfirm": "Type 'DELETE ALL' to confirm",
+      "typeToConfirmPlaceholder": "Type DELETE ALL to confirm",
+      "finalConfirmationTitle": "🔒 Final Confirmation Required",
+      "finalConfirmationText": "To confirm this destructive action, please type DELETE ALL in the box below:",
+      "safetyMeasure": "This is a safety measure to prevent accidental deletion",
+      "deleting": "Deleting...",
+      "confirm": "Confirm",
+      "cancel": "Cancel",
+      "continue": "Continue",
+      "found": "Found",
+      "of": "of",
+      "product": "product(s)",
+      "form": {
+      "basicInformation": "Basic Information",
+      "productName": "Product Name",
+      "productNamePlaceholder": "e.g., Silver King 100g",
+      "weight": "Weight (grams)",
+      "weightPlaceholder": "100",
+      "quantity": "Quantity",
+      "quantityPlaceholder": "1",
+      "quantityInfoSingle": "Single product. Enter serial prefix (e.g., SKT) to auto-generate SKT000001 format.",
+      "quantityInfoBatch": "Will create {quantity} products with unique serial numbers",
+      "serialNumberConfiguration": "Serial Number Configuration",
+      "serialPrefix": "Serial Prefix",
+      "serialPrefixAutoGenerate": "(Auto-generates SKT000001 format)",
+      "serialPrefixPlaceholderSingle": "SKT (will create SKT000001)",
+      "serialPrefixPlaceholderBatch": "SKA (will create SKA000001, SKA000002...)",
+      "serialPrefixInfo": "Enter a prefix (e.g., SKT) to auto-generate serial numbers in SKT000001 format",
+      "serialCode": "Serial Code",
+      "serialCodeOptional": "(optional, auto-generated if empty)",
+      "serialCodePlaceholder": "Auto-generated or enter custom (e.g., SKA12345)",
+      "price": "Price (optional)",
+      "pricePlaceholder": "250000000 (optional)",
+      "batchCreationMode": "Batch Creation Mode",
+      "batchCreationDescription": "{quantity} products will be created, each with a unique serial number and QR code. Stock will be set to 1 for each product (one unit per serial number).",
+      "checkingSerials": "Checking existing serials...",
+      "foundExisting": "Found {count} existing product(s)",
+      "lastSerial": "Last Serial",
+      "willContinueFrom": "Will Continue From",
+      "preview": "Preview",
+      "serialNumber": "Serial Number",
+      "newPrefix": "✨ New prefix, starting from 000001",
+      "serialRange": "Serial Range",
+      "willCreateSequential": "{quantity} products will be created with sequential serial numbers",
+      "createProduct": "Create Product",
+      "updateProduct": "Update Product",
+      "createBatch": "Create {quantity} Products",
+      "creatingBatch": "Creating {quantity} products...",
+      "saving": "Saving…",
+      "productCreated": "Product created successfully!",
+      "productCreatedDescription": "{name} has been added to inventory",
+      "productUpdated": "Product updated successfully!",
+      "productUpdatedDescription": "{name} has been updated",
+      "batchCreated": "Successfully created {count} products!",
+      "batchCreatedDescription": "Serial numbers generated for {name}",
+      "saveFailed": "Failed to save product",
+      "saveFailedDescription": "Please check your input and try again"
+    }
+    },
+    "products": "Products",
+    "qrPreviewDetail": {
+      "eyebrow": "QR Vault",
+      "title": "Every serialized artifact",
+      "description": "High-fidelity QR assets, ready to scan.",
+      "item": "item",
+      "items": "items",
+      "totalAssets": "Total Assets",
+      "selected": "selected",
+      "searchPlaceholder": "Search by product name or serial...",
+      "unableToLoad": "Unable to load QR assets.",
+      "retry": "Retry",
+      "noProductsFound": "No products found",
+      "matching": "matching",
+      "of": "of",
+      "products": "products",
+      "filtered": "filtered",
+      "downloadSelected": "Download Selected",
+      "generating": "Generating...",
+      "refresh": "Refresh",
+      "refreshing": "Refreshing...",
+      "downloadAll": "Download All",
+      "generatingPng": "Generating PNG...",
+      "serialCode": "Serial Code",
+      "productName": "Product Name",
+      "weight": "Weight",
+      "qrPreview": "QR Preview",
+      "actions": "Actions",
+      "enlarge": "Enlarge",
+      "download": "Download",
+      "downloading": "Downloading...",
+      "downloadQRCode": "Download QR Code",
+      "close": "Close",
+      "view": "View",
+      "downloadFailed": "Failed to download QR code",
+      "downloadAllFailed": "No products available to download.",
+      "downloadSelectedFailed": "Please select at least one QR code to download.",
+      "downloadSuccess": "Successfully downloaded PNG with {count} QR code(s)!",
+      "downloadSelectedSuccess": "Successfully downloaded PNG with {count} selected QR code(s)!"
+    },
+    "qrPreview": "QR Preview",
+    "logs": "Logs",
+    "logsDetail": {
+      "product": "Product",
+      "serial": "Serial",
+      "timestamp": "Timestamp",
+      "ip": "IP",
+      "userAgent": "User Agent"
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page",
+      "of": "of"
+    },
+    "export": {
+      "label": "Export",
+      "title": "Export",
+      "data": "Data",
+      "description": "Download the entire dataset including products, QR records, and scan counts.",
+      "exportToExcel": "Export to Excel",
+      "exportSuccessful": "Export successful",
+      "excelDownloaded": "Excel file has been downloaded",
+      "exportFailed": "Failed to export"
+    },
+    "login": {
+      "title": "Admin Console",
+      "signingIn": "Signing in…",
+      "signIn": "Sign in",
+      "loginFailed": "Login failed",
+      "invalidCredentials": "Invalid email or password",
+      "loginSuccessful": "Login successful",
+      "welcomeBack": "Welcome back!",
+      "invalidCredentialsError": "Invalid credentials"
+    },
+    "loading": {
+      "dashboard": "Loading dashboard..."
+    },
+    "errors": {
+      "somethingWentWrong": "Something went wrong!",
+      "tryAgain": "Try again",
+      "backToHome": "Back to Home"
+    }
+  }
+}

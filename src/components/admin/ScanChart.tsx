@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 
 type DataPoint = {
   label: string;
@@ -8,10 +9,12 @@ type DataPoint = {
 };
 
 export function ScanChart({ data }: { data: DataPoint[] }) {
+  const t = useTranslations('admin.charts');
+  
   if (data.length === 0) {
     return (
       <div className="rounded-3xl border border-white/5 bg-white/[0.03] p-6 text-center text-white/40">
-        No scan data yet
+        {t('noData')}
       </div>
     );
   }
@@ -20,7 +23,7 @@ export function ScanChart({ data }: { data: DataPoint[] }) {
 
   return (
     <div className="rounded-3xl border border-white/5 bg-white/[0.03] p-4">
-      <p className="mb-3 text-sm text-white/60">Scan performance</p>
+      <p className="mb-3 text-sm text-white/60">{t('scanPerformance')}</p>
       <div className="flex items-end gap-3">
         {data.map((item) => (
           <motion.div

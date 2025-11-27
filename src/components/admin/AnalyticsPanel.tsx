@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import useSWR from "swr";
+import { useTranslations } from "next-intl";
 import {
   ResponsiveContainer,
   LineChart,
@@ -35,6 +36,7 @@ type LogsResponse = {
 };
 
 export function AnalyticsPanel() {
+  const t = useTranslations('admin.analytics');
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1); // 1-indexed
   const [year, setYear] = useState(now.getFullYear());
@@ -106,9 +108,9 @@ export function AnalyticsPanel() {
   }, [logsData]);
 
   const columns: TableColumn<{ name: string; scans: number; share: string }>[] = [
-    { key: "name", header: "Product", sortable: true },
-    { key: "scans", header: "Scans", sortable: true },
-    { key: "share", header: "Share", sortable: true },
+    { key: "name", header: t('product'), sortable: true },
+    { key: "scans", header: t('scans'), sortable: true },
+    { key: "share", header: t('share'), sortable: true },
   ];
 
   const tableData =
@@ -123,8 +125,8 @@ export function AnalyticsPanel() {
       <AnimatedCard>
         <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] sm:text-xs uppercase tracking-[0.3em] sm:tracking-[0.35em] text-white/50">Signal control</p>
-            <h3 className="mt-1.5 sm:mt-2 text-lg sm:text-xl md:text-2xl font-semibold text-white leading-tight">Scans over time</h3>
+            <p className="text-[10px] sm:text-xs uppercase tracking-[0.3em] sm:tracking-[0.35em] text-white/50">{t('signalControl')}</p>
+            <h3 className="mt-1.5 sm:mt-2 text-lg sm:text-xl md:text-2xl font-semibold text-white leading-tight">{t('scansOverTime')}</h3>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 flex-shrink-0">
             <MonthYearPicker month={month} year={year} onChange={handleMonthYearChange} />
@@ -133,8 +135,8 @@ export function AnalyticsPanel() {
               className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-[#FFD700]/40 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-white transition hover:border-[#FFD700]"
             >
               <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Export CSV</span>
-              <span className="sm:hidden">Export</span>
+              <span className="hidden sm:inline">{t('exportCSV')}</span>
+              <span className="sm:hidden">{t('export')}</span>
             </button>
           </div>
         </div>
@@ -181,16 +183,16 @@ export function AnalyticsPanel() {
       <div className="grid gap-4 sm:gap-5 md:gap-6 lg:grid-cols-5">
         <AnimatedCard className="lg:col-span-3">
           <div className="mb-3 sm:mb-4">
-            <p className="text-[10px] sm:text-xs uppercase tracking-[0.3em] sm:tracking-[0.35em] text-white/50">Aggregated metrics</p>
-            <h3 className="mt-1.5 sm:mt-2 text-lg sm:text-xl md:text-2xl font-semibold text-white leading-tight">Top performing SK bars</h3>
+            <p className="text-[10px] sm:text-xs uppercase tracking-[0.3em] sm:tracking-[0.35em] text-white/50">{t('aggregatedMetrics')}</p>
+            <h3 className="mt-1.5 sm:mt-2 text-lg sm:text-xl md:text-2xl font-semibold text-white leading-tight">{t('topPerforming')}</h3>
           </div>
           <DataTable columns={columns} data={tableData} isLoading={topLoadingState} />
         </AnimatedCard>
 
         <AnimatedCard className="lg:col-span-2">
           <div className="mb-3 sm:mb-4">
-            <p className="text-[10px] sm:text-xs uppercase tracking-[0.3em] sm:tracking-[0.35em] text-white/50">Hourly heatmap</p>
-            <h3 className="mt-1.5 sm:mt-2 text-lg sm:text-xl md:text-2xl font-semibold text-white leading-tight">Activity intensity</h3>
+            <p className="text-[10px] sm:text-xs uppercase tracking-[0.3em] sm:tracking-[0.35em] text-white/50">{t('hourlyHeatmap')}</p>
+            <h3 className="mt-1.5 sm:mt-2 text-lg sm:text-xl md:text-2xl font-semibold text-white leading-tight">{t('activityIntensity')}</h3>
           </div>
           <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5 sm:gap-2">
             {heatmap.map((item) => (

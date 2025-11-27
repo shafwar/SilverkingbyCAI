@@ -1,6 +1,7 @@
 "use client";
 
 import useSWR from "swr";
+import { useTranslations } from "next-intl";
 import { Shield, QrCode, Activity, Zap } from "lucide-react";
 import { DashboardCard } from "./DashboardCard";
 import { LoadingSkeleton } from "./LoadingSkeleton";
@@ -21,6 +22,7 @@ const icons = {
 };
 
 export function DashboardMetrics() {
+  const t = useTranslations('admin.metrics');
   const { data, error, isLoading } = useSWR<StatsResponse>(
     "/api/admin/stats",
     fetcher,
@@ -36,39 +38,39 @@ export function DashboardMetrics() {
   }
 
   if (hasError || !stats) {
-    return <p className="text-sm text-red-400">Unable to load dashboard metrics.</p>;
+    return <p className="text-sm text-red-400">{t('unableToLoad')}</p>;
   }
 
   return (
     <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
       <DashboardCard
-        title="Total Products"
+        title={t('totalProducts')}
         value={stats.totalProducts.toLocaleString()}
-        delta="+ curated SK bars"
+        delta={t('curatedBars')}
         icon={icons.products}
         accent="gold"
         delay={0.05}
       />
       <DashboardCard
-        title="Total QR Codes"
+        title={t('totalQrCodes')}
         value={stats.totalQrCodes.toLocaleString()}
-        delta="Mirrored & secure"
+        delta={t('mirroredSecure')}
         icon={icons.qr}
         accent="silver"
         delay={0.1}
       />
       <DashboardCard
-        title="Total Scans"
+        title={t('totalScans')}
         value={stats.totalScans.toLocaleString()}
-        delta="Lifetime verifications"
+        delta={t('lifetimeVerifications')}
         icon={icons.scans}
         accent="emerald"
         delay={0.15}
       />
       <DashboardCard
-        title="Scans Today"
+        title={t('scansToday')}
         value={stats.scansToday.toLocaleString()}
-        delta="Live interactions"
+        delta={t('liveInteractions')}
         icon={icons.today}
         accent="blue"
         delay={0.2}
