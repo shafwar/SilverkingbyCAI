@@ -90,15 +90,15 @@ export default function LanguageSwitcher() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         disabled={isPending}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-all duration-200 text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex items-center justify-center gap-2 px-4 py-2.5 md:px-3 md:py-1.5 rounded-lg md:rounded-md bg-white/10 hover:bg-white/15 md:bg-white/5 md:hover:bg-white/10 text-white hover:text-white transition-all duration-200 text-sm md:text-xs font-semibold md:font-medium disabled:opacity-50 disabled:cursor-not-allowed border border-white/20 md:border-transparent shadow-lg md:shadow-none"
         aria-label="Switch language"
       >
         {isPending ? (
-          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          <Loader2 className="w-4 h-4 md:w-3.5 md:h-3.5 animate-spin" />
         ) : (
-          <Globe className="w-3.5 h-3.5" />
+          <Globe className="w-4 h-4 md:w-3.5 md:h-3.5" />
         )}
-        <span>{switchingTo ? languages.find(l => l.code === switchingTo)?.name || currentLanguage.name : currentLanguage.name}</span>
+        <span className="font-semibold">{switchingTo ? languages.find(l => l.code === switchingTo)?.name || currentLanguage.name : currentLanguage.name}</span>
       </button>
 
       {isOpen && !isPending && (
@@ -107,25 +107,25 @@ export default function LanguageSwitcher() {
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 mt-2 w-24 bg-black/95 backdrop-blur-sm border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
+          <div className="absolute right-0 mt-2 w-28 md:w-24 bg-black/95 backdrop-blur-sm border border-white/20 md:border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
             {languages.map((lang) => (
               <button
                 key={lang.code}
                 onClick={() => switchLanguage(lang.code)}
                 disabled={isPending || lang.code === locale}
-                className={`w-full px-3 py-2 text-left text-xs transition-colors duration-150 ${
+                className={`w-full px-4 py-3 md:px-3 md:py-2 text-left text-sm md:text-xs transition-colors duration-150 ${
                   locale === lang.code
-                    ? 'bg-white/10 text-white font-medium cursor-default'
+                    ? 'bg-white/10 text-white font-semibold md:font-medium cursor-default'
                     : 'text-white/70 hover:bg-white/5 hover:text-white'
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 <span className="flex items-center justify-between">
-                  {lang.name}
+                  <span className="font-semibold md:font-normal">{lang.name}</span>
                   {locale === lang.code && (
-                    <span className="ml-2 text-xs">✓</span>
+                    <span className="ml-2 text-sm md:text-xs">✓</span>
                   )}
                   {switchingTo === lang.code && (
-                    <Loader2 className="ml-2 w-3 h-3 animate-spin" />
+                    <Loader2 className="ml-2 w-4 h-4 md:w-3 md:h-3 animate-spin" />
                   )}
                 </span>
               </button>

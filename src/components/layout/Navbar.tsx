@@ -313,10 +313,15 @@ export default function Navbar() {
                     ))}
                   </nav>
 
-                  {/* Language Switcher in Mobile Menu */}
-                  <div className="mb-6">
+                  {/* Language Switcher in Mobile Menu - Prominent Position */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3, duration: 0.4 }}
+                    className="mb-8 sm:mb-10 flex justify-center"
+                  >
                     <LanguageSwitcher />
-                  </div>
+                  </motion.div>
 
                   {/* Featured Card - Scan & Verify (Like Pixelmatters Case Study - Compact) */}
                   <motion.div
