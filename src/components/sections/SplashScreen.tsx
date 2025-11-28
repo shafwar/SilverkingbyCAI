@@ -100,6 +100,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
   return (
     <motion.div
       ref={containerRef}
+      data-splash-screen
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black"
       style={{ 
         position: 'fixed',
@@ -107,9 +108,10 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
         left: 0,
         right: 0,
         bottom: 0,
-        width: '100%',
-        height: '100%',
-        pointerEvents: 'auto'
+        width: '100vw',
+        height: '100vh',
+        pointerEvents: 'auto',
+        willChange: 'opacity'
       }}
     >
       {/* Subtle gradient overlay */}
