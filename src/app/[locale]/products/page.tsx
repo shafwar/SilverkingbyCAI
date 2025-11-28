@@ -937,12 +937,9 @@ export default function ProductsPage() {
             }, 2000);
           }
         }
+        
+        return () => ctx.revert();
       }, pageRef);
-
-          return () => ctx.revert();
-        },
-        { scope: pageRef }
-      );
       };
 
       // Defer heavy animations until browser is idle
