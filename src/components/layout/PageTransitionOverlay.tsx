@@ -82,6 +82,7 @@ export function PageTransitionOverlay() {
                 src={getR2UrlClient("/images/cai-logo.png")}
                 alt="CAI Emblem"
                 fill
+                sizes="(max-width: 768px) 200px, 300px"
                 className="object-contain"
                 style={{ filter: "invert(1) saturate(0)" }}
                 priority

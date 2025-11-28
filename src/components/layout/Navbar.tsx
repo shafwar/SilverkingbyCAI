@@ -125,6 +125,7 @@ export default function Navbar() {
   ];
 
   const handleNavClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
+    // Allow default navigation for special keys (open in new tab, etc.)
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
       return;
     }
@@ -132,7 +133,10 @@ export default function Navbar() {
     if (isHashLink) {
       return;
     }
+    // Start transition animation
+    // Link component from next-intl will handle navigation automatically
     beginTransition(href);
+    // Navigation is handled by Link component - no need to preventDefault or router.push
   };
 
   return (
@@ -152,9 +156,7 @@ export default function Navbar() {
         isScrolled
           ? "bg-black/90 backdrop-blur-2xl border-b border-white/[0.08] shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
           : "bg-transparent"
-      } ${isModalOpen ? "pointer-events-none" : ""} ${
-        !isVisible && !isModalOpen ? "pointer-events-none" : ""
-      }`}
+      } ${isModalOpen ? "pointer-events-none" : "pointer-events-auto"}`}
     >
       <nav className="mx-auto max-w-[1440px] px-4 sm:px-6 md:px-10 lg:px-16 xl:px-20">
         <div className="flex items-center justify-between h-[4.5rem] sm:h-[5rem] md:h-[5.5rem]">
@@ -165,6 +167,7 @@ export default function Navbar() {
                 src={getR2UrlClient("/images/cai-logo.png")}
                 alt="Silver King by CAI"
                 fill
+                sizes="(max-width: 640px) 40px, (max-width: 768px) 48px, 56px"
                 className="object-contain brightness-0 invert transition-all duration-500"
                 style={{
                   filter:
@@ -270,6 +273,7 @@ export default function Navbar() {
                           src={getR2UrlClient("/images/cai-logo.png")}
                           alt="Silver King by CAI"
                           fill
+                          sizes="(max-width: 640px) 40px, 48px"
                           className="object-contain brightness-0 invert"
                           style={{
                             filter: "brightness(0) invert(1)",

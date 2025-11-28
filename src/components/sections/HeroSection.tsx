@@ -4,9 +4,9 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, type Variants } from "framer-motion";
 import { gsap } from "gsap";
 import { QrCode } from "lucide-react";
-import { useTranslations } from "next-intl";
 import ScrollingFeatures from "./ScrollingFeatures";
 import { getR2UrlClient } from "@/utils/r2-url";
+import { useTranslations } from "next-intl";
 
 interface HeroSectionProps {
   shouldAnimate?: boolean;
@@ -116,7 +116,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Features data from translations
+  // Features data from translations - simple and stable
   const featuresData = [
     {
       label: t("features.chainOfCustody.label"),
@@ -147,7 +147,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
   // Optimal video autoplay handling - ensure video never pauses or breaks
   useEffect(() => {
     setIsLoaded(true);
-    
+
     const video = videoRef.current;
     if (!video) return;
 
@@ -205,7 +205,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
       // But we can also try to play if it's paused
       if (video.paused && !video.ended) {
         setTimeout(() => {
-        forcePlay();
+          forcePlay();
         }, 100);
       }
     };
@@ -475,10 +475,10 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
       </motion.div>
 
       {/* Content - UNIVERSAL untuk SEMUA device mobile */}
-      <div className="relative z-10 flex h-full items-center pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:pt-8 md:pt-0 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-16 md:pb-0">
-        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 md:px-10 lg:px-14 xl:px-20">
+      <div className="relative z-10 flex h-full items-center pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:pt-8 md:pt-0 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-16 md:pb-0 pointer-events-none">
+        <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 md:px-10 lg:px-14 xl:px-20 pointer-events-none">
           {/* Main content - Optimized untuk semua mobile */}
-          <div className="max-w-[900px] -translate-y-2 sm:-translate-y-3 md:translate-y-0">
+          <div className="max-w-[900px] -translate-y-2 sm:-translate-y-3 md:translate-y-0 pointer-events-auto">
             {/* Headline - Universal responsive */}
             <h1
               ref={headlineRef}
@@ -558,7 +558,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
       </div>
 
       {/* Mobile: Scrolling Features - DINAIKKAN untuk proporsi dengan QR Card baru */}
-      <div className="md:hidden absolute left-0 right-0 bottom-[calc(140px+env(safe-area-inset-bottom))] sm:bottom-[calc(148px+env(safe-area-inset-bottom))] z-20 px-4 sm:px-6">
+      <div className="md:hidden absolute left-0 right-0 bottom-[calc(140px+env(safe-area-inset-bottom))] sm:bottom-[calc(148px+env(safe-area-inset-bottom))] z-20 px-4 sm:px-6 pointer-events-auto">
         <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate} />
       </div>
 
@@ -571,11 +571,11 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
           scale: shouldAnimate ? 1 : 0.97,
         }}
         transition={{ duration: 1, delay: 1.1, ease: "easeOut" }}
-        className="absolute bottom-[calc(50px+env(safe-area-inset-bottom))] sm:bottom-[calc(55px+env(safe-area-inset-bottom))] md:bottom-8 inset-x-0 z-30 flex justify-center px-3.5 sm:px-4"
+        className="absolute bottom-[calc(50px+env(safe-area-inset-bottom))] sm:bottom-[calc(55px+env(safe-area-inset-bottom))] md:bottom-8 inset-x-0 z-30 flex justify-center px-3.5 sm:px-4 pointer-events-auto"
       >
         <a
           href="/authenticity"
-          className="group inline-flex items-center gap-2.5 sm:gap-3 text-left w-full max-w-[min(calc(100vw-28px),358px)] sm:max-w-[368px] backdrop-blur-sm bg-black/50 border border-white/10 rounded-2xl p-3 sm:p-3.5 transition-all duration-300 hover:bg-black/60 hover:border-white/20"
+          className="group inline-flex items-center gap-2.5 sm:gap-3 text-left w-full max-w-[min(calc(100vw-28px),358px)] sm:max-w-[368px] backdrop-blur-sm bg-black/50 border border-white/10 rounded-2xl p-3 sm:p-3.5 transition-all duration-300 hover:bg-black/60 hover:border-white/20 pointer-events-auto"
         >
           <div className="flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border border-white/20 bg-black/40">
             <QrCode className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
