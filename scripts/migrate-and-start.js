@@ -11,12 +11,14 @@ async function runSeed() {
     execSync('npm run prisma:seed', {
       stdio: 'inherit',
       env: process.env,
+      cwd: process.cwd(),
     });
     console.log('✅ Database seed completed successfully!\n');
     return true;
   } catch (error) {
     console.error('❌ Seed failed:', error.message);
     console.log('⚠️  Continuing without seed (database may already be seeded)...\n');
+    // Don't exit - seed failure should not prevent app from starting
     return false;
   }
 }

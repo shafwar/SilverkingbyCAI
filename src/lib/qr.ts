@@ -3,8 +3,9 @@ import path from "path";
 import QRCode from "qrcode";
 import { createCanvas, loadImage, registerFont } from "canvas";
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { getBaseUrl } from "@/utils/constants";
-import { getR2Url } from "@/utils/r2-url";
+// Use relative path for compatibility with seed script and Next.js
+import { getBaseUrl } from "../utils/constants";
+import { getR2Url } from "../utils/r2-url";
 
 const R2_ENDPOINT = process.env.R2_ENDPOINT;
 const R2_BUCKET = process.env.R2_BUCKET || process.env.R2_BUCKET_NAME; // Support both variable names

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useLayoutEffect } from "react";
+import { useState, useLayoutEffect, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import HeroSection from "@/components/sections/HeroSection";
 import SplashScreen from "@/components/sections/SplashScreen";
@@ -10,6 +10,16 @@ export default function RootPageContent() {
   const [showSplash, setShowSplash] = useState<boolean>(true);
   const [splashComplete, setSplashComplete] = useState(false);
   const [isClient, setIsClient] = useState(false);
+
+  // Add home-page class to body for CSS targeting
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      document.body.classList.add("home-page");
+      return () => {
+        document.body.classList.remove("home-page");
+      };
+    }
+  }, []);
 
   // IMMEDIATELY check if splash should be shown (BEFORE first render)
   useLayoutEffect(() => {
@@ -73,6 +83,7 @@ export default function RootPageContent() {
         style={{
           opacity: isClient && !showSplash ? 1 : 0,
           transition: "opacity 0.3s ease-in",
+          pointerEvents: isClient && !showSplash ? "auto" : "none",
         }}
       >
         <Navbar />
