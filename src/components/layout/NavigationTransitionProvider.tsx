@@ -75,7 +75,13 @@ export function NavigationTransitionProvider({ children }: { children: ReactNode
 export function useNavigationTransition() {
   const ctx = useContext(NavigationTransitionContext);
   if (!ctx) {
-    throw new Error("useNavigationTransition must be used within NavigationTransitionProvider");
+    // CRITICAL: Provide helpful error message with solution
+    // This prevents silent failures and helps developers fix issues quickly
+    throw new Error(
+      "useNavigationTransition must be used within NavigationTransitionProvider. " +
+      "Please ensure the component using this hook is wrapped with NavigationTransitionProvider. " +
+      "For verify pages, use src/app/verify/layout.tsx as a reference."
+    );
   }
   return ctx;
 }

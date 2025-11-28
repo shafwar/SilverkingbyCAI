@@ -28,58 +28,106 @@ export default function VerifyPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true; // Prevent state updates if component unmounts
+    
     async function verifyProduct() {
       try {
-        // Normalize serial number (uppercase, remove special chars)
+        // SECURITY: Normalize and validate serial number input
+        // Remove any potentially malicious characters
         const normalizedSerial = serialNumber?.trim().toUpperCase().replace(/[^A-Z0-9]/g, "") || "";
         
-        if (!normalizedSerial || normalizedSerial.length < 3) {
-          setResult({
-            verified: false,
-            error: "Invalid serial number format",
-          });
-          setLoading(false);
+        // SECURITY: Validate serial number format and length
+        if (!normalizedSerial || normalizedSerial.length < 3 || normalizedSerial.length > 50) {
+          if (isMounted) {
+            setResult({
+              verified: false,
+              error: "Invalid serial number format",
+            });
+            setLoading(false);
+          }
           return;
         }
+
+        // OPTIMIZATION: Add timeout to prevent hanging requests
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
         const response = await fetch(`/api/verify/${encodeURIComponent(normalizedSerial)}`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
           },
+          signal: controller.signal,
         });
+        
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
-          setResult({
-            verified: false,
-            error: errorData.error || `Verification failed: ${response.status}`,
-          });
-          setLoading(false);
+          if (isMounted) {
+            setResult({
+              verified: false,
+              error: errorData.error || `Verification failed: ${response.status}`,
+            });
+            setLoading(false);
+          }
           return;
         }
 
         const data = await response.json();
         
-        // Validate response
-        if (!data || typeof data !== "object") {
-          setResult({
-            verified: false,
-            error: "Invalid response from server",
-          });
-          setLoading(false);
+        // SECURITY: Validate response structure
+        if (!data || typeof data !== "object" || !("verified" in data)) {
+          if (isMounted) {
+            setResult({
+              verified: false,
+              error: "Invalid response from server",
+            });
+            setLoading(false);
+          }
           return;
         }
 
-        setResult(data);
+        // SECURITY: Validate product data if verified
+        if (data.verified && data.product) {
+          // Ensure product has required fields
+          if (!data.product.serialCode || !data.product.name) {
+            if (isMounted) {
+              setResult({
+                verified: false,
+                error: "Invalid product data received",
+              });
+              setLoading(false);
+            }
+            return;
+          }
+        }
+
+        if (isMounted) {
+          setResult(data);
+          setLoading(false);
+        }
       } catch (error: any) {
+        // Handle abort (timeout) gracefully
+        if (error.name === "AbortError") {
+          if (isMounted) {
+            setResult({
+              verified: false,
+              error: "Request timeout. Please try again.",
+            });
+            setLoading(false);
+          }
+          return;
+        }
+        
         console.error("Verification error:", error);
-        setResult({
-          verified: false,
-          error: error?.message || "Failed to verify product. Please try again.",
-        });
-      } finally {
-        setLoading(false);
+        if (isMounted) {
+          setResult({
+            verified: false,
+            error: error?.message || "Failed to verify product. Please try again.",
+          });
+          setLoading(false);
+        }
       }
     }
 
@@ -92,6 +140,11 @@ export default function VerifyPage() {
         error: "Serial number is required",
       });
     }
+
+    // Cleanup: Prevent state updates if component unmounts
+    return () => {
+      isMounted = false;
+    };
   }, [serialNumber]);
 
   const getWeightLabel = (weight?: number) => {
