@@ -27,6 +27,7 @@ type AdminLayoutProps = {
 };
 
 export function AdminLayout({ children, email }: AdminLayoutProps) {
+  // Always call hooks unconditionally
   const t = useTranslations('admin');
   const tDashboard = useTranslations('admin.dashboard');
   const tExport = useTranslations('admin.export');
@@ -35,15 +36,30 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   
+  // Safe translation helper with fallback
+  const safeT = useMemo(
+    () => (translator: ReturnType<typeof useTranslations>, key: string, fallback: string = key): string => {
+      try {
+        const result = translator(key);
+        // If next-intl returns the key itself (missing translation), use fallback
+        return result === key ? fallback : result;
+      } catch (error) {
+        console.error(`[AdminLayout] Translation error for key "${key}":`, error);
+        return fallback;
+      }
+    },
+    []
+  );
+  
   // Memoize navItems untuk memastikan re-render saat locale berubah
   // Include locale in dependency array untuk force re-render saat locale berubah
   const navItems = useMemo(() => [
-    { label: tDashboard('label'), href: "/admin", icon: LayoutDashboard },
-    { label: t('products'), href: "/admin/products", icon: PackageSearch },
-    { label: t('qrPreview'), href: "/admin/qr-preview", icon: QrCode },
-    { label: t('logs'), href: "/admin/logs", icon: ActivitySquare },
-    { label: t('analyticsLabel'), href: "/admin/analytics", icon: BarChart3 },
-  ], [t, locale]);
+    { label: safeT(tDashboard, 'label', 'Dashboard'), href: "/admin", icon: LayoutDashboard },
+    { label: safeT(t, 'products', 'Products'), href: "/admin/products", icon: PackageSearch },
+    { label: safeT(t, 'qrPreview', 'QR Preview'), href: "/admin/qr-preview", icon: QrCode },
+    { label: safeT(t, 'logs', 'Logs'), href: "/admin/logs", icon: ActivitySquare },
+    { label: safeT(t, 'analyticsLabel', 'Analytics'), href: "/admin/analytics", icon: BarChart3 },
+  ], [t, tDashboard, safeT, locale]);
 
   const handleSignOut = async () => {
     await signOut({ redirect: false });
@@ -95,13 +111,13 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
               />
             </div>
             <span className="text-sm md:text-lg font-semibold tracking-[0.35em] uppercase text-white">
-              {t('silverKing')}
+              {safeT(t, 'silverKing', 'Silver King')}
             </span>
           </Link>
           <div className="hidden items-center gap-2 lg:flex">{renderLinks("row")}</div>
           <div className="flex items-center gap-3 text-sm text-white/70">
             <div className="hidden text-right md:block">
-              <p className="text-xs uppercase tracking-[0.35em] text-white/50">{t('welcome')}</p>
+              <p className="text-xs uppercase tracking-[0.35em] text-white/50">{safeT(t, 'welcome', 'Welcome')}</p>
               <p className="font-semibold">{email}</p>
             </div>
             <div className="hidden md:block">
@@ -111,7 +127,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
               onClick={handleSignOut}
               className="hidden rounded-full border border-white/15 bg-gradient-to-r from-[#FFD700]/30 to-[#E5C100]/20 px-4 py-2 text-xs font-semibold text-white transition hover:border-[#FFD700]/50 md:inline-flex"
             >
-              {t('logout')}
+              {safeT(t, 'logout', 'Logout')}
             </button>
             <button
               onClick={() => setMobileOpen((prev) => !prev)}
@@ -132,7 +148,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
             >
               <div className="flex flex-col gap-3">{renderLinks("col")}</div>
               <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
-                <p className="text-xs uppercase tracking-[0.35em] text-white/50">{t('welcome')}</p>
+                <p className="text-xs uppercase tracking-[0.35em] text-white/50">{safeT(t, 'welcome', 'Welcome')}</p>
                 <p className="mt-2 font-semibold text-white">{email}</p>
                 <div className="mt-4 mb-4">
                   <LanguageSwitcher />
@@ -142,7 +158,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
                   className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/20 px-4 py-2 text-sm text-white transition hover:border-[#FFD700]/40"
                 >
                   <LogOut className="h-4 w-4" />
-                  {t('logout')}
+                  {safeT(t, 'logout', 'Logout')}
                 </button>
               </div>
             </motion.div>
