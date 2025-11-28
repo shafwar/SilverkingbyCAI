@@ -622,7 +622,7 @@ export default function AuthenticityPage() {
             className="mb-4 text-4xl font-sans font-light leading-tight text-white sm:text-5xl md:text-6xl"
           >
             {t('authenticateYour')}
-            <span className="block bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text font-semibold text-transparent">
+            <span className="block bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text font-sans font-semibold text-transparent">
               {t('silverKingBar')}
             </span>
           </motion.h1>
