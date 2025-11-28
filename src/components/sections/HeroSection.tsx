@@ -406,7 +406,11 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
   }, [shouldAnimate]);
 
   return (
-    <section ref={containerRef} className="relative h-screen w-full overflow-hidden bg-black" style={{ pointerEvents: 'auto' }}>
+    <section
+      ref={containerRef}
+      className="relative h-screen w-full overflow-hidden bg-black"
+      style={{ pointerEvents: "auto" }}
+    >
       {/* Video Background */}
       <motion.div
         style={{ opacity: isLoaded ? videoOpacity : 0, scale }}
