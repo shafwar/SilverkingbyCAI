@@ -264,6 +264,12 @@ export default function ProductsPage() {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
+  const [isMounted, setIsMounted] = useState(false);
+  
+  // CRITICAL: Delay heavy animations until after initial render
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Product categories with translations
   const productCategories = useMemo<ProductCategory[]>(
@@ -681,23 +687,25 @@ export default function ProductsPage() {
 
   useGSAP(
     () => {
-      if (!pageRef.current) return;
+      if (!pageRef.current || !isMounted) return;
 
-      const ctx = gsap.context(() => {
-        // Video zoom in animation
-        if (videoRef.current && isVideoLoaded) {
-          gsap.fromTo(
-            videoRef.current,
-            { scale: 1 },
-            {
-              scale: 1.1,
-              duration: 20,
-              ease: "none",
-              repeat: -1,
-              yoyo: true,
-            }
-          );
-        }
+      // CRITICAL: Use requestIdleCallback to defer heavy animations
+      const initAnimations = () => {
+        const ctx = gsap.context(() => {
+          // Video zoom in animation - deferred
+          if (videoRef.current && isVideoLoaded) {
+            gsap.fromTo(
+              videoRef.current,
+              { scale: 1 },
+              {
+                scale: 1.1,
+                duration: 20,
+                ease: "none",
+                repeat: -1,
+                yoyo: true,
+              }
+            );
+          }
 
         // Hero animation with stagger
         if (heroRef.current) {
@@ -931,9 +939,21 @@ export default function ProductsPage() {
         }
       }, pageRef);
 
-      return () => ctx.revert();
+          return () => ctx.revert();
+        },
+        { scope: pageRef }
+      );
+      };
+
+      // Defer heavy animations until browser is idle
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        requestIdleCallback(initAnimations, { timeout: 1000 });
+      } else {
+        // Fallback for browsers without requestIdleCallback
+        setTimeout(initAnimations, 100);
+      }
     },
-    { scope: pageRef, dependencies: [isVideoLoaded] }
+    { scope: pageRef, dependencies: [isMounted, isVideoLoaded] }
   );
 
   return (
