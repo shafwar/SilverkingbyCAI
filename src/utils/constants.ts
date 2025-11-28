@@ -23,7 +23,7 @@ export const APP_DESCRIPTION =
  * Falls back to environment variables or localhost for development
  */
 export function getBaseUrl(): string {
-  // Production domain
+  // Production domain - CRITICAL: This is the canonical domain for QR codes
   const PRODUCTION_DOMAIN = "https://www.cahayasilverking.id";
   
   // Check if we're in production
@@ -32,13 +32,19 @@ export function getBaseUrl(): string {
     process.env.RAILWAY_ENVIRONMENT ||
     process.env.VERCEL;
   
-  // In production, prioritize the production domain
+  // In production, ALWAYS use production domain for QR codes
+  // This ensures QR codes work even if env vars are misconfigured
   if (isProduction) {
-    return (
-      process.env.NEXT_PUBLIC_APP_URL ||
-      process.env.NEXTAUTH_URL ||
-      PRODUCTION_DOMAIN
-    ).replace(/\/$/, "");
+    // Prioritize NEXT_PUBLIC_APP_URL if it matches production domain
+    const envUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
+    
+    // If env URL matches production domain, use it; otherwise use production domain
+    if (envUrl && (envUrl.includes("cahayasilverking.id") || envUrl.includes("www.cahayasilverking.id"))) {
+      return envUrl.replace(/\/$/, "");
+    }
+    
+    // Always fallback to production domain for QR code stability
+    return PRODUCTION_DOMAIN;
   }
   
   // Development: use env vars or localhost
