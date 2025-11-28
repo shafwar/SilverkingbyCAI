@@ -170,7 +170,7 @@ export default function Navbar() {
       <nav className="mx-auto max-w-[1440px] px-4 sm:px-6 md:px-10 lg:px-16 xl:px-20">
         <div className="flex items-center justify-between h-[4.5rem] sm:h-[5rem] md:h-[5.5rem]">
           {/* Logo - Smaller for mobile */}
-          <Link href="/" className="group relative flex items-center">
+          <Link href="/" prefetch={true} className="group relative flex items-center">
             <div className="relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-[8deg]">
               <Image
                 src={getR2UrlClient("/images/cai-logo.png")}
@@ -276,6 +276,7 @@ export default function Navbar() {
                   <div className="flex items-center justify-between mb-12 sm:mb-16">
                     <Link
                       href="/"
+                      prefetch={true}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="flex items-center"
                     >
