@@ -146,6 +146,7 @@ const parseSubtitle = (text: string): (string | JSX.Element)[] => {
 };
 
 export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) {
+  // Always call hooks unconditionally
   const t = useTranslations("home.hero");
   const containerRef = useRef<HTMLDivElement>(null);
   const headlineRef = useRef<HTMLHeadingElement>(null);
@@ -154,30 +155,66 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Get features data from translations
-  const featuresData = useMemo(
-    () => [
-      {
-        label: t("features.chainOfCustody.label"),
-        title: t("features.chainOfCustody.title"),
-        body: t("features.chainOfCustody.body"),
+  // Safe translation helper with fallback
+  const safeT = useMemo(
+    () =>
+      (key: string, fallback: string = key): string => {
+        try {
+          const result = t(key);
+          // If next-intl returns the key itself (missing translation), use fallback
+          return result === key ? fallback : result;
+        } catch (error) {
+          console.error(`[HeroSection] Translation error for key "${key}":`, error);
+          return fallback;
+        }
       },
-      {
-        label: t("features.purityLab.label"),
-        title: t("features.purityLab.title"),
-        body: t("features.purityLab.body"),
-      },
-      {
-        label: t("features.globalTrust.label"),
-        title: t("features.globalTrust.title"),
-        body: t("features.globalTrust.body"),
-      },
-    ],
     [t]
   );
 
-  // Parse subtitle with HTML tags
-  const subtitleContent = useMemo(() => parseSubtitle(t("subtitle")), [t]);
+  // Get features data from translations with safe fallbacks
+  const featuresData = useMemo(
+    () => [
+      {
+        label: safeT("features.chainOfCustody.label", "Chain-of-Custody"),
+        title: safeT("features.chainOfCustody.title", "Ledger-locked traceability"),
+        body: safeT(
+          "features.chainOfCustody.body",
+          "Every gram is recorded with encrypted QR seals and mirrored audit trails."
+        ),
+      },
+      {
+        label: safeT("features.purityLab.label", "Purity Lab"),
+        title: safeT("features.purityLab.title", "Spectrometry-backed assurance"),
+        body: safeT(
+          "features.purityLab.body",
+          "In-house molecular testing calibrates bullion batches to bespoke tolerances."
+        ),
+      },
+      {
+        label: safeT("features.globalTrust.label", "Global Trust"),
+        title: safeT("features.globalTrust.title", "ISO 9001"),
+        body: safeT(
+          "features.globalTrust.body",
+          "Audited facilities, transparent compliance, concierge-level documentation."
+        ),
+      },
+    ],
+    [safeT]
+  );
+
+  // Parse subtitle with HTML tags with safe fallback
+  const subtitleContent = useMemo(() => {
+    try {
+      const subtitle = safeT(
+        "subtitle",
+        "Expert manufacturing of <gold>gold, silver, and palladium</gold> products. <custom>Custom bar fabrication</custom>, uncompromising purity, and <qr>QR-verified authenticity</qr>—redefining trust in precious metals."
+      );
+      return parseSubtitle(subtitle);
+    } catch (error) {
+      console.error("[HeroSection] Subtitle parsing error:", error);
+      return ["Expert manufacturing of gold, silver, and palladium products."];
+    }
+  }, [safeT]);
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -534,33 +571,33 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
                 className="word inline-block bg-[radial-gradient(circle_at_top,_#fff7c0,_#FFD700,_#AC7A00)] bg-clip-text text-transparent"
                 style={{ transformStyle: "preserve-3d" }}
               >
-                {t("headline1")}
+                {safeT("headline1", "Precious")}
               </span>{" "}
               <span
                 className="word inline-block bg-[radial-gradient(circle_at_bottom,_#fff7c0,_#FFD700,_#AC7A00)] bg-clip-text text-transparent"
                 style={{ transformStyle: "preserve-3d" }}
               >
-                {t("headline2")}
+                {safeT("headline2", "metals.")}
               </span>{" "}
               {/* Fragment 2 - Timeless value */}
               <span className="word inline-block" style={{ transformStyle: "preserve-3d" }}>
-                {t("headline3")}
+                {safeT("headline3", "Timeless")}
               </span>{" "}
               <span
                 className="word inline-block bg-gradient-to-r from-white via-[#E8E8E8] to-white bg-clip-text text-transparent"
                 style={{ transformStyle: "preserve-3d" }}
               >
-                {t("headline4")}
+                {safeT("headline4", "value.")}
               </span>{" "}
               {/* Fragment 3 - Pure precision */}
               <span className="word inline-block" style={{ transformStyle: "preserve-3d" }}>
-                {t("headline5")}
+                {safeT("headline5", "Pure")}
               </span>{" "}
               <span
                 className="word inline-block bg-gradient-to-r from-[#C0C0C0] via-[#E8E8E8] to-[#C0C0C0] bg-clip-text text-transparent"
                 style={{ transformStyle: "preserve-3d" }}
               >
-                {t("headline6")}
+                {safeT("headline6", "precision.")}
               </span>
             </h1>
 
@@ -622,13 +659,13 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[0.45rem] sm:text-[0.5rem] uppercase tracking-[0.4em] sm:tracking-[0.45em] text-white/55">
-              {t("qrCard.label")}
+              {safeT("qrCard.label", "Scan & Verify")}
             </p>
             <p className="mt-0.5 text-[0.75rem] sm:text-[0.8125rem] md:text-[0.95rem] font-semibold text-white tracking-tight leading-tight">
-              {t("qrCard.title")}
+              {safeT("qrCard.title", "Tap to launch Silver King QR scanner")}
             </p>
             <p className="mt-0.5 text-[0.6rem] sm:text-[0.625rem] text-white/60 leading-relaxed line-clamp-2">
-              {t("qrCard.description")}
+              {safeT("qrCard.description", "Capture the QR seal to view purity & provenance.")}
             </p>
           </div>
         </a>
