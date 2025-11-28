@@ -18,6 +18,14 @@ export default function middleware(request: NextRequest) {
     return response;
   }
   
+  // CRITICAL: Bypass next-intl for /verify routes
+  // Verify page must be accessible without locale prefix for QR codes to work
+  if (pathname.startsWith('/verify/')) {
+    const response = NextResponse.next();
+    response.headers.set('x-default-locale', routing.defaultLocale);
+    return response;
+  }
+  
   // For all other paths, use next-intl middleware
   return intlMiddleware(request);
 }
@@ -27,7 +35,8 @@ export const config = {
   // - … if they start with `/api`, `/admin`, `/_next` or `/_vercel`
   // - … the ones containing a dot (e.g. `favicon.ico`)
   // - … the root path '/' (handled explicitly in middleware function)
+  // - … the verify path '/verify' (handled explicitly for QR code compatibility)
   matcher: [
-    '/((?!api|admin|_next|_vercel|.*\\..*).*)'
+    '/((?!api|admin|_next|_vercel|verify|.*\\..*).*)'
   ]
 };
