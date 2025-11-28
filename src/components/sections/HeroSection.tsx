@@ -4,9 +4,9 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, type Variants } from "framer-motion";
 import { gsap } from "gsap";
 import { QrCode } from "lucide-react";
+import { useTranslations } from "next-intl";
 import ScrollingFeatures from "./ScrollingFeatures";
 import { getR2UrlClient } from "@/utils/r2-url";
-import { useTranslations } from "next-intl";
 
 interface HeroSectionProps {
   shouldAnimate?: boolean;
@@ -116,7 +116,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Features data from translations - simple and stable
+  // Features data from translations
   const featuresData = [
     {
       label: t("features.chainOfCustody.label"),
@@ -147,7 +147,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
   // Optimal video autoplay handling - ensure video never pauses or breaks
   useEffect(() => {
     setIsLoaded(true);
-
+    
     const video = videoRef.current;
     if (!video) return;
 
@@ -205,7 +205,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
       // But we can also try to play if it's paused
       if (video.paused && !video.ended) {
         setTimeout(() => {
-          forcePlay();
+        forcePlay();
         }, 100);
       }
     };
