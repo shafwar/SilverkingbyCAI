@@ -21,31 +21,45 @@ export default function LanguageSwitcher() {
 
   const currentLanguage = languages.find((lang) => lang.code === locale) || languages[0];
 
-  // OPTIMIZED: Aggressive prefetch for BOTH locales (current + other) immediately on mount
-  // This ensures routes are ready when user navigates or switches language
+  // OPTIMIZED: ULTRA-AGGRESSIVE prefetch for BOTH locales (current + other)
+  // Uses multiple strategies to ensure routes are cached for instant navigation
   useEffect(() => {
     const prefetchRoutes = () => {
       const paths = ['/', '/what-we-do', '/authenticity', '/products', '/about', '/contact'];
       
       // Prefetch for current locale (for fast navigation within same locale)
       paths.forEach((path) => {
+        // Strategy 1: Use router.prefetch (handles locale automatically)
         try {
-          // Use router.prefetch (handles locale automatically)
           router.prefetch(path);
         } catch (e) {
-          // Silently fail - prefetch is optional
+          // Silently fail
         }
         
-        // AGGRESSIVE: Also use direct link prefetch for non-default locale
-        // This ensures routes are cached even if router.prefetch doesn't work perfectly
+        // Strategy 2: Direct link prefetch with explicit locale path
+        try {
+          const prefetchLink = document.createElement('link');
+          prefetchLink.rel = 'prefetch';
+          prefetchLink.as = 'document';
+          const fullPath = locale === routing.defaultLocale
+            ? path
+            : `/${locale}${path === '/' ? '' : path}`;
+          prefetchLink.href = fullPath;
+          document.head.appendChild(prefetchLink);
+        } catch (e) {
+          // Silently fail
+        }
+        
+        // Strategy 3: Additional prefetch for non-default locale
         if (locale !== routing.defaultLocale) {
           try {
-            const prefetchLink = document.createElement('link');
-            prefetchLink.rel = 'prefetch';
-            prefetchLink.as = 'document';
             const fullPath = `/${locale}${path === '/' ? '' : path}`;
-            prefetchLink.href = fullPath;
-            document.head.appendChild(prefetchLink);
+            const prefetchLink2 = document.createElement('link');
+            prefetchLink2.rel = 'prefetch';
+            prefetchLink2.as = 'document';
+            prefetchLink2.href = fullPath;
+            prefetchLink2.crossOrigin = 'anonymous';
+            document.head.appendChild(prefetchLink2);
           } catch (e) {
             // Silently fail
           }
@@ -55,29 +69,40 @@ export default function LanguageSwitcher() {
       // Also prefetch for other locale (for fast language switching)
       const otherLocale = locale === 'en' ? 'id' : 'en';
       paths.forEach((path) => {
+        // Strategy 1: Try router.prefetch first
         try {
-          // Try router.prefetch first
           router.prefetch(path);
         } catch (e) {
-          // Fallback to direct link prefetch
-          try {
-            const prefetchLink = document.createElement('link');
-            prefetchLink.rel = 'prefetch';
-            prefetchLink.as = 'document';
-            const otherLocalePath = path === '/' 
-              ? (otherLocale === routing.defaultLocale ? '/' : `/${otherLocale}`)
-              : `/${otherLocale}${path}`;
-            prefetchLink.href = otherLocalePath;
-            document.head.appendChild(prefetchLink);
-          } catch (e2) {
-            // Silently fail
-          }
+          // Silently fail
+        }
+        
+        // Strategy 2: Direct link prefetch for other locale
+        try {
+          const prefetchLink = document.createElement('link');
+          prefetchLink.rel = 'prefetch';
+          prefetchLink.as = 'document';
+          const otherLocalePath = path === '/' 
+            ? (otherLocale === routing.defaultLocale ? '/' : `/${otherLocale}`)
+            : `/${otherLocale}${path}`;
+          prefetchLink.href = otherLocalePath;
+          document.head.appendChild(prefetchLink);
+        } catch (e2) {
+          // Silently fail
         }
       });
     };
 
     // Prefetch immediately on mount (no delay)
     prefetchRoutes();
+    
+    // Also prefetch again after a short delay to ensure it's cached
+    const timeoutId = setTimeout(() => {
+      prefetchRoutes();
+    }, 500);
+    
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, [locale, router]);
 
   const switchLanguage = (newLocale: string) => {
