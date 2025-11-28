@@ -661,7 +661,9 @@
       "invalidCredentials": "Invalid email or password",
       "loginSuccessful": "Login successful",
       "welcomeBack": "Welcome back!",
-      "invalidCredentialsError": "Invalid credentials"
+      "invalidCredentialsError": "Invalid credentials",
+      "email": "Email",
+      "password": "Password"
     },
     "loading": {
       "dashboard": "Loading dashboard..."

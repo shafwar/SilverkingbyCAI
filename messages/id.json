@@ -667,7 +667,9 @@
       "invalidCredentials": "Email atau kata sandi tidak valid",
       "loginSuccessful": "Login berhasil",
       "welcomeBack": "Selamat datang kembali!",
-      "invalidCredentialsError": "Kredensial tidak valid"
+      "invalidCredentialsError": "Kredensial tidak valid",
+      "email": "Email",
+      "password": "Kata sandi"
     },
     "loading": {
       "dashboard": "Memuat dasbor..."
