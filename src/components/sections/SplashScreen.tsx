@@ -111,7 +111,8 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
         width: '100vw',
         height: '100vh',
         pointerEvents: 'auto',
-        willChange: 'opacity'
+        willChange: 'opacity',
+        zIndex: 9999,
       }}
     >
       {/* Subtle gradient overlay */}

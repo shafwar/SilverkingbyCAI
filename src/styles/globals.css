@@ -371,8 +371,8 @@ body.modal-active .site-navbar {
 }
 
 /* Prevent scroll on home page mobile - FIXED: Only apply to home page, not all pages */
-@media (max-width: 768px) {
-  /* Only prevent scroll on home page, not all pages */
+/* REMOVED: position: fixed blocks all interactions - too aggressive */
+/* @media (max-width: 768px) {
   body.home-page {
     overflow: hidden;
     position: fixed;
@@ -380,12 +380,11 @@ body.modal-active .site-navbar {
     height: 100%;
   }
 
-  /* Allow scroll for non-home pages */
   body:not(.home-page) {
     overflow: auto;
     position: relative;
   }
-}
+} */
 
 /* Ensure home page main container fits viewport exactly - REMOVED: Too aggressive */
 /* .home-page main {

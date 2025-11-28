@@ -62,21 +62,21 @@ export default function RootPageContent() {
   return (
     <>
       {/* Splash Screen - Always render, control visibility */}
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 9999,
-          opacity: !isClient || showSplash ? 1 : 0,
-          pointerEvents: !isClient || showSplash ? "auto" : "none",
-          transition: "opacity 0.3s ease-out",
-        }}
-      >
-        <SplashScreen onComplete={handleSplashComplete} />
-      </div>
+      {(!isClient || showSplash) && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            pointerEvents: "auto",
+          }}
+        >
+          <SplashScreen onComplete={handleSplashComplete} />
+        </div>
+      )}
 
       {/* Main Content - Always render, control visibility */}
       <div
@@ -84,6 +84,8 @@ export default function RootPageContent() {
           opacity: isClient && !showSplash ? 1 : 0,
           transition: "opacity 0.3s ease-in",
           pointerEvents: isClient && !showSplash ? "auto" : "none",
+          position: "relative",
+          zIndex: 1,
         }}
       >
         <Navbar />
