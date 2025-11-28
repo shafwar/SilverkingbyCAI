@@ -21,7 +21,7 @@ export function AdminNav({ email }: { email?: string | null }) {
     { label: t('qrPreview'), href: "/admin/qr-preview" },
     { label: t('logs'), href: "/admin/logs" },
     { label: tExport('label'), href: "/admin/export" },
-  ], [t, tDashboard, tExport, locale]);
+  ], [t, tDashboard, tExport]);
 
   const handleSignOut = async () => {
     await signOut({ redirect: false });

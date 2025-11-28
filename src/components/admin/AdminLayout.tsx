@@ -51,15 +51,14 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
     []
   );
   
-  // Memoize navItems untuk memastikan re-render saat locale berubah
-  // Include locale in dependency array untuk force re-render saat locale berubah
+  // Memoize navItems untuk memastikan re-render saat translations berubah
   const navItems = useMemo(() => [
     { label: safeT(tDashboard, 'label', 'Dashboard'), href: "/admin", icon: LayoutDashboard },
     { label: safeT(t, 'products', 'Products'), href: "/admin/products", icon: PackageSearch },
     { label: safeT(t, 'qrPreview', 'QR Preview'), href: "/admin/qr-preview", icon: QrCode },
     { label: safeT(t, 'logs', 'Logs'), href: "/admin/logs", icon: ActivitySquare },
     { label: safeT(t, 'analyticsLabel', 'Analytics'), href: "/admin/analytics", icon: BarChart3 },
-  ], [t, tDashboard, safeT, locale]);
+  ], [t, tDashboard, safeT]);
 
   const handleSignOut = async () => {
     await signOut({ redirect: false });

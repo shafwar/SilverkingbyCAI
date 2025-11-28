@@ -142,8 +142,11 @@ export function DataTable<T extends Record<string, any>>({
             {columns.map((column, colIndex) => {
               const value = column.render ? column.render(row) : String(row[column.key as keyof T] ?? "—");
               // Skip first column on mobile if it's a checkbox/select column
-              if (colIndex === 0 && value != null && typeof value === 'object' && 'props' in value && value.props?.className?.includes('checkbox')) {
-                return null;
+              if (colIndex === 0 && value != null && typeof value === 'object' && value !== null && 'props' in value) {
+                const props = (value as any).props;
+                if (props?.className?.includes('checkbox')) {
+                  return null;
+                }
               }
               return (
                 <div key={String(column.key)} className="flex items-start justify-between gap-3">
@@ -151,7 +154,7 @@ export function DataTable<T extends Record<string, any>>({
                     {column.header}
                   </p>
                   <div className="text-right flex-1 min-w-0">
-                    <p className="text-xs sm:text-sm text-white/80 break-words">{value}</p>
+                    <p className="text-xs sm:text-sm text-white/80 break-words">{String(value ?? "—")}</p>
                   </div>
                 </div>
               );
