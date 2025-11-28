@@ -4,7 +4,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, type Variants } from "framer-motion";
 import { gsap } from "gsap";
 import { QrCode } from "lucide-react";
-import { useTranslations } from "next-intl";
 import ScrollingFeatures from "./ScrollingFeatures";
 import { getR2UrlClient } from "@/utils/r2-url";
 
@@ -107,33 +106,31 @@ const bubbleOrbs = [
   },
 ];
 
+const featuresData = [
+  {
+    label: "Chain-of-Custody",
+    title: "Ledger-locked traceability",
+    body: "Every gram is recorded with encrypted QR seals and mirrored audit trails.",
+  },
+  {
+    label: "Purity Lab",
+    title: "Spectrometry-backed assurance",
+    body: "In-house molecular testing calibrates bullion batches to bespoke tolerances.",
+  },
+  {
+    label: "Global Trust",
+    title: "ISO 9001",
+    body: "Audited facilities, transparent compliance, concierge-level documentation.",
+  },
+];
+
 export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) {
-  const t = useTranslations("home.hero");
   const containerRef = useRef<HTMLDivElement>(null);
   const headlineRef = useRef<HTMLHeadingElement>(null);
   const subtitleRef = useRef<HTMLParagraphElement>(null);
   const statsRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
-
-  // Features data from translations
-  const featuresData = [
-    {
-      label: t("features.chainOfCustody.label"),
-      title: t("features.chainOfCustody.title"),
-      body: t("features.chainOfCustody.body"),
-    },
-    {
-      label: t("features.purityLab.label"),
-      title: t("features.purityLab.title"),
-      body: t("features.purityLab.body"),
-    },
-    {
-      label: t("features.globalTrust.label"),
-      title: t("features.globalTrust.title"),
-      body: t("features.globalTrust.body"),
-    },
-  ];
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -147,7 +144,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
   // Optimal video autoplay handling - ensure video never pauses or breaks
   useEffect(() => {
     setIsLoaded(true);
-    
+
     const video = videoRef.current;
     if (!video) return;
 
@@ -205,7 +202,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
       // But we can also try to play if it's paused
       if (video.paused && !video.ended) {
         setTimeout(() => {
-        forcePlay();
+          forcePlay();
         }, 100);
       }
     };
@@ -485,38 +482,38 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
               className="mb-2 sm:mb-3 md:mb-5 font-sans text-[1.7rem] sm:text-[2.25rem] md:text-[3rem] lg:text-[3.5rem] xl:text-[4rem] 2xl:text-[4.5rem] font-semibold tracking-tight md:tracking-[-0.03em] leading-[1.2] sm:leading-[1.2] md:leading-[1.25] text-white"
               style={{ perspective: "1000px" }}
             >
-              {/* Fragment 1 */}
+              {/* Fragment 1 - Precious metals */}
               <span
                 className="word inline-block bg-[radial-gradient(circle_at_top,_#fff7c0,_#FFD700,_#AC7A00)] bg-clip-text text-transparent"
                 style={{ transformStyle: "preserve-3d" }}
               >
-                {t("headline1")}
+                Precious
               </span>{" "}
               <span
                 className="word inline-block bg-[radial-gradient(circle_at_bottom,_#fff7c0,_#FFD700,_#AC7A00)] bg-clip-text text-transparent"
                 style={{ transformStyle: "preserve-3d" }}
               >
-                {t("headline2")}
+                metals.
               </span>{" "}
-              {/* Fragment 2 */}
+              {/* Fragment 2 - Timeless value */}
               <span className="word inline-block" style={{ transformStyle: "preserve-3d" }}>
-                {t("headline3")}
+                Timeless
               </span>{" "}
               <span
                 className="word inline-block bg-gradient-to-r from-white via-[#E8E8E8] to-white bg-clip-text text-transparent"
                 style={{ transformStyle: "preserve-3d" }}
               >
-                {t("headline4")}
+                value.
               </span>{" "}
-              {/* Fragment 3 */}
+              {/* Fragment 3 - Pure precision */}
               <span className="word inline-block" style={{ transformStyle: "preserve-3d" }}>
-                {t("headline5")}
+                Pure
               </span>{" "}
               <span
                 className="word inline-block bg-gradient-to-r from-[#C0C0C0] via-[#E8E8E8] to-[#C0C0C0] bg-clip-text text-transparent"
                 style={{ transformStyle: "preserve-3d" }}
               >
-                {t("headline6")}
+                precision.
               </span>
             </h1>
 
@@ -525,11 +522,12 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
               ref={subtitleRef}
               className="max-w-[92%] sm:max-w-[88%] md:max-w-[85%] font-sans text-[0.875rem] sm:text-[0.9375rem] md:text-[1rem] lg:text-[1.0625rem] leading-[1.65] sm:leading-[1.65] md:leading-[1.7] font-light text-white/75 mt-3.5 sm:mt-5 md:mt-0"
             >
-              {t.rich("subtitle", {
-                gold: (chunks) => <span className="font-medium text-white/90">{chunks}</span>,
-                custom: (chunks) => <span className="font-medium text-white/90">{chunks}</span>,
-                qr: (chunks) => <span className="font-medium text-white/90">{chunks}</span>,
-              })}
+              Expert manufacturing of{" "}
+              <span className="font-medium text-white/90">gold, silver, and palladium</span>{" "}
+              products. <span className="font-medium text-white/90">Custom bar fabrication</span>,{" "}
+              uncompromising purity, and{" "}
+              <span className="font-medium text-white/90">QR-verified authenticity</span>
+              —redefining trust in precious metals.
             </p>
           </div>
 
@@ -582,13 +580,14 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[0.45rem] sm:text-[0.5rem] uppercase tracking-[0.4em] sm:tracking-[0.45em] text-white/55">
-              {t("qrCard.label")}
+              Scan & Verify
             </p>
             <p className="mt-0.5 text-[0.75rem] sm:text-[0.8125rem] md:text-[0.95rem] font-semibold text-white tracking-tight leading-tight">
-              {t("qrCard.title")}
+              Tap to launch Silver King QR scanner
             </p>
             <p className="mt-0.5 text-[0.6rem] sm:text-[0.625rem] text-white/60 leading-relaxed line-clamp-2">
-              {t("qrCard.description")}
+              Capture the QR seal to view purity & provenance. "Product authenticated" badge appears
+              once functionality is live.
             </p>
           </div>
         </a>
