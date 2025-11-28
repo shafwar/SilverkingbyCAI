@@ -151,7 +151,7 @@ export default function Navbar() {
       <nav className="mx-auto max-w-[1440px] px-4 sm:px-6 md:px-10 lg:px-16 xl:px-20">
         <div className="flex items-center justify-between h-[4.5rem] sm:h-[5rem] md:h-[5.5rem]">
           {/* Logo - Smaller for mobile */}
-          <Link href={locale === routing.defaultLocale ? '/' : `/${locale}`} className="group relative flex items-center">
+          <Link href="/" className="group relative flex items-center">
             <div className="relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-[8deg]">
               <Image
                 src={getR2UrlClient("/images/cai-logo.png")}
@@ -192,8 +192,8 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-4">
             <LanguageSwitcher />
             <Link
-              href={getLocalizedPath('/contact')}
-              onClick={(event) => handleNavClick(event, getLocalizedPath('/contact'))}
+              href="/contact"
+              onClick={(event) => handleNavClick(event, '/contact')}
               className="group relative overflow-hidden inline-flex items-center gap-2.5 rounded-full bg-gradient-to-r from-white/[0.12] to-white/[0.08] backdrop-blur-xl border border-white/[0.15] px-6 py-3 font-sans text-[0.9375rem] font-semibold text-white shadow-[0_8px_32px_rgba(0,0,0,0.12)] transition-all duration-500 hover:shadow-[0_8px_32px_rgba(212,175,55,0.25)] hover:scale-105 hover:border-luxury-gold/30"
             >
               <span className="relative z-10 transition-colors duration-300 group-hover:text-luxury-gold">
@@ -325,7 +325,7 @@ export default function Navbar() {
                     className="mb-6 sm:mb-8"
                   >
                     <Link
-                      href={getLocalizedPath('/authenticity')}
+                      href="/authenticity"
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="group block relative overflow-hidden rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all duration-300 hover:border-white/20"
                     >
@@ -359,9 +359,9 @@ export default function Navbar() {
                     className="mb-8"
                   >
                     <Link
-                      href={getLocalizedPath('/contact')}
+                      href="/contact"
                       onClick={(event) => {
-                        handleNavClick(event, getLocalizedPath('/contact'));
+                        handleNavClick(event, '/contact');
                         setIsMobileMenuOpen(false);
                       }}
                       className="group flex items-center justify-center gap-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/20 px-6 py-4 font-sans text-base font-semibold text-white transition-all duration-300 hover:scale-[1.02]"
