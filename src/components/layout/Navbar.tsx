@@ -114,11 +114,14 @@ export default function Navbar() {
     { name: t('aboutUs'), href: '/about' },
   ];
 
-  // CRITICAL: Prefetch all navigation links for current locale on mount
+  // CRITICAL: Aggressive prefetch for ALL navigation links including contact
   // This ensures fast navigation when user clicks nav links, especially for non-default locale
   useEffect(() => {
     const prefetchNavLinks = () => {
-      navLinks.forEach((link) => {
+      // Include contact page in prefetch list
+      const allLinks = [...navLinks, { name: 'contact', href: '/contact' }];
+      
+      allLinks.forEach((link) => {
         try {
           // Prefetch using next-intl router for proper locale handling
           router.prefetch(link.href);
@@ -127,11 +130,29 @@ export default function Navbar() {
           console.debug('[Navbar] Prefetch failed for:', link.href);
         }
       });
+      
+      // AGGRESSIVE: Also prefetch using direct link elements for non-default locale
+      // This ensures routes are cached even if router.prefetch doesn't work perfectly
+      if (locale !== routing.defaultLocale) {
+        allLinks.forEach((link) => {
+          try {
+            const prefetchLink = document.createElement('link');
+            prefetchLink.rel = 'prefetch';
+            prefetchLink.as = 'document';
+            // Build full path with locale prefix for non-default locale
+            const fullPath = `/${locale}${link.href === '/' ? '' : link.href}`;
+            prefetchLink.href = fullPath;
+            document.head.appendChild(prefetchLink);
+          } catch (error) {
+            // Silently fail
+          }
+        });
+      }
     };
 
     // Prefetch immediately on mount and when locale changes
     prefetchNavLinks();
-  }, [locale, router]); // Re-prefetch when locale changes
+  }, [locale, router, navLinks]); // Re-prefetch when locale changes
 
   const handleNavClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
     // Allow default navigation for special keys (open in new tab, etc.)

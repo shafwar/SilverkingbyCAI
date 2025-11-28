@@ -51,7 +51,7 @@ export default function ContactPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="mb-4 text-4xl font-light text-white sm:text-5xl md:text-6xl"
+            className="mb-4 text-4xl font-sans font-light text-white sm:text-5xl md:text-6xl"
           >
             {t('title')}
           </motion.h1>
@@ -59,7 +59,7 @@ export default function ContactPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="mx-auto max-w-2xl text-base leading-relaxed text-luxury-silver/70 sm:text-lg"
+            className="mx-auto max-w-2xl text-base font-sans leading-relaxed text-luxury-silver/70 sm:text-lg"
           >
             {t('description')}
           </motion.p>

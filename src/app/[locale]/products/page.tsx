@@ -1005,12 +1005,12 @@ export default function ProductsPage() {
           >
             {/* Main Heading - Minimalist Typography like pixelmatters */}
             <motion.h1
-              className="text-[1.5rem] md:text-[3.5rem] lg:text-[2.5rem] xl:text-[3.5rem] 2xl:text-[4rem] font-light leading-[1.15] tracking-[-0.02em] md:tracking-[-0.03em] text-white"
+              className="text-[1.5rem] md:text-[3.5rem] lg:text-[2.5rem] xl:text-[3.5rem] 2xl:text-[4rem] font-sans font-light leading-[1.15] tracking-[-0.02em] md:tracking-[-0.03em] text-white"
               data-hero
             >
               {t('hero.title')}
               <br />
-              <span className="font-normal">{t('hero.titleBold')}</span>
+              <span className="font-sans font-normal">{t('hero.titleBold')}</span>
             </motion.h1>
           </motion.div>
         </div>

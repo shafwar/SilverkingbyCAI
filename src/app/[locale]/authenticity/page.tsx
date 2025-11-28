@@ -619,7 +619,7 @@ export default function AuthenticityPage() {
 
           <motion.h1
             data-hero
-            className="mb-4 text-4xl font-light leading-tight text-white sm:text-5xl md:text-6xl"
+            className="mb-4 text-4xl font-sans font-light leading-tight text-white sm:text-5xl md:text-6xl"
           >
             {t('authenticateYour')}
             <span className="block bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text font-semibold text-transparent">

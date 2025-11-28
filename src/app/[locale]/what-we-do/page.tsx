@@ -682,16 +682,16 @@ export default function WhatWeDoPage() {
             className="text-left max-w-4xl"
           >
             <motion.h1
-              className="text-[1.75rem] sm:text-[2rem] md:text-[3.5rem] lg:text-[2.5rem] xl:text-[3.5rem] 2xl:text-[4rem] font-light leading-tight sm:leading-[1.15] tracking-tight md:tracking-[-0.02em] lg:tracking-[-0.03em] text-white"
+              className="text-[1.75rem] sm:text-[2rem] md:text-[3.5rem] lg:text-[2.5rem] xl:text-[3.5rem] 2xl:text-[4rem] font-sans font-light leading-tight sm:leading-[1.15] tracking-tight md:tracking-[-0.02em] lg:tracking-[-0.03em] text-white"
               data-hero
             >
               {t('hero.title')}
               <br />
-              <span className="font-normal">{t('hero.titleBold')}</span>
+              <span className="font-sans font-normal">{t('hero.titleBold')}</span>
             </motion.h1>
             <motion.p
               data-hero
-              className="mt-4 sm:mt-6 max-w-xl text-sm sm:text-[0.9375rem] md:text-base font-light leading-relaxed text-luxury-silver/80"
+              className="mt-4 sm:mt-6 max-w-xl text-sm sm:text-[0.9375rem] md:text-base font-sans font-light leading-relaxed text-luxury-silver/80"
             >
               {t('hero.subtitle')}
             </motion.p>
