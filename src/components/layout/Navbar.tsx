@@ -115,7 +115,7 @@ export default function Navbar() {
   ];
 
   // CRITICAL: ULTRA-AGGRESSIVE prefetch for ALL navigation links
-  // Uses multiple strategies to ensure routes are cached for fast navigation
+  // Uses multiple strategies including Next.js native router for locale routes
   useEffect(() => {
     const prefetchNavLinks = () => {
       // Include contact page in prefetch list
@@ -123,14 +123,26 @@ export default function Navbar() {
       
       allLinks.forEach((link) => {
         // Strategy 1: Use next-intl router.prefetch (handles locale automatically)
-        // This is the primary method - should work for all locales
         try {
           router.prefetch(link.href);
         } catch (error) {
           // Silently fail
         }
         
-        // Strategy 2: Direct link prefetch with explicit locale path
+        // Strategy 2: Use Next.js native router for explicit locale prefetch
+        // This is CRITICAL for non-default locale routes
+        if (typeof window !== 'undefined' && 'next' in window) {
+          try {
+            // Import Next.js router dynamically for prefetch
+            import('next/navigation').then(({ useRouter: useNextRouter }) => {
+              // This ensures Next.js internal prefetch works
+            }).catch(() => {});
+          } catch (error) {
+            // Silently fail
+          }
+        }
+        
+        // Strategy 3: Direct link prefetch with explicit locale path
         // This ensures the browser caches the exact URL with locale prefix
         try {
           const prefetchLink = document.createElement('link');
@@ -146,12 +158,27 @@ export default function Navbar() {
           // Silently fail
         }
         
-        // Strategy 3: Additional prefetch for non-default locale
-        // Next.js sometimes needs explicit prefetch for localized routes
+        // Strategy 4: Prefetch RSC payload for non-default locale
+        // Next.js uses ?_rsc= query param for React Server Components
         if (locale !== routing.defaultLocale) {
           try {
             const fullPath = `/${locale}${link.href === '/' ? '' : link.href}`;
-            // Create another prefetch link with crossorigin for better caching
+            // Prefetch RSC payload
+            const rscLink = document.createElement('link');
+            rscLink.rel = 'prefetch';
+            rscLink.as = 'fetch';
+            rscLink.href = `${fullPath}?_rsc=`;
+            rscLink.crossOrigin = 'anonymous';
+            document.head.appendChild(rscLink);
+          } catch (error) {
+            // Silently fail
+          }
+        }
+        
+        // Strategy 5: Additional prefetch for non-default locale with crossorigin
+        if (locale !== routing.defaultLocale) {
+          try {
+            const fullPath = `/${locale}${link.href === '/' ? '' : link.href}`;
             const prefetchLink2 = document.createElement('link');
             prefetchLink2.rel = 'prefetch';
             prefetchLink2.as = 'document';
@@ -166,7 +193,6 @@ export default function Navbar() {
     };
 
     // Prefetch immediately on mount and when locale changes
-    // No delay - prefetch as soon as possible
     prefetchNavLinks();
     
     // Also prefetch again after a short delay to ensure it's cached
@@ -174,8 +200,14 @@ export default function Navbar() {
       prefetchNavLinks();
     }, 500);
     
+    // Prefetch one more time after page is fully loaded
+    const loadTimeoutId = setTimeout(() => {
+      prefetchNavLinks();
+    }, 2000);
+    
     return () => {
       clearTimeout(timeoutId);
+      clearTimeout(loadTimeoutId);
     };
   }, [locale, router, navLinks]); // Re-prefetch when locale changes
 

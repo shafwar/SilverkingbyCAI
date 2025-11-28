@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import Link from "next/link";
@@ -270,6 +271,35 @@ export default function ProductsPage() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+  
+  // CRITICAL: Prefetch other pages when this page loads
+  // This ensures fast navigation when user clicks nav links
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const paths = ['/', '/what-we-do', '/authenticity', '/about', '/contact'];
+      paths.forEach((path) => {
+        try {
+          const fullPath = locale === 'en' ? path : `/${locale}${path === '/' ? '' : path}`;
+          // Prefetch using link element
+          const link = document.createElement('link');
+          link.rel = 'prefetch';
+          link.as = 'document';
+          link.href = fullPath;
+          document.head.appendChild(link);
+          
+          // Also prefetch RSC payload
+          const rscLink = document.createElement('link');
+          rscLink.rel = 'prefetch';
+          rscLink.as = 'fetch';
+          rscLink.href = `${fullPath}?_rsc=`;
+          rscLink.crossOrigin = 'anonymous';
+          document.head.appendChild(rscLink);
+        } catch (error) {
+          // Silently fail
+        }
+      });
+    }
+  }, [locale]);
 
   // Product categories with translations
   const productCategories = useMemo<ProductCategory[]>(
