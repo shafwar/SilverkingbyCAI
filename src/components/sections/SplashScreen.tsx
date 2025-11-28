@@ -26,24 +26,11 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
       if (letters && textContainer) {
         // CRITICAL: Set initial state IMMEDIATELY before any render
         // This prevents any flicker or flash of text
-        gsap.set(textContainer, {
-          opacity: 0,
-          visibility: "hidden",
-        });
-
         gsap.set(letters, {
           opacity: 0,
-          visibility: "hidden",
           y: 30,
           filter: "blur(15px)",
           scale: 0.9,
-        });
-
-        // Show container first (instant, no animation)
-        gsap.set(textContainer, {
-          opacity: 1,
-          visibility: "visible",
-          immediateRender: true,
         });
 
         // Animate letters one by one - FASTER & SMOOTHER
@@ -51,7 +38,6 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
           letters,
           {
             opacity: 1,
-            visibility: "visible",
             y: 0,
             filter: "blur(0px)",
             scale: 1,
@@ -61,9 +47,8 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
               ease: "power2.inOut",
             },
             ease: "expo.out",
-            immediateRender: false, // Allow animation
           },
-          0 // Start immediately (no delay)
+          0.1 // Small delay to ensure smooth start
         );
 
         // Pulse effect at the end - SUBTLER & FASTER
@@ -144,8 +129,6 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
         className="relative z-10 text-center px-6"
         style={{ 
           perspective: "1000px",
-          opacity: 0, // CRITICAL: Hide initially to prevent flicker
-          visibility: "hidden", // CRITICAL: Completely hide until animation starts
         }}
       >
         <div className="font-sans text-[2rem] sm:text-[2.5rem] md:text-[3rem] lg:text-[3.5rem] font-light tracking-tight leading-none text-white">
@@ -157,8 +140,6 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
                 transformStyle: "preserve-3d",
                 display: char === " " ? "inline" : "inline-block",
                 minWidth: char === " " ? "0.5em" : "auto",
-                opacity: 0, // CRITICAL: Initial opacity 0 to prevent flicker
-                visibility: "hidden", // CRITICAL: Hidden until animation
               }}
             >
               {char === " " ? "\u00A0" : char}

@@ -43,14 +43,9 @@
 
   /* CRITICAL: Hide splash screen text until animation starts */
   /* This prevents flicker where text appears before animation */
+  /* Note: GSAP will handle the visibility, so we only set initial state */
   [data-splash-screen] .letter {
-    opacity: 0 !important;
-    visibility: hidden !important;
-  }
-
-  /* Show letters only when GSAP animation starts */
-  [data-splash-screen] .letter[style*="opacity: 1"] {
-    visibility: visible !important;
+    opacity: 0;
   }
 
   /* Hide body content until splash screen completes - REMOVED: Too aggressive, blocks interactions */
