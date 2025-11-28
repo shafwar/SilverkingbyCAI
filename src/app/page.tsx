@@ -19,7 +19,16 @@ const playfair = Playfair_Display({
 // Root page - uses default locale without prefix
 export default async function RootPage() {
   const locale = routing.defaultLocale;
-  const messages = await getMessages({ locale });
+  
+  // Add error handling for getMessages to prevent 502 errors
+  let messages;
+  try {
+    messages = await getMessages({ locale });
+  } catch (error) {
+    console.error("[RootPage] Error loading messages:", error);
+    // Fallback to empty messages object to prevent crash
+    messages = {};
+  }
 
   return (
     <NextIntlClientProvider messages={messages}>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale } from 'next-intl';
-import { usePathname } from '@/i18n/routing';
+import { usePathname, useRouter } from '@/i18n/routing';
 import { Globe, Loader2 } from 'lucide-react';
 import { useState, useTransition, useEffect } from 'react';
 import { routing } from '@/i18n/routing';
@@ -9,6 +9,7 @@ import { routing } from '@/i18n/routing';
 export default function LanguageSwitcher() {
   const locale = useLocale();
   const pathname = usePathname(); // This returns path WITHOUT locale prefix (e.g., '/' or '/what-we-do')
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [switchingTo, setSwitchingTo] = useState<string | null>(null);
@@ -77,11 +78,15 @@ export default function LanguageSwitcher() {
       newPath = `/${newLocale}${pathname === '/' ? '' : pathname}`;
     }
     
-    // Use startTransition for better UX and then navigate
+    // Use next-intl router for proper navigation with error handling
     startTransition(() => {
-      // Use window.location for full page refresh to ensure SSR
-      // This ensures proper server-side rendering with the new locale
-      window.location.href = newPath;
+      try {
+        router.push(newPath);
+      } catch (error) {
+        console.error('[LanguageSwitcher] Navigation error:', error);
+        // Fallback to window.location if router.push fails
+        window.location.href = newPath;
+      }
     });
   };
 

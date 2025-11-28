@@ -37,7 +37,15 @@ export default async function LocaleLayout({
 
   // Providing all messages to the client
   // side is the easiest way to get started
-  const messages = await getMessages({ locale });
+  // Add error handling to prevent 502 errors
+  let messages;
+  try {
+    messages = await getMessages({ locale });
+  } catch (error) {
+    console.error(`[LocaleLayout] Error loading messages for locale "${locale}":`, error);
+    // Fallback to empty messages object to prevent crash
+    messages = {};
+  }
 
   return (
     <html lang={locale} className={`${GeistSans.variable} ${playfair.variable}`}>
