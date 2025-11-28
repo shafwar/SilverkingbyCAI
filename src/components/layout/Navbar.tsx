@@ -106,22 +106,12 @@ export default function Navbar() {
     };
   }, [isMobileMenuOpen]);
 
-  // Build nav links with proper locale handling
-  const getLocalizedPath = (path: string) => {
-    if (locale === routing.defaultLocale) {
-      // Default locale: no prefix
-      return path;
-    } else {
-      // Non-default locale: add prefix
-      return `/${locale}${path}`;
-    }
-  };
-
+  // Use paths without locale prefix - Link from next-intl will handle locale automatically
   const navLinks = [
-    { name: t('whatWeDo'), href: getLocalizedPath('/what-we-do') },
-    { name: t('authenticity'), href: getLocalizedPath('/authenticity') },
-    { name: t('products'), href: getLocalizedPath('/products') },
-    { name: t('aboutUs'), href: getLocalizedPath('/about') },
+    { name: t('whatWeDo'), href: '/what-we-do' },
+    { name: t('authenticity'), href: '/authenticity' },
+    { name: t('products'), href: '/products' },
+    { name: t('aboutUs'), href: '/about' },
   ];
 
   const handleNavClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
@@ -264,7 +254,7 @@ export default function Navbar() {
                   {/* Header - Logo & Close Button */}
                   <div className="flex items-center justify-between mb-12 sm:mb-16">
                     <Link
-                      href={locale === routing.defaultLocale ? '/' : `/${locale}`}
+                      href="/"
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="flex items-center"
                     >

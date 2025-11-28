@@ -67,25 +67,21 @@ export default function LanguageSwitcher() {
     }
     
     // pathname from next-intl already returns path without locale prefix
-    // So we just need to build the new path with the new locale
-    let newPath: string;
-    
-    if (newLocale === routing.defaultLocale) {
-      // Default locale: no prefix for root, keep path for others
-      newPath = pathname === '/' ? '/' : pathname;
-    } else {
-      // Non-default locale: always add prefix
-      newPath = `/${newLocale}${pathname === '/' ? '' : pathname}`;
-    }
-    
-    // Use next-intl router for proper navigation with error handling
+    // Use router.push with pathname directly - next-intl will handle locale prefix automatically
     startTransition(() => {
       try {
-        router.push(newPath);
+        // router.push from next-intl automatically handles locale prefix
+        // Just pass the pathname and it will add the correct locale prefix
+        router.push(pathname);
+        // Update locale cookie to persist language preference
+        document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
       } catch (error) {
         console.error('[LanguageSwitcher] Navigation error:', error);
-        // Fallback to window.location if router.push fails
-        window.location.href = newPath;
+        // Fallback: build path manually only if router.push fails
+        const fallbackPath = newLocale === routing.defaultLocale 
+          ? (pathname === '/' ? '/' : pathname)
+          : `/${newLocale}${pathname === '/' ? '' : pathname}`;
+        window.location.href = fallbackPath;
       }
     });
   };

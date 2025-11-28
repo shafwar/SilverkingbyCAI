@@ -7,6 +7,19 @@ const intlMiddleware = createMiddleware(routing);
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
+  // CRITICAL: Prevent double locale prefix (e.g., /id/id/...)
+  // If pathname already starts with a locale, check if it's duplicated
+  const localePattern = `/(${routing.locales.join('|')})`;
+  const doubleLocalePattern = new RegExp(`^${localePattern}${localePattern}`);
+  
+  if (doubleLocalePattern.test(pathname)) {
+    // Remove duplicate locale prefix
+    const correctedPath = pathname.replace(new RegExp(`^${localePattern}`), '');
+    const url = request.nextUrl.clone();
+    url.pathname = correctedPath;
+    return NextResponse.redirect(url);
+  }
+  
   // If accessing root path, explicitly bypass next-intl middleware
   // This prevents any locale detection or redirection
   // The root path will be handled by src/app/page.tsx which uses defaultLocale
