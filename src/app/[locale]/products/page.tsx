@@ -707,7 +707,7 @@ export default function ProductsPage() {
             );
           }
 
-        // Hero animation with stagger
+          // Hero animation with stagger
         if (heroRef.current) {
           const heroElements = heroRef.current.querySelectorAll("[data-hero]");
           const heroAccentElements = heroRef.current.querySelectorAll("[data-hero-accent]");
@@ -937,10 +937,10 @@ export default function ProductsPage() {
             }, 2000);
           }
         }
-        
-        return () => ctx.revert();
       }, pageRef);
-      };
+      
+      return () => ctx.revert();
+    };
 
       // Defer heavy animations until browser is idle
       if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
