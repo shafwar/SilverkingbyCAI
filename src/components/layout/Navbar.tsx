@@ -220,7 +220,15 @@ export default function Navbar() {
     if (isHashLink) {
       return;
     }
-    // Start transition animation
+    
+    // CRITICAL: For non-default locale, skip transition for faster navigation
+    // Transition overlay can block navigation for /id routes
+    if (locale !== routing.defaultLocale) {
+      // Don't start transition - let navigation happen immediately
+      return;
+    }
+    
+    // Start transition animation only for default locale
     // Link component from next-intl will handle navigation automatically
     beginTransition(href);
     // Navigation is handled by Link component - no need to preventDefault or router.push
