@@ -158,7 +158,7 @@ export default function Navbar() {
           // Silently fail
         }
         
-        // Strategy 4: Prefetch RSC payload for non-default locale
+        // Strategy 3: Prefetch RSC payload for non-default locale
         // Next.js uses ?_rsc= query param for React Server Components
         if (locale !== routing.defaultLocale) {
           try {
@@ -175,7 +175,7 @@ export default function Navbar() {
           }
         }
         
-        // Strategy 5: Additional prefetch for non-default locale with crossorigin
+        // Strategy 4: Additional prefetch for non-default locale with crossorigin
         if (locale !== routing.defaultLocale) {
           try {
             const fullPath = `/${locale}${link.href === '/' ? '' : link.href}`;
