@@ -53,7 +53,10 @@ export function NavigationTransitionProvider({ children }: { children: ReactNode
     if (!isActive || !targetPathRef.current) return;
     if (pathname === targetPathRef.current) {
       const elapsed = Date.now() - startTimeRef.current;
-      const minimumVisible = 1200;
+      // CRITICAL: Reduced minimum visible time for faster navigation
+      // Only show overlay for minimum 300ms to ensure smooth transition
+      // But don't block if navigation is already fast
+      const minimumVisible = 300;
       const remaining = elapsed >= minimumVisible ? 0 : minimumVisible - elapsed;
 
       const timer = setTimeout(() => {
