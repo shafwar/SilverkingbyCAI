@@ -580,6 +580,15 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         <a
           href="/authenticity"
           className="group inline-flex items-center gap-2.5 sm:gap-3 text-left w-full max-w-[min(calc(100vw-28px),358px)] sm:max-w-[368px] backdrop-blur-sm bg-black/50 border border-white/10 rounded-2xl p-3 sm:p-3.5 transition-all duration-300 hover:bg-black/60 hover:border-white/20 pointer-events-auto"
+          onMouseEnter={() => {
+            // Prefetch on hover for faster navigation
+            if (typeof window !== 'undefined') {
+              const link = document.createElement('link');
+              link.rel = 'prefetch';
+              link.href = '/authenticity';
+              document.head.appendChild(link);
+            }
+          }}
         >
           <div className="flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border border-white/20 bg-black/40">
             <QrCode className="h-4 w-4 sm:h-5 sm:w-5 text-white" />

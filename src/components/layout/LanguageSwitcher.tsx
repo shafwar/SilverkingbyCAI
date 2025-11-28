@@ -21,26 +21,39 @@ export default function LanguageSwitcher() {
 
   const currentLanguage = languages.find((lang) => lang.code === locale) || languages[0];
 
-  // OPTIMIZED: Prefetch routes for both locales immediately on mount
-  // This ensures routes are ready when user switches language
+  // OPTIMIZED: Prefetch routes for BOTH locales (current + other) immediately on mount
+  // This ensures routes are ready when user navigates or switches language
   useEffect(() => {
     const prefetchRoutes = () => {
-      const otherLocale = locale === 'en' ? 'id' : 'en';
       const paths = ['/', '/what-we-do', '/authenticity', '/products', '/about', '/contact'];
       
+      // Prefetch for current locale (for fast navigation within same locale)
       paths.forEach((path) => {
-        const prefetchPath = path === '/' 
+        const currentLocalePath = locale === routing.defaultLocale
+          ? (path === '/' ? '/' : path)
+          : `/${locale}${path === '/' ? '' : path}`;
+        
+        try {
+          router.prefetch(path); // Prefetch using path without locale - router handles it
+        } catch (e) {
+          // Silently fail - prefetch is optional
+        }
+      });
+      
+      // Also prefetch for other locale (for fast language switching)
+      const otherLocale = locale === 'en' ? 'id' : 'en';
+      paths.forEach((path) => {
+        const otherLocalePath = path === '/' 
           ? (otherLocale === routing.defaultLocale ? '/' : `/${otherLocale}`)
           : `/${otherLocale}${path}`;
         
-        // Use router.prefetch for better Next.js integration
         try {
-          router.prefetch(prefetchPath);
+          router.prefetch(path); // Prefetch using path - router will handle locale
         } catch (e) {
           // Fallback to link prefetch if router.prefetch fails
           const link = document.createElement('link');
           link.rel = 'prefetch';
-          link.href = prefetchPath;
+          link.href = otherLocalePath;
           document.head.appendChild(link);
         }
       });

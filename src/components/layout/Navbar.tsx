@@ -114,6 +114,25 @@ export default function Navbar() {
     { name: t('aboutUs'), href: '/about' },
   ];
 
+  // CRITICAL: Prefetch all navigation links for current locale on mount
+  // This ensures fast navigation when user clicks nav links, especially for non-default locale
+  useEffect(() => {
+    const prefetchNavLinks = () => {
+      navLinks.forEach((link) => {
+        try {
+          // Prefetch using next-intl router for proper locale handling
+          router.prefetch(link.href);
+        } catch (error) {
+          // Silently fail - prefetch is optional
+          console.debug('[Navbar] Prefetch failed for:', link.href);
+        }
+      });
+    };
+
+    // Prefetch immediately on mount and when locale changes
+    prefetchNavLinks();
+  }, [locale, router]); // Re-prefetch when locale changes
+
   const handleNavClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
     // Allow default navigation for special keys (open in new tab, etc.)
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
@@ -179,6 +198,7 @@ export default function Navbar() {
               <Link
                 key={link.name}
                 href={link.href}
+                prefetch={true}
                 className="relative font-sans text-[0.9375rem] font-medium text-white/70 transition-all duration-300 hover:text-white focus-visible:text-white group-hover:text-white/40 group-hover:hover:text-white"
                 onClick={(event) => handleNavClick(event, link.href)}
                 role="menuitem"
@@ -193,6 +213,7 @@ export default function Navbar() {
             <LanguageSwitcher />
             <Link
               href="/contact"
+              prefetch={true}
               onClick={(event) => handleNavClick(event, '/contact')}
               className="group relative overflow-hidden inline-flex items-center gap-2.5 rounded-full bg-gradient-to-r from-white/[0.12] to-white/[0.08] backdrop-blur-xl border border-white/[0.15] px-6 py-3 font-sans text-[0.9375rem] font-semibold text-white shadow-[0_8px_32px_rgba(0,0,0,0.12)] transition-all duration-500 hover:shadow-[0_8px_32px_rgba(212,175,55,0.25)] hover:scale-105 hover:border-luxury-gold/30"
             >
@@ -295,6 +316,7 @@ export default function Navbar() {
                       >
                         <Link
                           href={link.href}
+                          prefetch={true}
                           onClick={(event) => {
                             handleNavClick(event, link.href);
                             setIsMobileMenuOpen(false);
@@ -326,6 +348,7 @@ export default function Navbar() {
                   >
                     <Link
                       href="/authenticity"
+                      prefetch={true}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="group block relative overflow-hidden rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all duration-300 hover:border-white/20"
                     >
@@ -360,6 +383,7 @@ export default function Navbar() {
                   >
                     <Link
                       href="/contact"
+                      prefetch={true}
                       onClick={(event) => {
                         handleNavClick(event, '/contact');
                         setIsMobileMenuOpen(false);
