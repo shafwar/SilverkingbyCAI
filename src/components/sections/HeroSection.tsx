@@ -588,10 +588,10 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             <p className="text-[0.45rem] sm:text-[0.5rem] uppercase tracking-[0.4em] sm:tracking-[0.45em] text-white/55">
               {t("qrCard.label")}
             </p>
-            <p className="mt-0.5 text-[0.75rem] sm:text-[0.8125rem] md:text-[0.95rem] font-semibold text-white tracking-tight leading-tight">
+            <p className="mt-0.5 text-[0.75rem] sm:text-[0.8125rem] md:text-[0.95rem] font-sans font-semibold text-white tracking-tight leading-tight">
               {t("qrCard.title")}
             </p>
-            <p className="mt-0.5 text-[0.6rem] sm:text-[0.625rem] text-white/60 leading-relaxed line-clamp-2">
+            <p className="mt-0.5 text-[0.6rem] sm:text-[0.625rem] font-sans text-white/60 leading-relaxed line-clamp-2">
               {t("qrCard.description")}
             </p>
           </div>

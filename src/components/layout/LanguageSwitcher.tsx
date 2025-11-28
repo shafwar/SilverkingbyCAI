@@ -21,9 +21,9 @@ export default function LanguageSwitcher() {
 
   const currentLanguage = languages.find((lang) => lang.code === locale) || languages[0];
 
-  // Prefetch routes for both locales to speed up navigation
+  // OPTIMIZED: Prefetch routes for both locales immediately on mount
+  // This ensures routes are ready when user switches language
   useEffect(() => {
-    // Prefetch routes for the other locale to speed up language switching
     const prefetchRoutes = () => {
       const otherLocale = locale === 'en' ? 'id' : 'en';
       const paths = ['/', '/what-we-do', '/authenticity', '/products', '/about', '/contact'];
@@ -33,18 +33,22 @@ export default function LanguageSwitcher() {
           ? (otherLocale === routing.defaultLocale ? '/' : `/${otherLocale}`)
           : `/${otherLocale}${path}`;
         
-        // Prefetch using link prefetch for faster navigation
-        const link = document.createElement('link');
-        link.rel = 'prefetch';
-        link.href = prefetchPath;
-        document.head.appendChild(link);
+        // Use router.prefetch for better Next.js integration
+        try {
+          router.prefetch(prefetchPath);
+        } catch (e) {
+          // Fallback to link prefetch if router.prefetch fails
+          const link = document.createElement('link');
+          link.rel = 'prefetch';
+          link.href = prefetchPath;
+          document.head.appendChild(link);
+        }
       });
     };
 
-    // Delay prefetch slightly to not block initial render
-    const timeoutId = setTimeout(prefetchRoutes, 100);
-    return () => clearTimeout(timeoutId);
-  }, [locale]);
+    // Prefetch immediately on mount (no delay)
+    prefetchRoutes();
+  }, [locale, router]);
 
   const switchLanguage = (newLocale: string) => {
     if (newLocale === locale) {
@@ -66,23 +70,20 @@ export default function LanguageSwitcher() {
       return;
     }
     
-    // pathname from next-intl already returns path without locale prefix
-    // Use router.push with pathname directly - next-intl will handle locale prefix automatically
+    // OPTIMIZED: Build the target path directly for faster navigation
+    // This avoids the delay from router.push trying to resolve locale
+    const targetPath = newLocale === routing.defaultLocale
+      ? (pathname === '/' ? '/' : pathname)
+      : `/${newLocale}${pathname === '/' ? '' : pathname}`;
+    
+    // Set locale cookie immediately for persistence
+    document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
+    
+    // Use startTransition for smooth UI update, then navigate
     startTransition(() => {
-      try {
-        // router.push from next-intl automatically handles locale prefix
-        // Just pass the pathname and it will add the correct locale prefix
-        router.push(pathname);
-        // Update locale cookie to persist language preference
-        document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
-      } catch (error) {
-        console.error('[LanguageSwitcher] Navigation error:', error);
-        // Fallback: build path manually only if router.push fails
-        const fallbackPath = newLocale === routing.defaultLocale 
-          ? (pathname === '/' ? '/' : pathname)
-          : `/${newLocale}${pathname === '/' ? '' : pathname}`;
-        window.location.href = fallbackPath;
-      }
+      // Use window.location for instant navigation (faster than router.push)
+      // This avoids the delay from next-intl's locale resolution
+      window.location.href = targetPath;
     });
   };
 
