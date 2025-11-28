@@ -2,6 +2,7 @@ import { NavigationTransitionProvider } from "@/components/layout/NavigationTran
 import { NextIntlClientProvider } from "next-intl";
 import { routing } from "@/i18n/routing";
 import { getMessages } from "next-intl/server";
+import { Providers } from "../providers";
 
 // Layout khusus untuk verify route
 // Menyediakan NavigationTransitionProvider yang diperlukan oleh Navbar
@@ -23,7 +24,9 @@ export default async function VerifyLayout({
 
   return (
     <NextIntlClientProvider messages={messages}>
-      <NavigationTransitionProvider>{children}</NavigationTransitionProvider>
+      <NavigationTransitionProvider>
+        <Providers>{children}</Providers>
+      </NavigationTransitionProvider>
     </NextIntlClientProvider>
   );
 }
