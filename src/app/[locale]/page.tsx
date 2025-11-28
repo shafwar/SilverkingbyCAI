@@ -5,21 +5,23 @@ import HeroSection from "@/components/sections/HeroSection";
 import SplashScreen from "@/components/sections/SplashScreen";
 
 export default function HomePage() {
-  // Check sessionStorage immediately (client-side only, no delay)
-  const [showSplash, setShowSplash] = useState<boolean | null>(null);
+  // Initialize with true to prevent flash - splash shows FIRST
+  const [showSplash, setShowSplash] = useState<boolean>(true);
   const [splashComplete, setSplashComplete] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
-  // IMMEDIATELY check if splash should be shown (no delay, no flicker)
+  // IMMEDIATELY check if splash should be shown (BEFORE first render)
   useLayoutEffect(() => {
+    setIsClient(true);
     if (typeof window !== "undefined") {
       const splashShown = sessionStorage.getItem("splashShown");
       
       if (splashShown === "true") {
-        // Skip splash entirely
+        // Skip splash entirely - set immediately
         setShowSplash(false);
         setSplashComplete(true);
       } else {
-        // Show splash
+        // Show splash - already set to true, no change needed
         setShowSplash(true);
       }
     }
@@ -33,8 +35,8 @@ export default function HomePage() {
     setSplashComplete(true);
   };
 
-  // Show splash screen if needed
-  if (showSplash === true) {
+  // Show splash screen FIRST - before any content renders
+  if (!isClient || showSplash) {
     return <SplashScreen onComplete={handleSplashComplete} />;
   }
 

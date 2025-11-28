@@ -442,6 +442,7 @@
       "topScannedProducts": "Produk terpindai teratas",
       "globalFootprint": "Jejak global",
       "scanDistribution": "Distribusi pemindaian",
+      "totalScans": "Total Pemindaian",
       "unableToLoadTop": "Tidak dapat memuat produk teratas saat ini.",
       "unableToLoadDistribution": "Tidak dapat memuat distribusi pemindaian.",
       "scans": "pemindaian",

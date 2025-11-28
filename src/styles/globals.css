@@ -37,6 +37,20 @@
     scrollbar-width: none;
     /* IE and Edge */
     -ms-overflow-style: none;
+    /* Prevent flash of content before splash screen */
+    overflow-x: hidden;
+  }
+
+  /* Hide body content until splash screen completes */
+  body:not(.splash-complete) > *:not([data-splash-screen]) {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  body.splash-complete > *:not([data-splash-screen]) {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.3s ease-in, visibility 0.3s ease-in;
   }
 
   body::-webkit-scrollbar {

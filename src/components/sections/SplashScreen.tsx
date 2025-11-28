@@ -81,6 +81,10 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
             duration: 0.6, // Faster fade (was 0.8)
             ease: "power3.inOut",
             onComplete: () => {
+              // Mark splash as complete in body class
+              if (typeof document !== "undefined") {
+                document.body.classList.add("splash-complete");
+              }
               // Call parent's onComplete after fade out
               onComplete();
             },
@@ -97,6 +101,16 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
     <motion.div
       ref={containerRef}
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black"
+      style={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'auto'
+      }}
     >
       {/* Subtle gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-black via-black to-gray-900/50" />

@@ -438,6 +438,7 @@
       "topScannedProducts": "Top scanned products",
       "globalFootprint": "Global footprint",
       "scanDistribution": "Scan distribution",
+      "totalScans": "Total Scans",
       "unableToLoadTop": "Unable to load top products right now.",
       "unableToLoadDistribution": "Unable to load scan distribution.",
       "scans": "scans",

@@ -24,18 +24,18 @@ const COLORS = [
   "#B8860B", // Dark Goldenrod
 ];
 
-// Custom tooltip component
-const CustomTooltip = ({ active, payload, t }: any) => {
+// Custom tooltip component - will be wrapped to receive translations
+const CustomTooltip = ({ active, payload, translate }: { active?: boolean; payload?: any[]; translate: (key: string) => string }) => {
   if (active && payload && payload.length) {
     const data = payload[0];
-    const total = payload.reduce((sum: number, item: any) => sum + item.value, 0);
-    const percentage = ((data.value / total) * 100).toFixed(1);
+    const total = payload.reduce((sum: number, item: any) => sum + (item.value || 0), 0);
+    const percentage = total > 0 ? ((data.value / total) * 100).toFixed(1) : '0';
 
     return (
       <div className="bg-black/95 backdrop-blur-xl border border-white/20 rounded-xl p-3 shadow-2xl">
-        <p className="text-white font-semibold mb-1">{data.name}</p>
-        <p className="text-[#FFD700] text-lg font-bold">{data.value} {t('scans')}</p>
-        <p className="text-white/60 text-xs mt-1">{percentage}{t('ofTotal')}</p>
+        <p className="text-white font-semibold mb-1">{data.name || ''}</p>
+        <p className="text-[#FFD700] text-lg font-bold">{data.value || 0} {translate('scans')}</p>
+        <p className="text-white/60 text-xs mt-1">{percentage}{translate('ofTotal')}</p>
       </div>
     );
   }
@@ -162,7 +162,7 @@ export function DonutChartDistribution() {
                     );
                   })}
                 </Pie>
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={(props: any) => <CustomTooltip {...props} translate={t} />} />
               </PieChart>
             </ResponsiveContainer>
 
