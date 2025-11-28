@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useMemo, useState, useEffect, forwardRef } from "react";
+import { useRef, useMemo, useState, useEffect, useLayoutEffect, forwardRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
@@ -147,36 +147,37 @@ const NarrativeImageSection = forwardRef<
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Optimized preload strategy - preload all first images immediately for desktop
-  useEffect(() => {
-    // Preload first image for each card with high priority
+  // AGGRESSIVE preload strategy - preload ALL 3 main images IMMEDIATELY (useLayoutEffect for instant)
+  useLayoutEffect(() => {
+    // Preload all 3 first images with HIGHEST priority - they're all critical
     cards.forEach((card, idx) => {
       if (card.images[0]) {
         const imageUrl = card.images[0];
         
-        // Use link preload with fetchpriority for critical images
+        // Use link preload with fetchpriority="high" for ALL 3 critical images
         const link = document.createElement("link");
         link.rel = "preload";
         link.as = "image";
         link.href = imageUrl;
         link.setAttribute("fetchpriority", "high");
+        link.setAttribute("as", "image");
         document.head.appendChild(link);
 
-        // Preload with Image object for faster decode and rendering
+        // INSTANT preload with Image object for immediate decode and rendering
         const img = new window.Image();
         img.src = imageUrl;
         img.loading = "eager";
+        img.decoding = "async";
         // Only set crossOrigin if it's a remote URL
         if (imageUrl.startsWith("http") && !imageUrl.includes("localhost")) {
           img.crossOrigin = "anonymous";
         }
         
-        // Decode all first images immediately for desktop (3-column layout needs all images)
-        // For mobile, only first image is critical
+        // Decode ALL 3 first images IMMEDIATELY - they're all above the fold and critical
         const preloadImage = () => {
           img.decode()
             .then(() => {
-              // Image decoded successfully, mark as loaded immediately
+              // Image decoded successfully, mark as loaded IMMEDIATELY
               setImageLoaded((prev) => ({
                 ...prev,
                 [`${idx}-0`]: true,
@@ -187,17 +188,16 @@ const NarrativeImageSection = forwardRef<
             });
         };
 
-        // Desktop: decode all first images immediately (they're all visible)
-        // Mobile: decode first image immediately, others can wait
-        if (!isMobile || idx === 0) {
-          // Desktop or mobile first image: decode immediately
+        // Decode ALL 3 images immediately - no delay for critical images
+        if (idx < 3) {
+          // All 3 main images: decode IMMEDIATELY
           preloadImage();
         } else if (typeof window !== "undefined" && window.requestIdleCallback) {
-          // Mobile other images: decode when browser is idle
-          window.requestIdleCallback(preloadImage, { timeout: 1000 });
+          // Other images: decode when browser is idle
+          window.requestIdleCallback(preloadImage, { timeout: 500 });
         } else {
           // Fallback for browsers without requestIdleCallback
-          setTimeout(preloadImage, 200 * idx);
+          setTimeout(preloadImage, 100 * idx);
         }
       }
     });
@@ -305,9 +305,12 @@ const NarrativeImageSection = forwardRef<
                     {/* Image */}
                     {!hasImageError && (
                       <div
-                        className={`absolute inset-0 transition-opacity duration-500 ease-out ${
+                        className={`absolute inset-0 transition-opacity duration-300 ease-out ${
                           isImageLoaded ? "opacity-100" : "opacity-0"
                         }`}
+                        style={{
+                          willChange: isImageLoaded ? 'auto' : 'opacity',
+                        }}
                       >
                         <Image
                           src={currentImage}
@@ -315,13 +318,15 @@ const NarrativeImageSection = forwardRef<
                           fill
                           className="object-cover"
                           sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 440px"
-                          priority={idx < 2}
-                          loading={idx < 2 ? "eager" : "lazy"}
-                          quality={isMobile ? 80 : 90}
+                          priority={idx < 3}
+                          loading={idx < 3 ? "eager" : "lazy"}
+                          quality={isMobile ? 85 : 92}
                           unoptimized={false}
+                          fetchPriority={idx < 3 ? "high" : "auto"}
                           placeholder="blur"
                           blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
                           onLoad={() => {
+                            // Mark as loaded immediately
                             setImageLoaded((prev) => ({
                               ...prev,
                               [imageKey]: true,
