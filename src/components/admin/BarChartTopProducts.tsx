@@ -33,12 +33,12 @@ export function BarChartTopProducts() {
 
   return (
     <AnimatedCard>
-      <div className="mb-6">
-        <p className="text-xs uppercase tracking-[0.35em] text-white/50">{t('mostTrustedPieces')}</p>
-        <h3 className="mt-2 text-2xl font-semibold text-white">{t('topScannedProducts')}</h3>
+      <div className="mb-4 sm:mb-6">
+        <p className="text-[10px] sm:text-xs uppercase tracking-[0.3em] sm:tracking-[0.35em] text-white/50">{t('mostTrustedPieces')}</p>
+        <h3 className="mt-1.5 sm:mt-2 text-lg sm:text-xl md:text-2xl font-semibold text-white">{t('topScannedProducts')}</h3>
       </div>
 
-      {loading && <LoadingSkeleton className="h-64 w-full" />}
+      {loading && <LoadingSkeleton className="h-48 sm:h-56 md:h-64 w-full" />}
 
       {hasError && (
         <p className="text-sm text-red-400">
@@ -47,9 +47,9 @@ export function BarChartTopProducts() {
       )}
 
       {!!chartData.length && (
-        <div className="h-64 w-full">
+        <div className="h-48 sm:h-56 md:h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
+            <BarChart data={chartData} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
               <XAxis
                 dataKey="name"

@@ -88,18 +88,18 @@ export function LineChartScans() {
 
   return (
     <AnimatedCard>
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-4 sm:mb-6 flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.35em] text-white/50">{t('verificationVolume')}</p>
-          <h3 className="mt-2 text-2xl font-semibold text-white">{t('scanTrajectory')}</h3>
+          <p className="text-[10px] sm:text-xs uppercase tracking-[0.3em] sm:tracking-[0.35em] text-white/50">{t('verificationVolume')}</p>
+          <h3 className="mt-1.5 sm:mt-2 text-lg sm:text-xl md:text-2xl font-semibold text-white">{t('scanTrajectory')}</h3>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Quick range buttons */}
-          <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 p-1">
+          <div className="flex items-center gap-1 sm:gap-2 rounded-full border border-white/10 bg-white/5 p-0.5 sm:p-1">
             <button
               onClick={() => handleViewModeChange("7d")}
               className={clsx(
-                "rounded-full px-4 py-1.5 text-sm font-medium transition",
+                "rounded-full px-2.5 sm:px-3 md:px-4 py-1 sm:py-1.5 text-[10px] sm:text-xs md:text-sm font-medium transition active:scale-95 touch-manipulation",
                 viewMode === "7d"
                   ? "bg-[#FFD700] text-black"
                   : "text-white/60 hover:text-white hover:bg-white/10"
@@ -110,7 +110,7 @@ export function LineChartScans() {
             <button
               onClick={() => handleViewModeChange("30d")}
               className={clsx(
-                "rounded-full px-4 py-1.5 text-sm font-medium transition",
+                "rounded-full px-2.5 sm:px-3 md:px-4 py-1 sm:py-1.5 text-[10px] sm:text-xs md:text-sm font-medium transition active:scale-95 touch-manipulation",
                 viewMode === "30d"
                   ? "bg-[#FFD700] text-black"
                   : "text-white/60 hover:text-white hover:bg-white/10"
@@ -121,7 +121,7 @@ export function LineChartScans() {
             <button
               onClick={() => handleViewModeChange("month")}
               className={clsx(
-                "rounded-full px-4 py-1.5 text-sm font-medium transition",
+                "rounded-full px-2.5 sm:px-3 md:px-4 py-1 sm:py-1.5 text-[10px] sm:text-xs md:text-sm font-medium transition active:scale-95 touch-manipulation",
                 viewMode === "month"
                   ? "bg-[#FFD700] text-black"
                   : "text-white/60 hover:text-white hover:bg-white/10"
@@ -137,7 +137,7 @@ export function LineChartScans() {
         </div>
       </div>
 
-      {loading && <LoadingSkeleton className="h-72 w-full" />}
+      {loading && <LoadingSkeleton className="h-48 sm:h-64 md:h-72 w-full" />}
 
       {hasError && (
         <p className="text-sm text-red-400">
@@ -150,7 +150,7 @@ export function LineChartScans() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="h-72 w-full"
+          className="h-48 sm:h-64 md:h-72 w-full"
         >
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>

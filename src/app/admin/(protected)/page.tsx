@@ -12,7 +12,7 @@ export default function AdminDashboard() {
   const t = useTranslations('admin');
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6 sm:space-y-8 md:space-y-10">
       <StatsHeader
         eyebrow={t('command.eyebrow')}
         title={t('command.title')}
@@ -21,9 +21,9 @@ export default function AdminDashboard() {
 
       <DashboardMetrics />
 
-      <section className="space-y-6">
+      <section className="space-y-4 sm:space-y-5 md:space-y-6">
         <LineChartScans />
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-4 sm:gap-5 md:gap-6 grid-cols-1 lg:grid-cols-2">
           <BarChartTopProducts />
           <DonutChartDistribution />
         </div>

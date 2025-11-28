@@ -325,45 +325,45 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
         {/* Mobile Cards */}
         <div className="md:hidden divide-y divide-white/5">
           {filteredProducts.length === 0 ? (
-            <div className="px-4 py-12 text-center text-white/40">
+            <div className="px-4 py-12 text-center text-white/40 text-sm">
               {searchQuery ? t('noProductsMatching') : t('noProducts')}
             </div>
           ) : (
             filteredProducts.map((product) => (
-              <div key={product.id} className="p-4 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="font-semibold text-white text-base">{product.name}</p>
-                    <p className="text-xs text-white/40 mt-1">#{product.id}</p>
+              <div key={product.id} className="p-3 sm:p-4 space-y-3 active:bg-white/5 transition-colors">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-white text-sm sm:text-base truncate">{product.name}</p>
+                    <p className="text-[10px] sm:text-xs text-white/40 mt-0.5 sm:mt-1">#{product.id}</p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5 sm:gap-2 flex-shrink-0">
                     <button
                       onClick={() => router.push(`/admin/products/create?id=${product.id}`)}
-                      className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-white/70 hover:border-white/40"
+                      className="rounded-full border border-white/15 px-2.5 sm:px-3 py-1.5 text-[10px] sm:text-xs text-white/70 hover:border-white/40 active:scale-95 touch-manipulation transition-transform"
                     >
-                      Edit
+                      {t('editProduct')}
                     </button>
                     <button
                       disabled={isPending && deletingId === product.id}
                       onClick={() => handleDelete(product.id)}
-                      className="rounded-full border border-red-400/40 px-3 py-1.5 text-xs text-red-300 hover:border-red-400 disabled:opacity-50"
+                      className="rounded-full border border-red-400/40 px-2.5 sm:px-3 py-1.5 text-[10px] sm:text-xs text-red-300 hover:border-red-400 disabled:opacity-50 active:scale-95 touch-manipulation transition-transform"
                     >
                       {isPending && deletingId === product.id ? t('deleting') : t('deleteProduct')}
                     </button>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
                   <div>
-                    <p className="text-white/40 text-xs uppercase tracking-wide mb-1">{t('serial')}</p>
-                    <p className="font-mono text-white/80">{product.serialCode}</p>
+                    <p className="text-white/40 text-[10px] sm:text-xs uppercase tracking-wide mb-1">{t('serial')}</p>
+                    <p className="font-mono text-white/80 text-xs sm:text-sm break-all">{product.serialCode}</p>
                   </div>
                   <div>
-                    <p className="text-white/40 text-xs uppercase tracking-wide mb-1">{t('weight')}</p>
-                    <p className="text-white/80">{product.weight} gr</p>
+                    <p className="text-white/40 text-[10px] sm:text-xs uppercase tracking-wide mb-1">{t('weight')}</p>
+                    <p className="text-white/80 text-xs sm:text-sm">{product.weight} gr</p>
                   </div>
-                  <div>
-                    <p className="text-white/40 text-xs uppercase tracking-wide mb-1">{t('scans')}</p>
-                    <p className="text-white/80">{product.qrRecord?.scanCount ?? 0}</p>
+                  <div className="col-span-2">
+                    <p className="text-white/40 text-[10px] sm:text-xs uppercase tracking-wide mb-1">{t('scans')}</p>
+                    <p className="text-white/80 text-xs sm:text-sm">{product.qrRecord?.scanCount ?? 0}</p>
                   </div>
                 </div>
               </div>

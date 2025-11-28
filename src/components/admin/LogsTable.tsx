@@ -100,14 +100,14 @@ export function LogsTable() {
 
   return (
     <AnimatedCard>
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.35em] text-white/50">{t('analytics.security')}</p>
-          <h3 className="mt-2 text-2xl font-semibold">{t('analytics.scanLogs')}</h3>
+          <p className="text-[10px] sm:text-xs uppercase tracking-[0.3em] sm:tracking-[0.35em] text-white/50">{t('analytics.security')}</p>
+          <h3 className="mt-1.5 sm:mt-2 text-lg sm:text-xl md:text-2xl font-semibold">{t('analytics.scanLogs')}</h3>
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="flex items-center rounded-full border border-white/10 bg-white/5 px-3">
-            <Search className="h-4 w-4 text-white/50" />
+        <div className="flex flex-col gap-2 sm:gap-3 sm:flex-row sm:items-center">
+          <div className="flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 sm:px-3">
+            <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white/50 flex-shrink-0" />
             <input
               type="text"
               value={search}
@@ -116,7 +116,7 @@ export function LogsTable() {
                 setPage(1);
               }}
               placeholder={t('analytics.search')}
-              className="w-48 bg-transparent px-3 py-2 text-sm text-white focus:outline-none"
+              className="w-full sm:w-48 bg-transparent px-2 sm:px-3 py-2 text-xs sm:text-sm text-white focus:outline-none"
             />
           </div>
           <DateRangePicker
@@ -129,10 +129,11 @@ export function LogsTable() {
           />
           <button
             onClick={handleExport}
-            className="inline-flex items-center gap-2 rounded-full border border-[#FFD700]/40 px-4 py-2 text-sm text-white transition hover:border-[#FFD700] hover:bg-[#FFD700]/10"
+            className="inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-full border border-[#FFD700]/40 px-3 sm:px-4 py-2 text-xs sm:text-sm text-white transition hover:border-[#FFD700] hover:bg-[#FFD700]/10 active:scale-95 touch-manipulation"
           >
-            <Download className="h-4 w-4" />
-            {tExport('label')}
+            <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">{tExport('label')}</span>
+            <span className="sm:hidden">{tExport('label')}</span>
           </button>
         </div>
       </div>
@@ -144,11 +145,11 @@ export function LogsTable() {
       {error && <p className="mt-4 text-sm text-red-400">Failed to load logs.</p>}
 
       {data && (
-        <div className="mt-6 flex items-center justify-between text-sm text-white/60">
+        <div className="mt-4 sm:mt-6 flex items-center justify-between gap-2 text-xs sm:text-sm text-white/60">
           <button
             onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
             disabled={page === 1}
-            className="rounded-full border border-white/10 px-4 py-2 transition hover:border-white/30 disabled:opacity-30"
+            className="rounded-full border border-white/10 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm transition hover:border-white/30 disabled:opacity-30 active:scale-95 touch-manipulation"
           >
             {tPagination('previous')}
           </button>
@@ -156,14 +157,14 @@ export function LogsTable() {
             key={page}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-white"
+            className="text-white text-xs sm:text-sm text-center min-w-[100px] sm:min-w-0"
           >
             {tPagination('page')} {page} {tPagination('of')} {data.meta.totalPages}
           </motion.span>
           <button
             onClick={() => setPage((prev) => Math.min(prev + 1, data.meta.totalPages))}
             disabled={page >= data.meta.totalPages}
-            className="rounded-full border border-white/10 px-4 py-2 transition hover:border-white/30 disabled:opacity-30"
+            className="rounded-full border border-white/10 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm transition hover:border-white/30 disabled:opacity-30 active:scale-95 touch-manipulation"
           >
             {tPagination('next')}
           </button>

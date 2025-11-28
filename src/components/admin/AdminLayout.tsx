@@ -77,7 +77,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
           href={item.href}
           onClick={() => setMobileOpen(false)}
           className={clsx(
-            "flex items-center gap-2 rounded-full px-4 py-2 text-sm transition",
+            "flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm transition touch-manipulation",
             orientation === "col" ? "w-full justify-start" : "justify-center",
             active ? "bg-white/10 text-white" : "text-white/60 hover:text-white hover:bg-white/5"
           )}
@@ -95,9 +95,9 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         animate={{ opacity: 1, y: 0 }}
         className="fixed inset-x-0 top-0 z-40 border-b border-white/5 bg-black/80 backdrop-blur-2xl"
       >
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-4">
-          <Link href="/admin" className="flex items-center gap-3 group">
-            <div className="relative h-10 w-10 transition-transform duration-300 group-hover:scale-110">
+        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
+          <Link href="/admin" className="flex items-center gap-2 sm:gap-3 group">
+            <div className="relative h-8 w-8 sm:h-10 sm:w-10 transition-transform duration-300 group-hover:scale-110">
               <Image
                 src={getR2UrlClient("/images/cai-logo.png")}
                 alt="CAI Logo - Silver King by CAI"
@@ -110,28 +110,28 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
                 unoptimized
               />
             </div>
-            <span className="text-sm md:text-lg font-semibold tracking-[0.35em] uppercase text-white">
+            <span className="text-xs sm:text-sm md:text-lg font-semibold tracking-[0.25em] sm:tracking-[0.35em] uppercase text-white">
               {safeT(t, 'silverKing', 'Silver King')}
             </span>
           </Link>
-          <div className="hidden items-center gap-2 lg:flex">{renderLinks("row")}</div>
-          <div className="flex items-center gap-3 text-sm text-white/70">
-            <div className="hidden text-right md:block">
-              <p className="text-xs uppercase tracking-[0.35em] text-white/50">{safeT(t, 'welcome', 'Welcome')}</p>
-              <p className="font-semibold">{email}</p>
+          <div className="hidden items-center gap-1.5 sm:gap-2 lg:flex">{renderLinks("row")}</div>
+          <div className="flex items-center gap-2 sm:gap-3 text-sm text-white/70">
+            <div className="hidden text-right sm:block">
+              <p className="text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.35em] text-white/50">{safeT(t, 'welcome', 'Welcome')}</p>
+              <p className="text-xs sm:text-sm font-semibold truncate max-w-[120px] sm:max-w-none">{email}</p>
             </div>
-            <div className="hidden md:block">
+            <div className="hidden sm:block">
               <LanguageSwitcher />
             </div>
             <button
               onClick={handleSignOut}
-              className="hidden rounded-full border border-white/15 bg-gradient-to-r from-[#FFD700]/30 to-[#E5C100]/20 px-4 py-2 text-xs font-semibold text-white transition hover:border-[#FFD700]/50 md:inline-flex"
+              className="hidden rounded-full border border-white/15 bg-gradient-to-r from-[#FFD700]/30 to-[#E5C100]/20 px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-semibold text-white transition hover:border-[#FFD700]/50 sm:inline-flex"
             >
               {safeT(t, 'logout', 'Logout')}
             </button>
             <button
               onClick={() => setMobileOpen((prev) => !prev)}
-              className="rounded-full border border-white/15 p-2 text-white lg:hidden"
+              className="rounded-full border border-white/15 p-2 text-white lg:hidden touch-manipulation"
               aria-label="Toggle navigation"
             >
               <Menu className="h-5 w-5" />
@@ -144,18 +144,18 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="border-t border-white/5 bg-black/95 px-6 pb-6 pt-4 lg:hidden"
+              className="border-t border-white/5 bg-black/95 px-4 sm:px-6 pb-4 sm:pb-6 pt-3 sm:pt-4 lg:hidden max-h-[calc(100vh-80px)] overflow-y-auto"
             >
-              <div className="flex flex-col gap-3">{renderLinks("col")}</div>
-              <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
-                <p className="text-xs uppercase tracking-[0.35em] text-white/50">{safeT(t, 'welcome', 'Welcome')}</p>
-                <p className="mt-2 font-semibold text-white">{email}</p>
-                <div className="mt-4 mb-4">
+              <div className="flex flex-col gap-2 sm:gap-3">{renderLinks("col")}</div>
+              <div className="mt-4 sm:mt-6 rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4 text-sm text-white/70">
+                <p className="text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.35em] text-white/50">{safeT(t, 'welcome', 'Welcome')}</p>
+                <p className="mt-1.5 sm:mt-2 text-sm sm:text-base font-semibold text-white break-words">{email}</p>
+                <div className="mt-3 sm:mt-4 mb-3 sm:mb-4">
                   <LanguageSwitcher />
                 </div>
                 <button
                   onClick={handleSignOut}
-                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/20 px-4 py-2 text-sm text-white transition hover:border-[#FFD700]/40"
+                  className="mt-3 sm:mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/20 px-4 py-2.5 sm:py-2 text-sm text-white transition hover:border-[#FFD700]/40 touch-manipulation active:scale-95"
                 >
                   <LogOut className="h-4 w-4" />
                   {safeT(t, 'logout', 'Logout')}
@@ -166,12 +166,12 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         </AnimatePresence>
       </motion.nav>
 
-      <main className="mx-auto max-w-[1400px] px-4 sm:px-6 pb-12 pt-20 sm:pt-24 lg:pt-28">
+      <main className="mx-auto max-w-[1400px] px-3 sm:px-4 md:px-6 pb-8 sm:pb-10 md:pb-12 pt-16 sm:pt-20 md:pt-24 lg:pt-28">
         {children}
       </main>
 
       <Toaster
-        position="top-right"
+        position="top-center"
         richColors
         closeButton
         toastOptions={{
@@ -182,6 +182,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
             borderRadius: "12px",
             color: "#fff",
             backdropFilter: "blur(12px)",
+            maxWidth: "calc(100vw - 2rem)",
           },
           classNames: {
             success: "toast-success",

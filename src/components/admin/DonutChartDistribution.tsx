@@ -28,13 +28,14 @@ const COLORS = [
 const CustomTooltip = ({ active, payload, translate }: { active?: boolean; payload?: any[]; translate: (key: string) => string }) => {
   if (active && payload && payload.length) {
     const data = payload[0];
+    if (!data || data.value == null) return null;
     const total = payload.reduce((sum: number, item: any) => sum + (item.value || 0), 0);
     const percentage = total > 0 ? ((data.value / total) * 100).toFixed(1) : '0';
 
     return (
       <div className="bg-black/95 backdrop-blur-xl border border-white/20 rounded-xl p-3 shadow-2xl">
         <p className="text-white font-semibold mb-1">{data.name || ''}</p>
-        <p className="text-[#FFD700] text-lg font-bold">{data.value || 0} {translate('scans')}</p>
+        <p className="text-[#FFD700] text-lg font-bold">{data.value} {translate('scans')}</p>
         <p className="text-white/60 text-xs mt-1">{percentage}{translate('ofTotal')}</p>
       </div>
     );
@@ -61,16 +62,16 @@ export function DonutChartDistribution() {
 
   return (
     <AnimatedCard>
-      <div className="mb-6">
-        <p className="text-xs uppercase tracking-[0.35em] text-white/50">{t('globalFootprint')}</p>
-        <h3 className="mt-2 text-2xl font-semibold text-white">{t('scanDistribution')}</h3>
+      <div className="mb-4 sm:mb-6">
+        <p className="text-[10px] sm:text-xs uppercase tracking-[0.3em] sm:tracking-[0.35em] text-white/50">{t('globalFootprint')}</p>
+        <h3 className="mt-1.5 sm:mt-2 text-lg sm:text-xl md:text-2xl font-semibold text-white">{t('scanDistribution')}</h3>
       </div>
 
-      {loading && <LoadingSkeleton className="h-64 w-full" />}
+      {loading && <LoadingSkeleton className="h-48 sm:h-56 md:h-64 w-full" />}
 
       {hasError && (
-        <div className="flex items-center justify-center h-64 rounded-xl border border-red-500/20 bg-red-500/5">
-          <p className="text-sm text-red-400">{t('unableToLoadDistribution')}</p>
+        <div className="flex items-center justify-center h-48 sm:h-56 md:h-64 rounded-xl border border-red-500/20 bg-red-500/5">
+          <p className="text-xs sm:text-sm text-red-400 px-4 text-center">{t('unableToLoadDistribution')}</p>
         </div>
       )}
 
@@ -79,7 +80,7 @@ export function DonutChartDistribution() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4 }}
-          className="flex flex-col items-center justify-center h-64 rounded-xl border border-white/10 bg-white/5"
+          className="flex flex-col items-center justify-center h-48 sm:h-56 md:h-64 rounded-xl border border-white/10 bg-white/5"
         >
           <div className="w-20 h-20 rounded-full border-2 border-dashed border-white/20 flex items-center justify-center mb-4">
             <svg
@@ -109,7 +110,7 @@ export function DonutChartDistribution() {
           className="space-y-4"
         >
           {/* Chart Container */}
-          <div className="h-64 w-full relative">
+          <div className="h-48 sm:h-56 md:h-64 w-full relative">
             <ResponsiveContainer>
               <PieChart>
                 <defs>

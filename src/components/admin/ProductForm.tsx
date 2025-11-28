@@ -160,23 +160,23 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-transparent p-6 backdrop-blur-sm"
+        className="rounded-xl sm:rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-transparent p-4 sm:p-5 md:p-6 backdrop-blur-sm"
       >
-        <div className="mb-4 flex items-center gap-2">
-          <div className="rounded-lg bg-blue-500/20 p-2">
-            <Package className="h-4 w-4 text-blue-400" />
+        <div className="mb-3 sm:mb-4 flex items-center gap-2">
+          <div className="rounded-lg bg-blue-500/20 p-1.5 sm:p-2">
+            <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-400" />
           </div>
-          <h3 className="text-sm font-semibold text-white">{t('basicInformation')}</h3>
+          <h3 className="text-xs sm:text-sm font-semibold text-white">{t('basicInformation')}</h3>
         </div>
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div>
-            <label className="mb-2 flex items-center gap-2 text-xs uppercase tracking-[0.4em] text-blue-300/80">
+            <label className="mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs uppercase tracking-[0.35em] sm:tracking-[0.4em] text-blue-300/80">
               <Package className="h-3 w-3 text-blue-400" />
               {t('productName')}
             </label>
             <input
               type="text"
-              className="w-full rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-white transition-all placeholder:text-white/30 focus:border-blue-400/60 focus:bg-blue-500/20 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+              className="w-full rounded-lg sm:rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base text-white transition-all placeholder:text-white/30 focus:border-blue-400/60 focus:bg-blue-500/20 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
               placeholder={t('productNamePlaceholder')}
               {...form.register("name")}
             />
@@ -196,16 +196,16 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.1 }}
-        className={isEditMode ? "" : "grid grid-cols-1 gap-4 md:grid-cols-2"}
+        className={isEditMode ? "" : "grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2"}
       >
-        <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-transparent p-4 backdrop-blur-sm">
-          <label className="mb-2 flex items-center gap-2 text-xs uppercase tracking-[0.4em] text-emerald-300/80">
+        <div className="rounded-lg sm:rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-transparent p-3 sm:p-4 backdrop-blur-sm">
+          <label className="mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs uppercase tracking-[0.35em] sm:tracking-[0.4em] text-emerald-300/80">
             <Weight className="h-3 w-3 text-emerald-400" />
             {t('weight')}
           </label>
           <input
             type="number"
-            className="w-full rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-white transition-all placeholder:text-white/30 focus:border-emerald-400/60 focus:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-400/30"
+            className="w-full rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base text-white transition-all placeholder:text-white/30 focus:border-emerald-400/60 focus:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-400/30"
             placeholder={t('weightPlaceholder')}
             {...form.register("weight", { valueAsNumber: true })}
           />
@@ -224,9 +224,9 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.15 }}
-            className="rounded-xl border border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-transparent p-4 backdrop-blur-sm"
+            className="rounded-lg sm:rounded-xl border border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-transparent p-3 sm:p-4 backdrop-blur-sm"
           >
-            <label className="mb-2 flex items-center gap-2 text-xs uppercase tracking-[0.4em] text-purple-300/80">
+            <label className="mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs uppercase tracking-[0.35em] sm:tracking-[0.4em] text-purple-300/80">
               <Boxes className="h-3 w-3 text-purple-400" />
               {t('quantity')}
             </label>
@@ -234,7 +234,7 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
               type="number"
               min="1"
               max="10000"
-              className="w-full rounded-lg border border-purple-500/30 bg-purple-500/10 px-4 py-3 text-white transition-all placeholder:text-white/30 focus:border-purple-400/60 focus:bg-purple-500/20 focus:outline-none focus:ring-2 focus:ring-purple-400/30"
+              className="w-full rounded-lg border border-purple-500/30 bg-purple-500/10 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base text-white transition-all placeholder:text-white/30 focus:border-purple-400/60 focus:bg-purple-500/20 focus:outline-none focus:ring-2 focus:ring-purple-400/30"
               placeholder={t('quantityPlaceholder')}
               {...form.register("quantity", { valueAsNumber: true })}
               onChange={(e) => {
@@ -274,29 +274,29 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.2 }}
-          className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-transparent p-6 backdrop-blur-sm"
+          className="rounded-xl sm:rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-transparent p-4 sm:p-5 md:p-6 backdrop-blur-sm"
         >
-          <div className="mb-4 flex items-center gap-2">
-            <div className="rounded-lg bg-amber-500/20 p-2">
-              <QrCode className="h-4 w-4 text-amber-400" />
+          <div className="mb-3 sm:mb-4 flex items-center gap-2">
+            <div className="rounded-lg bg-amber-500/20 p-1.5 sm:p-2">
+              <QrCode className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-400" />
             </div>
-            <h3 className="text-sm font-semibold text-white">{t('serialNumberConfiguration')}</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-white">{t('serialNumberConfiguration')}</h3>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {/* Serial Prefix Input */}
             <div>
-              <label className="mb-2 flex items-center gap-2 text-xs uppercase tracking-[0.4em] text-amber-300/80">
+              <label className="mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs uppercase tracking-[0.35em] sm:tracking-[0.4em] text-amber-300/80">
                 <Hash className="h-3 w-3 text-amber-400" />
-                {t('serialPrefix')}
+                <span className="truncate">{t('serialPrefix')}</span>
                 {quantity === 1 && (
-                  <span className="ml-1 text-[10px] normal-case text-white/40">
+                  <span className="ml-1 text-[9px] sm:text-[10px] normal-case text-white/40 hidden sm:inline">
                     {t('serialPrefixAutoGenerate')}
                   </span>
                 )}
               </label>
               <input
                 type="text"
-                className="w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-white uppercase transition-all placeholder:text-white/30 focus:border-amber-400/60 focus:bg-amber-500/20 focus:outline-none focus:ring-2 focus:ring-amber-400/30"
+                className="w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base text-white uppercase transition-all placeholder:text-white/30 focus:border-amber-400/60 focus:bg-amber-500/20 focus:outline-none focus:ring-2 focus:ring-amber-400/30"
                 placeholder={
                   quantity === 1
                     ? t('serialPrefixPlaceholderSingle')
