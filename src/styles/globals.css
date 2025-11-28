@@ -41,6 +41,18 @@
     overflow-x: hidden;
   }
 
+  /* CRITICAL: Hide splash screen text until animation starts */
+  /* This prevents flicker where text appears before animation */
+  [data-splash-screen] .letter {
+    opacity: 0 !important;
+    visibility: hidden !important;
+  }
+
+  /* Show letters only when GSAP animation starts */
+  [data-splash-screen] .letter[style*="opacity: 1"] {
+    visibility: visible !important;
+  }
+
   /* Hide body content until splash screen completes - REMOVED: Too aggressive, blocks interactions */
   /* body:not(.splash-complete) > *:not([data-splash-screen]) {
     opacity: 0;

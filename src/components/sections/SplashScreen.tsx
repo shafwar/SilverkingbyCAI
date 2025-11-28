@@ -19,16 +19,31 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
     const ctx = gsap.context(() => {
       const tl = gsap.timeline();
 
-      // Get all letters
+      // Get all letters and text container
       const letters = textRef.current?.querySelectorAll(".letter");
+      const textContainer = textRef.current;
 
-      if (letters) {
-        // Initial state - all hidden and blurred (SET IMMEDIATELY)
+      if (letters && textContainer) {
+        // CRITICAL: Set initial state IMMEDIATELY before any render
+        // This prevents any flicker or flash of text
+        gsap.set(textContainer, {
+          opacity: 0,
+          visibility: "hidden",
+        });
+
         gsap.set(letters, {
           opacity: 0,
+          visibility: "hidden",
           y: 30,
           filter: "blur(15px)",
           scale: 0.9,
+        });
+
+        // Show container first (instant, no animation)
+        gsap.set(textContainer, {
+          opacity: 1,
+          visibility: "visible",
+          immediateRender: true,
         });
 
         // Animate letters one by one - FASTER & SMOOTHER
@@ -36,6 +51,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
           letters,
           {
             opacity: 1,
+            visibility: "visible",
             y: 0,
             filter: "blur(0px)",
             scale: 1,
@@ -45,8 +61,9 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
               ease: "power2.inOut",
             },
             ease: "expo.out",
+            immediateRender: false, // Allow animation
           },
-          0.1 // Start almost immediately (reduced from 0.3)
+          0 // Start immediately (no delay)
         );
 
         // Pulse effect at the end - SUBTLER & FASTER
@@ -102,6 +119,8 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
       ref={containerRef}
       data-splash-screen
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black"
+      initial={{ opacity: 1 }}
+      animate={{ opacity: 1 }}
       style={{ 
         position: 'fixed',
         top: 0,
@@ -113,6 +132,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
         pointerEvents: 'auto',
         willChange: 'opacity',
         zIndex: 9999,
+        opacity: 1, // CRITICAL: Ensure container is visible from start
       }}
     >
       {/* Subtle gradient overlay */}
@@ -122,7 +142,11 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
       <div
         ref={textRef}
         className="relative z-10 text-center px-6"
-        style={{ perspective: "1000px" }}
+        style={{ 
+          perspective: "1000px",
+          opacity: 0, // CRITICAL: Hide initially to prevent flicker
+          visibility: "hidden", // CRITICAL: Completely hide until animation starts
+        }}
       >
         <div className="font-sans text-[2rem] sm:text-[2.5rem] md:text-[3rem] lg:text-[3.5rem] font-light tracking-tight leading-none text-white">
           {"Silver King by CAI".split("").map((char, index) => (
@@ -133,6 +157,8 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
                 transformStyle: "preserve-3d",
                 display: char === " " ? "inline" : "inline-block",
                 minWidth: char === " " ? "0.5em" : "auto",
+                opacity: 0, // CRITICAL: Initial opacity 0 to prevent flicker
+                visibility: "hidden", // CRITICAL: Hidden until animation
               }}
             >
               {char === " " ? "\u00A0" : char}
@@ -142,8 +168,8 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
 
         {/* Subtle tagline */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 0.85, y: 0 }}
+          initial={{ opacity: 0, y: 20, visibility: "hidden" }}
+          animate={{ opacity: 0.85, y: 0, visibility: "visible" }}
           transition={{ duration: 0.8, delay: 1.2, ease: "easeOut" }}
           className="mt-6 font-sans text-[0.75rem] md:text-[0.875rem] font-light tracking-[0.3em] text-white/85"
         >
@@ -152,8 +178,8 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
 
         {/* Decorative gradient line - positioned relative to tagline */}
         <motion.div
-          initial={{ scaleX: 0, opacity: 0 }}
-          animate={{ scaleX: 1, opacity: 1 }}
+          initial={{ scaleX: 0, opacity: 0, visibility: "hidden" }}
+          animate={{ scaleX: 1, opacity: 1, visibility: "visible" }}
           transition={{ duration: 1.2, delay: 1.4, ease: "easeInOut" }}
           className="mt-8 mx-auto w-32 md:w-40 h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent"
         />
