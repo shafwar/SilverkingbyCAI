@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import Link from "next/link";
