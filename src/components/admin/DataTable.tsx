@@ -142,7 +142,7 @@ export function DataTable<T extends Record<string, any>>({
             {columns.map((column, colIndex) => {
               const value = column.render ? column.render(row) : String(row[column.key as keyof T] ?? "—");
               // Skip first column on mobile if it's a checkbox/select column
-              if (colIndex === 0 && typeof value === 'object' && 'props' in value && value.props?.className?.includes('checkbox')) {
+              if (colIndex === 0 && value != null && typeof value === 'object' && 'props' in value && value.props?.className?.includes('checkbox')) {
                 return null;
               }
               return (
