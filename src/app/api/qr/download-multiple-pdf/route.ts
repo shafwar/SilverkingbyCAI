@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import PDFDocument from "pdfkit";
 import JSZip from "jszip";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 /**
  * Generate ZIP file with multiple PDFs (one PDF per QR code)
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { serialCodes } = body;
+    const { serialCodes, batchNumber } = body; // batchNumber is optional, used for R2 folder naming
 
     if (!serialCodes || !Array.isArray(serialCodes) || serialCodes.length === 0) {
       return NextResponse.json(
@@ -213,7 +214,99 @@ export async function POST(request: NextRequest) {
     const dateStr = new Date().toISOString().split("T")[0];
     const filename = `Silver-King-QR-Codes-${products.length}-${dateStr}.zip`;
 
-    // Return ZIP file - Convert Buffer to Uint8Array for NextResponse
+    // Upload ZIP to R2 if available
+    const R2_ENDPOINT = process.env.R2_ENDPOINT;
+    const R2_BUCKET = process.env.R2_BUCKET || process.env.R2_BUCKET_NAME;
+    const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
+    const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
+    const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL;
+    const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
+    
+    const normalizedR2Endpoint = R2_ENDPOINT
+      ? R2_ENDPOINT.replace(/\/[^\/]+$/, "")
+      : R2_ACCOUNT_ID
+        ? `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
+        : null;
+
+    const r2Available =
+      !!normalizedR2Endpoint &&
+      !!R2_BUCKET &&
+      !!R2_ACCESS_KEY_ID &&
+      !!R2_SECRET_ACCESS_KEY &&
+      !!R2_PUBLIC_URL;
+
+    if (r2Available) {
+      try {
+        const r2Client = new S3Client({
+          region: "auto",
+          endpoint: normalizedR2Endpoint,
+          credentials: {
+            accessKeyId: R2_ACCESS_KEY_ID!,
+            secretAccessKey: R2_SECRET_ACCESS_KEY!,
+          },
+        });
+
+        // Create R2 key with folder structure: qr-batches/batch-{number}-{date}/filename.zip
+        // Use provided batchNumber or generate based on timestamp
+        const batchNum = batchNumber || Math.floor(Date.now() / 1000);
+        const r2Key = `qr-batches/batch-${batchNum}-${dateStr}/${filename}`;
+        
+        console.log(`[QR Multiple] Uploading ZIP to R2: ${r2Key}, size: ${zipBuffer.length} bytes`);
+        console.log(`[QR Multiple] R2 Config:`, {
+          bucket: R2_BUCKET,
+          endpoint: normalizedR2Endpoint?.substring(0, 50),
+          publicUrl: R2_PUBLIC_URL?.substring(0, 50),
+        });
+
+        try {
+          await r2Client.send(
+            new PutObjectCommand({
+              Bucket: R2_BUCKET,
+              Key: r2Key,
+              Body: zipBuffer,
+              ContentType: "application/zip",
+              CacheControl: "public, max-age=86400", // Cache for 1 day
+            })
+          );
+
+          const base = R2_PUBLIC_URL!.endsWith("/") ? R2_PUBLIC_URL!.slice(0, -1) : R2_PUBLIC_URL!;
+          const downloadUrl = `${base}/${r2Key}`;
+
+          console.log(`[QR Multiple] ZIP uploaded to R2 successfully: ${downloadUrl}`);
+
+          // Return JSON with download URL instead of file
+          return NextResponse.json({
+            success: true,
+            downloadUrl,
+            filename,
+            batchNumber: batchNum,
+            fileCount: successCount,
+            failedCount: failCount,
+            r2Key,
+            message: "ZIP file generated and uploaded to R2 successfully",
+          });
+        } catch (r2UploadError: any) {
+          console.error(`[QR Multiple] R2 upload failed:`, {
+            error: r2UploadError?.message,
+            stack: r2UploadError?.stack,
+            r2Key,
+            bucket: R2_BUCKET,
+          });
+          // Fall through to direct download if R2 upload fails
+          throw r2UploadError;
+        }
+      } catch (r2Error: any) {
+        console.error("[QR Multiple] Failed to upload ZIP to R2, falling back to direct download:", {
+          error: r2Error?.message,
+          stack: r2Error?.stack,
+        });
+        // Fallback to direct download if R2 upload fails
+      }
+    } else {
+      console.log("[QR Multiple] R2 not available, using direct download");
+    }
+
+    // Fallback: Return ZIP file directly if R2 is not available or upload failed
     return new NextResponse(new Uint8Array(zipBuffer), {
       status: 200,
       headers: {

@@ -445,7 +445,7 @@ export function QrPreviewGrid() {
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ serialCodes }),
+            body: JSON.stringify({ serialCodes, batchNumber }), // Pass batchNumber for R2 folder naming
           });
 
           // Check if response is OK
@@ -472,70 +472,138 @@ export function QrPreviewGrid() {
             throw new Error(errorMessage);
           }
 
-          // Check Content-Type
+          // Check Content-Type - could be JSON (R2 URL) or ZIP (direct download)
           const contentType = response.headers.get("Content-Type");
-          if (!contentType || !contentType.startsWith("application/zip")) {
+          
+          if (contentType?.includes("application/json")) {
+            // Response is JSON with R2 download URL
+            const result = await response.json();
+            if (result.success && result.downloadUrl) {
+              setDownloadLabel(
+                `Mengunduh batch ${batchNumber}/${totalBatches} dari R2...`
+              );
+              setDownloadPercent(Math.round(((downloadedBatches + 0.5) / totalBatches) * 100));
+              
+              console.log(`[Download] Downloading from R2: ${result.downloadUrl}`);
+              
+              // Download from R2 URL with progress tracking
+              const r2Response = await fetch(result.downloadUrl);
+              if (!r2Response.ok) {
+                throw new Error(`Gagal mengunduh dari R2 untuk batch ${batchNumber}. Status: ${r2Response.status}`);
+              }
+              
+              // Track download progress from R2
+              const r2ContentLength = r2Response.headers.get("content-length");
+              const r2Total = r2ContentLength ? parseInt(r2ContentLength, 10) : null;
+              let r2Loaded = 0;
+              
+              const r2Reader = r2Response.body?.getReader();
+              if (!r2Reader) {
+                throw new Error(`Stream download tidak tersedia dari R2 untuk batch ${batchNumber}`);
+              }
+              
+              const r2Chunks: BlobPart[] = [];
+              while (true) {
+                const { done, value } = await r2Reader.read();
+                if (done) break;
+                
+                if (value) {
+                  r2Chunks.push(value);
+                  r2Loaded += value.length;
+                  
+                  // Update progress
+                  if (r2Total) {
+                    const r2Progress = Math.round((r2Loaded / r2Total) * 100);
+                    const overallProgress = Math.round(
+                      ((downloadedBatches + r2Progress / 100) / totalBatches) * 100
+                    );
+                    setDownloadPercent(overallProgress);
+                    setDownloadLabel(
+                      `Mengunduh batch ${batchNumber}/${totalBatches} dari R2... ${r2Progress}%`
+                    );
+                  }
+                }
+              }
+              
+              const r2Blob = new Blob(r2Chunks, { type: "application/zip" });
+              const url = window.URL.createObjectURL(r2Blob);
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = result.filename || `Silver-King-QR-Batch-${batchNumber}-of-${totalBatches}.zip`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              window.URL.revokeObjectURL(url);
+              
+              console.log(`[Download] Batch ${batchNumber}/${totalBatches} downloaded from R2 successfully: ${result.downloadUrl}`);
+            } else {
+              throw new Error(result.error || `Gagal mendapatkan URL download untuk batch ${batchNumber}`);
+            }
+          } else if (contentType?.startsWith("application/zip")) {
+            // Direct ZIP download (fallback)
+            // Stream download with progress
+            const contentLength = response.headers.get("content-length");
+            const total = contentLength ? parseInt(contentLength, 10) : null;
+            let loaded = 0;
+
+            const reader = response.body?.getReader();
+            if (!reader) {
+              throw new Error(`Stream download tidak tersedia untuk batch ${batchNumber}`);
+            }
+
+            const chunks: BlobPart[] = [];
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              if (value) {
+                chunks.push(value);
+                loaded += value.length;
+              }
+
+              // Update progress within batch
+              if (total) {
+                const batchProgress = Math.round((loaded / total) * 100);
+                const overallProgress = Math.round(
+                  ((downloadedBatches + batchProgress / 100) / totalBatches) * 100
+                );
+                setDownloadPercent(overallProgress);
+                setDownloadLabel(
+                  `Mengunduh batch ${batchNumber}/${totalBatches}... ${batchProgress}%`
+                );
+              }
+            }
+
+            // Create blob and download this batch ZIP
+            const blob = new Blob(chunks, { type: "application/zip" });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+
+            const contentDisposition = response.headers.get("Content-Disposition");
+            const dateStr = new Date().toISOString().split("T")[0];
+            let filename = `Silver-King-QR-Batch-${batchNumber}-of-${totalBatches}-${dateStr}.zip`;
+            if (contentDisposition) {
+              const filenameMatch = contentDisposition.match(/filename=?"?([^\s"]+)"?/);
+              if (filenameMatch) {
+                filename = filenameMatch[1].replace(/\.zip$/, `-batch-${batchNumber}.zip`);
+              }
+            }
+
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            
+            console.log(`[Download] Batch ${batchNumber}/${totalBatches} downloaded directly`);
+          } else {
             const errorText = await response.text();
             if (errorText.trim().startsWith("<!DOCTYPE") || errorText.trim().startsWith("<html")) {
               throw new Error(`Server error pada batch ${batchNumber}. Silakan coba lagi.`);
             }
-            throw new Error(`Response bukan file ZIP untuk batch ${batchNumber}`);
+            throw new Error(`Response tidak valid untuk batch ${batchNumber}: ${contentType}`);
           }
-
-          // Stream download with progress
-          const contentLength = response.headers.get("content-length");
-          const total = contentLength ? parseInt(contentLength, 10) : null;
-          let loaded = 0;
-
-          const reader = response.body?.getReader();
-          if (!reader) {
-            throw new Error(`Stream download tidak tersedia untuk batch ${batchNumber}`);
-          }
-
-          const chunks: BlobPart[] = [];
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            if (value) {
-              chunks.push(value);
-              loaded += value.length;
-            }
-
-            // Update progress within batch
-            if (total) {
-              const batchProgress = Math.round((loaded / total) * 100);
-              const overallProgress = Math.round(
-                ((downloadedBatches + batchProgress / 100) / totalBatches) * 100
-              );
-              setDownloadPercent(overallProgress);
-              setDownloadLabel(
-                `Mengunduh batch ${batchNumber}/${totalBatches}... ${batchProgress}%`
-              );
-            }
-          }
-
-          // Create blob and download this batch ZIP
-          const blob = new Blob(chunks, { type: "application/zip" });
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement("a");
-          link.href = url;
-
-          const contentDisposition = response.headers.get("Content-Disposition");
-          const dateStr = new Date().toISOString().split("T")[0];
-          let filename = `Silver-King-QR-Batch-${batchNumber}-of-${totalBatches}-${dateStr}.zip`;
-          if (contentDisposition) {
-            const filenameMatch = contentDisposition.match(/filename=?"?([^\s"]+)"?/);
-            if (filenameMatch) {
-              filename = filenameMatch[1].replace(/\.zip$/, `-batch-${batchNumber}.zip`);
-            }
-          }
-
-          link.download = filename;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          window.URL.revokeObjectURL(url);
 
           downloadedBatches++;
           console.log(`[Download] Batch ${batchNumber}/${totalBatches} downloaded successfully`);
@@ -581,7 +649,10 @@ export function QrPreviewGrid() {
       let errorMessage = error?.message || "Terjadi kesalahan tidak diketahui";
 
       // Try to extract more detailed error message
-      if (errorMessage.includes("Failed to generate any PDFs") || errorMessage.includes("All products failed")) {
+      if (
+        errorMessage.includes("Failed to generate any PDFs") ||
+        errorMessage.includes("All products failed")
+      ) {
         errorMessage =
           "Gagal menghasilkan PDF. Pastikan semua produk memiliki QR code yang valid dan template serticard tersedia. Periksa log server untuk detail error.";
       } else if (errorMessage.includes("No products with QR codes found")) {
@@ -590,7 +661,10 @@ export function QrPreviewGrid() {
       } else if (errorMessage.includes("Server error") || errorMessage.includes("<!DOCTYPE")) {
         errorMessage =
           "Terjadi kesalahan pada server. Silakan coba lagi atau hubungi administrator. Periksa log server untuk detail.";
-      } else if (errorMessage.includes("Template file not found") || errorMessage.includes("Serticard-01.png")) {
+      } else if (
+        errorMessage.includes("Template file not found") ||
+        errorMessage.includes("Serticard-01.png")
+      ) {
         errorMessage =
           "Template serticard tidak ditemukan. Pastikan file Serticard-01.png ada di public/images/serticard/. Periksa log server untuk path lengkap.";
       } else if (errorMessage.includes("Failed to generate QR code")) {
@@ -600,7 +674,7 @@ export function QrPreviewGrid() {
         errorMessage =
           "Gagal memuat template image. Pastikan file template tidak corrupt dan dapat dibaca.";
       }
-      
+
       // Log full error for debugging
       console.error("[Download All] Full error details:", {
         message: errorMessage,
