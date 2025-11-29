@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getVerifyUrl } from "@/utils/constants";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import PDFDocument from "pdfkit";
 import JSZip from "jszip";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import QRCode from "qrcode";
-import { createCanvas, loadImage } from "canvas";
-import { promises as fs } from "fs";
-import path from "path";
 
 /**
  * Generate ZIP file with multiple PDFs (one PDF per QR code)
@@ -87,251 +81,55 @@ export async function POST(request: NextRequest) {
 
     const hasMultipleWeights = productsByWeight.size > 1;
 
-    // Pre-load template once for all products (more efficient)
-    let templateImage: any = null;
-    const templatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-01.png");
-    
-    console.log(`[QR Multiple] ====== TEMPLATE LOADING ======`);
-    console.log(`[QR Multiple] Pre-loading template from: ${templatePath}`);
-    console.log(`[QR Multiple] Current working directory: ${process.cwd()}`);
-    console.log(`[QR Multiple] NODE_ENV: ${process.env.NODE_ENV}`);
-    console.log(`[QR Multiple] RAILWAY_ENVIRONMENT: ${process.env.RAILWAY_ENVIRONMENT}`);
-    
-    try {
-      // Check if file exists
-      await fs.access(templatePath);
-      console.log(`[QR Multiple] ✓ Template file exists at: ${templatePath}`);
-      
-      // Load template image
-      templateImage = await loadImage(templatePath);
-      console.log(`[QR Multiple] ✓ Template pre-loaded successfully`);
-      console.log(`[QR Multiple] Template size: ${templateImage.width}x${templateImage.height} pixels`);
-    } catch (templateError: any) {
-      const errorMsg = `Failed to load template from ${templatePath}`;
-      const errorDetails = {
-        error: templateError?.message || String(templateError),
-        code: templateError?.code,
-        path: templatePath,
-        cwd: process.cwd(),
-        nodeEnv: process.env.NODE_ENV,
-      };
-      
-      console.error(`[QR Multiple] ✗ ${errorMsg}:`, errorDetails);
-      
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Template file not found",
-          message: `${errorMsg}. Please ensure Serticard-01.png exists in public/images/serticard/`,
-          details: errorDetails,
-        },
-        { status: 500 }
-      );
-    }
-    
-    if (!templateImage) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Template image is null",
-          message: "Template loaded but image is null. This should not happen.",
-        },
-        { status: 500 }
-      );
-    }
-    
-    console.log(`[QR Multiple] ====== TEMPLATE LOADED SUCCESSFULLY ======`);
+    // NEW APPROACH: Use existing download-pdf endpoint for each product
+    // This reuses the same logic that works for single downloads
+    // No need to load template or generate QR - just call the working endpoint
+    console.log(`[QR Multiple] ====== USING EXISTING ENDPOINTS ======`);
+    console.log(`[QR Multiple] Will call /api/qr/[serialCode]/download-pdf for each product`);
+    console.log(`[QR Multiple] This reuses the same working logic as single downloads`);
 
-    // Create ZIP file (tetap di scope utama function!)
+    // Get base URL for internal API calls
+    const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const internalBaseUrl = baseUrl.replace(/\/$/, "");
+    console.log(`[QR Multiple] Internal base URL: ${internalBaseUrl}`);
+
+    // Create ZIP file
     const zip = new JSZip();
     let successCount = 0;
     let failCount = 0;
 
-    // BATCHING
-    const BATCH_SIZE = 100;
-    for (let i = 0; i < products.length; i += BATCH_SIZE) {
-      const batch = products.slice(i, i + BATCH_SIZE);
-      let batchIdx = Math.floor(i / BATCH_SIZE) + 1;
-      console.log(`[QR Multiple] Processing batch ${batchIdx}/${Math.ceil(products.length / BATCH_SIZE)}, size: ${batch.length}`);
-      for (const product of batch) {
+    // Process all products
+    for (const product of products) {
       try {
-        console.log(`[QR Multiple] Processing ${product.serialCode}...`);
+        console.log(`[QR Multiple] Fetching PDF for ${product.serialCode}...`);
         
-        // Use pre-loaded template
-        if (!templateImage) {
-          throw new Error(`Template image is null - pre-loading failed`);
-        }
-
-        // 2. Generate QR code ONLY (same as /api/qr/[serialCode]/qr-only)
-        // Use serialCode from database (normalized)
-        const finalSerialCode = product.serialCode;
-        if (!finalSerialCode || finalSerialCode.trim().length < 3) {
-          throw new Error(`Invalid serial code from database: ${finalSerialCode}`);
-        }
+        // Call the existing download-pdf endpoint that already works
+        // This endpoint uses the same logic as single download
+        const pdfUrl = `${internalBaseUrl}/api/qr/${encodeURIComponent(product.serialCode)}/download-pdf`;
+        console.log(`[QR Multiple] Calling: ${pdfUrl}`);
         
-        const verifyUrl = getVerifyUrl(finalSerialCode);
-        console.log(`[QR Multiple] Generating QR for ${finalSerialCode}, verifyUrl: ${verifyUrl}`);
-        
-        let qrBuffer: Buffer;
-        try {
-          qrBuffer = await QRCode.toBuffer(verifyUrl, {
-            width: 800,
-            errorCorrectionLevel: "H",
-            color: { dark: "#0c0c0c", light: "#ffffff" },
-            margin: 2,
-          });
-          console.log(`[QR Multiple] QR buffer generated for ${finalSerialCode}, size: ${qrBuffer.length} bytes`);
-        } catch (qrError: any) {
-          throw new Error(`Failed to generate QR code for ${finalSerialCode}: ${qrError?.message || qrError}`);
-        }
-        
-        let qrImage;
-        try {
-          qrImage = await loadImage(qrBuffer);
-          console.log(`[QR Multiple] QR image loaded for ${finalSerialCode}, size: ${qrImage.width}x${qrImage.height}`);
-        } catch (loadError: any) {
-          throw new Error(`Failed to load QR image for ${finalSerialCode}: ${loadError?.message || loadError}`);
-        }
-        
-        if (!qrImage) {
-          throw new Error(`QR image is null after loading for ${finalSerialCode}`);
-        }
-
-        // 3. Create canvas and combine (same logic as frontend)
-        const canvas = createCanvas(templateImage.width, templateImage.height);
-        const ctx = canvas.getContext("2d");
-
-        // Draw template as background
-        ctx.drawImage(templateImage, 0, 0);
-
-        // Calculate QR position (same as frontend)
-        const qrSize = Math.min(templateImage.width * 0.55, templateImage.height * 0.55, 900);
-        const qrX = (templateImage.width - qrSize) / 2; // Center horizontally
-        const qrY = templateImage.height * 0.38; // Position vertically
-
-        // Draw white background for QR
-        const padding = 8;
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(qrX - padding, qrY - padding, qrSize + padding * 2, qrSize + padding * 2);
-
-        // Draw QR code on template
-        ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
-
-        // Add product name above QR code
-        if (product.name) {
-          const nameY = qrY - 35;
-          const nameFontSize = Math.floor(templateImage.width * 0.025);
-          ctx.fillStyle = "#222222";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.font = `${nameFontSize}px Arial, sans-serif`;
-
-          let displayName = product.name;
-          const maxWidth = templateImage.width * 0.65;
-          const metrics = ctx.measureText(displayName);
-          if (metrics.width > maxWidth) {
-            while (ctx.measureText(displayName + "...").width > maxWidth && displayName.length > 0) {
-              displayName = displayName.slice(0, -1);
-            }
-            displayName += "...";
-          }
-
-          ctx.fillText(displayName, templateImage.width / 2, nameY);
-        }
-
-        // Add serial number below QR code (use finalSerialCode from database)
-        const serialY = qrY + qrSize + 35;
-        const fontSize = Math.floor(templateImage.width * 0.032);
-        ctx.fillStyle = "#222222";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.font = `${fontSize}px "LucidaSans", "Lucida Console", "Courier New", monospace`;
-        ctx.fillText(finalSerialCode, templateImage.width / 2, serialY);
-
-        // Get combined image buffer
-        const combinedBuffer = canvas.toBuffer("image/png");
-        console.log(`[QR Multiple] Combined image generated for ${product.serialCode}, size: ${combinedBuffer.length} bytes`);
-
-        // 4. Create PDF using PDFKit (same approach as download-all-pdf)
-        // Use minimal config to avoid font system initialization
-        // Fontconfig error is harmless - PDFKit will use built-in fonts if needed
-        // But we don't use any text, only images, so font system shouldn't be accessed
-        const doc = new PDFDocument({
-          size: [595, 842], // A4 size in points
-          margin: 0,
-          // Don't set info to avoid any font system access
+        // Create internal request with session cookie
+        const pdfResponse = await fetch(pdfUrl, {
+          method: "GET",
+          headers: {
+            // Forward auth headers if available
+            Cookie: request.headers.get("cookie") || "",
+          },
         });
 
-        // Set up promise BEFORE adding content (critical for proper error handling)
-        const chunks: Buffer[] = [];
-        const pdfPromise = new Promise<Buffer>((resolve, reject) => {
-          // Collect PDF chunks
-          doc.on("data", (chunk) => {
-            chunks.push(chunk);
-          });
-          
-          // Handle successful completion
-          doc.on("end", () => {
-            try {
-              const buffer = Buffer.concat(chunks);
-              if (buffer.length === 0) {
-                reject(new Error(`PDF buffer is empty for ${product.serialCode}`));
-                return;
-              }
-              console.log(`[QR Multiple] PDF generated for ${product.serialCode}, size: ${buffer.length} bytes`);
-              resolve(buffer);
-            } catch (error: any) {
-              console.error(`[QR Multiple] Error concatenating PDF chunks for ${product.serialCode}:`, error);
-              reject(error);
-            }
-          });
-          
-          // Handle errors
-          doc.on("error", (err) => {
-            console.error(`[QR Multiple] PDF generation error for ${product.serialCode}:`, {
-              error: err,
-              message: err?.message,
-              stack: err?.stack,
-            });
-            reject(err);
-          });
-        });
-
-        try {
-          // Add combined image to PDF - fit to A4 page
-          // Use data URL approach (same as download-all-pdf) which is more reliable
-          // This avoids font system initialization issues
-          const dataUrl = `data:image/png;base64,${combinedBuffer.toString("base64")}`;
-          
-          console.log(`[QR Multiple] Adding image to PDF for ${product.serialCode}, image size: ${combinedBuffer.length} bytes`);
-          
-          doc.image(dataUrl, {
-            fit: [595, 842], // Fit to full A4 page
-            align: "center",
-            valign: "center",
-          });
-
-          // Finalize PDF (don't call any font/text methods to avoid fontconfig errors)
-          doc.end();
-        } catch (imageError: any) {
-          console.error(`[QR Multiple] Error adding image to PDF for ${product.serialCode}:`, {
-            error: imageError,
-            message: imageError?.message,
-            name: imageError?.name,
-            code: imageError?.code,
-            stack: imageError?.stack,
-            combinedBufferSize: combinedBuffer.length,
-          });
-          doc.end(); // Make sure to end the document even on error
-          throw new Error(`Failed to add image to PDF: ${imageError?.message || "Unknown error"}`);
+        if (!pdfResponse.ok) {
+          const errorText = await pdfResponse.text();
+          throw new Error(`Failed to fetch PDF for ${product.serialCode}: ${pdfResponse.status} - ${errorText.substring(0, 100)}`);
         }
 
-        // Wait for PDF to complete
-        const pdfBuffer = await pdfPromise;
-
+        // Get PDF buffer
+        const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer());
+        
         if (!pdfBuffer || pdfBuffer.length === 0) {
           throw new Error(`PDF buffer is empty for ${product.serialCode}`);
         }
+
+        console.log(`[QR Multiple] PDF fetched for ${product.serialCode}, size: ${pdfBuffer.length} bytes`);
 
         // Sanitize filename
         const sanitizedName = product.name
@@ -367,7 +165,6 @@ export async function POST(request: NextRequest) {
           weight: product.weight,
         });
         // Continue with next product - don't throw, just log and continue
-        }
       }
     }
 
