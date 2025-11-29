@@ -218,49 +218,48 @@ export async function POST(request: NextRequest) {
         console.log(`[QR Multiple] Back image for ${product.serialCode}: ${backBuffer.length} bytes`);
 
         // 4. Generate PDF with LANDSCAPE orientation, side-by-side layout (same as frontend)
+        // Calculate optimal page size based on template dimensions to avoid white space
+        const templateAspectRatio = frontTemplateImage.width / frontTemplateImage.height;
+        const backAspectRatio = backTemplateImage.width / backTemplateImage.height;
+        
+        // Use the height of the taller template as page height
+        const maxTemplateHeight = Math.max(frontTemplateImage.height, backTemplateImage.height);
+        const pageHeight = maxTemplateHeight;
+        
+        // Page width = front width + back width + small gap between them
+        const gap = 20; // Small gap between front and back (in pixels/points)
+        const pageWidth = frontTemplateImage.width + backTemplateImage.width + gap;
+        
+        console.log(`[QR Multiple] PDF dimensions for ${product.serialCode}:`, {
+          pageWidth,
+          pageHeight,
+          frontSize: `${frontTemplateImage.width}x${frontTemplateImage.height}`,
+          backSize: `${backTemplateImage.width}x${backTemplateImage.height}`,
+        });
+        
         const pdfDoc = await PDFDocument.create();
-        // A4 landscape: 297mm x 210mm = 840.94 x 595.28 points
-        const page = pdfDoc.addPage([840.94, 595.28]); // A4 landscape
-        
-        // Calculate dimensions for side-by-side layout (same as frontend)
-        const pageWidth = 840.94; // A4 landscape width in points
-        const pageHeight = 595.28; // A4 landscape height in points
-        const margin = 14.17; // 5mm in points
-        const cardWidth = (pageWidth - margin * 3) / 2; // Two cards with margins
-        
-        const cardHeightFront = (frontTemplateImage.height / frontTemplateImage.width) * cardWidth;
-        const cardHeightBack = (backTemplateImage.height / backTemplateImage.width) * cardWidth;
-        const maxCardHeight = Math.max(cardHeightFront, cardHeightBack);
-        
-        // Scale down if too tall
-        const scaleFactor = maxCardHeight > pageHeight - margin * 2 ? (pageHeight - margin * 2) / maxCardHeight : 1;
-        const finalCardWidth = cardWidth * scaleFactor;
-        const finalCardHeightFront = cardHeightFront * scaleFactor;
-        const finalCardHeightBack = cardHeightBack * scaleFactor;
-        
-        // Center vertically
-        const yOffsetFront = (pageHeight - finalCardHeightFront) / 2;
-        const yOffsetBack = (pageHeight - finalCardHeightBack) / 2;
+        const page = pdfDoc.addPage([pageWidth, pageHeight]);
         
         // Embed images
         const frontPngImage = await pdfDoc.embedPng(frontBuffer);
         const backPngImage = await pdfDoc.embedPng(backBuffer);
         
-        // Add front template (left side)
+        // Add front template (left side) - full size, no scaling
         page.drawImage(frontPngImage, {
-          x: margin,
-          y: yOffsetFront,
-          width: finalCardWidth,
-          height: finalCardHeightFront,
+          x: 0,
+          y: pageHeight - frontTemplateImage.height, // Align to top (PDF coordinates start from bottom)
+          width: frontTemplateImage.width,
+          height: frontTemplateImage.height,
         });
         
-        // Add back template (right side)
-        const backX = margin * 2 + finalCardWidth;
+        // Add back template (right side) - full size, no scaling
+        const backX = frontTemplateImage.width + gap;
+        const backY = pageHeight - backTemplateImage.height; // Align to top
         page.drawImage(backPngImage, {
           x: backX,
-          y: yOffsetBack,
-          width: finalCardWidth,
-          height: finalCardHeightBack,
+          y: backY,
+          width: backTemplateImage.width,
+          height: backTemplateImage.height,
         });
         
         const pdfBytes = await pdfDoc.save();
