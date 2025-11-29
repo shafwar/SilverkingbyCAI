@@ -18,7 +18,6 @@ import {
   Filter,
   ChevronDown,
   Check,
-  CloudUpload,
 } from "lucide-react";
 import jsPDF from "jspdf";
 
@@ -47,7 +46,7 @@ export function QrPreviewGrid() {
     "/api/admin/qr-preview",
     fetcher,
     {
-      refreshInterval: 60000,
+    refreshInterval: 60000,
     }
   );
   const [selected, setSelected] = useState<Product | null>(null);
@@ -66,9 +65,6 @@ export function QrPreviewGrid() {
   const [downloadPercent, setDownloadPercent] = useState<number | null>(null);
   const [downloadLabel, setDownloadLabel] = useState<string>("");
 
-  // State untuk upload template ke R2
-  const [isUploadingTemplate, setIsUploadingTemplate] = useState(false);
-  const [templateUploadStatus, setTemplateUploadStatus] = useState<"idle" | "success" | "error">("idle");
 
   // Extract categories from products (first 3 letters of serial code)
   const categories = useMemo(() => {
@@ -146,18 +142,18 @@ export function QrPreviewGrid() {
   const loadImage = (src: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
-
+      
       // Only set crossOrigin for external URLs (R2), not for same-origin (local)
       // This prevents CORS issues with local images
       if (src.startsWith("http") && !src.includes(window.location.hostname)) {
         img.crossOrigin = "anonymous";
       }
-
+      
       // Set timeout to prevent hanging
       const timeout = setTimeout(() => {
         reject(new Error(`Image load timeout: ${src}`));
       }, 30000); // 30 seconds timeout
-
+      
       img.onload = () => {
         clearTimeout(timeout);
         console.log(`[LoadImage] Successfully loaded: ${src}`, {
@@ -166,13 +162,13 @@ export function QrPreviewGrid() {
         });
         resolve(img);
       };
-
+      
       img.onerror = (error) => {
         clearTimeout(timeout);
         console.error(`[LoadImage] Failed to load image: ${src}`, error);
         reject(new Error(`Failed to load image: ${src}. Please check if the file exists.`));
       };
-
+      
       img.src = src;
     });
   };
@@ -181,14 +177,19 @@ export function QrPreviewGrid() {
     setIsDownloading(true);
     try {
       console.log("[Download] Starting download for:", product.serialCode);
-
+      
       // Get template URLs (front and back) from R2 or local
+      // Endpoint will auto-upload to R2 if templates don't exist
       const templateResponse = await fetch("/api/admin/serticard-template-url");
       if (!templateResponse.ok) {
-        throw new Error("Failed to get template URL");
+        // Fallback to local paths if endpoint fails
+        console.warn("[Download] Failed to get template URL from endpoint, using local paths");
+        const absoluteFrontUrl = window.location.origin + "/images/serticard/Serticard-01.png";
+        const absoluteBackUrl = window.location.origin + "/images/serticard/Serticard-02.png";
+        return { absoluteFrontUrl, absoluteBackUrl };
       }
       const { frontTemplateUrl, backTemplateUrl } = await templateResponse.json();
-      console.log("[Download] Template URLs:", { front: frontTemplateUrl, back: backTemplateUrl });
+      console.log("[Download] Template URLs from endpoint:", { front: frontTemplateUrl, back: backTemplateUrl });
 
       // Ensure absolute URLs for templates
       // If template URL is from R2 (starts with http), use it directly
@@ -218,22 +219,47 @@ export function QrPreviewGrid() {
       console.log("[Download] QR URL:", qrImageUrl);
 
       // Load all images: front template, back template, and QR code
+      // If R2 template fails, fallback to local paths
       console.log("[Download] Loading images...");
-      const [frontTemplateImg, backTemplateImg, qrImg] = await Promise.all([
-        loadImage(absoluteFrontUrl).catch((err) => {
-          console.error("[Download] Failed to load front template:", err);
-          throw new Error(`Failed to load front template: ${err.message}`);
-        }),
-        loadImage(absoluteBackUrl).catch((err) => {
-          console.error("[Download] Failed to load back template:", err);
-          throw new Error(`Failed to load back template: ${err.message}`);
-        }),
-        loadImage(qrImageUrl).catch((err) => {
-          console.error("[Download] Failed to load QR:", err);
-          throw new Error(`Failed to load QR code: ${err.message}`);
-        }),
-      ]);
-
+      let frontTemplateImg: HTMLImageElement;
+      let backTemplateImg: HTMLImageElement;
+      
+      try {
+        frontTemplateImg = await loadImage(absoluteFrontUrl);
+        console.log("[Download] Front template loaded from:", absoluteFrontUrl);
+      } catch (frontErr: any) {
+        console.warn("[Download] Failed to load front template from R2, trying local:", frontErr);
+        // Fallback to local path
+        const localFrontUrl = window.location.origin + "/images/serticard/Serticard-01.png";
+        try {
+          frontTemplateImg = await loadImage(localFrontUrl);
+          console.log("[Download] Front template loaded from local:", localFrontUrl);
+        } catch (localErr: any) {
+          throw new Error(`Failed to load front template from R2 and local: ${frontErr.message}`);
+        }
+      }
+      
+      try {
+        backTemplateImg = await loadImage(absoluteBackUrl);
+        console.log("[Download] Back template loaded from:", absoluteBackUrl);
+      } catch (backErr: any) {
+        console.warn("[Download] Failed to load back template from R2, trying local:", backErr);
+        // Fallback to local path
+        const localBackUrl = window.location.origin + "/images/serticard/Serticard-02.png";
+        try {
+          backTemplateImg = await loadImage(localBackUrl);
+          console.log("[Download] Back template loaded from local:", localBackUrl);
+        } catch (localErr: any) {
+          throw new Error(`Failed to load back template from R2 and local: ${backErr.message}`);
+        }
+      }
+      
+      // Load QR code (required, no fallback)
+      const qrImg = await loadImage(qrImageUrl).catch((err) => {
+        console.error("[Download] Failed to load QR:", err);
+        throw new Error(`Failed to load QR code: ${err.message}`);
+      });
+      
       console.log("[Download] Images loaded successfully", {
         frontSize: { width: frontTemplateImg.width, height: frontTemplateImg.height },
         backSize: { width: backTemplateImg.width, height: backTemplateImg.height },
@@ -272,7 +298,7 @@ export function QrPreviewGrid() {
         frontCtx.textAlign = "center";
         frontCtx.textBaseline = "middle";
         frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
-
+        
         // Truncate if too long
         let displayName = product.name;
         const maxWidth = frontTemplateImg.width * 0.65;
@@ -286,7 +312,7 @@ export function QrPreviewGrid() {
           }
           displayName += "...";
         }
-
+        
         frontCtx.fillText(displayName, frontTemplateImg.width / 2, nameY);
       }
 
@@ -344,22 +370,22 @@ export function QrPreviewGrid() {
       const cardWidth = (pageWidth - margin * 3) / 2; // Two cards with margins
       const cardHeightFront = (frontTemplateImg.height / frontTemplateImg.width) * cardWidth;
       const cardHeightBack = (backTemplateImg.height / backTemplateImg.width) * cardWidth;
-
+      
       // Use the maximum height to ensure both fit
       const maxCardHeight = Math.max(cardHeightFront, cardHeightBack);
-
+      
       // If cards are too tall, scale down proportionally
       const scaleFactor =
         maxCardHeight > pageHeight - margin * 2 ? (pageHeight - margin * 2) / maxCardHeight : 1;
-
+      
       const finalCardWidth = cardWidth * scaleFactor;
       const finalCardHeightFront = cardHeightFront * scaleFactor;
       const finalCardHeightBack = cardHeightBack * scaleFactor;
-
+      
       // Center vertically
       const yOffsetFront = (pageHeight - finalCardHeightFront) / 2;
       const yOffsetBack = (pageHeight - finalCardHeightBack) / 2;
-
+      
       console.log("[Download] PDF layout dimensions:", {
         pageWidth,
         pageHeight,
@@ -423,7 +449,7 @@ export function QrPreviewGrid() {
         stack: error?.stack,
         name: error?.name,
       });
-
+      
       // Show more detailed error message
       const errorMessage = error?.message || "Unknown error occurred";
       alert(`${t("downloadFailed")}: ${errorMessage}`);
@@ -469,10 +495,10 @@ export function QrPreviewGrid() {
           });
 
           // Check if response is OK
-          if (!response.ok) {
+      if (!response.ok) {
             let errorMessage = `Batch ${batchNumber} gagal`;
             try {
-              const errorText = await response.text();
+        const errorText = await response.text();
               if (
                 errorText.trim().startsWith("<!DOCTYPE") ||
                 errorText.trim().startsWith("<html")
@@ -612,25 +638,25 @@ export function QrPreviewGrid() {
 
             // Create blob and download this batch ZIP
             const blob = new Blob(chunks, { type: "application/zip" });
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
 
-            const contentDisposition = response.headers.get("Content-Disposition");
+      const contentDisposition = response.headers.get("Content-Disposition");
             const dateStr = new Date().toISOString().split("T")[0];
             let filename = `Silver-King-QR-Batch-${batchNumber}-of-${totalBatches}-${dateStr}.zip`;
-            if (contentDisposition) {
+      if (contentDisposition) {
               const filenameMatch = contentDisposition.match(/filename=?"?([^\s"]+)"?/);
-              if (filenameMatch) {
+        if (filenameMatch) {
                 filename = filenameMatch[1].replace(/\.zip$/, `-batch-${batchNumber}.zip`);
-              }
-            }
+        }
+      }
 
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
 
             console.log(`[Download] Batch ${batchNumber}/${totalBatches} downloaded directly`);
           } else {
@@ -753,7 +779,7 @@ export function QrPreviewGrid() {
       if (!response.ok) {
         let errorMessage = "Gagal mengunduh file ZIP";
         try {
-          const errorText = await response.text();
+        const errorText = await response.text();
           // Check if response is HTML (error page from server)
           if (errorText.trim().startsWith("<!DOCTYPE") || errorText.trim().startsWith("<html")) {
             errorMessage = "Server error: Terjadi kesalahan pada server. Silakan coba lagi.";
@@ -933,33 +959,6 @@ export function QrPreviewGrid() {
     return filteredProducts.every((p) => selectedItems.has(p.id));
   }, [filteredProducts, selectedItems]);
 
-  // Function to upload templates to R2
-  const handleUploadTemplatesToR2 = async () => {
-    setIsUploadingTemplate(true);
-    setTemplateUploadStatus("idle");
-    try {
-      const response = await fetch("/api/admin/upload-serticard-template", {
-        method: "POST",
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to upload templates");
-      }
-
-      const result = await response.json();
-      setTemplateUploadStatus("success");
-      alert(
-        `✅ Template berhasil di-upload ke R2!\n\nFront: ${result.frontTemplateUrl}\nBack: ${result.backTemplateUrl}\n\nSistem sekarang akan menggunakan template dari R2 untuk generate PDF.`
-      );
-    } catch (error: any) {
-      console.error("Failed to upload templates:", error);
-      setTemplateUploadStatus("error");
-      alert(`❌ Gagal upload template ke R2: ${error.message}\n\nPastikan R2 environment variables sudah dikonfigurasi dengan benar.`);
-    } finally {
-      setIsUploadingTemplate(false);
-    }
-  };
 
   if (isLoading) {
     return <LoadingSkeleton className="h-64 w-full" />;
@@ -1320,17 +1319,6 @@ export function QrPreviewGrid() {
                 ? t("generatingPng")
                 : `${t("downloadAll")} (${data.products.length})`}
             </motion.button>
-            <motion.button
-              onClick={handleUploadTemplatesToR2}
-              disabled={isUploadingTemplate}
-              className="group inline-flex items-center gap-2 rounded-full border border-blue-500/60 bg-blue-500/10 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-all hover:border-blue-500 hover:bg-blue-500/20 hover:shadow-[0_0_20px_rgba(59,130,246,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
-              whileHover={{ scale: isUploadingTemplate ? 1 : 1.02 }}
-              whileTap={{ scale: isUploadingTemplate ? 1 : 0.98 }}
-              title="Upload template Serticard-01.png dan Serticard-02.png ke R2 untuk digunakan di production"
-            >
-              <CloudUpload className={`h-4 w-4 transition-transform ${isUploadingTemplate ? "animate-pulse" : "group-hover:translate-y-0.5"}`} />
-              {isUploadingTemplate ? "Uploading..." : "Upload Template ke R2"}
-            </motion.button>
           </div>
         </motion.div>
       )}
@@ -1526,8 +1514,8 @@ export function QrPreviewGrid() {
             ) : (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {filteredProducts.map((product, index) => {
-                  const isItemSelected = selectedItems.has(product.id);
-                  return (
+                const isItemSelected = selectedItems.has(product.id);
+                return (
                     <AnimatedCard
                       key={product.id}
                       delay={index * 0.05}
@@ -1551,23 +1539,23 @@ export function QrPreviewGrid() {
                             <Square className="h-5 w-5 text-white/40" />
                           )}
                         </button>
-                      </div>
+                        </div>
 
                       {/* QR Code Image */}
                       <div className="relative aspect-square w-full rounded-lg border border-white/10 bg-white p-3 sm:p-4 mb-3">
-                        <img
-                          src={`/api/qr/${product.serialCode}`}
-                          alt={product.name}
+                      <img
+                        src={`/api/qr/${product.serialCode}`}
+                        alt={product.name}
                           className="h-full w-full object-contain"
-                          loading="lazy"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            if (!target.dataset.retried) {
-                              target.dataset.retried = "true";
-                              target.src = `/api/qr/${product.serialCode}?t=${Date.now()}`;
-                            }
-                          }}
-                        />
+                        loading="lazy"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          if (!target.dataset.retried) {
+                            target.dataset.retried = "true";
+                            target.src = `/api/qr/${product.serialCode}?t=${Date.now()}`;
+                          }
+                        }}
+                      />
                       </div>
 
                       {/* Product Info */}
@@ -1582,7 +1570,7 @@ export function QrPreviewGrid() {
                       {/* Action Buttons */}
                       <div className="mt-4 flex items-center gap-2">
                         <motion.button
-                          onClick={() => setSelected(product)}
+                  onClick={() => setSelected(product)}
                           className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70 transition hover:border-[#FFD700]/40 hover:bg-white/10 hover:text-white"
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
@@ -1601,8 +1589,8 @@ export function QrPreviewGrid() {
                           {t("download")}
                         </motion.button>
                       </div>
-                    </AnimatedCard>
-                  );
+                  </AnimatedCard>
+                );
                 })}
               </div>
             )}
