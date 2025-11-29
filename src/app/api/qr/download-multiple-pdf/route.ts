@@ -7,7 +7,6 @@ import JSZip from "jszip";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import QRCode from "qrcode";
 import { createCanvas, loadImage } from "canvas";
-import { getSerticardTemplateUrl } from "@/lib/qr";
 import { promises as fs } from "fs";
 import path from "path";
 
@@ -88,27 +87,65 @@ export async function POST(request: NextRequest) {
         console.log(`[QR Multiple] Processing ${product.serialCode}...`);
         
         // Use the same approach as frontend: load template and QR separately, then combine
-        // 1. Load template from file system (same as frontend uses)
-        const templatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-01.png");
+        // 1. Load template - try local file system first (most reliable)
         let templateImage;
+        const templatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-01.png");
+        
+        console.log(`[QR Multiple] Attempting to load template from: ${templatePath}`);
+        console.log(`[QR Multiple] Current working directory: ${process.cwd()}`);
+        
         try {
+          // Check if file exists
           await fs.access(templatePath);
+          console.log(`[QR Multiple] Template file exists, loading...`);
+          
+          // Load template image
           templateImage = await loadImage(templatePath);
-          console.log(`[QR Multiple] Template loaded for ${product.serialCode}, size: ${templateImage.width}x${templateImage.height}`);
+          console.log(`[QR Multiple] Template loaded successfully for ${product.serialCode}, size: ${templateImage.width}x${templateImage.height}`);
         } catch (templateError: any) {
-          throw new Error(`Template file not found: ${templateError.message}`);
+          const errorMsg = `Failed to load template from ${templatePath}. Error: ${templateError?.message || templateError}. Please ensure Serticard-01.png exists in public/images/serticard/`;
+          console.error(`[QR Multiple] ${errorMsg}`);
+          throw new Error(errorMsg);
+        }
+        
+        if (!templateImage) {
+          throw new Error(`Template image is null after loading for ${product.serialCode}`);
         }
 
         // 2. Generate QR code ONLY (same as /api/qr/[serialCode]/qr-only)
-        const verifyUrl = getVerifyUrl(product.serialCode);
-        const qrBuffer = await QRCode.toBuffer(verifyUrl, {
-          width: 800,
-          errorCorrectionLevel: "H",
-          color: { dark: "#0c0c0c", light: "#ffffff" },
-          margin: 2,
-        });
-        const qrImage = await loadImage(qrBuffer);
-        console.log(`[QR Multiple] QR code generated for ${product.serialCode}, size: ${qrImage.width}x${qrImage.height}`);
+        // Use serialCode from database (normalized)
+        const finalSerialCode = product.serialCode;
+        if (!finalSerialCode || finalSerialCode.trim().length < 3) {
+          throw new Error(`Invalid serial code from database: ${finalSerialCode}`);
+        }
+        
+        const verifyUrl = getVerifyUrl(finalSerialCode);
+        console.log(`[QR Multiple] Generating QR for ${finalSerialCode}, verifyUrl: ${verifyUrl}`);
+        
+        let qrBuffer: Buffer;
+        try {
+          qrBuffer = await QRCode.toBuffer(verifyUrl, {
+            width: 800,
+            errorCorrectionLevel: "H",
+            color: { dark: "#0c0c0c", light: "#ffffff" },
+            margin: 2,
+          });
+          console.log(`[QR Multiple] QR buffer generated for ${finalSerialCode}, size: ${qrBuffer.length} bytes`);
+        } catch (qrError: any) {
+          throw new Error(`Failed to generate QR code for ${finalSerialCode}: ${qrError?.message || qrError}`);
+        }
+        
+        let qrImage;
+        try {
+          qrImage = await loadImage(qrBuffer);
+          console.log(`[QR Multiple] QR image loaded for ${finalSerialCode}, size: ${qrImage.width}x${qrImage.height}`);
+        } catch (loadError: any) {
+          throw new Error(`Failed to load QR image for ${finalSerialCode}: ${loadError?.message || loadError}`);
+        }
+        
+        if (!qrImage) {
+          throw new Error(`QR image is null after loading for ${finalSerialCode}`);
+        }
 
         // 3. Create canvas and combine (same logic as frontend)
         const canvas = createCanvas(templateImage.width, templateImage.height);
@@ -152,14 +189,14 @@ export async function POST(request: NextRequest) {
           ctx.fillText(displayName, templateImage.width / 2, nameY);
         }
 
-        // Add serial number below QR code
+        // Add serial number below QR code (use finalSerialCode from database)
         const serialY = qrY + qrSize + 35;
         const fontSize = Math.floor(templateImage.width * 0.032);
         ctx.fillStyle = "#222222";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.font = `${fontSize}px "LucidaSans", "Lucida Console", "Courier New", monospace`;
-        ctx.fillText(product.serialCode, templateImage.width / 2, serialY);
+        ctx.fillText(finalSerialCode, templateImage.width / 2, serialY);
 
         // Get combined image buffer
         const combinedBuffer = canvas.toBuffer("image/png");
