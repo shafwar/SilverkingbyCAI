@@ -3,6 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import JSZip from "jszip";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { createCanvas, loadImage } from "canvas";
+import { promises as fs } from "fs";
+import path from "path";
+import { PDFDocument } from "pdf-lib";
 
 /**
  * Generate ZIP file with multiple PDFs (one PDF per QR code)
@@ -81,17 +85,38 @@ export async function POST(request: NextRequest) {
 
     const hasMultipleWeights = productsByWeight.size > 1;
 
-    // NEW APPROACH: Use existing download-pdf endpoint for each product
-    // This reuses the same logic that works for single downloads
-    // No need to load template or generate QR - just call the working endpoint
-    console.log(`[QR Multiple] ====== USING EXISTING ENDPOINTS ======`);
-    console.log(`[QR Multiple] Will call /api/qr/[serialCode]/download-pdf for each product`);
-    console.log(`[QR Multiple] This reuses the same working logic as single downloads`);
+    // NEW APPROACH: Use same logic as frontend - no PDFKit, no fontconfig errors
+    // 1. Get QR from /api/qr/[serialCode]/qr-only (no PDFKit)
+    // 2. Get template from file system or R2
+    // 3. Combine in canvas (same as frontend)
+    // 4. Generate PDF using pdf-lib (no fontconfig errors)
+    console.log(`[QR Multiple] ====== USING FRONTEND APPROACH ======`);
+    console.log(`[QR Multiple] Will combine QR + template in canvas, then generate PDF with pdf-lib`);
+
+    // Pre-load template once
+    const templatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-01.png");
+    console.log(`[QR Multiple] Loading template from: ${templatePath}`);
+    
+    let templateImage;
+    try {
+      await fs.access(templatePath);
+      templateImage = await loadImage(templatePath);
+      console.log(`[QR Multiple] Template loaded: ${templateImage.width}x${templateImage.height}`);
+    } catch (templateError: any) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Template file not found",
+          message: `Failed to load template: ${templateError?.message}`,
+          path: templatePath,
+        },
+        { status: 500 }
+      );
+    }
 
     // Get base URL for internal API calls
     const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const internalBaseUrl = baseUrl.replace(/\/$/, "");
-    console.log(`[QR Multiple] Internal base URL: ${internalBaseUrl}`);
 
     // Create ZIP file
     const zip = new JSZip();
@@ -101,35 +126,68 @@ export async function POST(request: NextRequest) {
     // Process all products
     for (const product of products) {
       try {
-        console.log(`[QR Multiple] Fetching PDF for ${product.serialCode}...`);
+        console.log(`[QR Multiple] Processing ${product.serialCode}...`);
         
-        // Call the existing download-pdf endpoint that already works
-        // This endpoint uses the same logic as single download
-        const pdfUrl = `${internalBaseUrl}/api/qr/${encodeURIComponent(product.serialCode)}/download-pdf`;
-        console.log(`[QR Multiple] Calling: ${pdfUrl}`);
+        // 1. Get QR code from endpoint (no PDFKit)
+        const qrUrl = `${internalBaseUrl}/api/qr/${encodeURIComponent(product.serialCode)}/qr-only`;
+        const qrResponse = await fetch(qrUrl);
+        if (!qrResponse.ok) {
+          throw new Error(`Failed to fetch QR: ${qrResponse.status}`);
+        }
+        const qrBuffer = Buffer.from(await qrResponse.arrayBuffer());
+        const qrImage = await loadImage(qrBuffer);
+        console.log(`[QR Multiple] QR loaded for ${product.serialCode}: ${qrImage.width}x${qrImage.height}`);
+
+        // 2. Combine QR + template in canvas (same as frontend)
+        const canvas = createCanvas(templateImage.width, templateImage.height);
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(templateImage, 0, 0);
         
-        // Create internal request with session cookie
-        const pdfResponse = await fetch(pdfUrl, {
-          method: "GET",
-          headers: {
-            // Forward auth headers if available
-            Cookie: request.headers.get("cookie") || "",
-          },
+        const qrSize = Math.min(templateImage.width * 0.55, templateImage.height * 0.55, 900);
+        const qrX = (templateImage.width - qrSize) / 2;
+        const qrY = templateImage.height * 0.38;
+        
+        const padding = 8;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(qrX - padding, qrY - padding, qrSize + padding * 2, qrSize + padding * 2);
+        ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+        
+        // Add product name and serial (same as frontend)
+        if (product.name) {
+          const nameY = qrY - 35;
+          const nameFontSize = Math.floor(templateImage.width * 0.025);
+          ctx.fillStyle = "#222222";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.font = `${nameFontSize}px Arial, sans-serif`;
+          ctx.fillText(product.name, templateImage.width / 2, nameY);
+        }
+        
+        const serialY = qrY + qrSize + 35;
+        const fontSize = Math.floor(templateImage.width * 0.032);
+        ctx.fillStyle = "#222222";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = `${fontSize}px Arial, sans-serif`;
+        ctx.fillText(product.serialCode, templateImage.width / 2, serialY);
+        
+        const combinedBuffer = canvas.toBuffer("image/png");
+        console.log(`[QR Multiple] Combined image for ${product.serialCode}: ${combinedBuffer.length} bytes`);
+
+        // 3. Generate PDF using pdf-lib (no fontconfig errors)
+        const pdfDoc = await PDFDocument.create();
+        const page = pdfDoc.addPage([595, 842]); // A4
+        const pngImage = await pdfDoc.embedPng(combinedBuffer);
+        page.drawImage(pngImage, {
+          x: 0,
+          y: 0,
+          width: 595,
+          height: 842,
         });
-
-        if (!pdfResponse.ok) {
-          const errorText = await pdfResponse.text();
-          throw new Error(`Failed to fetch PDF for ${product.serialCode}: ${pdfResponse.status} - ${errorText.substring(0, 100)}`);
-        }
-
-        // Get PDF buffer
-        const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer());
         
-        if (!pdfBuffer || pdfBuffer.length === 0) {
-          throw new Error(`PDF buffer is empty for ${product.serialCode}`);
-        }
-
-        console.log(`[QR Multiple] PDF fetched for ${product.serialCode}, size: ${pdfBuffer.length} bytes`);
+        const pdfBytes = await pdfDoc.save();
+        const pdfBuffer = Buffer.from(pdfBytes);
+        console.log(`[QR Multiple] PDF generated for ${product.serialCode}: ${pdfBuffer.length} bytes`);
 
         // Sanitize filename
         const sanitizedName = product.name
