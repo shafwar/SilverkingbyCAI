@@ -434,7 +434,7 @@ export function QrPreviewGrid() {
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename=?"?([^\s"]+)"?/);
         if (filenameMatch) filename = filenameMatch[1];
-      }
+        }
       link.download = filename;
       document.body.appendChild(link);
       link.click();
@@ -515,7 +515,7 @@ export function QrPreviewGrid() {
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename=?"?([^\s"]+)"?/);
         if (filenameMatch) filename = filenameMatch[1];
-      }
+        }
       link.download = filename;
       document.body.appendChild(link);
       link.click();
