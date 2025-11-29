@@ -252,38 +252,75 @@ export async function POST(request: NextRequest) {
         const combinedBuffer = canvas.toBuffer("image/png");
         console.log(`[QR Multiple] Combined image generated for ${product.serialCode}, size: ${combinedBuffer.length} bytes`);
 
-        // 4. Create PDF (same as frontend uses jsPDF, but we use PDFKit for backend)
+        // 4. Create PDF using PDFKit (same approach as single download)
+        // Note: Fontconfig error is harmless - PDFKit will use built-in fonts
         const doc = new PDFDocument({
-          size: [595, 842], // A4 size
+          size: [595, 842], // A4 size in points
           margin: 0,
+          info: {
+            Title: `Silver King - QR Code ${finalSerialCode}`,
+            Author: "Silver King Admin",
+          },
         });
 
+        // Set up promise BEFORE adding content (critical for proper error handling)
         const chunks: Buffer[] = [];
-        doc.on("data", (chunk) => chunks.push(chunk));
-
-        // Wait for PDF to finish
         const pdfPromise = new Promise<Buffer>((resolve, reject) => {
-          doc.on("end", () => {
-            const buffer = Buffer.concat(chunks);
-            console.log(`[QR Multiple] PDF generated for ${product.serialCode}, size: ${buffer.length}`);
-            resolve(buffer);
+          // Collect PDF chunks
+          doc.on("data", (chunk) => {
+            chunks.push(chunk);
           });
+          
+          // Handle successful completion
+          doc.on("end", () => {
+            try {
+              const buffer = Buffer.concat(chunks);
+              if (buffer.length === 0) {
+                reject(new Error(`PDF buffer is empty for ${product.serialCode}`));
+                return;
+              }
+              console.log(`[QR Multiple] PDF generated for ${product.serialCode}, size: ${buffer.length} bytes`);
+              resolve(buffer);
+            } catch (error: any) {
+              console.error(`[QR Multiple] Error concatenating PDF chunks for ${product.serialCode}:`, error);
+              reject(error);
+            }
+          });
+          
+          // Handle errors
           doc.on("error", (err) => {
-            console.error(`[QR Multiple] PDF generation error for ${product.serialCode}:`, err);
+            console.error(`[QR Multiple] PDF generation error for ${product.serialCode}:`, {
+              error: err,
+              message: err?.message,
+              stack: err?.stack,
+            });
             reject(err);
           });
         });
 
-        // Add combined image to PDF - fit to A4 page
-        const dataUrl = `data:image/png;base64,${combinedBuffer.toString("base64")}`;
-        doc.image(dataUrl, {
-          fit: [595, 842], // Fit to full A4 page
-          align: "center",
-          valign: "center",
-        });
+        try {
+          // Add combined image to PDF - fit to A4 page
+          // Use Buffer directly instead of data URL for better reliability
+          doc.image(combinedBuffer, {
+            fit: [595, 842], // Fit to full A4 page
+            align: "center",
+            valign: "center",
+          });
 
-        doc.end();
+          // Finalize PDF
+          doc.end();
+        } catch (imageError: any) {
+          console.error(`[QR Multiple] Error adding image to PDF for ${product.serialCode}:`, {
+            error: imageError,
+            message: imageError?.message,
+            stack: imageError?.stack,
+            combinedBufferSize: combinedBuffer.length,
+          });
+          doc.end(); // Make sure to end the document even on error
+          throw new Error(`Failed to add image to PDF: ${imageError?.message || "Unknown error"}`);
+        }
 
+        // Wait for PDF to complete
         const pdfBuffer = await pdfPromise;
 
         if (!pdfBuffer || pdfBuffer.length === 0) {
@@ -375,11 +412,30 @@ export async function POST(request: NextRequest) {
     const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL;
     const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
     
-    const normalizedR2Endpoint = R2_ENDPOINT
-      ? R2_ENDPOINT.replace(/\/[^\/]+$/, "")
-      : R2_ACCOUNT_ID
-        ? `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
-        : null;
+    // Normalize R2 endpoint - remove bucket name if present, ensure proper format
+    let normalizedR2Endpoint: string | null = null;
+    if (R2_ENDPOINT) {
+      // Remove bucket name and any trailing paths
+      normalizedR2Endpoint = R2_ENDPOINT
+        .replace(/\/[^\/]+$/, "") // Remove last path segment (bucket name)
+        .replace(/\/$/, ""); // Remove trailing slash
+    } else if (R2_ACCOUNT_ID) {
+      normalizedR2Endpoint = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+    }
+    
+    console.log(`[QR Multiple] R2 Configuration Check:`, {
+      hasEndpoint: !!R2_ENDPOINT,
+      endpoint: R2_ENDPOINT?.substring(0, 60) + "...",
+      normalizedEndpoint: normalizedR2Endpoint?.substring(0, 60) + "...",
+      hasAccountId: !!R2_ACCOUNT_ID,
+      accountId: R2_ACCOUNT_ID?.substring(0, 10) + "...",
+      hasBucket: !!R2_BUCKET,
+      bucket: R2_BUCKET,
+      hasAccessKey: !!R2_ACCESS_KEY_ID,
+      hasSecretKey: !!R2_SECRET_ACCESS_KEY,
+      hasPublicUrl: !!R2_PUBLIC_URL,
+      publicUrl: R2_PUBLIC_URL,
+    });
 
     const r2Available =
       !!normalizedR2Endpoint &&
@@ -388,12 +444,12 @@ export async function POST(request: NextRequest) {
       !!R2_SECRET_ACCESS_KEY &&
       !!R2_PUBLIC_URL;
 
-    if (r2Available) {
+    if (r2Available && normalizedR2Endpoint) {
       try {
         // Create R2 client with proper configuration (forcePathStyle is required for R2)
         const r2Client = new S3Client({
           region: "auto",
-          endpoint: normalizedR2Endpoint,
+          endpoint: normalizedR2Endpoint, // Now guaranteed to be string, not null
           credentials: {
             accessKeyId: R2_ACCESS_KEY_ID!,
             secretAccessKey: R2_SECRET_ACCESS_KEY!,
