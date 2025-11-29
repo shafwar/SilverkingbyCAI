@@ -160,13 +160,16 @@ export async function POST(request: NextRequest) {
         failCount++;
         const errorMessage = error?.message || String(error);
         const errorStack = error?.stack || "";
+        const errorName = error?.name || "UnknownError";
         console.error(`[QR Multiple] Failed to generate PDF for ${product.serialCode}:`, {
+          name: errorName,
           message: errorMessage,
           stack: errorStack,
           serialCode: product.serialCode,
           productName: product.name,
+          weight: product.weight,
         });
-        // Continue with next product
+        // Continue with next product - don't throw, just log and continue
         }
       }
     }
@@ -180,8 +183,11 @@ export async function POST(request: NextRequest) {
         failedCount: failCount,
         message: "Failed to generate any PDFs. All products failed.",
         suggestion: "Please check server logs for detailed error messages. Common issues: template file not found, image processing errors, or memory issues.",
+        requestedSerialCodes: serialCodes.length,
+        foundProducts: products.length,
       };
       console.error("[QR Multiple] All PDFs failed:", errorDetails);
+      console.error("[QR Multiple] First few serial codes that failed:", serialCodes.slice(0, 5));
       return NextResponse.json(
         { 
           error: errorDetails.message,
@@ -189,6 +195,11 @@ export async function POST(request: NextRequest) {
         },
         { status: 500 }
       );
+    }
+
+    // Log warning if some failed but not all
+    if (failCount > 0) {
+      console.warn(`[QR Multiple] Partial success: ${successCount} succeeded, ${failCount} failed out of ${products.length} total`);
     }
 
     // Generate ZIP file

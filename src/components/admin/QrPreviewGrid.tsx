@@ -581,19 +581,32 @@ export function QrPreviewGrid() {
       let errorMessage = error?.message || "Terjadi kesalahan tidak diketahui";
 
       // Try to extract more detailed error message
-      if (errorMessage.includes("Failed to generate any PDFs")) {
+      if (errorMessage.includes("Failed to generate any PDFs") || errorMessage.includes("All products failed")) {
         errorMessage =
-          "Gagal menghasilkan PDF. Pastikan semua produk memiliki QR code yang valid dan template serticard tersedia.";
+          "Gagal menghasilkan PDF. Pastikan semua produk memiliki QR code yang valid dan template serticard tersedia. Periksa log server untuk detail error.";
       } else if (errorMessage.includes("No products with QR codes found")) {
         errorMessage =
           "Tidak ada produk dengan QR code yang ditemukan. Pastikan produk memiliki QR code yang valid.";
-      } else if (errorMessage.includes("Server error")) {
+      } else if (errorMessage.includes("Server error") || errorMessage.includes("<!DOCTYPE")) {
         errorMessage =
-          "Terjadi kesalahan pada server. Silakan coba lagi atau hubungi administrator.";
-      } else if (errorMessage.includes("Template file not found")) {
+          "Terjadi kesalahan pada server. Silakan coba lagi atau hubungi administrator. Periksa log server untuk detail.";
+      } else if (errorMessage.includes("Template file not found") || errorMessage.includes("Serticard-01.png")) {
         errorMessage =
-          "Template serticard tidak ditemukan. Pastikan file Serticard-01.png ada di public/images/serticard/";
+          "Template serticard tidak ditemukan. Pastikan file Serticard-01.png ada di public/images/serticard/. Periksa log server untuk path lengkap.";
+      } else if (errorMessage.includes("Failed to generate QR code")) {
+        errorMessage =
+          "Gagal generate QR code. Pastikan serial code valid dan URL verification dapat diakses.";
+      } else if (errorMessage.includes("Failed to load template image")) {
+        errorMessage =
+          "Gagal memuat template image. Pastikan file template tidak corrupt dan dapat dibaca.";
       }
+      
+      // Log full error for debugging
+      console.error("[Download All] Full error details:", {
+        message: errorMessage,
+        originalError: error,
+        stack: error?.stack,
+      });
 
       alert(`Gagal mengunduh: ${errorMessage}`);
     } finally {

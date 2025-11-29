@@ -533,24 +533,55 @@ export async function generateQRWithSerticard(
     // Load template image
     const templatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-01.png");
     
+    console.log(`[QR Serticard] Attempting to load template from: ${templatePath}`);
+    console.log(`[QR Serticard] Current working directory: ${process.cwd()}`);
+    
     // Check if template file exists
     try {
       await fs.access(templatePath);
-    } catch (accessError) {
-      throw new Error(`Template file not found at: ${templatePath}. Please ensure Serticard-01.png exists in public/images/serticard/. Error: ${accessError}`);
+      console.log(`[QR Serticard] Template file found at: ${templatePath}`);
+    } catch (accessError: any) {
+      const errorMsg = `Template file not found at: ${templatePath}. Please ensure Serticard-01.png exists in public/images/serticard/. Error: ${accessError?.message || accessError}`;
+      console.error(`[QR Serticard] ${errorMsg}`);
+      throw new Error(errorMsg);
     }
     
-    const templateImage = await loadImage(templatePath);
+    // Try to load template image
+    let templateImage;
+    try {
+      templateImage = await loadImage(templatePath);
+      console.log(`[QR Serticard] Template loaded successfully, dimensions: ${templateImage.width}x${templateImage.height}`);
+    } catch (loadError: any) {
+      const errorMsg = `Failed to load template image from ${templatePath}. Error: ${loadError?.message || loadError}`;
+      console.error(`[QR Serticard] ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
 
     // Generate QR code - larger size for better print quality
-    const qrBuffer = await QRCode.toBuffer(targetUrl, {
-      width: 800,
-      errorCorrectionLevel: "H",
-      color: { dark: "#0c0c0c", light: "#ffffff" },
-      margin: 2,
-    });
+    let qrBuffer: Buffer;
+    try {
+      qrBuffer = await QRCode.toBuffer(targetUrl, {
+        width: 800,
+        errorCorrectionLevel: "H",
+        color: { dark: "#0c0c0c", light: "#ffffff" },
+        margin: 2,
+      });
+      console.log(`[QR Serticard] QR code generated for ${serialCode}, size: ${qrBuffer.length} bytes`);
+    } catch (qrError: any) {
+      const errorMsg = `Failed to generate QR code for ${serialCode}. Error: ${qrError?.message || qrError}`;
+      console.error(`[QR Serticard] ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
 
-    const qrImage = await loadImage(qrBuffer);
+    let qrImage;
+    try {
+      qrImage = await loadImage(qrBuffer);
+      console.log(`[QR Serticard] QR image loaded, dimensions: ${qrImage.width}x${qrImage.height}`);
+    } catch (loadError: any) {
+      const errorMsg = `Failed to load QR image for ${serialCode}. Error: ${loadError?.message || loadError}`;
+      console.error(`[QR Serticard] ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
 
     // Create canvas with template dimensions
     const canvas = createCanvas(templateImage.width, templateImage.height);
@@ -614,9 +645,21 @@ export async function generateQRWithSerticard(
       ctx.fillText(displayName, templateImage.width / 2, nameY);
     }
 
-    return canvas.toBuffer("image/png");
-  } catch (error) {
-    console.error("Error generating QR with Serticard template:", error);
-    throw error;
+    const resultBuffer = canvas.toBuffer("image/png");
+    console.log(`[QR Serticard] Successfully generated serticard image for ${serialCode}, size: ${resultBuffer.length} bytes`);
+    return resultBuffer;
+  } catch (error: any) {
+    const errorMsg = error?.message || String(error);
+    const errorStack = error?.stack || "";
+    console.error(`[QR Serticard] Error generating QR with Serticard template for ${serialCode}:`, {
+      message: errorMsg,
+      stack: errorStack,
+      serialCode,
+      productName,
+      productWeight,
+      targetUrl,
+    });
+    // Re-throw with more context
+    throw new Error(`Failed to generate QR with Serticard template for ${serialCode}: ${errorMsg}`);
   }
 }
