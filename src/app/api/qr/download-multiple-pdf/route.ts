@@ -67,16 +67,17 @@ export async function POST(request: NextRequest) {
 
     const hasMultipleWeights = productsByWeight.size > 1;
 
+    // Create ZIP file (tetap di scope utama function!)
+    const zip = new JSZip();
+    let successCount = 0;
+    let failCount = 0;
+
     // BATCHING
     const BATCH_SIZE = 100;
-    const batches = [];
     for (let i = 0; i < products.length; i += BATCH_SIZE) {
-      batches.push(products.slice(i, i + BATCH_SIZE));
-    }
-    let batchIdx = 0;
-    for (const batch of batches) {
-      batchIdx++;
-      console.log(`[QR Multiple] Processing batch ${batchIdx}/${batches.length}, size: ${batch.length}`);
+      const batch = products.slice(i, i + BATCH_SIZE);
+      let batchIdx = Math.floor(i / BATCH_SIZE) + 1;
+      console.log(`[QR Multiple] Processing batch ${batchIdx}/${Math.ceil(products.length / BATCH_SIZE)}, size: ${batch.length}`);
       for (const product of batch) {
         try {
           console.log(`[QR Multiple] Processing ${product.serialCode}...`);
