@@ -252,15 +252,14 @@ export async function POST(request: NextRequest) {
         const combinedBuffer = canvas.toBuffer("image/png");
         console.log(`[QR Multiple] Combined image generated for ${product.serialCode}, size: ${combinedBuffer.length} bytes`);
 
-        // 4. Create PDF using PDFKit (same approach as single download)
-        // Note: Fontconfig error is harmless - PDFKit will use built-in fonts
+        // 4. Create PDF using PDFKit (same approach as download-all-pdf)
+        // Use minimal config to avoid font system initialization
+        // Fontconfig error is harmless - PDFKit will use built-in fonts if needed
+        // But we don't use any text, only images, so font system shouldn't be accessed
         const doc = new PDFDocument({
           size: [595, 842], // A4 size in points
           margin: 0,
-          info: {
-            Title: `Silver King - QR Code ${finalSerialCode}`,
-            Author: "Silver King Admin",
-          },
+          // Don't set info to avoid any font system access
         });
 
         // Set up promise BEFORE adding content (critical for proper error handling)
