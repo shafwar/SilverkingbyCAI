@@ -145,8 +145,9 @@ export function QrPreviewGrid() {
 
       // All images now come from same-origin proxy endpoints with CORS headers
       // Set crossOrigin for proxy endpoints to allow canvas export
-      const isProxyEndpoint = src.includes("/api/admin/template-proxy") || src.includes("/api/admin/qr-proxy");
-      
+      const isProxyEndpoint =
+        src.includes("/api/admin/template-proxy") || src.includes("/api/admin/qr-proxy");
+
       if (isProxyEndpoint) {
         img.crossOrigin = "anonymous";
       }
@@ -169,11 +170,7 @@ export function QrPreviewGrid() {
       img.onerror = (error) => {
         clearTimeout(timeout);
         console.error(`[LoadImage] Failed to load image: ${src}`, error);
-        reject(
-          new Error(
-            `Failed to load image: ${src}. Please check if the file exists.`
-          )
-        );
+        reject(new Error(`Failed to load image: ${src}. Please check if the file exists.`));
       };
 
       img.src = src;
@@ -189,7 +186,7 @@ export function QrPreviewGrid() {
       // Proxy will fetch from R2 and serve with proper CORS headers, or fallback to local
       const absoluteFrontUrl = `${window.location.origin}/api/admin/template-proxy?template=front`;
       const absoluteBackUrl = `${window.location.origin}/api/admin/template-proxy?template=back`;
-      
+
       console.log("[Download] Using template proxy URLs:", {
         front: absoluteFrontUrl,
         back: absoluteBackUrl,
