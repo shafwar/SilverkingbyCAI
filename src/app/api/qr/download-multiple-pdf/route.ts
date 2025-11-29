@@ -212,6 +212,34 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Validate that both templates are loaded
+    if (!frontTemplateImage) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Front template not loaded",
+          message: "Failed to load front template (Serticard-01.png) from R2 or local",
+        },
+        { status: 500 }
+      );
+    }
+    
+    if (!backTemplateImage) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Back template not loaded",
+          message: "Failed to load back template (Serticard-02.png) from R2 or local",
+        },
+        { status: 500 }
+      );
+    }
+    
+    console.log(`[QR Multiple] Both templates loaded successfully:`, {
+      front: `${frontTemplateImage.width}x${frontTemplateImage.height}`,
+      back: `${backTemplateImage.width}x${backTemplateImage.height}`,
+    });
+
     // Get base URL for internal API calls
     const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const internalBaseUrl = baseUrl.replace(/\/$/, "");
@@ -286,12 +314,17 @@ export async function POST(request: NextRequest) {
         console.log(`[QR Multiple] Front image for ${product.serialCode}: ${frontBuffer.length} bytes`);
 
         // 3. Create BACK canvas (no QR, just template)
+        // Validate back template is loaded
+        if (!backTemplateImage) {
+          throw new Error("Back template image is not loaded");
+        }
+        
         const backCanvas = createCanvas(backTemplateImage.width, backTemplateImage.height);
         const backCtx = backCanvas.getContext("2d");
         backCtx.drawImage(backTemplateImage, 0, 0);
         
         const backBuffer = backCanvas.toBuffer("image/png");
-        console.log(`[QR Multiple] Back image for ${product.serialCode}: ${backBuffer.length} bytes`);
+        console.log(`[QR Multiple] Back image for ${product.serialCode}: ${backBuffer.length} bytes (${backTemplateImage.width}x${backTemplateImage.height})`);
 
         // 4. Generate PDF with LANDSCAPE orientation, side-by-side layout (same as frontend)
         // Calculate optimal page size based on template dimensions to avoid white space
@@ -320,6 +353,12 @@ export async function POST(request: NextRequest) {
         const frontPngImage = await pdfDoc.embedPng(frontBuffer);
         const backPngImage = await pdfDoc.embedPng(backBuffer);
         
+        console.log(`[QR Multiple] Embedding images to PDF for ${product.serialCode}:`, {
+          frontSize: `${frontTemplateImage.width}x${frontTemplateImage.height}`,
+          backSize: `${backTemplateImage.width}x${backTemplateImage.height}`,
+          pageSize: `${pageWidth}x${pageHeight}`,
+        });
+        
         // Add front template (left side) - full size, no scaling
         page.drawImage(frontPngImage, {
           x: 0,
@@ -336,6 +375,11 @@ export async function POST(request: NextRequest) {
           y: backY,
           width: backTemplateImage.width,
           height: backTemplateImage.height,
+        });
+        
+        console.log(`[QR Multiple] Both templates drawn to PDF for ${product.serialCode}:`, {
+          frontPosition: `(0, ${pageHeight - frontTemplateImage.height})`,
+          backPosition: `(${backX}, ${backY})`,
         });
         
         const pdfBytes = await pdfDoc.save();
