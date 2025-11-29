@@ -409,6 +409,11 @@ export function QrPreviewGrid() {
       let total = contentLength ? parseInt(contentLength, 10) : null;
       let loaded = 0;
       const reader = response.body?.getReader();
+      if (!reader) {
+        setDownloadPercent(null);
+        setDownloadLabel("");
+        throw new Error("Download stream is not available. Please try again later.");
+      }
       const chunks = [];
       while (true) {
         const { done, value } = await reader.read();
@@ -485,6 +490,11 @@ export function QrPreviewGrid() {
       let total = contentLength ? parseInt(contentLength, 10) : null;
       let loaded = 0;
       const reader = response.body?.getReader();
+      if (!reader) {
+        setDownloadPercent(null);
+        setDownloadLabel("");
+        throw new Error("Download stream is not available. Please try again later.");
+      }
       const chunks = [];
       while (true) {
         const { done, value } = await reader.read();
@@ -1071,180 +1081,4 @@ export function QrPreviewGrid() {
                                       target.dataset.retried = "true";
                                       console.error("[QR Table] Image load error, retrying once:", product.serialCode);
                                       // Force reload by adding cache buster only on retry
-                                      target.src = `/api/qr/${product.serialCode}?t=${Date.now()}`;
-                                    } else {
-                                      console.error("[QR Table] Image failed after retry:", product.serialCode);
-                                    }
-                                  }}
-                                />
-                              </div>
-                            </td>
-                            <td className="px-4 py-4">
-                              <div className="flex items-center justify-end gap-2">
-                                <motion.button
-                                  onClick={() => setSelected(product)}
-                                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/70 transition hover:border-[#FFD700]/40 hover:bg-white/10 hover:text-white"
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.95 }}
-                                >
-                                  <Maximize2 className="h-3.5 w-3.5" />
-                                  {t('enlarge')}
-                                </motion.button>
-                                <motion.button
-                                  onClick={() => handleDownload(product)}
-                                  disabled={isDownloading}
-                                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/70 transition hover:border-[#FFD700]/40 hover:bg-white/10 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                                  whileHover={{ scale: isDownloading ? 1 : 1.05 }}
-                                  whileTap={{ scale: isDownloading ? 1 : 0.95 }}
-                                >
-                                  <Download className="h-3.5 w-3.5" />
-                                  {t('download')}
-                                </motion.button>
-                              </div>
-                            </td>
-                          </motion.tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </motion.div>
-        ) : (
-          /* Grid Layout with Smooth Transition */
-          <motion.div
-            key="grid-layout"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{
-              duration: 0.3,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-            className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3"
-          >
-            {filteredProducts.length === 0 ? (
-              <div className="col-span-full rounded-2xl border border-white/10 bg-white/5 p-10 text-center text-white/60">
-                {t('noProductsFound')} {searchQuery && `${t('matching')} "${searchQuery}"`}
-              </div>
-            ) : (
-              filteredProducts.map((product, index) => {
-                const isItemSelected = selectedItems.has(product.id);
-                return (
-          <AnimatedCard key={product.id} delay={index * 0.04}>
-            <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <button
-                          type="button"
-                          onClick={() => toggleSelectItem(product.id)}
-                          className="inline-flex items-center justify-center text-white/60 hover:text-white transition-colors"
-                        >
-                          {isItemSelected ? (
-                            <CheckSquare2 className="h-5 w-5 text-[#FFD700]" />
-                          ) : (
-                            <Square className="h-5 w-5 text-white/40" />
-                          )}
-                        </button>
-              <div>
-                <p className="text-xs uppercase tracking-[0.4em] text-white/60">Serial</p>
-                <p className="mt-1 font-mono text-lg text-white">{product.serialCode}</p>
-                        </div>
-              </div>
-              <div className="rounded-full border border-white/10 p-3">
-                <QrCode className="h-5 w-5 text-[#FFD700]" />
-              </div>
-            </div>
-            <p className="mt-4 text-2xl font-semibold">{product.name}</p>
-            <p className="text-sm text-white/60">{product.weight} gr</p>
-              <motion.div
-                className="mt-6 flex items-center gap-4 rounded-2xl border border-white/5 bg-black/40 p-4"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={`/api/qr/${product.serialCode}`}
-                        alt={product.name}
-                        className="h-24 w-24 sm:h-28 sm:w-28 flex-shrink-0 rounded-2xl border border-white/10 bg-white p-2 sm:p-3 object-contain"
-                        loading="lazy"
-                        key={product.serialCode}
-                        onError={(e) => {
-                          // Only retry once if image fails to load
-                          const target = e.target as HTMLImageElement;
-                          if (!target.dataset.retried) {
-                            target.dataset.retried = "true";
-                            console.error("[QR Grid] Image load error, retrying once:", product.serialCode);
-                            // Force reload by adding cache buster only on retry
-                            target.src = `/api/qr/${product.serialCode}?t=${Date.now()}`;
-                          } else {
-                            console.error("[QR Grid] Image failed after retry:", product.serialCode);
-                          }
-                        }}
-                      />
-                <button
-                  className="ml-auto inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 transition hover:border-[#FFD700]/40 hover:text-white"
-                  onClick={() => setSelected(product)}
-                >
-                  <Maximize2 className="h-4 w-4" />
-                  {t('enlarge')}
-                </button>
-              </motion.div>
-                  </AnimatedCard>
-                );
-              })
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <Modal open={Boolean(selected)} onClose={() => setSelected(null)} title={selected?.name}>
-        {selected && (
-          <div className="flex flex-col items-center gap-4">
-            <div className="relative w-full max-w-sm">
-              {/* Responsive QR Code Image Container */}
-              <div className="relative aspect-square w-full rounded-3xl border border-white/10 bg-white p-4 sm:p-6 overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  key={`qr-modal-${selected.serialCode}`}
-                  src={`/api/qr/${selected.serialCode}`}
-                  alt={selected.name}
-                  className="h-full w-full object-contain transition-opacity duration-300"
-                  loading="eager"
-                  onError={(e) => {
-                    // Only retry once if image fails to load
-                    const target = e.target as HTMLImageElement;
-                    if (!target.dataset.retried) {
-                      target.dataset.retried = "true";
-                      console.error("[QR Modal] Image load error, retrying once:", selected.serialCode);
-                      // Force reload by adding cache buster only on retry
-                      target.src = `/api/qr/${selected.serialCode}?t=${Date.now()}`;
-                    } else {
-                      console.error("[QR Modal] Image failed after retry:", selected.serialCode);
-                    }
-                  }}
-                />
-              </div>
-            </div>
-            <p className="font-mono text-lg sm:text-xl text-white/70">{selected.serialCode}</p>
-            <motion.button
-              onClick={() => handleDownload(selected)}
-              disabled={isDownloading}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-black/40 px-6 py-3 text-sm text-white/70 transition hover:border-[#FFD700]/40 hover:bg-black/60 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-              whileHover={{ scale: isDownloading ? 1 : 1.05 }}
-              whileTap={{ scale: isDownloading ? 1 : 0.95 }}
-            >
-              <Download className="h-4 w-4" />
-              {isDownloading ? t('downloading') : t('downloadQRCode')}
-            </motion.button>
-          </div>
-        )}
-      </Modal>
-      {downloadPercent !== null && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/70 backdrop-blur">
-          <DownloadProgressBar percent={downloadPercent} label={downloadLabel} />
-        </div>
-      )}
-    </>
-  );
-}
+                                      target.src = `/api/qr/${product.serialCode}?t=${Date.now()}`
