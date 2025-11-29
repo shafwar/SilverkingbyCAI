@@ -138,17 +138,16 @@ export function QrPreviewGrid() {
   }, [data?.products, searchQuery, selectedCategory]);
 
   // Helper function to load image with better error handling and CORS support
-  const loadImage = (src: string, retryCount = 0): Promise<HTMLImageElement> => {
+  // All images now go through proxy endpoints which have CORS headers
+  const loadImage = (src: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
 
-      // Determine if this is an external URL (R2) or same-origin
-      const isExternal = src.startsWith("http") && !src.includes(window.location.hostname);
-      const isSameOrigin = src.startsWith(window.location.origin) || src.startsWith("/");
-
-      // Set crossOrigin for external URLs (R2) to allow canvas export
-      // Don't set for same-origin to avoid CORS preflight issues
-      if (isExternal) {
+      // All images now come from same-origin proxy endpoints with CORS headers
+      // Set crossOrigin for proxy endpoints to allow canvas export
+      const isProxyEndpoint = src.includes("/api/admin/template-proxy") || src.includes("/api/admin/qr-proxy");
+      
+      if (isProxyEndpoint) {
         img.crossOrigin = "anonymous";
       }
 
@@ -162,7 +161,7 @@ export function QrPreviewGrid() {
         console.log(`[LoadImage] Successfully loaded: ${src}`, {
           width: img.width,
           height: img.height,
-          crossOrigin: img.crossOrigin,
+          crossOrigin: img.crossOrigin || "not set",
         });
         resolve(img);
       };
@@ -170,15 +169,11 @@ export function QrPreviewGrid() {
       img.onerror = (error) => {
         clearTimeout(timeout);
         console.error(`[LoadImage] Failed to load image: ${src}`, error);
-        
-        // If external URL failed and we haven't retried, try without crossOrigin
-        if (isExternal && retryCount === 0) {
-          console.warn(`[LoadImage] Retrying without crossOrigin: ${src}`);
-          // Retry without crossOrigin (some R2 buckets may not have CORS configured)
-          return loadImage(src, 1).then(resolve).catch(reject);
-        }
-        
-        reject(new Error(`Failed to load image: ${src}. Please check if the file exists and CORS is configured.`));
+        reject(
+          new Error(
+            `Failed to load image: ${src}. Please check if the file exists.`
+          )
+        );
       };
 
       img.src = src;
@@ -190,48 +185,20 @@ export function QrPreviewGrid() {
     try {
       console.log("[Download] Starting download for:", product.serialCode);
 
-      // Get template URLs (front and back) from R2 or local
-      // Endpoint will auto-upload to R2 if templates don't exist
-      const templateResponse = await fetch("/api/admin/serticard-template-url");
-      if (!templateResponse.ok) {
-        // Fallback to local paths if endpoint fails
-        console.warn("[Download] Failed to get template URL from endpoint, using local paths");
-        const absoluteFrontUrl = window.location.origin + "/images/serticard/Serticard-01.png";
-        const absoluteBackUrl = window.location.origin + "/images/serticard/Serticard-02.png";
-        return { absoluteFrontUrl, absoluteBackUrl };
-      }
-      const { frontTemplateUrl, backTemplateUrl } = await templateResponse.json();
-      console.log("[Download] Template URLs from endpoint:", {
-        front: frontTemplateUrl,
-        back: backTemplateUrl,
-      });
-
-      // Ensure absolute URLs for templates
-      // If template URL is from R2 (starts with http), use it directly
-      // Otherwise, prepend origin for local paths
-      let absoluteFrontUrl: string;
-      let absoluteBackUrl: string;
-
-      if (frontTemplateUrl.startsWith("http")) {
-        absoluteFrontUrl = frontTemplateUrl;
-      } else {
-        absoluteFrontUrl = window.location.origin + frontTemplateUrl;
-      }
-
-      if (backTemplateUrl.startsWith("http")) {
-        absoluteBackUrl = backTemplateUrl;
-      } else {
-        absoluteBackUrl = window.location.origin + backTemplateUrl;
-      }
-
-      console.log("[Download] Absolute template URLs:", {
+      // Use proxy endpoint for templates to avoid CORS/tainted canvas issues
+      // Proxy will fetch from R2 and serve with proper CORS headers, or fallback to local
+      const absoluteFrontUrl = `${window.location.origin}/api/admin/template-proxy?template=front`;
+      const absoluteBackUrl = `${window.location.origin}/api/admin/template-proxy?template=back`;
+      
+      console.log("[Download] Using template proxy URLs:", {
         front: absoluteFrontUrl,
         back: absoluteBackUrl,
       });
 
-      // Get QR code ONLY (without text) for template overlay
-      const qrImageUrl = `${window.location.origin}/api/qr/${product.serialCode}/qr-only`;
-      console.log("[Download] QR URL:", qrImageUrl);
+      // Get QR code from R2 via proxy endpoint (prioritizes R2, fallback to API)
+      // This ensures QR code comes from R2 if available, with proper CORS headers
+      const qrImageUrl = `${window.location.origin}/api/admin/qr-proxy?serialCode=${encodeURIComponent(product.serialCode)}`;
+      console.log("[Download] QR URL (via proxy, from R2):", qrImageUrl);
 
       // Load all images: front template, back template, and QR code
       // If R2 template fails, fallback to local paths
@@ -297,7 +264,9 @@ export function QrPreviewGrid() {
       } catch (drawError: any) {
         // If tainted canvas error, try to reload image without crossOrigin
         if (drawError.message?.includes("tainted") || drawError.message?.includes("cross-origin")) {
-          console.warn("[Download] Tainted canvas detected, reloading front template without crossOrigin");
+          console.warn(
+            "[Download] Tainted canvas detected, reloading front template without crossOrigin"
+          );
           const localFrontUrl = window.location.origin + "/images/serticard/Serticard-01.png";
           const fallbackImg = await loadImage(localFrontUrl);
           frontCtx.drawImage(fallbackImg, 0, 0);
@@ -373,7 +342,9 @@ export function QrPreviewGrid() {
       } catch (drawError: any) {
         // If tainted canvas error, try to reload image without crossOrigin
         if (drawError.message?.includes("tainted") || drawError.message?.includes("cross-origin")) {
-          console.warn("[Download] Tainted canvas detected, reloading back template without crossOrigin");
+          console.warn(
+            "[Download] Tainted canvas detected, reloading back template without crossOrigin"
+          );
           const localBackUrl = window.location.origin + "/images/serticard/Serticard-02.png";
           const fallbackImg = await loadImage(localBackUrl);
           backCtx.drawImage(fallbackImg, 0, 0);
@@ -388,7 +359,7 @@ export function QrPreviewGrid() {
       console.log("[Download] Converting canvases to image data...");
       let frontImageData: string;
       let backImageData: string;
-      
+
       try {
         frontImageData = frontCanvas.toDataURL("image/png", 1.0);
       } catch (toDataError: any) {
@@ -409,7 +380,12 @@ export function QrPreviewGrid() {
           const qrY = localFrontImg.height * 0.38;
           const padding = 8;
           fallbackCtx.fillStyle = "#ffffff";
-          fallbackCtx.fillRect(qrX - padding, qrY - padding, qrSize + padding * 2, qrSize + padding * 2);
+          fallbackCtx.fillRect(
+            qrX - padding,
+            qrY - padding,
+            qrSize + padding * 2,
+            qrSize + padding * 2
+          );
           fallbackCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
           // Add product name and serial
           if (product.name) {
@@ -423,7 +399,10 @@ export function QrPreviewGrid() {
             const maxWidth = localFrontImg.width * 0.65;
             const metrics = fallbackCtx.measureText(displayName);
             if (metrics.width > maxWidth) {
-              while (fallbackCtx.measureText(displayName + "...").width > maxWidth && displayName.length > 0) {
+              while (
+                fallbackCtx.measureText(displayName + "...").width > maxWidth &&
+                displayName.length > 0
+              ) {
                 displayName = displayName.slice(0, -1);
               }
               displayName += "...";
@@ -442,7 +421,7 @@ export function QrPreviewGrid() {
           throw toDataError;
         }
       }
-      
+
       try {
         backImageData = backCanvas.toDataURL("image/png", 1.0);
       } catch (toDataError: any) {
@@ -462,7 +441,7 @@ export function QrPreviewGrid() {
           throw toDataError;
         }
       }
-      
+
       console.log("[Download] Image data lengths:", {
         front: frontImageData.length,
         back: backImageData.length,
