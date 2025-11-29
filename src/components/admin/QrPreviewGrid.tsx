@@ -474,43 +474,45 @@ export function QrPreviewGrid() {
 
           // Check Content-Type - could be JSON (R2 URL) or ZIP (direct download)
           const contentType = response.headers.get("Content-Type");
-          
+
           if (contentType?.includes("application/json")) {
             // Response is JSON with R2 download URL
             const result = await response.json();
             if (result.success && result.downloadUrl) {
-              setDownloadLabel(
-                `Mengunduh batch ${batchNumber}/${totalBatches} dari R2...`
-              );
+              setDownloadLabel(`Mengunduh batch ${batchNumber}/${totalBatches} dari R2...`);
               setDownloadPercent(Math.round(((downloadedBatches + 0.5) / totalBatches) * 100));
-              
+
               console.log(`[Download] Downloading from R2: ${result.downloadUrl}`);
-              
+
               // Download from R2 URL with progress tracking
               const r2Response = await fetch(result.downloadUrl);
               if (!r2Response.ok) {
-                throw new Error(`Gagal mengunduh dari R2 untuk batch ${batchNumber}. Status: ${r2Response.status}`);
+                throw new Error(
+                  `Gagal mengunduh dari R2 untuk batch ${batchNumber}. Status: ${r2Response.status}`
+                );
               }
-              
+
               // Track download progress from R2
               const r2ContentLength = r2Response.headers.get("content-length");
               const r2Total = r2ContentLength ? parseInt(r2ContentLength, 10) : null;
               let r2Loaded = 0;
-              
+
               const r2Reader = r2Response.body?.getReader();
               if (!r2Reader) {
-                throw new Error(`Stream download tidak tersedia dari R2 untuk batch ${batchNumber}`);
+                throw new Error(
+                  `Stream download tidak tersedia dari R2 untuk batch ${batchNumber}`
+                );
               }
-              
+
               const r2Chunks: BlobPart[] = [];
               while (true) {
                 const { done, value } = await r2Reader.read();
                 if (done) break;
-                
+
                 if (value) {
                   r2Chunks.push(value);
                   r2Loaded += value.length;
-                  
+
                   // Update progress
                   if (r2Total) {
                     const r2Progress = Math.round((r2Loaded / r2Total) * 100);
@@ -524,20 +526,25 @@ export function QrPreviewGrid() {
                   }
                 }
               }
-              
+
               const r2Blob = new Blob(r2Chunks, { type: "application/zip" });
               const url = window.URL.createObjectURL(r2Blob);
               const link = document.createElement("a");
               link.href = url;
-              link.download = result.filename || `Silver-King-QR-Batch-${batchNumber}-of-${totalBatches}.zip`;
+              link.download =
+                result.filename || `Silver-King-QR-Batch-${batchNumber}-of-${totalBatches}.zip`;
               document.body.appendChild(link);
               link.click();
               document.body.removeChild(link);
               window.URL.revokeObjectURL(url);
-              
-              console.log(`[Download] Batch ${batchNumber}/${totalBatches} downloaded from R2 successfully: ${result.downloadUrl}`);
+
+              console.log(
+                `[Download] Batch ${batchNumber}/${totalBatches} downloaded from R2 successfully: ${result.downloadUrl}`
+              );
             } else {
-              throw new Error(result.error || `Gagal mendapatkan URL download untuk batch ${batchNumber}`);
+              throw new Error(
+                result.error || `Gagal mendapatkan URL download untuk batch ${batchNumber}`
+              );
             }
           } else if (contentType?.startsWith("application/zip")) {
             // Direct ZIP download (fallback)
@@ -595,7 +602,7 @@ export function QrPreviewGrid() {
             link.click();
             document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
-            
+
             console.log(`[Download] Batch ${batchNumber}/${totalBatches} downloaded directly`);
           } else {
             const errorText = await response.text();

@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateQRWithSerticard } from "@/lib/qr";
 import { getVerifyUrl } from "@/utils/constants";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import PDFDocument from "pdfkit";
 import JSZip from "jszip";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import QRCode from "qrcode";
+import { createCanvas, loadImage } from "canvas";
+import { getSerticardTemplateUrl } from "@/lib/qr";
+import { promises as fs } from "fs";
+import path from "path";
 
 /**
  * Generate ZIP file with multiple PDFs (one PDF per QR code)
@@ -82,23 +86,86 @@ export async function POST(request: NextRequest) {
       for (const product of batch) {
       try {
         console.log(`[QR Multiple] Processing ${product.serialCode}...`);
-        const verifyUrl = getVerifyUrl(product.serialCode);
-
-        // Generate QR with Serticard template
-        const pngBuffer = await generateQRWithSerticard(
-          product.serialCode,
-          verifyUrl,
-          product.name,
-          product.weight
-        );
-
-        if (!pngBuffer || pngBuffer.length === 0) {
-          throw new Error(`Failed to generate PNG buffer for ${product.serialCode}`);
+        
+        // Use the same approach as frontend: load template and QR separately, then combine
+        // 1. Load template from file system (same as frontend uses)
+        const templatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-01.png");
+        let templateImage;
+        try {
+          await fs.access(templatePath);
+          templateImage = await loadImage(templatePath);
+          console.log(`[QR Multiple] Template loaded for ${product.serialCode}, size: ${templateImage.width}x${templateImage.height}`);
+        } catch (templateError: any) {
+          throw new Error(`Template file not found: ${templateError.message}`);
         }
 
-        console.log(`[QR Multiple] PNG generated for ${product.serialCode}, size: ${pngBuffer.length}`);
+        // 2. Generate QR code ONLY (same as /api/qr/[serialCode]/qr-only)
+        const verifyUrl = getVerifyUrl(product.serialCode);
+        const qrBuffer = await QRCode.toBuffer(verifyUrl, {
+          width: 800,
+          errorCorrectionLevel: "H",
+          color: { dark: "#0c0c0c", light: "#ffffff" },
+          margin: 2,
+        });
+        const qrImage = await loadImage(qrBuffer);
+        console.log(`[QR Multiple] QR code generated for ${product.serialCode}, size: ${qrImage.width}x${qrImage.height}`);
 
-        // Create PDF
+        // 3. Create canvas and combine (same logic as frontend)
+        const canvas = createCanvas(templateImage.width, templateImage.height);
+        const ctx = canvas.getContext("2d");
+
+        // Draw template as background
+        ctx.drawImage(templateImage, 0, 0);
+
+        // Calculate QR position (same as frontend)
+        const qrSize = Math.min(templateImage.width * 0.55, templateImage.height * 0.55, 900);
+        const qrX = (templateImage.width - qrSize) / 2; // Center horizontally
+        const qrY = templateImage.height * 0.38; // Position vertically
+
+        // Draw white background for QR
+        const padding = 8;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(qrX - padding, qrY - padding, qrSize + padding * 2, qrSize + padding * 2);
+
+        // Draw QR code on template
+        ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+
+        // Add product name above QR code
+        if (product.name) {
+          const nameY = qrY - 35;
+          const nameFontSize = Math.floor(templateImage.width * 0.025);
+          ctx.fillStyle = "#222222";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.font = `${nameFontSize}px Arial, sans-serif`;
+
+          let displayName = product.name;
+          const maxWidth = templateImage.width * 0.65;
+          const metrics = ctx.measureText(displayName);
+          if (metrics.width > maxWidth) {
+            while (ctx.measureText(displayName + "...").width > maxWidth && displayName.length > 0) {
+              displayName = displayName.slice(0, -1);
+            }
+            displayName += "...";
+          }
+
+          ctx.fillText(displayName, templateImage.width / 2, nameY);
+        }
+
+        // Add serial number below QR code
+        const serialY = qrY + qrSize + 35;
+        const fontSize = Math.floor(templateImage.width * 0.032);
+        ctx.fillStyle = "#222222";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = `${fontSize}px "LucidaSans", "Lucida Console", "Courier New", monospace`;
+        ctx.fillText(product.serialCode, templateImage.width / 2, serialY);
+
+        // Get combined image buffer
+        const combinedBuffer = canvas.toBuffer("image/png");
+        console.log(`[QR Multiple] Combined image generated for ${product.serialCode}, size: ${combinedBuffer.length} bytes`);
+
+        // 4. Create PDF (same as frontend uses jsPDF, but we use PDFKit for backend)
         const doc = new PDFDocument({
           size: [595, 842], // A4 size
           margin: 0,
@@ -120,9 +187,8 @@ export async function POST(request: NextRequest) {
           });
         });
 
-        // Add image to PDF - fit to A4 page for print
-        // Use data URL approach which is more reliable with PDFKit
-        const dataUrl = `data:image/png;base64,${pngBuffer.toString("base64")}`;
+        // Add combined image to PDF - fit to A4 page
+        const dataUrl = `data:image/png;base64,${combinedBuffer.toString("base64")}`;
         doc.image(dataUrl, {
           fit: [595, 842], // Fit to full A4 page
           align: "center",
