@@ -300,19 +300,26 @@ export async function POST(request: NextRequest) {
 
         try {
           // Add combined image to PDF - fit to A4 page
-          // Use Buffer directly instead of data URL for better reliability
-          doc.image(combinedBuffer, {
+          // Use data URL approach (same as download-all-pdf) which is more reliable
+          // This avoids font system initialization issues
+          const dataUrl = `data:image/png;base64,${combinedBuffer.toString("base64")}`;
+          
+          console.log(`[QR Multiple] Adding image to PDF for ${product.serialCode}, image size: ${combinedBuffer.length} bytes`);
+          
+          doc.image(dataUrl, {
             fit: [595, 842], // Fit to full A4 page
             align: "center",
             valign: "center",
           });
 
-          // Finalize PDF
+          // Finalize PDF (don't call any font/text methods to avoid fontconfig errors)
           doc.end();
         } catch (imageError: any) {
           console.error(`[QR Multiple] Error adding image to PDF for ${product.serialCode}:`, {
             error: imageError,
             message: imageError?.message,
+            name: imageError?.name,
+            code: imageError?.code,
             stack: imageError?.stack,
             combinedBufferSize: combinedBuffer.length,
           });
