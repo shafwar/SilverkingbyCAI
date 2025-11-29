@@ -186,12 +186,27 @@ export function QrPreviewGrid() {
       console.log("[Download] Template URLs:", { front: frontTemplateUrl, back: backTemplateUrl });
 
       // Ensure absolute URLs for templates
-      const absoluteFrontUrl = frontTemplateUrl.startsWith("http")
-        ? frontTemplateUrl
-        : window.location.origin + frontTemplateUrl;
-      const absoluteBackUrl = backTemplateUrl.startsWith("http")
-        ? backTemplateUrl
-        : window.location.origin + backTemplateUrl;
+      // If template URL is from R2 (starts with http), use it directly
+      // Otherwise, prepend origin for local paths
+      let absoluteFrontUrl: string;
+      let absoluteBackUrl: string;
+      
+      if (frontTemplateUrl.startsWith("http")) {
+        absoluteFrontUrl = frontTemplateUrl;
+      } else {
+        absoluteFrontUrl = window.location.origin + frontTemplateUrl;
+      }
+      
+      if (backTemplateUrl.startsWith("http")) {
+        absoluteBackUrl = backTemplateUrl;
+      } else {
+        absoluteBackUrl = window.location.origin + backTemplateUrl;
+      }
+      
+      console.log("[Download] Absolute template URLs:", {
+        front: absoluteFrontUrl,
+        back: absoluteBackUrl,
+      });
 
       // Get QR code ONLY (without text) for template overlay
       const qrImageUrl = `${window.location.origin}/api/qr/${product.serialCode}/qr-only`;

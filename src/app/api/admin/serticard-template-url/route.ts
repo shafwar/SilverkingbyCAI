@@ -3,9 +3,9 @@ import { auth } from "@/lib/auth";
 
 /**
  * Get Serticard template URL
- * Returns R2 URL if available, otherwise falls back to local path
- * For local development/testing, uses local path
- * In production with R2, uses R2 URL
+ * Always returns local path for now (templates are in public folder)
+ * R2 support is optional - if templates are uploaded to R2, they can be accessed directly
+ * But for reliability, we use local paths that always work
  */
 export async function GET() {
   try {
@@ -14,32 +14,15 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL;
-    const isLocalDev = process.env.NODE_ENV === "development" || !R2_PUBLIC_URL;
+    // Always use local paths - templates are in public folder and always accessible
+    // This ensures it works in both development and production
+    const frontTemplateUrl = "/images/serticard/Serticard-01.png";
+    const backTemplateUrl = "/images/serticard/Serticard-02.png";
 
-    let frontTemplateUrl: string;
-    let backTemplateUrl: string;
-
-    if (isLocalDev) {
-      // Local development: use local path
-      frontTemplateUrl = "/images/serticard/Serticard-01.png";
-      backTemplateUrl = "/images/serticard/Serticard-02.png";
-      
-      console.log("[Template URL] Using local paths (development):", {
-        front: frontTemplateUrl,
-        back: backTemplateUrl,
-      });
-    } else {
-      // Production: use R2 URL if available
-      const base = R2_PUBLIC_URL.endsWith("/") ? R2_PUBLIC_URL.slice(0, -1) : R2_PUBLIC_URL;
-      frontTemplateUrl = `${base}/templates/serticard-01.png`;
-      backTemplateUrl = `${base}/templates/serticard-02.png`;
-      
-      console.log("[Template URL] Using R2 URLs (production):", {
-        front: frontTemplateUrl,
-        back: backTemplateUrl,
-      });
-    }
+    console.log("[Template URL] Returning local template paths:", {
+      front: frontTemplateUrl,
+      back: backTemplateUrl,
+    });
 
     return NextResponse.json({
       frontTemplateUrl,
