@@ -93,22 +93,44 @@ export async function POST(request: NextRequest) {
     console.log(`[QR Multiple] ====== USING FRONTEND APPROACH ======`);
     console.log(`[QR Multiple] Will combine QR + template in canvas, then generate PDF with pdf-lib`);
 
-    // Pre-load template once
-    const templatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-01.png");
-    console.log(`[QR Multiple] Loading template from: ${templatePath}`);
+    // Pre-load BOTH templates (front and back) once
+    const frontTemplatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-01.png");
+    const backTemplatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-02.png");
     
-    let templateImage;
+    console.log(`[QR Multiple] Loading templates...`);
+    console.log(`[QR Multiple] Front template: ${frontTemplatePath}`);
+    console.log(`[QR Multiple] Back template: ${backTemplatePath}`);
+    
+    let frontTemplateImage;
+    let backTemplateImage;
+    
     try {
-      await fs.access(templatePath);
-      templateImage = await loadImage(templatePath);
-      console.log(`[QR Multiple] Template loaded: ${templateImage.width}x${templateImage.height}`);
+      await fs.access(frontTemplatePath);
+      frontTemplateImage = await loadImage(frontTemplatePath);
+      console.log(`[QR Multiple] Front template loaded: ${frontTemplateImage.width}x${frontTemplateImage.height}`);
     } catch (templateError: any) {
       return NextResponse.json(
         {
           success: false,
-          error: "Template file not found",
-          message: `Failed to load template: ${templateError?.message}`,
-          path: templatePath,
+          error: "Front template file not found",
+          message: `Failed to load front template: ${templateError?.message}`,
+          path: frontTemplatePath,
+        },
+        { status: 500 }
+      );
+    }
+    
+    try {
+      await fs.access(backTemplatePath);
+      backTemplateImage = await loadImage(backTemplatePath);
+      console.log(`[QR Multiple] Back template loaded: ${backTemplateImage.width}x${backTemplateImage.height}`);
+    } catch (templateError: any) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Back template file not found",
+          message: `Failed to load back template: ${templateError?.message}`,
+          path: backTemplatePath,
         },
         { status: 500 }
       );
@@ -138,56 +160,112 @@ export async function POST(request: NextRequest) {
         const qrImage = await loadImage(qrBuffer);
         console.log(`[QR Multiple] QR loaded for ${product.serialCode}: ${qrImage.width}x${qrImage.height}`);
 
-        // 2. Combine QR + template in canvas (same as frontend)
-        const canvas = createCanvas(templateImage.width, templateImage.height);
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(templateImage, 0, 0);
+        // 2. Create FRONT canvas with QR + template (same as frontend)
+        const frontCanvas = createCanvas(frontTemplateImage.width, frontTemplateImage.height);
+        const frontCtx = frontCanvas.getContext("2d");
+        frontCtx.drawImage(frontTemplateImage, 0, 0);
         
-        const qrSize = Math.min(templateImage.width * 0.55, templateImage.height * 0.55, 900);
-        const qrX = (templateImage.width - qrSize) / 2;
-        const qrY = templateImage.height * 0.38;
+        const qrSize = Math.min(frontTemplateImage.width * 0.55, frontTemplateImage.height * 0.55, 900);
+        const qrX = (frontTemplateImage.width - qrSize) / 2;
+        const qrY = frontTemplateImage.height * 0.38;
         
         const padding = 8;
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(qrX - padding, qrY - padding, qrSize + padding * 2, qrSize + padding * 2);
-        ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+        frontCtx.fillStyle = "#ffffff";
+        frontCtx.fillRect(qrX - padding, qrY - padding, qrSize + padding * 2, qrSize + padding * 2);
+        frontCtx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
         
-        // Add product name and serial (same as frontend)
+        // Add product name above QR code
         if (product.name) {
           const nameY = qrY - 35;
-          const nameFontSize = Math.floor(templateImage.width * 0.025);
-          ctx.fillStyle = "#222222";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.font = `${nameFontSize}px Arial, sans-serif`;
-          ctx.fillText(product.name, templateImage.width / 2, nameY);
+          const nameFontSize = Math.floor(frontTemplateImage.width * 0.025);
+          frontCtx.fillStyle = "#222222";
+          frontCtx.textAlign = "center";
+          frontCtx.textBaseline = "middle";
+          frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
+          
+          // Truncate if too long (same as frontend)
+          let displayName = product.name;
+          const maxWidth = frontTemplateImage.width * 0.65;
+          const metrics = frontCtx.measureText(displayName);
+          if (metrics.width > maxWidth) {
+            while (frontCtx.measureText(displayName + "...").width > maxWidth && displayName.length > 0) {
+              displayName = displayName.slice(0, -1);
+            }
+            displayName += "...";
+          }
+          
+          frontCtx.fillText(displayName, frontTemplateImage.width / 2, nameY);
         }
         
+        // Add serial number below QR code
         const serialY = qrY + qrSize + 35;
-        const fontSize = Math.floor(templateImage.width * 0.032);
-        ctx.fillStyle = "#222222";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.font = `${fontSize}px Arial, sans-serif`;
-        ctx.fillText(product.serialCode, templateImage.width / 2, serialY);
+        const fontSize = Math.floor(frontTemplateImage.width * 0.032);
+        frontCtx.fillStyle = "#222222";
+        frontCtx.textAlign = "center";
+        frontCtx.textBaseline = "middle";
+        frontCtx.font = `${fontSize}px "LucidaSans", "Lucida Console", "Courier New", monospace`;
+        frontCtx.fillText(product.serialCode, frontTemplateImage.width / 2, serialY);
         
-        const combinedBuffer = canvas.toBuffer("image/png");
-        console.log(`[QR Multiple] Combined image for ${product.serialCode}: ${combinedBuffer.length} bytes`);
+        const frontBuffer = frontCanvas.toBuffer("image/png");
+        console.log(`[QR Multiple] Front image for ${product.serialCode}: ${frontBuffer.length} bytes`);
 
-        // 3. Generate PDF using pdf-lib (no fontconfig errors)
+        // 3. Create BACK canvas (no QR, just template)
+        const backCanvas = createCanvas(backTemplateImage.width, backTemplateImage.height);
+        const backCtx = backCanvas.getContext("2d");
+        backCtx.drawImage(backTemplateImage, 0, 0);
+        
+        const backBuffer = backCanvas.toBuffer("image/png");
+        console.log(`[QR Multiple] Back image for ${product.serialCode}: ${backBuffer.length} bytes`);
+
+        // 4. Generate PDF with LANDSCAPE orientation, side-by-side layout (same as frontend)
         const pdfDoc = await PDFDocument.create();
-        const page = pdfDoc.addPage([595, 842]); // A4
-        const pngImage = await pdfDoc.embedPng(combinedBuffer);
-        page.drawImage(pngImage, {
-          x: 0,
-          y: 0,
-          width: 595,
-          height: 842,
+        // A4 landscape: 297mm x 210mm = 840.94 x 595.28 points
+        const page = pdfDoc.addPage([840.94, 595.28]); // A4 landscape
+        
+        // Calculate dimensions for side-by-side layout (same as frontend)
+        const pageWidth = 840.94; // A4 landscape width in points
+        const pageHeight = 595.28; // A4 landscape height in points
+        const margin = 14.17; // 5mm in points
+        const cardWidth = (pageWidth - margin * 3) / 2; // Two cards with margins
+        
+        const cardHeightFront = (frontTemplateImage.height / frontTemplateImage.width) * cardWidth;
+        const cardHeightBack = (backTemplateImage.height / backTemplateImage.width) * cardWidth;
+        const maxCardHeight = Math.max(cardHeightFront, cardHeightBack);
+        
+        // Scale down if too tall
+        const scaleFactor = maxCardHeight > pageHeight - margin * 2 ? (pageHeight - margin * 2) / maxCardHeight : 1;
+        const finalCardWidth = cardWidth * scaleFactor;
+        const finalCardHeightFront = cardHeightFront * scaleFactor;
+        const finalCardHeightBack = cardHeightBack * scaleFactor;
+        
+        // Center vertically
+        const yOffsetFront = (pageHeight - finalCardHeightFront) / 2;
+        const yOffsetBack = (pageHeight - finalCardHeightBack) / 2;
+        
+        // Embed images
+        const frontPngImage = await pdfDoc.embedPng(frontBuffer);
+        const backPngImage = await pdfDoc.embedPng(backBuffer);
+        
+        // Add front template (left side)
+        page.drawImage(frontPngImage, {
+          x: margin,
+          y: yOffsetFront,
+          width: finalCardWidth,
+          height: finalCardHeightFront,
+        });
+        
+        // Add back template (right side)
+        const backX = margin * 2 + finalCardWidth;
+        page.drawImage(backPngImage, {
+          x: backX,
+          y: yOffsetBack,
+          width: finalCardWidth,
+          height: finalCardHeightBack,
         });
         
         const pdfBytes = await pdfDoc.save();
         const pdfBuffer = Buffer.from(pdfBytes);
-        console.log(`[QR Multiple] PDF generated for ${product.serialCode}: ${pdfBuffer.length} bytes`);
+        console.log(`[QR Multiple] PDF generated for ${product.serialCode}: ${pdfBuffer.length} bytes (with front + back)`);
 
         // Sanitize filename
         const sanitizedName = product.name
