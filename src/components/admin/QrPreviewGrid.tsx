@@ -423,105 +423,146 @@ export function QrPreviewGrid() {
 
     try {
       const allProducts = data.products;
-      const serialCodes = allProducts.map((p) => p.serialCode);
+      const BATCH_SIZE = 100;
+      const totalBatches = Math.ceil(allProducts.length / BATCH_SIZE);
+      let downloadedBatches = 0;
 
-      setDownloadLabel(`Menggenerate ${allProducts.length} file PDF... 0%`);
-      setDownloadPercent(0);
+      // Split products into batches of 100 and download each batch as a separate ZIP
+      for (let i = 0; i < allProducts.length; i += BATCH_SIZE) {
+        const batch = allProducts.slice(i, i + BATCH_SIZE);
+        const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+        const serialCodes = batch.map((p) => p.serialCode);
 
-      // Call endpoint once with all serial codes - backend will handle batching internally and return 1 ZIP
-      const response = await fetch("/api/qr/download-multiple-pdf", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ serialCodes }),
-      });
+        setDownloadLabel(
+          `Menggenerate batch ${batchNumber}/${totalBatches}... (${serialCodes.length} file)`
+        );
+        setDownloadPercent(Math.round((downloadedBatches / totalBatches) * 100));
 
-      // Check if response is OK
-      if (!response.ok) {
-        let errorMessage = "Gagal mengunduh file ZIP";
         try {
-          const errorText = await response.text();
-          if (
-            errorText.trim().startsWith("<!DOCTYPE") ||
-            errorText.trim().startsWith("<html")
-          ) {
-            errorMessage = "Server error. Silakan coba lagi.";
-          } else {
+          // Call endpoint for this batch (100 files) - backend will generate and return 1 ZIP
+          const response = await fetch("/api/qr/download-multiple-pdf", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ serialCodes }),
+          });
+
+          // Check if response is OK
+          if (!response.ok) {
+            let errorMessage = `Batch ${batchNumber} gagal`;
             try {
-              const errorJson = JSON.parse(errorText);
-              errorMessage = errorJson.error || "Gagal mengunduh file ZIP";
-            } catch {
-              errorMessage = errorText || "Gagal mengunduh file ZIP";
+              const errorText = await response.text();
+              if (
+                errorText.trim().startsWith("<!DOCTYPE") ||
+                errorText.trim().startsWith("<html")
+              ) {
+                errorMessage = `Server error pada batch ${batchNumber}. Silakan coba lagi.`;
+              } else {
+                try {
+                  const errorJson = JSON.parse(errorText);
+                  errorMessage = errorJson.error || `Gagal mengunduh batch ${batchNumber}`;
+                } catch {
+                  errorMessage = errorText || `Gagal mengunduh batch ${batchNumber}`;
+                }
+              }
+            } catch (parseError) {
+              errorMessage = `Gagal mengunduh batch ${batchNumber}. Status: ${response.status}`;
+            }
+            throw new Error(errorMessage);
+          }
+
+          // Check Content-Type
+          const contentType = response.headers.get("Content-Type");
+          if (!contentType || !contentType.startsWith("application/zip")) {
+            const errorText = await response.text();
+            if (errorText.trim().startsWith("<!DOCTYPE") || errorText.trim().startsWith("<html")) {
+              throw new Error(`Server error pada batch ${batchNumber}. Silakan coba lagi.`);
+            }
+            throw new Error(`Response bukan file ZIP untuk batch ${batchNumber}`);
+          }
+
+          // Stream download with progress
+          const contentLength = response.headers.get("content-length");
+          const total = contentLength ? parseInt(contentLength, 10) : null;
+          let loaded = 0;
+
+          const reader = response.body?.getReader();
+          if (!reader) {
+            throw new Error(`Stream download tidak tersedia untuk batch ${batchNumber}`);
+          }
+
+          const chunks: BlobPart[] = [];
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            if (value) {
+              chunks.push(value);
+              loaded += value.length;
+            }
+
+            // Update progress within batch
+            if (total) {
+              const batchProgress = Math.round((loaded / total) * 100);
+              const overallProgress = Math.round(
+                ((downloadedBatches + batchProgress / 100) / totalBatches) * 100
+              );
+              setDownloadPercent(overallProgress);
+              setDownloadLabel(
+                `Mengunduh batch ${batchNumber}/${totalBatches}... ${batchProgress}%`
+              );
             }
           }
-        } catch (parseError) {
-          errorMessage = `Gagal mengunduh file ZIP. Status: ${response.status}`;
-        }
-        throw new Error(errorMessage);
-      }
 
-      // Check Content-Type
-      const contentType = response.headers.get("Content-Type");
-      if (!contentType || !contentType.startsWith("application/zip")) {
-        const errorText = await response.text();
-        if (errorText.trim().startsWith("<!DOCTYPE") || errorText.trim().startsWith("<html")) {
-          throw new Error("Server error. Silakan coba lagi.");
-        }
-        throw new Error("Response bukan file ZIP");
-      }
+          // Create blob and download this batch ZIP
+          const blob = new Blob(chunks, { type: "application/zip" });
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
 
-      // Stream download with progress
-      const contentLength = response.headers.get("content-length");
-      const total = contentLength ? parseInt(contentLength, 10) : null;
-      let loaded = 0;
+          const contentDisposition = response.headers.get("Content-Disposition");
+          const dateStr = new Date().toISOString().split("T")[0];
+          let filename = `Silver-King-QR-Batch-${batchNumber}-of-${totalBatches}-${dateStr}.zip`;
+          if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename=?"?([^\s"]+)"?/);
+            if (filenameMatch) {
+              filename = filenameMatch[1].replace(/\.zip$/, `-batch-${batchNumber}.zip`);
+            }
+          }
 
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error("Stream download tidak tersedia");
-      }
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
 
-      const chunks: BlobPart[] = [];
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+          downloadedBatches++;
+          console.log(`[Download] Batch ${batchNumber}/${totalBatches} downloaded successfully`);
 
-        if (value) {
-          chunks.push(value);
-          loaded += value.length;
-        }
-
-        // Update progress
-        if (total) {
-          const percent = Math.round((loaded / total) * 100);
-          setDownloadPercent(percent);
-          setDownloadLabel(`Mengunduh... ${percent}%`);
-        } else {
-          setDownloadLabel("Mengunduh...");
-        }
-      }
-
-      // Create blob and download
-      const blob = new Blob(chunks, { type: "application/zip" });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-
-      const contentDisposition = response.headers.get("Content-Disposition");
-      const dateStr = new Date().toISOString().split("T")[0];
-      let filename = `Silver-King-QR-Codes-${allProducts.length}-${dateStr}.zip`;
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename=?"?([^\s"]+)"?/);
-        if (filenameMatch) {
-          filename = filenameMatch[1];
+          // Small delay between downloads to avoid browser blocking
+          if (batchNumber < totalBatches) {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
+        } catch (batchError: any) {
+          console.error(`[Download] Batch ${batchNumber} failed:`, batchError);
+          const errorMsg = batchError?.message || "Unknown error";
+          // Check if error contains JSON string
+          let parsedError = errorMsg;
+          try {
+            if (errorMsg.includes("{") && errorMsg.includes("}")) {
+              const jsonMatch = errorMsg.match(/\{.*\}/);
+              if (jsonMatch) {
+                const errorJson = JSON.parse(jsonMatch[0]);
+                parsedError = errorJson.error || errorMsg;
+              }
+            }
+          } catch {
+            // Keep original error message if parsing fails
+          }
+          throw new Error(`Batch ${batchNumber} gagal: ${parsedError}`);
         }
       }
-
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
 
       setDownloadPercent(100);
       setDownloadLabel("Selesai!");
@@ -530,7 +571,9 @@ export function QrPreviewGrid() {
         setDownloadLabel("");
       }, 2000);
 
-      alert(`Berhasil mengunduh 1 file ZIP dengan ${allProducts.length} file QR code. Silakan extract untuk melihat semua file PDF.`);
+      alert(
+        `Berhasil mengunduh ${totalBatches} file ZIP (${allProducts.length} file QR total). Setiap ZIP berisi 100 file PDF (kecuali batch terakhir).`
+      );
     } catch (error: any) {
       setDownloadPercent(null);
       setDownloadLabel("");
