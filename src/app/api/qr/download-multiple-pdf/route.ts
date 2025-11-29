@@ -16,20 +16,36 @@ import path from "path";
  */
 export async function POST(request: NextRequest) {
   try {
+    console.log("[QR Multiple] Starting download-multiple-pdf request");
+    
     const session = await auth();
     if (!session || (session.user as any).role !== "ADMIN") {
+      console.error("[QR Multiple] Unauthorized access attempt");
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (parseError: any) {
+      console.error("[QR Multiple] Failed to parse request body:", parseError);
+      return NextResponse.json(
+        { error: "Invalid JSON in request body", details: parseError?.message },
+        { status: 400 }
+      );
+    }
+
     const { serialCodes, batchNumber } = body; // batchNumber is optional, used for R2 folder naming
 
     if (!serialCodes || !Array.isArray(serialCodes) || serialCodes.length === 0) {
+      console.error("[QR Multiple] Invalid serialCodes:", { serialCodes, type: typeof serialCodes });
       return NextResponse.json(
         { error: "serialCodes array is required and must not be empty" },
         { status: 400 }
       );
     }
+
+    console.log(`[QR Multiple] Received request for ${serialCodes.length} serial codes, batchNumber: ${batchNumber}`);
 
     // Get products matching the provided serial codes
     const products = await prisma.product.findMany({
@@ -71,6 +87,31 @@ export async function POST(request: NextRequest) {
 
     const hasMultipleWeights = productsByWeight.size > 1;
 
+    // Pre-load template once for all products (more efficient)
+    let templateImage: any = null;
+    const templatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-01.png");
+    
+    console.log(`[QR Multiple] Pre-loading template from: ${templatePath}`);
+    console.log(`[QR Multiple] Current working directory: ${process.cwd()}`);
+    
+    try {
+      await fs.access(templatePath);
+      templateImage = await loadImage(templatePath);
+      console.log(`[QR Multiple] Template pre-loaded successfully, size: ${templateImage.width}x${templateImage.height}`);
+    } catch (templateError: any) {
+      const errorMsg = `Failed to load template from ${templatePath}. Error: ${templateError?.message || templateError}. Please ensure Serticard-01.png exists in public/images/serticard/`;
+      console.error(`[QR Multiple] ${errorMsg}`);
+      return NextResponse.json(
+        {
+          error: "Template file not found",
+          message: errorMsg,
+          path: templatePath,
+          cwd: process.cwd(),
+        },
+        { status: 500 }
+      );
+    }
+
     // Create ZIP file (tetap di scope utama function!)
     const zip = new JSZip();
     let successCount = 0;
@@ -86,30 +127,9 @@ export async function POST(request: NextRequest) {
       try {
         console.log(`[QR Multiple] Processing ${product.serialCode}...`);
         
-        // Use the same approach as frontend: load template and QR separately, then combine
-        // 1. Load template - try local file system first (most reliable)
-        let templateImage;
-        const templatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-01.png");
-        
-        console.log(`[QR Multiple] Attempting to load template from: ${templatePath}`);
-        console.log(`[QR Multiple] Current working directory: ${process.cwd()}`);
-        
-        try {
-          // Check if file exists
-          await fs.access(templatePath);
-          console.log(`[QR Multiple] Template file exists, loading...`);
-          
-          // Load template image
-          templateImage = await loadImage(templatePath);
-          console.log(`[QR Multiple] Template loaded successfully for ${product.serialCode}, size: ${templateImage.width}x${templateImage.height}`);
-        } catch (templateError: any) {
-          const errorMsg = `Failed to load template from ${templatePath}. Error: ${templateError?.message || templateError}. Please ensure Serticard-01.png exists in public/images/serticard/`;
-          console.error(`[QR Multiple] ${errorMsg}`);
-          throw new Error(errorMsg);
-        }
-        
+        // Use pre-loaded template
         if (!templateImage) {
-          throw new Error(`Template image is null after loading for ${product.serialCode}`);
+          throw new Error(`Template image is null - pre-loading failed`);
         }
 
         // 2. Generate QR code ONLY (same as /api/qr/[serialCode]/qr-only)
@@ -418,9 +438,25 @@ export async function POST(request: NextRequest) {
         "Cache-Control": "no-cache",
       },
     });
-  } catch (error) {
-    console.error("Multiple PDF ZIP generation failed:", error);
-    return new NextResponse("Failed to generate ZIP file", { status: 500 });
+  } catch (error: any) {
+    const errorMessage = error?.message || String(error);
+    const errorStack = error?.stack || "";
+    const errorName = error?.name || "UnknownError";
+    
+    console.error("[QR Multiple] Fatal error in download-multiple-pdf:", {
+      name: errorName,
+      message: errorMessage,
+      stack: errorStack,
+    });
+    
+    return NextResponse.json(
+      {
+        error: "Failed to generate ZIP file",
+        message: errorMessage,
+        details: process.env.NODE_ENV === "development" ? errorStack : undefined,
+      },
+      { status: 500 }
+    );
   }
 }
 
