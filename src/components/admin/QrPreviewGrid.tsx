@@ -450,16 +450,23 @@ export function QrPreviewGrid() {
 
           // Check if response is OK
           if (!response.ok) {
-            const errorText = await response.text();
-            if (errorText.trim().startsWith("<!DOCTYPE") || errorText.trim().startsWith("<html")) {
-              throw new Error(`Server error pada batch ${batchNumber}. Silakan coba lagi.`);
-            }
+            let errorMessage = `Batch ${batchNumber} gagal`;
             try {
-              const errorJson = JSON.parse(errorText);
-              throw new Error(errorJson.error || `Gagal mengunduh batch ${batchNumber}`);
-            } catch {
-              throw new Error(errorText || `Gagal mengunduh batch ${batchNumber}`);
+              const errorText = await response.text();
+              if (errorText.trim().startsWith("<!DOCTYPE") || errorText.trim().startsWith("<html")) {
+                errorMessage = `Server error pada batch ${batchNumber}. Silakan coba lagi.`;
+              } else {
+                try {
+                  const errorJson = JSON.parse(errorText);
+                  errorMessage = errorJson.error || `Gagal mengunduh batch ${batchNumber}`;
+                } catch {
+                  errorMessage = errorText || `Gagal mengunduh batch ${batchNumber}`;
+                }
+              }
+            } catch (parseError) {
+              errorMessage = `Gagal mengunduh batch ${batchNumber}. Status: ${response.status}`;
             }
+            throw new Error(errorMessage);
           }
 
           // Check Content-Type
@@ -536,7 +543,21 @@ export function QrPreviewGrid() {
           }
         } catch (batchError: any) {
           console.error(`[Download] Batch ${batchNumber} failed:`, batchError);
-          throw new Error(`Batch ${batchNumber} gagal: ${batchError.message || "Unknown error"}`);
+          const errorMsg = batchError?.message || "Unknown error";
+          // Check if error contains JSON string
+          let parsedError = errorMsg;
+          try {
+            if (errorMsg.includes("{") && errorMsg.includes("}")) {
+              const jsonMatch = errorMsg.match(/\{.*\}/);
+              if (jsonMatch) {
+                const errorJson = JSON.parse(jsonMatch[0]);
+                parsedError = errorJson.error || errorMsg;
+              }
+            }
+          } catch {
+            // Keep original error message if parsing fails
+          }
+          throw new Error(`Batch ${batchNumber} gagal: ${parsedError}`);
         }
       }
 
@@ -552,7 +573,17 @@ export function QrPreviewGrid() {
       setDownloadPercent(null);
       setDownloadLabel("");
       console.error("Failed to download batch ZIPs:", error);
-      const errorMessage = error?.message || "Terjadi kesalahan tidak diketahui";
+      let errorMessage = error?.message || "Terjadi kesalahan tidak diketahui";
+      
+      // Try to extract more detailed error message
+      if (errorMessage.includes("Failed to generate any PDFs")) {
+        errorMessage = "Gagal menghasilkan PDF. Pastikan semua produk memiliki QR code yang valid dan template serticard tersedia.";
+      } else if (errorMessage.includes("No products with QR codes found")) {
+        errorMessage = "Tidak ada produk dengan QR code yang ditemukan. Pastikan produk memiliki QR code yang valid.";
+      } else if (errorMessage.includes("Server error")) {
+        errorMessage = "Terjadi kesalahan pada server. Silakan coba lagi atau hubungi administrator.";
+      }
+      
       alert(`Gagal mengunduh: ${errorMessage}`);
     } finally {
       setIsDownloadingAll(false);
@@ -586,20 +617,27 @@ export function QrPreviewGrid() {
 
       // Check if response is OK
       if (!response.ok) {
-        const errorText = await response.text();
-        // Check if response is HTML (error page from server)
-        if (errorText.trim().startsWith("<!DOCTYPE") || errorText.trim().startsWith("<html")) {
-          setDownloadPercent(null);
-          setDownloadLabel("");
-          throw new Error("Server error: Terjadi kesalahan pada server. Silakan coba lagi.");
-        }
-        // Try to parse as JSON error
+        let errorMessage = "Gagal mengunduh file ZIP";
         try {
-          const errorJson = JSON.parse(errorText);
-          throw new Error(errorJson.error || "Gagal mengunduh file ZIP");
-        } catch {
-          throw new Error(errorText || "Gagal mengunduh file ZIP");
+          const errorText = await response.text();
+          // Check if response is HTML (error page from server)
+          if (errorText.trim().startsWith("<!DOCTYPE") || errorText.trim().startsWith("<html")) {
+            errorMessage = "Server error: Terjadi kesalahan pada server. Silakan coba lagi.";
+          } else {
+            // Try to parse as JSON error
+            try {
+              const errorJson = JSON.parse(errorText);
+              errorMessage = errorJson.error || "Gagal mengunduh file ZIP";
+            } catch {
+              errorMessage = errorText || "Gagal mengunduh file ZIP";
+            }
+          }
+        } catch (parseError) {
+          errorMessage = `Gagal mengunduh file ZIP. Status: ${response.status}`;
         }
+        setDownloadPercent(null);
+        setDownloadLabel("");
+        throw new Error(errorMessage);
       }
 
       // Check Content-Type to ensure it's a ZIP file
@@ -677,7 +715,17 @@ export function QrPreviewGrid() {
       setDownloadPercent(null);
       setDownloadLabel("");
       console.error("Failed to download selected ZIP:", error);
-      const errorMessage = error?.message || "Terjadi kesalahan tidak diketahui";
+      let errorMessage = error?.message || "Terjadi kesalahan tidak diketahui";
+      
+      // Try to extract more detailed error message
+      if (errorMessage.includes("Failed to generate any PDFs")) {
+        errorMessage = "Gagal menghasilkan PDF. Pastikan semua produk yang dipilih memiliki QR code yang valid dan template serticard tersedia.";
+      } else if (errorMessage.includes("No products with QR codes found")) {
+        errorMessage = "Tidak ada produk dengan QR code yang ditemukan. Pastikan produk yang dipilih memiliki QR code yang valid.";
+      } else if (errorMessage.includes("Server error")) {
+        errorMessage = "Terjadi kesalahan pada server. Silakan coba lagi atau hubungi administrator.";
+      }
+      
       alert(`Gagal mengunduh: ${errorMessage}`);
     } finally {
       setIsDownloadingSelected(false);
