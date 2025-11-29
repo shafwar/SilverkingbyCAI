@@ -433,7 +433,9 @@ export function QrPreviewGrid() {
         const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
         const serialCodes = batch.map((p) => p.serialCode);
 
-        setDownloadLabel(`Mengunduh batch ${batchNumber}/${totalBatches}... (${serialCodes.length} file)`);
+        setDownloadLabel(
+          `Mengunduh batch ${batchNumber}/${totalBatches}... (${serialCodes.length} file)`
+        );
         setDownloadPercent(Math.round((downloadedBatches / totalBatches) * 100));
 
         try {
@@ -545,9 +547,7 @@ export function QrPreviewGrid() {
         setDownloadLabel("");
       }, 2000);
 
-      alert(
-        `Berhasil mengunduh ${totalBatches} file ZIP (${allProducts.length} file QR total)`
-      );
+      alert(`Berhasil mengunduh ${totalBatches} file ZIP (${allProducts.length} file QR total)`);
     } catch (error: any) {
       setDownloadPercent(null);
       setDownloadLabel("");
@@ -1245,16 +1245,28 @@ export function QrPreviewGrid() {
                                 />
                               </div>
                             </td>
-                            <td className="px-4 py-4 text-right text-sm font-light">
-                              <motion.button
-                                type="button"
-                                onClick={() => setSelected(product)}
-                                className="inline-flex items-center justify-center text-white/60 hover:text-white transition-colors"
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                              >
-                                <Maximize2 className="h-4 w-4" />
-                              </motion.button>
+                            <td className="px-4 py-4">
+                              <div className="flex items-center justify-end gap-2">
+                                <motion.button
+                                  onClick={() => setSelected(product)}
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/70 transition hover:border-[#FFD700]/40 hover:bg-white/10 hover:text-white"
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                >
+                                  <Maximize2 className="h-3.5 w-3.5" />
+                                  {t("enlarge")}
+                                </motion.button>
+                                <motion.button
+                                  onClick={() => handleDownload(product)}
+                                  disabled={isDownloading}
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/70 transition hover:border-[#FFD700]/40 hover:bg-white/10 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                  whileHover={{ scale: isDownloading ? 1 : 1.05 }}
+                                  whileTap={{ scale: isDownloading ? 1 : 0.95 }}
+                                >
+                                  <Download className="h-3.5 w-3.5" />
+                                  {t("download")}
+                                </motion.button>
+                              </div>
                             </td>
                           </motion.tr>
                         );
