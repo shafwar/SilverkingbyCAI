@@ -156,9 +156,16 @@ export async function POST(request: NextRequest) {
         zip.file(`${folderPath}${filename}`, pdfBuffer);
         successCount++;
         console.log(`[QR Multiple] Added ${folderPath}${filename} to ZIP`);
-      } catch (error) {
+      } catch (error: any) {
         failCount++;
-        console.error(`[QR Multiple] Failed to generate PDF for ${product.serialCode}:`, error);
+        const errorMessage = error?.message || String(error);
+        const errorStack = error?.stack || "";
+        console.error(`[QR Multiple] Failed to generate PDF for ${product.serialCode}:`, {
+          message: errorMessage,
+          stack: errorStack,
+          serialCode: product.serialCode,
+          productName: product.name,
+        });
         // Continue with next product
         }
       }
@@ -167,8 +174,19 @@ export async function POST(request: NextRequest) {
     console.log(`[QR Multiple] PDF generation complete: ${successCount} success, ${failCount} failed`);
 
     if (successCount === 0) {
+      // Get more details about the failure
+      const errorDetails = {
+        totalProducts: products.length,
+        failedCount: failCount,
+        message: "Failed to generate any PDFs. All products failed.",
+        suggestion: "Please check server logs for detailed error messages. Common issues: template file not found, image processing errors, or memory issues.",
+      };
+      console.error("[QR Multiple] All PDFs failed:", errorDetails);
       return NextResponse.json(
-        { error: "Failed to generate any PDFs. All products failed." },
+        { 
+          error: errorDetails.message,
+          details: errorDetails,
+        },
         { status: 500 }
       );
     }

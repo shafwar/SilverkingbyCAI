@@ -532,6 +532,14 @@ export async function generateQRWithSerticard(
   try {
     // Load template image
     const templatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-01.png");
+    
+    // Check if template file exists
+    try {
+      await fs.access(templatePath);
+    } catch (accessError) {
+      throw new Error(`Template file not found at: ${templatePath}. Please ensure Serticard-01.png exists in public/images/serticard/. Error: ${accessError}`);
+    }
+    
     const templateImage = await loadImage(templatePath);
 
     // Generate QR code - larger size for better print quality
