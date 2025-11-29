@@ -68,7 +68,9 @@ export function QrPreviewGrid() {
 
   // State untuk upload template ke R2
   const [isUploadingTemplate, setIsUploadingTemplate] = useState(false);
-  const [templateUploadStatus, setTemplateUploadStatus] = useState<"idle" | "success" | "error">("idle");
+  const [templateUploadStatus, setTemplateUploadStatus] = useState<"idle" | "success" | "error">(
+    "idle"
+  );
 
   // Extract categories from products (first 3 letters of serial code)
   const categories = useMemo(() => {
@@ -955,7 +957,9 @@ export function QrPreviewGrid() {
     } catch (error: any) {
       console.error("Failed to upload templates:", error);
       setTemplateUploadStatus("error");
-      alert(`❌ Gagal upload template ke R2: ${error.message}\n\nPastikan R2 environment variables sudah dikonfigurasi dengan benar.`);
+      alert(
+        `❌ Gagal upload template ke R2: ${error.message}\n\nPastikan R2 environment variables sudah dikonfigurasi dengan benar.`
+      );
     } finally {
       setIsUploadingTemplate(false);
     }
@@ -1061,13 +1065,14 @@ export function QrPreviewGrid() {
         </div>
       </motion.section>
 
-      {/* Search Bar and Layout Toggle */}
+      {/* Search Bar and Layout Toggle - Responsive Layout */}
       {data && data.products.length > 0 && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-1 items-center gap-4">
+        <div className="mb-6 space-y-3">
+          {/* Top Row: Search and Layout Toggle */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 min-w-0">
             {/* Search Bar */}
             <motion.div
-              className="group flex flex-1 items-center rounded-full border border-white/10 bg-white/5 px-5 py-3 focus-within:border-[#FFD700]/50 focus-within:bg-white/10 focus-within:shadow-[0_0_20px_rgba(255,215,0,0.15)] transition-all max-w-md backdrop-blur-sm"
+              className="group flex flex-1 items-center rounded-full border border-white/10 bg-white/5 px-4 py-2.5 sm:px-5 sm:py-3 focus-within:border-[#FFD700]/50 focus-within:bg-white/10 focus-within:shadow-[0_0_20px_rgba(255,215,0,0.15)] transition-all backdrop-blur-sm min-w-0"
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{
@@ -1076,118 +1081,19 @@ export function QrPreviewGrid() {
                 delay: 0.5,
               }}
             >
-              <Search className="h-4 w-4 text-white/50 mr-3 transition-colors group-focus-within:text-[#FFD700]/70" />
+              <Search className="h-4 w-4 text-white/50 mr-2 sm:mr-3 transition-colors group-focus-within:text-[#FFD700]/70 flex-shrink-0" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t("searchPlaceholder")}
-                className="flex-1 bg-transparent text-sm font-light text-white placeholder:text-white/40 placeholder:font-light focus:outline-none"
+                className="flex-1 bg-transparent text-sm font-light text-white placeholder:text-white/40 placeholder:font-light focus:outline-none min-w-0"
               />
             </motion.div>
 
-            {/* Category Filter - Custom Dropdown */}
+            {/* Layout Toggle - Right aligned on desktop, full width on mobile */}
             <motion.div
-              ref={categoryDropdownRef}
-              className="relative"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{
-                duration: 0.4,
-                ease: [0.22, 1, 0.36, 1],
-                delay: 0.52,
-              }}
-            >
-              <motion.button
-                type="button"
-                onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                className="group relative flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-light text-white backdrop-blur-sm transition-all hover:border-[#FFD700]/50 hover:bg-white/10 focus:border-[#FFD700]/50 focus:bg-white/10 focus:outline-none focus:shadow-[0_0_20px_rgba(255,215,0,0.15)] min-w-[200px] justify-between"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <Filter className="h-4 w-4 text-white/50 transition-colors group-hover:text-[#FFD700]/70 flex-shrink-0" />
-                  <span className="truncate">
-                    {selectedCategory
-                      ? (() => {
-                          const category = categories.find((c) => c.prefix === selectedCategory);
-                          return category
-                            ? `${category.prefix} (${category.weight} gr)`
-                            : selectedCategory;
-                        })()
-                      : t("allCategories")}
-                  </span>
-                </div>
-                <motion.div
-                  animate={{ rotate: isCategoryDropdownOpen ? 180 : 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <ChevronDown className="h-4 w-4 text-white/50 transition-colors group-hover:text-[#FFD700]/70 flex-shrink-0" />
-                </motion.div>
-              </motion.button>
-
-              <AnimatePresence>
-                {isCategoryDropdownOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                    transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                    className="absolute top-full left-0 mt-2 z-50 w-full min-w-[280px] rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden"
-                  >
-                    <div className="max-h-[300px] overflow-y-auto scrollbar-show">
-                      <motion.button
-                        type="button"
-                        onClick={() => {
-                          setSelectedCategory("");
-                          setIsCategoryDropdownOpen(false);
-                        }}
-                        className={`w-full flex items-center justify-between px-4 py-3 text-left text-sm transition-colors ${
-                          selectedCategory === ""
-                            ? "bg-[#FFD700]/10 text-[#FFD700] border-l-2 border-[#FFD700]"
-                            : "text-white/70 hover:bg-white/5 hover:text-white"
-                        }`}
-                        whileHover={{ x: 4 }}
-                      >
-                        <span className="font-medium">{t("allCategories")}</span>
-                        {selectedCategory === "" && <Check className="h-4 w-4 text-[#FFD700]" />}
-                      </motion.button>
-                      {categories.map((category) => (
-                        <motion.button
-                          key={category.prefix}
-                          type="button"
-                          onClick={() => {
-                            setSelectedCategory(category.prefix);
-                            setIsCategoryDropdownOpen(false);
-                          }}
-                          className={`w-full flex items-center justify-between px-4 py-3 text-left text-sm transition-colors border-t border-white/5 ${
-                            selectedCategory === category.prefix
-                              ? "bg-[#FFD700]/10 text-[#FFD700] border-l-2 border-[#FFD700]"
-                              : "text-white/70 hover:bg-white/5 hover:text-white"
-                          }`}
-                          whileHover={{ x: 4 }}
-                        >
-                          <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                            <span className="font-semibold">{category.prefix}</span>
-                            <span className="text-xs text-white/50">
-                              {category.weight} gr • {category.count}{" "}
-                              {category.count === 1 ? t("item") : t("items")}
-                            </span>
-                          </div>
-                          {selectedCategory === category.prefix && (
-                            <Check className="h-4 w-4 text-[#FFD700] flex-shrink-0 ml-2" />
-                          )}
-                        </motion.button>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-
-            {/* Layout Toggle - Fluid Switch */}
-            <motion.div
-              className="relative flex items-center gap-0.5 rounded-full border border-white/10 bg-black/40 p-1 backdrop-blur-sm"
+              className="relative flex items-center gap-0.5 rounded-full border border-white/10 bg-black/40 p-1 backdrop-blur-sm self-start sm:self-auto flex-shrink-0"
               initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{
@@ -1222,6 +1128,7 @@ export function QrPreviewGrid() {
                   stiffness: 400,
                   damping: 25,
                 }}
+                aria-label="Table View"
               >
                 <motion.div
                   animate={{
@@ -1246,6 +1153,7 @@ export function QrPreviewGrid() {
                   stiffness: 400,
                   damping: 25,
                 }}
+                aria-label="Grid View"
               >
                 <motion.div
                   animate={{
@@ -1262,18 +1170,119 @@ export function QrPreviewGrid() {
               </motion.button>
             </motion.div>
           </div>
+
+          {/* Bottom Row: Category Filter */}
+          <motion.div
+            ref={categoryDropdownRef}
+            className="relative w-full sm:w-auto sm:max-w-xs"
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{
+              duration: 0.4,
+              ease: [0.22, 1, 0.36, 1],
+              delay: 0.52,
+            }}
+          >
+            <motion.button
+              type="button"
+              onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+              className="group relative flex w-full items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2.5 sm:px-5 sm:py-3 text-sm font-light text-white backdrop-blur-sm transition-all hover:border-[#FFD700]/50 hover:bg-white/10 focus:border-[#FFD700]/50 focus:bg-white/10 focus:outline-none focus:shadow-[0_0_20px_rgba(255,215,0,0.15)] justify-between"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <Filter className="h-4 w-4 text-white/50 transition-colors group-hover:text-[#FFD700]/70 flex-shrink-0" />
+                <span className="truncate text-left">
+                  {selectedCategory
+                    ? (() => {
+                        const category = categories.find((c) => c.prefix === selectedCategory);
+                        return category
+                          ? `${category.prefix} (${category.weight} gr)`
+                          : selectedCategory;
+                      })()
+                    : t("allCategories")}
+                </span>
+              </div>
+              <motion.div
+                animate={{ rotate: isCategoryDropdownOpen ? 180 : 0 }}
+                transition={{ duration: 0.2 }}
+                className="flex-shrink-0"
+              >
+                <ChevronDown className="h-4 w-4 text-white/50 transition-colors group-hover:text-[#FFD700]/70" />
+              </motion.div>
+            </motion.button>
+
+            <AnimatePresence>
+              {isCategoryDropdownOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute top-full left-0 right-0 sm:left-0 sm:right-auto mt-2 z-50 w-full sm:w-auto sm:min-w-[280px] rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden"
+                >
+                  <div className="max-h-[300px] overflow-y-auto scrollbar-show">
+                    <motion.button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory("");
+                        setIsCategoryDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-4 py-3 text-left text-sm transition-colors ${
+                        selectedCategory === ""
+                          ? "bg-[#FFD700]/10 text-[#FFD700] border-l-2 border-[#FFD700]"
+                          : "text-white/70 hover:bg-white/5 hover:text-white"
+                      }`}
+                      whileHover={{ x: 4 }}
+                    >
+                      <span className="font-medium">{t("allCategories")}</span>
+                      {selectedCategory === "" && <Check className="h-4 w-4 text-[#FFD700]" />}
+                    </motion.button>
+                    {categories.map((category) => (
+                      <motion.button
+                        key={category.prefix}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategory(category.prefix);
+                          setIsCategoryDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-4 py-3 text-left text-sm transition-colors border-t border-white/5 ${
+                          selectedCategory === category.prefix
+                            ? "bg-[#FFD700]/10 text-[#FFD700] border-l-2 border-[#FFD700]"
+                            : "text-white/70 hover:bg-white/5 hover:text-white"
+                        }`}
+                        whileHover={{ x: 4 }}
+                      >
+                        <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                          <span className="font-semibold">{category.prefix}</span>
+                          <span className="text-xs text-white/50">
+                            {category.weight} gr • {category.count}{" "}
+                            {category.count === 1 ? t("item") : t("items")}
+                          </span>
+                        </div>
+                        {selectedCategory === category.prefix && (
+                          <Check className="h-4 w-4 text-[#FFD700] flex-shrink-0 ml-2" />
+                        )}
+                      </motion.button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
         </div>
       )}
 
-      {/* Action Buttons */}
+      {/* Product Count and Action Buttons - Improved Layout with UI Principles */}
       {data && data.products.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.6 }}
-          className="mb-8 flex flex-wrap items-center justify-between gap-4"
+          className="mb-6 space-y-4"
         >
-          <div className="flex items-center gap-2 text-xs font-light uppercase tracking-[0.1em] text-white/40">
+          {/* Product Count - Separated for clarity (Visual Hierarchy Principle) */}
+          <div className="text-xs font-light uppercase tracking-[0.1em] text-white/40">
             <span>
               {selectedItems.size > 0
                 ? `${selectedItems.size} ${t("of")} ${filteredProducts.length} ${t("selected")}`
@@ -1281,56 +1290,84 @@ export function QrPreviewGrid() {
               {(searchQuery || selectedCategory) && ` (${t("filtered")})`}
             </span>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+
+          {/* Action Buttons - Grouped by function (Proximity & Grouping Principle) */}
+          <div className="flex flex-col gap-3">
+            {/* Primary Action Group - Selected Items Actions (Highest Visual Hierarchy) */}
             {selectedItems.size > 0 && (
               <motion.button
                 onClick={handleDownloadSelected}
                 disabled={isDownloadingSelected}
-                className="group inline-flex items-center gap-2 rounded-full border border-[#FFD700]/60 bg-[#FFD700]/10 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-all hover:border-[#FFD700] hover:bg-[#FFD700]/20 hover:shadow-[0_0_20px_rgba(255,215,0,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="group w-full sm:w-auto sm:self-start inline-flex items-center justify-center gap-2 rounded-full border border-[#FFD700]/60 bg-[#FFD700]/10 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-all hover:border-[#FFD700] hover:bg-[#FFD700]/20 hover:shadow-[0_0_20px_rgba(255,215,0,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
                 whileHover={{ scale: isDownloadingSelected ? 1 : 1.02 }}
                 whileTap={{ scale: isDownloadingSelected ? 1 : 0.98 }}
               >
-                <Download className="h-4 w-4 transition-transform group-hover:translate-y-0.5" />
-                {isDownloadingSelected
-                  ? t("generating")
-                  : `${t("downloadSelected")} (${selectedItems.size})`}
+                <Download className="h-4 w-4 flex-shrink-0 transition-transform group-hover:translate-y-0.5" />
+                <span className="whitespace-nowrap">
+                  {isDownloadingSelected
+                    ? t("generating")
+                    : `${t("downloadSelected")} (${selectedItems.size})`}
+                </span>
               </motion.button>
             )}
-            <motion.button
-              onClick={handleRefresh}
-              disabled={isRegenerating}
-              className="group inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-all hover:border-white/40 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
-              whileHover={{ scale: isRegenerating ? 1 : 1.02 }}
-              whileTap={{ scale: isRegenerating ? 1 : 0.98 }}
-            >
-              <RefreshCw
-                className={`h-4 w-4 transition-transform ${isRegenerating ? "animate-spin" : "group-hover:rotate-180"}`}
-              />
-              {isRegenerating ? t("refreshing") : t("refresh")}
-            </motion.button>
-            <motion.button
-              onClick={handleDownloadAll}
-              disabled={isDownloadingAll}
-              className="group inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-all hover:border-[#FFD700]/40 hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
-              whileHover={{ scale: isDownloadingAll ? 1 : 1.02 }}
-              whileTap={{ scale: isDownloadingAll ? 1 : 0.98 }}
-            >
-              <FileText className="h-4 w-4 transition-transform group-hover:rotate-3" />
-              {isDownloadingAll
-                ? t("generatingPng")
-                : `${t("downloadAll")} (${data.products.length})`}
-            </motion.button>
-            <motion.button
-              onClick={handleUploadTemplatesToR2}
-              disabled={isUploadingTemplate}
-              className="group inline-flex items-center gap-2 rounded-full border border-blue-500/60 bg-blue-500/10 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-all hover:border-blue-500 hover:bg-blue-500/20 hover:shadow-[0_0_20px_rgba(59,130,246,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
-              whileHover={{ scale: isUploadingTemplate ? 1 : 1.02 }}
-              whileTap={{ scale: isUploadingTemplate ? 1 : 0.98 }}
-              title="Upload template Serticard-01.png dan Serticard-02.png ke R2 untuk digunakan di production"
-            >
-              <CloudUpload className={`h-4 w-4 transition-transform ${isUploadingTemplate ? "animate-pulse" : "group-hover:translate-y-0.5"}`} />
-              {isUploadingTemplate ? "Uploading..." : "Upload Template ke R2"}
-            </motion.button>
+
+            {/* Secondary Action Group - General Actions (Visual Grouping with consistent spacing) */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+              {/* Refresh Button */}
+              <motion.button
+                onClick={handleRefresh}
+                disabled={isRegenerating}
+                className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-all hover:border-white/40 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                whileHover={{ scale: isRegenerating ? 1 : 1.02 }}
+                whileTap={{ scale: isRegenerating ? 1 : 0.98 }}
+                aria-label={t("refresh")}
+              >
+                <RefreshCw
+                  className={`h-4 w-4 flex-shrink-0 transition-transform ${isRegenerating ? "animate-spin" : "group-hover:rotate-180"}`}
+                />
+                <span className="whitespace-nowrap">
+                  {isRegenerating ? t("refreshing") : t("refresh")}
+                </span>
+              </motion.button>
+
+              {/* Download All Button */}
+              <motion.button
+                onClick={handleDownloadAll}
+                disabled={isDownloadingAll}
+                className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-all hover:border-[#FFD700]/40 hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
+                whileHover={{ scale: isDownloadingAll ? 1 : 1.02 }}
+                whileTap={{ scale: isDownloadingAll ? 1 : 0.98 }}
+                aria-label={t("downloadAll")}
+              >
+                <FileText className="h-4 w-4 flex-shrink-0 transition-transform group-hover:rotate-3" />
+                <span className="whitespace-nowrap">
+                  {isDownloadingAll
+                    ? t("generatingPng")
+                    : `${t("downloadAll")} (${data.products.length})`}
+                </span>
+              </motion.button>
+
+              {/* Upload Template Button - Tertiary Action (Lower Visual Hierarchy) */}
+              <motion.button
+                onClick={handleUploadTemplatesToR2}
+                disabled={isUploadingTemplate}
+                className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-blue-500/60 bg-blue-500/10 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-all hover:border-blue-500 hover:bg-blue-500/20 hover:shadow-[0_0_20px_rgba(59,130,246,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
+                whileHover={{ scale: isUploadingTemplate ? 1 : 1.02 }}
+                whileTap={{ scale: isUploadingTemplate ? 1 : 0.98 }}
+                title="Upload template Serticard-01.png dan Serticard-02.png ke R2 untuk digunakan di production"
+                aria-label="Upload template ke R2"
+              >
+                <CloudUpload
+                  className={`h-4 w-4 flex-shrink-0 transition-transform ${isUploadingTemplate ? "animate-pulse" : "group-hover:translate-y-0.5"}`}
+                />
+                <span className="hidden whitespace-nowrap sm:inline">
+                  {isUploadingTemplate ? "Uploading..." : "Upload Template ke R2"}
+                </span>
+                <span className="whitespace-nowrap sm:hidden">
+                  {isUploadingTemplate ? "Uploading..." : "Upload"}
+                </span>
+              </motion.button>
+            </div>
           </div>
         </motion.div>
       )}
@@ -1348,16 +1385,18 @@ export function QrPreviewGrid() {
               ease: [0.22, 1, 0.36, 1],
             }}
           >
-            <div className="overflow-hidden rounded-3xl border border-white/10">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-white/10">
+            <div className="overflow-hidden rounded-3xl border border-white/5 bg-white/[0.02]">
+              {/* Desktop Table */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm text-white/70">
                   <thead>
-                    <tr className="bg-white/5">
+                    <tr className="bg-white/[0.03] text-left text-xs uppercase tracking-[0.4em] text-white/40">
                       <th scope="col" className="w-12 px-4 py-3">
                         <button
                           type="button"
                           onClick={toggleSelectAll}
                           className="inline-flex items-center justify-center text-white/60 hover:text-white transition-colors"
+                          aria-label={isAllSelected ? t("selected") : t("selected")}
                         >
                           {isAllSelected ? (
                             <CheckSquare2 className="h-5 w-5 text-[#FFD700]" />
@@ -1373,42 +1412,27 @@ export function QrPreviewGrid() {
                           )}
                         </button>
                       </th>
-                      <th
-                        scope="col"
-                        className="px-4 py-3 text-left text-xs font-light uppercase tracking-[0.3em] text-white/60"
-                      >
+                      <th scope="col" className="px-4 py-3">
                         {t("serialCode")}
                       </th>
-                      <th
-                        scope="col"
-                        className="px-4 py-3 text-left text-xs font-light uppercase tracking-[0.3em] text-white/60"
-                      >
+                      <th scope="col" className="px-4 py-3">
                         {t("productName")}
                       </th>
-                      <th
-                        scope="col"
-                        className="px-4 py-3 text-left text-xs font-light uppercase tracking-[0.3em] text-white/60"
-                      >
+                      <th scope="col" className="px-4 py-3">
                         {t("weight")}
                       </th>
-                      <th
-                        scope="col"
-                        className="px-4 py-3 text-left text-xs font-light uppercase tracking-[0.3em] text-white/60"
-                      >
+                      <th scope="col" className="px-4 py-3">
                         {t("qrPreview")}
                       </th>
-                      <th
-                        scope="col"
-                        className="px-4 py-3 text-right text-xs font-light uppercase tracking-[0.3em] text-white/60"
-                      >
+                      <th scope="col" className="px-4 py-3 text-right">
                         {t("actions")}
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5 bg-black/20">
+                  <tbody>
                     {filteredProducts.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-8 text-center text-sm text-white/60">
+                        <td colSpan={6} className="px-4 py-12 text-center text-white/40">
                           {t("noProductsFound")}{" "}
                           {searchQuery && `${t("matching")} "${searchQuery}"`}
                         </td>
@@ -1421,15 +1445,17 @@ export function QrPreviewGrid() {
                             key={product.id}
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            className={`transition-colors hover:bg-white/5 ${
+                            className={`border-t border-white/5 transition-colors hover:bg-white/5 ${
                               isItemSelected ? "bg-[#FFD700]/5" : ""
                             }`}
                           >
-                            <td className="px-4 py-4">
+                            <td className="px-4 py-3">
                               <button
                                 type="button"
                                 onClick={() => toggleSelectItem(product.id)}
                                 className="inline-flex items-center justify-center text-white/60 hover:text-white transition-colors"
+                                aria-label={isItemSelected ? t("selected") : t("selected")}
+                                aria-checked={isItemSelected}
                               >
                                 {isItemSelected ? (
                                   <CheckSquare2 className="h-5 w-5 text-[#FFD700]" />
@@ -1438,24 +1464,24 @@ export function QrPreviewGrid() {
                                 )}
                               </button>
                             </td>
-                            <td className="px-4 py-4">
-                              <div className="font-mono text-sm font-semibold text-white">
+                            <td className="px-4 py-3">
+                              <div className="font-mono text-sm text-white/80">
                                 {product.serialCode}
                               </div>
                             </td>
-                            <td className="px-4 py-4">
-                              <div className="text-sm font-medium text-white">{product.name}</div>
+                            <td className="px-4 py-3">
+                              <div className="font-semibold text-white">{product.name}</div>
                             </td>
-                            <td className="px-4 py-4">
-                              <div className="text-sm text-white/60">{product.weight} gr</div>
+                            <td className="px-4 py-3">
+                              <div className="text-white/80">{product.weight} gr</div>
                             </td>
-                            <td className="px-4 py-4">
-                              <div className="flex items-center gap-3">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                   src={`/api/qr/${product.serialCode}`}
-                                  alt={product.name}
-                                  className="h-14 w-14 sm:h-16 sm:w-16 flex-shrink-0 rounded-lg border border-white/10 bg-white p-1.5 sm:p-2 object-contain"
+                                  alt={`QR code for ${product.name} - ${product.serialCode}`}
+                                  className="h-12 w-12 flex-shrink-0 rounded-lg border border-white/10 bg-white p-1.5 object-contain"
                                   loading="lazy"
                                   key={product.serialCode}
                                   onError={(e) => {
@@ -1474,26 +1500,28 @@ export function QrPreviewGrid() {
                                 />
                               </div>
                             </td>
-                            <td className="px-4 py-4">
+                            <td className="px-4 py-3 text-right">
                               <div className="flex items-center justify-end gap-2">
                                 <motion.button
                                   onClick={() => setSelected(product)}
-                                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/70 transition hover:border-[#FFD700]/40 hover:bg-white/10 hover:text-white"
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1 text-xs text-white/70 transition hover:border-white/40 hover:bg-white/5"
                                   whileHover={{ scale: 1.05 }}
                                   whileTap={{ scale: 0.95 }}
+                                  aria-label={t("enlarge")}
                                 >
                                   <Maximize2 className="h-3.5 w-3.5" />
-                                  {t("enlarge")}
+                                  <span className="hidden lg:inline">{t("enlarge")}</span>
                                 </motion.button>
                                 <motion.button
                                   onClick={() => handleDownload(product)}
                                   disabled={isDownloading}
-                                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/70 transition hover:border-[#FFD700]/40 hover:bg-white/10 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1 text-xs text-white/70 transition hover:border-white/40 hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed"
                                   whileHover={{ scale: isDownloading ? 1 : 1.05 }}
                                   whileTap={{ scale: isDownloading ? 1 : 0.95 }}
+                                  aria-label={t("download")}
                                 >
                                   <Download className="h-3.5 w-3.5" />
-                                  {t("download")}
+                                  <span className="hidden lg:inline">{t("download")}</span>
                                 </motion.button>
                               </div>
                             </td>
@@ -1503,6 +1531,112 @@ export function QrPreviewGrid() {
                     )}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile Cards - Compact Table-like Layout */}
+              <div className="md:hidden divide-y divide-white/5">
+                {filteredProducts.length === 0 ? (
+                  <div className="px-4 py-12 text-center text-white/40 text-sm">
+                    {t("noProductsFound")} {searchQuery && `${t("matching")} "${searchQuery}"`}
+                  </div>
+                ) : (
+                  filteredProducts.map((product) => {
+                    const isItemSelected = selectedItems.has(product.id);
+                    return (
+                      <div
+                        key={product.id}
+                        className={`px-4 py-3 border-t border-white/5 transition-colors active:bg-white/5 ${
+                          isItemSelected ? "bg-[#FFD700]/5" : ""
+                        }`}
+                      >
+                        {/* Header Row: Checkbox, Name, and ID */}
+                        <div className="flex items-center gap-3 mb-2">
+                          <button
+                            type="button"
+                            onClick={() => toggleSelectItem(product.id)}
+                            className="inline-flex items-center justify-center text-white/60 hover:text-white transition-colors flex-shrink-0"
+                            aria-label={isItemSelected ? t("selected") : t("selected")}
+                            aria-checked={isItemSelected}
+                          >
+                            {isItemSelected ? (
+                              <CheckSquare2 className="h-5 w-5 text-[#FFD700]" />
+                            ) : (
+                              <Square className="h-5 w-5 text-white/40" />
+                            )}
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-white text-sm truncate">
+                              {product.name}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Content Row: Serial, Weight, QR, and Actions */}
+                        <div className="flex items-center gap-3">
+                          {/* Serial Code */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white/40 text-[10px] uppercase tracking-[0.1em] mb-0.5">
+                              {t("serialCode")}
+                            </p>
+                            <p className="font-mono text-sm text-white/80 truncate">
+                              {product.serialCode}
+                            </p>
+                          </div>
+
+                          {/* Weight */}
+                          <div className="w-16 flex-shrink-0">
+                            <p className="text-white/40 text-[10px] uppercase tracking-[0.1em] mb-0.5">
+                              {t("weight")}
+                            </p>
+                            <p className="text-sm text-white/80 whitespace-nowrap">
+                              {product.weight} gr
+                            </p>
+                          </div>
+
+                          {/* QR Preview */}
+                          <div className="flex-shrink-0">
+                            <img
+                              src={`/api/qr/${product.serialCode}`}
+                              alt={`QR code for ${product.name} - ${product.serialCode}`}
+                              className="h-12 w-12 flex-shrink-0 rounded-lg border border-white/10 bg-white p-1.5 object-contain"
+                              loading="lazy"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                if (!target.dataset.retried) {
+                                  target.dataset.retried = "true";
+                                  target.src = `/api/qr/${product.serialCode}?t=${Date.now()}`;
+                                }
+                              }}
+                            />
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <motion.button
+                              onClick={() => setSelected(product)}
+                              className="inline-flex items-center justify-center rounded-full border border-white/15 p-1.5 text-white/70 transition hover:border-white/40 hover:bg-white/5 active:scale-95 touch-manipulation"
+                              whileTap={{ scale: 0.95 }}
+                              aria-label={t("enlarge")}
+                              title={t("enlarge")}
+                            >
+                              <Maximize2 className="h-3.5 w-3.5" />
+                            </motion.button>
+                            <motion.button
+                              onClick={() => handleDownload(product)}
+                              disabled={isDownloading}
+                              className="inline-flex items-center justify-center rounded-full border border-white/15 p-1.5 text-white/70 transition hover:border-white/40 hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 touch-manipulation"
+                              whileTap={{ scale: isDownloading ? 1 : 0.95 }}
+                              aria-label={t("download")}
+                              title={t("download")}
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                            </motion.button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           </motion.div>
