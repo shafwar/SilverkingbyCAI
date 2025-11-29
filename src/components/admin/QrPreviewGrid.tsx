@@ -40,11 +40,15 @@ type PreviewResponse = {
 };
 
 export function QrPreviewGrid() {
-  const t = useTranslations('admin.qrPreviewDetail');
-  const tCommon = useTranslations('common');
-  const { data, error, isLoading, mutate } = useSWR<PreviewResponse>("/api/admin/qr-preview", fetcher, {
-    refreshInterval: 60000,
-  });
+  const t = useTranslations("admin.qrPreviewDetail");
+  const tCommon = useTranslations("common");
+  const { data, error, isLoading, mutate } = useSWR<PreviewResponse>(
+    "/api/admin/qr-preview",
+    fetcher,
+    {
+      refreshInterval: 60000,
+    }
+  );
   const [selected, setSelected] = useState<Product | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
@@ -137,18 +141,18 @@ export function QrPreviewGrid() {
   const loadImage = (src: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      
+
       // Only set crossOrigin for external URLs (R2), not for same-origin (local)
       // This prevents CORS issues with local images
       if (src.startsWith("http") && !src.includes(window.location.hostname)) {
         img.crossOrigin = "anonymous";
       }
-      
+
       // Set timeout to prevent hanging
       const timeout = setTimeout(() => {
         reject(new Error(`Image load timeout: ${src}`));
       }, 30000); // 30 seconds timeout
-      
+
       img.onload = () => {
         clearTimeout(timeout);
         console.log(`[LoadImage] Successfully loaded: ${src}`, {
@@ -157,13 +161,13 @@ export function QrPreviewGrid() {
         });
         resolve(img);
       };
-      
+
       img.onerror = (error) => {
         clearTimeout(timeout);
         console.error(`[LoadImage] Failed to load image: ${src}`, error);
         reject(new Error(`Failed to load image: ${src}. Please check if the file exists.`));
       };
-      
+
       img.src = src;
     });
   };
@@ -172,7 +176,7 @@ export function QrPreviewGrid() {
     setIsDownloading(true);
     try {
       console.log("[Download] Starting download for:", product.serialCode);
-      
+
       // Get template URLs (front and back) from R2 or local
       const templateResponse = await fetch("/api/admin/serticard-template-url");
       if (!templateResponse.ok) {
@@ -180,13 +184,13 @@ export function QrPreviewGrid() {
       }
       const { frontTemplateUrl, backTemplateUrl } = await templateResponse.json();
       console.log("[Download] Template URLs:", { front: frontTemplateUrl, back: backTemplateUrl });
-      
+
       // Ensure absolute URLs for templates
-      const absoluteFrontUrl = frontTemplateUrl.startsWith("http") 
-        ? frontTemplateUrl 
+      const absoluteFrontUrl = frontTemplateUrl.startsWith("http")
+        ? frontTemplateUrl
         : window.location.origin + frontTemplateUrl;
-      const absoluteBackUrl = backTemplateUrl.startsWith("http") 
-        ? backTemplateUrl 
+      const absoluteBackUrl = backTemplateUrl.startsWith("http")
+        ? backTemplateUrl
         : window.location.origin + backTemplateUrl;
 
       // Get QR code ONLY (without text) for template overlay
@@ -209,7 +213,7 @@ export function QrPreviewGrid() {
           throw new Error(`Failed to load QR code: ${err.message}`);
         }),
       ]);
-      
+
       console.log("[Download] Images loaded successfully", {
         frontSize: { width: frontTemplateImg.width, height: frontTemplateImg.height },
         backSize: { width: backTemplateImg.width, height: backTemplateImg.height },
@@ -248,18 +252,21 @@ export function QrPreviewGrid() {
         frontCtx.textAlign = "center";
         frontCtx.textBaseline = "middle";
         frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
-        
+
         // Truncate if too long
         let displayName = product.name;
         const maxWidth = frontTemplateImg.width * 0.65;
         const metrics = frontCtx.measureText(displayName);
         if (metrics.width > maxWidth) {
-          while (frontCtx.measureText(displayName + "...").width > maxWidth && displayName.length > 0) {
+          while (
+            frontCtx.measureText(displayName + "...").width > maxWidth &&
+            displayName.length > 0
+          ) {
             displayName = displayName.slice(0, -1);
           }
           displayName += "...";
         }
-        
+
         frontCtx.fillText(displayName, frontTemplateImg.width / 2, nameY);
       }
 
@@ -292,7 +299,12 @@ export function QrPreviewGrid() {
         back: backImageData.length,
       });
 
-      if (!frontImageData || frontImageData === "data:," || !backImageData || backImageData === "data:,") {
+      if (
+        !frontImageData ||
+        frontImageData === "data:," ||
+        !backImageData ||
+        backImageData === "data:,"
+      ) {
         throw new Error("Failed to generate image data from canvas");
       }
 
@@ -312,23 +324,22 @@ export function QrPreviewGrid() {
       const cardWidth = (pageWidth - margin * 3) / 2; // Two cards with margins
       const cardHeightFront = (frontTemplateImg.height / frontTemplateImg.width) * cardWidth;
       const cardHeightBack = (backTemplateImg.height / backTemplateImg.width) * cardWidth;
-      
+
       // Use the maximum height to ensure both fit
       const maxCardHeight = Math.max(cardHeightFront, cardHeightBack);
-      
+
       // If cards are too tall, scale down proportionally
-      const scaleFactor = maxCardHeight > (pageHeight - margin * 2) 
-        ? (pageHeight - margin * 2) / maxCardHeight 
-        : 1;
-      
+      const scaleFactor =
+        maxCardHeight > pageHeight - margin * 2 ? (pageHeight - margin * 2) / maxCardHeight : 1;
+
       const finalCardWidth = cardWidth * scaleFactor;
       const finalCardHeightFront = cardHeightFront * scaleFactor;
       const finalCardHeightBack = cardHeightBack * scaleFactor;
-      
+
       // Center vertically
       const yOffsetFront = (pageHeight - finalCardHeightFront) / 2;
       const yOffsetBack = (pageHeight - finalCardHeightBack) / 2;
-      
+
       console.log("[Download] PDF layout dimensions:", {
         pageWidth,
         pageHeight,
@@ -341,11 +352,20 @@ export function QrPreviewGrid() {
 
       // Add front template (left side)
       try {
-        pdf.addImage(frontImageData, "PNG", margin, yOffsetFront, finalCardWidth, finalCardHeightFront);
+        pdf.addImage(
+          frontImageData,
+          "PNG",
+          margin,
+          yOffsetFront,
+          finalCardWidth,
+          finalCardHeightFront
+        );
         console.log("[Download] Front template added to PDF");
       } catch (pdfError: any) {
         console.error("[Download] Failed to add front image to PDF:", pdfError);
-        throw new Error(`Failed to add front template to PDF: ${pdfError.message || "Unknown error"}`);
+        throw new Error(
+          `Failed to add front template to PDF: ${pdfError.message || "Unknown error"}`
+        );
       }
 
       // Add back template (right side)
@@ -355,7 +375,9 @@ export function QrPreviewGrid() {
         console.log("[Download] Back template added to PDF");
       } catch (pdfError: any) {
         console.error("[Download] Failed to add back image to PDF:", pdfError);
-        throw new Error(`Failed to add back template to PDF: ${pdfError.message || "Unknown error"}`);
+        throw new Error(
+          `Failed to add back template to PDF: ${pdfError.message || "Unknown error"}`
+        );
       }
 
       console.log("[Download] PDF created successfully with side-by-side layout");
@@ -381,10 +403,10 @@ export function QrPreviewGrid() {
         stack: error?.stack,
         name: error?.name,
       });
-      
+
       // Show more detailed error message
       const errorMessage = error?.message || "Unknown error occurred";
-      alert(`${t('downloadFailed')}: ${errorMessage}`);
+      alert(`${t("downloadFailed")}: ${errorMessage}`);
     } finally {
       setIsDownloading(false);
     }
@@ -392,66 +414,111 @@ export function QrPreviewGrid() {
 
   const handleDownloadAll = async () => {
     if (!data?.products || data.products.length === 0) {
-      alert(t('downloadAllFailed'));
+      alert(t("downloadAllFailed"));
       return;
     }
     setIsDownloadingAll(true);
     setDownloadPercent(0);
-    setDownloadLabel(t('generatingZip'));
+    setDownloadLabel("Mengunduh... 0%");
+
     try {
       const response = await fetch("/api/qr/download-all-pdf");
-      const contentType = response.headers.get("Content-Type");
-      if (!response.ok || !contentType?.startsWith("application/zip")) {
-        const msg = await response.text();
-        throw new Error(msg || "Failed to generate ZIP file");
+      
+      // Check if response is OK
+      if (!response.ok) {
+        const errorText = await response.text();
+        // Check if response is HTML (error page from server)
+        if (errorText.trim().startsWith("<!DOCTYPE") || errorText.trim().startsWith("<html")) {
+          setDownloadPercent(null);
+          setDownloadLabel("");
+          throw new Error("Server error: Terjadi kesalahan pada server. Silakan coba lagi.");
+        }
+        // Try to parse as JSON error
+        try {
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.error || "Gagal mengunduh file ZIP");
+        } catch {
+          throw new Error(errorText || "Gagal mengunduh file ZIP");
+        }
       }
-      const contentLength = response.headers.get('content-length');
-      let total = contentLength ? parseInt(contentLength, 10) : null;
+
+      // Check Content-Type to ensure it's a ZIP file
+      const contentType = response.headers.get("Content-Type");
+      if (!contentType || !contentType.startsWith("application/zip")) {
+        const errorText = await response.text();
+        if (errorText.trim().startsWith("<!DOCTYPE") || errorText.trim().startsWith("<html")) {
+          throw new Error("Server error: Terjadi kesalahan pada server. Silakan coba lagi.");
+        }
+        throw new Error("Response bukan file ZIP. Silakan coba lagi.");
+      }
+
+      // Stream download with progress
+      const contentLength = response.headers.get("content-length");
+      const total = contentLength ? parseInt(contentLength, 10) : null;
       let loaded = 0;
+
       const reader = response.body?.getReader();
       if (!reader) {
         setDownloadPercent(null);
         setDownloadLabel("");
-        throw new Error("Download stream is not available. Please try again later.");
+        throw new Error("Stream download tidak tersedia. Silakan coba lagi.");
       }
-      const chunks = [];
+
+      const chunks: BlobPart[] = [];
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        chunks.push(value);
-        loaded += value.length;
+        
+        if (value) {
+          chunks.push(value);
+          loaded += value.length;
+        }
+        
         if (total) {
-          setDownloadPercent(Math.round(100 * loaded / total));
-          setDownloadLabel(`${t('progressDownloading')} (${Math.round(100 * loaded / total)}%)`);
+          const percent = Math.round((loaded / total) * 100);
+          setDownloadPercent(percent);
+          setDownloadLabel(`Mengunduh... ${percent}%`);
+        } else {
+          // If no content-length, show indeterminate progress
+          setDownloadLabel("Mengunduh...");
         }
       }
-      const blob = new Blob(chunks, { type: 'application/zip' });
+
+      // Create blob and download
+      const blob = new Blob(chunks, { type: "application/zip" });
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
+
       const contentDisposition = response.headers.get("Content-Disposition");
       let filename = `Silver-King-All-QR-Codes-${new Date().toISOString().split("T")[0]}.zip`;
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename=?"?([^\s"]+)"?/);
-        if (filenameMatch) filename = filenameMatch[1];
+        if (filenameMatch) {
+          filename = filenameMatch[1];
         }
+      }
+
       link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
+
       setDownloadPercent(100);
-      setDownloadLabel(t('downloadComplete'));
+      setDownloadLabel("Selesai!");
       setTimeout(() => {
         setDownloadPercent(null);
         setDownloadLabel("");
-      }, 1000);
-      alert(t('downloadSuccess', { count: data.products.length }));
+      }, 2000);
+
+      alert(t("downloadSuccess", { count: data.products.length }));
     } catch (error: any) {
       setDownloadPercent(null);
       setDownloadLabel("");
       console.error("Failed to download ZIP:", error);
-      alert(`${t('downloadFailed')}: ${error.message || tCommon('tryAgain')}`);
+      const errorMessage = error?.message || "Terjadi kesalahan tidak diketahui";
+      alert(`Gagal mengunduh: ${errorMessage}`);
     } finally {
       setIsDownloadingAll(false);
     }
@@ -459,7 +526,7 @@ export function QrPreviewGrid() {
 
   const handleDownloadSelected = async () => {
     if (selectedItems.size === 0) {
-      alert(t('downloadSelectedFailed'));
+      alert(t("downloadSelectedFailed"));
       return;
     }
 
@@ -470,7 +537,8 @@ export function QrPreviewGrid() {
 
     setIsDownloadingSelected(true);
     setDownloadPercent(0);
-    setDownloadLabel(t('generatingZip'));
+    setDownloadLabel("Mengunduh... 0%");
+
     try {
       // Download selected QR codes as ZIP with PDFs (one PDF per QR)
       const response = await fetch("/api/qr/download-multiple-pdf", {
@@ -481,58 +549,101 @@ export function QrPreviewGrid() {
         body: JSON.stringify({ serialCodes }),
       });
 
-      const contentType = response.headers.get("Content-Type");
-      if (!response.ok || !contentType?.startsWith("application/zip")) {
-        const msg = await response.text();
-        throw new Error(msg || "Failed to generate ZIP file");
+      // Check if response is OK
+      if (!response.ok) {
+        const errorText = await response.text();
+        // Check if response is HTML (error page from server)
+        if (errorText.trim().startsWith("<!DOCTYPE") || errorText.trim().startsWith("<html")) {
+          setDownloadPercent(null);
+          setDownloadLabel("");
+          throw new Error("Server error: Terjadi kesalahan pada server. Silakan coba lagi.");
+        }
+        // Try to parse as JSON error
+        try {
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.error || "Gagal mengunduh file ZIP");
+        } catch {
+          throw new Error(errorText || "Gagal mengunduh file ZIP");
+        }
       }
-      const contentLength = response.headers.get('content-length');
-      let total = contentLength ? parseInt(contentLength, 10) : null;
+
+      // Check Content-Type to ensure it's a ZIP file
+      const contentType = response.headers.get("Content-Type");
+      if (!contentType || !contentType.startsWith("application/zip")) {
+        const errorText = await response.text();
+        if (errorText.trim().startsWith("<!DOCTYPE") || errorText.trim().startsWith("<html")) {
+          throw new Error("Server error: Terjadi kesalahan pada server. Silakan coba lagi.");
+        }
+        throw new Error("Response bukan file ZIP. Silakan coba lagi.");
+      }
+
+      // Stream download with progress
+      const contentLength = response.headers.get("content-length");
+      const total = contentLength ? parseInt(contentLength, 10) : null;
       let loaded = 0;
+
       const reader = response.body?.getReader();
       if (!reader) {
         setDownloadPercent(null);
         setDownloadLabel("");
-        throw new Error("Download stream is not available. Please try again later.");
+        throw new Error("Stream download tidak tersedia. Silakan coba lagi.");
       }
-      const chunks = [];
+
+      const chunks: BlobPart[] = [];
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        chunks.push(value);
-        loaded += value.length;
+        
+        if (value) {
+          chunks.push(value);
+          loaded += value.length;
+        }
+        
         if (total) {
-          setDownloadPercent(Math.round(100 * loaded / total));
-          setDownloadLabel(`${t('progressDownloading')} (${Math.round(100 * loaded / total)}%)`);
+          const percent = Math.round((loaded / total) * 100);
+          setDownloadPercent(percent);
+          setDownloadLabel(`Mengunduh... ${percent}%`);
+        } else {
+          // If no content-length, show indeterminate progress
+          setDownloadLabel("Mengunduh...");
         }
       }
-      const blob = new Blob(chunks, { type: 'application/zip' });
+
+      // Create blob and download
+      const blob = new Blob(chunks, { type: "application/zip" });
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
+
       const contentDisposition = response.headers.get("Content-Disposition");
       let filename = `Silver-King-Selected-QR-Codes-${serialCodes.length}-${new Date().toISOString().split("T")[0]}.zip`;
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename=?"?([^\s"]+)"?/);
-        if (filenameMatch) filename = filenameMatch[1];
+        if (filenameMatch) {
+          filename = filenameMatch[1];
         }
+      }
+
       link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
+
       setDownloadPercent(100);
-      setDownloadLabel(t('downloadComplete'));
+      setDownloadLabel("Selesai!");
       setTimeout(() => {
         setDownloadPercent(null);
         setDownloadLabel("");
-      }, 1000);
-      alert(t('downloadSelectedSuccess', { count: serialCodes.length }));
+      }, 2000);
+
+      alert(t("downloadSelectedSuccess", { count: serialCodes.length }));
     } catch (error: any) {
       setDownloadPercent(null);
       setDownloadLabel("");
       console.error("Failed to download selected ZIP:", error);
-      alert(`${t('downloadSelectedFailed')}: ${error.message || tCommon('tryAgain')}`);
+      const errorMessage = error?.message || "Terjadi kesalahan tidak diketahui";
+      alert(`Gagal mengunduh: ${errorMessage}`);
     } finally {
       setIsDownloadingSelected(false);
     }
@@ -605,12 +716,12 @@ export function QrPreviewGrid() {
     console.error("QR Preview Error:", error);
     return (
       <div className="flex flex-col items-center justify-center gap-4 p-8">
-        <p className="text-sm text-red-400">{t('unableToLoad')}</p>
+        <p className="text-sm text-red-400">{t("unableToLoad")}</p>
         <button
           onClick={() => mutate()}
           className="rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm text-white transition hover:border-white/40 hover:bg-white/10"
         >
-          {t('retry')}
+          {t("retry")}
         </button>
       </div>
     );
@@ -645,7 +756,7 @@ export function QrPreviewGrid() {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="text-xs font-medium uppercase tracking-[0.5em] text-white/40"
             >
-              {t('eyebrow')}
+              {t("eyebrow")}
             </motion.p>
             <motion.h1
               initial={{ opacity: 0, y: 10 }}
@@ -653,7 +764,7 @@ export function QrPreviewGrid() {
               transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
               className="text-3xl md:text-4xl lg:text-5xl font-light tracking-[-0.02em] leading-[1.2] text-white"
             >
-              {t('title')}
+              {t("title")}
             </motion.h1>
             <motion.p
               initial={{ opacity: 0 }}
@@ -661,10 +772,11 @@ export function QrPreviewGrid() {
               transition={{ duration: 0.5, delay: 0.3 }}
               className="mt-2 text-sm leading-relaxed text-white/50 md:text-base"
             >
-              {t('description')}
+              {t("description")}
               {filteredProducts.length > 0 && (
                 <span className="ml-1 text-[#FFD700]/80">
-                  {filteredProducts.length} {filteredProducts.length === 1 ? t('item') : t('items')}.
+                  {filteredProducts.length} {filteredProducts.length === 1 ? t("item") : t("items")}
+                  .
                 </span>
               )}
             </motion.p>
@@ -678,7 +790,7 @@ export function QrPreviewGrid() {
               transition={{ duration: 0.5, delay: 0.4 }}
               className="flex flex-col items-end gap-1 rounded-2xl border border-white/10 bg-white/5 px-6 py-4 backdrop-blur-sm"
             >
-              <p className="text-xs uppercase tracking-[0.2em] text-white/40">{t('totalAssets')}</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-white/40">{t("totalAssets")}</p>
               <p className="text-3xl font-light tracking-tight text-white">
                 {data.products.length}
               </p>
@@ -688,7 +800,7 @@ export function QrPreviewGrid() {
                   animate={{ opacity: 1, y: 0 }}
                   className="text-xs font-medium text-[#FFD700]"
                 >
-                  {selectedItems.size} {t('selected')}
+                  {selectedItems.size} {t("selected")}
                 </motion.p>
               )}
             </motion.div>
@@ -716,7 +828,7 @@ export function QrPreviewGrid() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={t('searchPlaceholder')}
+                placeholder={t("searchPlaceholder")}
                 className="flex-1 bg-transparent text-sm font-light text-white placeholder:text-white/40 placeholder:font-light focus:outline-none"
               />
             </motion.div>
@@ -750,7 +862,7 @@ export function QrPreviewGrid() {
                             ? `${category.prefix} (${category.weight} gr)`
                             : selectedCategory;
                         })()
-                      : t('allCategories')}
+                      : t("allCategories")}
                   </span>
                 </div>
                 <motion.div
@@ -784,10 +896,8 @@ export function QrPreviewGrid() {
                         }`}
                         whileHover={{ x: 4 }}
                       >
-                        <span className="font-medium">{t('allCategories')}</span>
-                        {selectedCategory === "" && (
-                          <Check className="h-4 w-4 text-[#FFD700]" />
-                        )}
+                        <span className="font-medium">{t("allCategories")}</span>
+                        {selectedCategory === "" && <Check className="h-4 w-4 text-[#FFD700]" />}
                       </motion.button>
                       {categories.map((category) => (
                         <motion.button
@@ -807,7 +917,8 @@ export function QrPreviewGrid() {
                           <div className="flex flex-col gap-0.5 flex-1 min-w-0">
                             <span className="font-semibold">{category.prefix}</span>
                             <span className="text-xs text-white/50">
-                              {category.weight} gr • {category.count} {category.count === 1 ? t('item') : t('items')}
+                              {category.weight} gr • {category.count}{" "}
+                              {category.count === 1 ? t("item") : t("items")}
                             </span>
                           </div>
                           {selectedCategory === category.prefix && (
@@ -912,9 +1023,9 @@ export function QrPreviewGrid() {
           <div className="flex items-center gap-2 text-xs font-light uppercase tracking-[0.1em] text-white/40">
             <span>
               {selectedItems.size > 0
-                ? `${selectedItems.size} ${t('of')} ${filteredProducts.length} ${t('selected')}`
-                : `${filteredProducts.length} ${t('of')} ${data.products.length} ${t('products')}`}
-              {(searchQuery || selectedCategory) && ` (${t('filtered')})`}
+                ? `${selectedItems.size} ${t("of")} ${filteredProducts.length} ${t("selected")}`
+                : `${filteredProducts.length} ${t("of")} ${data.products.length} ${t("products")}`}
+              {(searchQuery || selectedCategory) && ` (${t("filtered")})`}
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -928,8 +1039,8 @@ export function QrPreviewGrid() {
               >
                 <Download className="h-4 w-4 transition-transform group-hover:translate-y-0.5" />
                 {isDownloadingSelected
-                  ? t('generating')
-                  : `${t('downloadSelected')} (${selectedItems.size})`}
+                  ? t("generating")
+                  : `${t("downloadSelected")} (${selectedItems.size})`}
               </motion.button>
             )}
             <motion.button
@@ -939,8 +1050,10 @@ export function QrPreviewGrid() {
               whileHover={{ scale: isRegenerating ? 1 : 1.02 }}
               whileTap={{ scale: isRegenerating ? 1 : 0.98 }}
             >
-              <RefreshCw className={`h-4 w-4 transition-transform ${isRegenerating ? "animate-spin" : "group-hover:rotate-180"}`} />
-              {isRegenerating ? t('refreshing') : t('refresh')}
+              <RefreshCw
+                className={`h-4 w-4 transition-transform ${isRegenerating ? "animate-spin" : "group-hover:rotate-180"}`}
+              />
+              {isRegenerating ? t("refreshing") : t("refresh")}
             </motion.button>
             <motion.button
               onClick={handleDownloadAll}
@@ -950,7 +1063,9 @@ export function QrPreviewGrid() {
               whileTap={{ scale: isDownloadingAll ? 1 : 0.98 }}
             >
               <FileText className="h-4 w-4 transition-transform group-hover:rotate-3" />
-              {isDownloadingAll ? t('generatingPng') : `${t('downloadAll')} (${data.products.length})`}
+              {isDownloadingAll
+                ? t("generatingPng")
+                : `${t("downloadAll")} (${data.products.length})`}
             </motion.button>
           </div>
         </motion.div>
@@ -998,31 +1113,31 @@ export function QrPreviewGrid() {
                         scope="col"
                         className="px-4 py-3 text-left text-xs font-light uppercase tracking-[0.3em] text-white/60"
                       >
-                        {t('serialCode')}
+                        {t("serialCode")}
                       </th>
                       <th
                         scope="col"
                         className="px-4 py-3 text-left text-xs font-light uppercase tracking-[0.3em] text-white/60"
                       >
-                        {t('productName')}
+                        {t("productName")}
                       </th>
                       <th
                         scope="col"
                         className="px-4 py-3 text-left text-xs font-light uppercase tracking-[0.3em] text-white/60"
                       >
-                        {t('weight')}
+                        {t("weight")}
                       </th>
                       <th
                         scope="col"
                         className="px-4 py-3 text-left text-xs font-light uppercase tracking-[0.3em] text-white/60"
                       >
-                        {t('qrPreview')}
+                        {t("qrPreview")}
                       </th>
                       <th
                         scope="col"
                         className="px-4 py-3 text-right text-xs font-light uppercase tracking-[0.3em] text-white/60"
                       >
-                        {t('actions')}
+                        {t("actions")}
                       </th>
                     </tr>
                   </thead>
@@ -1030,7 +1145,8 @@ export function QrPreviewGrid() {
                     {filteredProducts.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="px-4 py-8 text-center text-sm text-white/60">
-                          {t('noProductsFound')} {searchQuery && `${t('matching')} "${searchQuery}"`}
+                          {t("noProductsFound")}{" "}
+                          {searchQuery && `${t("matching")} "${searchQuery}"`}
                         </td>
                       </tr>
                     ) : (
@@ -1083,7 +1199,10 @@ export function QrPreviewGrid() {
                                     const target = e.target as HTMLImageElement;
                                     if (!target.dataset.retried) {
                                       target.dataset.retried = "true";
-                                      console.error("[QR Table] Image load error, retrying once:", product.serialCode);
+                                      console.error(
+                                        "[QR Table] Image load error, retrying once:",
+                                        product.serialCode
+                                      );
                                       // Force reload by adding cache buster only on retry
                                       target.src = `/api/qr/${product.serialCode}?t=${Date.now()}`;
                                     }
@@ -1148,7 +1267,7 @@ export function QrPreviewGrid() {
               whileTap={{ scale: isDownloading ? 1 : 0.95 }}
             >
               <Download className="h-4 w-4" />
-              {isDownloading ? t('downloading') : t('downloadQRCode')}
+              {isDownloading ? t("downloading") : t("downloadQRCode")}
             </motion.button>
           </div>
         )}
