@@ -25,6 +25,7 @@ import { fetcher } from "@/lib/fetcher";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import { Modal } from "./Modal";
 import { AnimatedCard } from "./AnimatedCard";
+import { DownloadProgressBar } from "./DownloadProgressBar";
 
 type Product = {
   id: number;
@@ -55,6 +56,10 @@ export function QrPreviewGrid() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Tambah state untuk progress bar
+  const [downloadPercent, setDownloadPercent] = useState<number | null>(null);
+  const [downloadLabel, setDownloadLabel] = useState<string>("");
 
   // Extract categories from products (first 3 letters of serial code)
   const categories = useMemo(() => {
@@ -390,41 +395,56 @@ export function QrPreviewGrid() {
       alert(t('downloadAllFailed'));
       return;
     }
-
     setIsDownloadingAll(true);
+    setDownloadPercent(0);
+    setDownloadLabel(t('generatingZip'));
     try {
-      // Download all QR codes as ZIP with PDFs (one PDF per QR)
       const response = await fetch("/api/qr/download-all-pdf");
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to generate ZIP file");
+      const contentType = response.headers.get("Content-Type");
+      if (!response.ok || !contentType?.startsWith("application/zip")) {
+        const msg = await response.text();
+        throw new Error(msg || "Failed to generate ZIP file");
       }
-
-      const blob = await response.blob();
+      const contentLength = response.headers.get('content-length');
+      let total = contentLength ? parseInt(contentLength, 10) : null;
+      let loaded = 0;
+      const reader = response.body?.getReader();
+      const chunks = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        loaded += value.length;
+        if (total) {
+          setDownloadPercent(Math.round(100 * loaded / total));
+          setDownloadLabel(`${t('progressDownloading')} (${Math.round(100 * loaded / total)}%)`);
+        }
+      }
+      const blob = new Blob(chunks, { type: 'application/zip' });
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
+      const link = document.createElement('a');
       link.href = url;
-
-      // Get filename from Content-Disposition header or use default
       const contentDisposition = response.headers.get("Content-Disposition");
       let filename = `Silver-King-All-QR-Codes-${new Date().toISOString().split("T")[0]}.zip`;
       if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
-        if (filenameMatch) {
-          filename = filenameMatch[1];
-        }
+        const filenameMatch = contentDisposition.match(/filename=?"?([^\s"]+)"?/);
+        if (filenameMatch) filename = filenameMatch[1];
       }
-
       link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-
-      // Show success message
+      setDownloadPercent(100);
+      setDownloadLabel(t('downloadComplete'));
+      setTimeout(() => {
+        setDownloadPercent(null);
+        setDownloadLabel("");
+      }, 1000);
       alert(t('downloadSuccess', { count: data.products.length }));
-    } catch (error: any) {
+    } catch (error) {
+      setDownloadPercent(null);
+      setDownloadLabel("");
       console.error("Failed to download ZIP:", error);
       alert(`${t('downloadFailed')}: ${error.message || tCommon('tryAgain')}`);
     } finally {
@@ -444,6 +464,8 @@ export function QrPreviewGrid() {
     const serialCodes = selectedProducts.map((p) => p.serialCode);
 
     setIsDownloadingSelected(true);
+    setDownloadPercent(0);
+    setDownloadLabel(t('generatingZip'));
     try {
       // Download selected QR codes as ZIP with PDFs (one PDF per QR)
       const response = await fetch("/api/qr/download-multiple-pdf", {
@@ -454,36 +476,51 @@ export function QrPreviewGrid() {
         body: JSON.stringify({ serialCodes }),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to generate ZIP file");
+      const contentType = response.headers.get("Content-Type");
+      if (!response.ok || !contentType?.startsWith("application/zip")) {
+        const msg = await response.text();
+        throw new Error(msg || "Failed to generate ZIP file");
       }
-
-      const blob = await response.blob();
+      const contentLength = response.headers.get('content-length');
+      let total = contentLength ? parseInt(contentLength, 10) : null;
+      let loaded = 0;
+      const reader = response.body?.getReader();
+      const chunks = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        loaded += value.length;
+        if (total) {
+          setDownloadPercent(Math.round(100 * loaded / total));
+          setDownloadLabel(`${t('progressDownloading')} (${Math.round(100 * loaded / total)}%)`);
+        }
+      }
+      const blob = new Blob(chunks, { type: 'application/zip' });
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
+      const link = document.createElement('a');
       link.href = url;
-
-      // Get filename from Content-Disposition header or use default
       const contentDisposition = response.headers.get("Content-Disposition");
       let filename = `Silver-King-Selected-QR-Codes-${serialCodes.length}-${new Date().toISOString().split("T")[0]}.zip`;
       if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/i);
-        if (filenameMatch && filenameMatch[1]) {
-          filename = filenameMatch[1].replace(/['"]/g, "").trim();
-        }
+        const filenameMatch = contentDisposition.match(/filename=?"?([^\s"]+)"?/);
+        if (filenameMatch) filename = filenameMatch[1];
       }
-
-      filename = decodeURIComponent(filename);
       link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-
-      // Show success message
+      setDownloadPercent(100);
+      setDownloadLabel(t('downloadComplete'));
+      setTimeout(() => {
+        setDownloadPercent(null);
+        setDownloadLabel("");
+      }, 1000);
       alert(t('downloadSelectedSuccess', { count: serialCodes.length }));
-    } catch (error: any) {
+    } catch (error) {
+      setDownloadPercent(null);
+      setDownloadLabel("");
       console.error("Failed to download selected ZIP:", error);
       alert(`${t('downloadSelectedFailed')}: ${error.message || tCommon('tryAgain')}`);
     } finally {
@@ -1203,6 +1240,11 @@ export function QrPreviewGrid() {
           </div>
         )}
       </Modal>
+      {downloadPercent !== null && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/70 backdrop-blur">
+          <DownloadProgressBar percent={downloadPercent} label={downloadLabel} />
+        </div>
+      )}
     </>
   );
 }
