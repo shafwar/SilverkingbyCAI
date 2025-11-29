@@ -1,6 +1,6 @@
 "use client";
 
-import { MouseEvent, useEffect, useState } from "react";
+import { MouseEvent, useEffect, useState, useMemo } from "react";
 import { Link } from "@/i18n/routing";
 import Image from "next/image";
 import { ArrowRight, X, QrCode } from "lucide-react";
@@ -107,12 +107,13 @@ export default function Navbar() {
   }, [isMobileMenuOpen]);
 
   // Use paths without locale prefix - Link from next-intl will handle locale automatically
-  const navLinks = [
+  // Wrap in useMemo to prevent dependency changes on every render
+  const navLinks = useMemo(() => [
     { name: t('whatWeDo'), href: '/what-we-do' },
     { name: t('authenticity'), href: '/authenticity' },
     { name: t('products'), href: '/products' },
     { name: t('aboutUs'), href: '/about' },
-  ];
+  ], [t]);
 
   // CRITICAL: ULTRA-AGGRESSIVE prefetch for ALL navigation links
   // Uses multiple strategies including Next.js native router for locale routes

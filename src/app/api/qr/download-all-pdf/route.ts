@@ -162,8 +162,8 @@ export async function GET(request: NextRequest) {
     const dateStr = new Date().toISOString().split("T")[0];
     const filename = `Silver-King-All-QR-Codes-${products.length}-${dateStr}.zip`;
 
-    // Return ZIP file
-    return new NextResponse(zipBuffer, {
+    // Return ZIP file - Convert Buffer to Uint8Array for NextResponse
+    return new NextResponse(new Uint8Array(zipBuffer), {
       status: 200,
       headers: {
         "Content-Type": "application/zip",
