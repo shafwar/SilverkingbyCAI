@@ -349,14 +349,34 @@ export async function POST(request: NextRequest) {
         const pdfDoc = await PDFDocument.create();
         const page = pdfDoc.addPage([pageWidth, pageHeight]);
         
-        // Embed images
+        // Validate buffers before embedding
+        if (!frontBuffer || frontBuffer.length === 0) {
+          throw new Error(`Front buffer is empty for ${product.serialCode}`);
+        }
+        
+        if (!backBuffer || backBuffer.length === 0) {
+          throw new Error(`Back buffer is empty for ${product.serialCode}`);
+        }
+        
+        // Embed images - CRITICAL: Both must be embedded
         const frontPngImage = await pdfDoc.embedPng(frontBuffer);
         const backPngImage = await pdfDoc.embedPng(backBuffer);
+        
+        // Validate embedded images
+        if (!frontPngImage) {
+          throw new Error(`Failed to embed front image for ${product.serialCode}`);
+        }
+        
+        if (!backPngImage) {
+          throw new Error(`Failed to embed back image for ${product.serialCode}`);
+        }
         
         console.log(`[QR Multiple] Embedding images to PDF for ${product.serialCode}:`, {
           frontSize: `${frontTemplateImage.width}x${frontTemplateImage.height}`,
           backSize: `${backTemplateImage.width}x${backTemplateImage.height}`,
           pageSize: `${pageWidth}x${pageHeight}`,
+          frontBufferSize: frontBuffer.length,
+          backBufferSize: backBuffer.length,
         });
         
         // Add front template (left side) - full size, no scaling
@@ -368,6 +388,7 @@ export async function POST(request: NextRequest) {
         });
         
         // Add back template (right side) - full size, no scaling
+        // CRITICAL: This must always be executed - no conditions to skip
         const backX = frontTemplateImage.width + gap;
         const backY = pageHeight - backTemplateImage.height; // Align to top
         page.drawImage(backPngImage, {
@@ -377,14 +398,29 @@ export async function POST(request: NextRequest) {
           height: backTemplateImage.height,
         });
         
+        // Verify both images are drawn
         console.log(`[QR Multiple] Both templates drawn to PDF for ${product.serialCode}:`, {
           frontPosition: `(0, ${pageHeight - frontTemplateImage.height})`,
           backPosition: `(${backX}, ${backY})`,
+          frontDrawn: true,
+          backDrawn: true,
         });
         
         const pdfBytes = await pdfDoc.save();
         const pdfBuffer = Buffer.from(pdfBytes);
-        console.log(`[QR Multiple] PDF generated for ${product.serialCode}: ${pdfBuffer.length} bytes (with front + back)`);
+        
+        // Validate PDF was generated with both templates
+        if (!pdfBuffer || pdfBuffer.length === 0) {
+          throw new Error(`PDF buffer is empty for ${product.serialCode}`);
+        }
+        
+        // Verify PDF contains both templates by checking size (should be substantial)
+        const minExpectedSize = Math.min(frontBuffer.length, backBuffer.length) * 0.5; // At least 50% of one template
+        if (pdfBuffer.length < minExpectedSize) {
+          console.warn(`[QR Multiple] PDF size suspiciously small for ${product.serialCode}: ${pdfBuffer.length} bytes (expected at least ${minExpectedSize})`);
+        }
+        
+        console.log(`[QR Multiple] PDF generated for ${product.serialCode}: ${pdfBuffer.length} bytes (with front + back templates)`);
 
         // Sanitize filename
         const sanitizedName = product.name
