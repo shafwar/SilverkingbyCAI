@@ -447,7 +447,7 @@ export function QrPreviewGrid() {
         setDownloadLabel("");
       }, 1000);
       alert(t('downloadSuccess', { count: data.products.length }));
-    } catch (error) {
+    } catch (error: any) {
       setDownloadPercent(null);
       setDownloadLabel("");
       console.error("Failed to download ZIP:", error);
@@ -528,7 +528,7 @@ export function QrPreviewGrid() {
         setDownloadLabel("");
       }, 1000);
       alert(t('downloadSelectedSuccess', { count: serialCodes.length }));
-    } catch (error) {
+    } catch (error: any) {
       setDownloadPercent(null);
       setDownloadLabel("");
       console.error("Failed to download selected ZIP:", error);
@@ -1085,4 +1085,74 @@ export function QrPreviewGrid() {
                                       target.dataset.retried = "true";
                                       console.error("[QR Table] Image load error, retrying once:", product.serialCode);
                                       // Force reload by adding cache buster only on retry
-                                      target.src = `/api/qr/${product.serialCode}?t=${Date.now()}`
+                                      target.src = `/api/qr/${product.serialCode}?t=${Date.now()}`;
+                                    }
+                                  }}
+                                />
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 text-right text-sm font-light">
+                              <motion.button
+                                type="button"
+                                onClick={() => setSelected(product)}
+                                className="inline-flex items-center justify-center text-white/60 hover:text-white transition-colors"
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                              >
+                                <Maximize2 className="h-4 w-4" />
+                              </motion.button>
+                            </td>
+                          </motion.tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </motion.div>
+        ) : (
+          <div />
+        )}
+      </AnimatePresence>
+
+      {/* Penutup Modal */}
+      <Modal open={Boolean(selected)} onClose={() => setSelected(null)} title={selected?.name}>
+        {selected && (
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative w-full max-w-sm">
+              {/* Responsive QR Code Image Container */}
+              <div className="relative aspect-square w-full rounded-3xl border border-white/10 bg-white p-4 sm:p-6 overflow-hidden">
+                <img
+                  key={`qr-modal-${selected.serialCode}`}
+                  src={`/api/qr/${selected.serialCode}`}
+                  alt={selected.name}
+                  className="h-full w-full object-contain transition-opacity duration-300"
+                  loading="eager"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (!target.dataset.retried) {
+                      target.dataset.retried = "true";
+                      target.src = `/api/qr/${selected.serialCode}?t=${Date.now()}`;
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            <p className="font-mono text-lg sm:text-xl text-white/70">{selected.serialCode}</p>
+            <motion.button
+              onClick={() => handleDownload(selected)}
+              disabled={isDownloading}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-black/40 px-6 py-3 text-sm text-white/70 transition hover:border-[#FFD700]/40 hover:bg-black/60 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              whileHover={{ scale: isDownloading ? 1 : 1.05 }}
+              whileTap={{ scale: isDownloading ? 1 : 0.95 }}
+            >
+              <Download className="h-4 w-4" />
+              {isDownloading ? t('downloading') : t('downloadQRCode')}
+            </motion.button>
+          </div>
+        )}
+      </Modal>
+    </>
+  );
+}
