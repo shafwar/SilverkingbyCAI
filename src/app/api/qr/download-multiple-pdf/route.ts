@@ -67,94 +67,99 @@ export async function POST(request: NextRequest) {
 
     const hasMultipleWeights = productsByWeight.size > 1;
 
-    // Create ZIP file
-    const zip = new JSZip();
-    let successCount = 0;
-    let failCount = 0;
+    // BATCHING
+    const BATCH_SIZE = 100;
+    const batches = [];
+    for (let i = 0; i < products.length; i += BATCH_SIZE) {
+      batches.push(products.slice(i, i + BATCH_SIZE));
+    }
+    let batchIdx = 0;
+    for (const batch of batches) {
+      batchIdx++;
+      console.log(`[QR Multiple] Processing batch ${batchIdx}/${batches.length}, size: ${batch.length}`);
+      for (const product of batch) {
+        try {
+          console.log(`[QR Multiple] Processing ${product.serialCode}...`);
+          const verifyUrl = getVerifyUrl(product.serialCode);
 
-    // Generate PDF for each product
-    for (const product of products) {
-      try {
-        console.log(`[QR Multiple] Processing ${product.serialCode}...`);
-        const verifyUrl = getVerifyUrl(product.serialCode);
+          // Generate QR with Serticard template
+          const pngBuffer = await generateQRWithSerticard(
+            product.serialCode,
+            verifyUrl,
+            product.name,
+            product.weight
+          );
 
-        // Generate QR with Serticard template
-        const pngBuffer = await generateQRWithSerticard(
-          product.serialCode,
-          verifyUrl,
-          product.name,
-          product.weight
-        );
+          if (!pngBuffer || pngBuffer.length === 0) {
+            throw new Error(`Failed to generate PNG buffer for ${product.serialCode}`);
+          }
 
-        if (!pngBuffer || pngBuffer.length === 0) {
-          throw new Error(`Failed to generate PNG buffer for ${product.serialCode}`);
-        }
+          console.log(`[QR Multiple] PNG generated for ${product.serialCode}, size: ${pngBuffer.length}`);
 
-        console.log(`[QR Multiple] PNG generated for ${product.serialCode}, size: ${pngBuffer.length}`);
-
-        // Create PDF
-        const doc = new PDFDocument({
-          size: [595, 842], // A4 size
-          margin: 0,
-        });
-
-        const chunks: Buffer[] = [];
-        doc.on("data", (chunk) => chunks.push(chunk));
-
-        // Wait for PDF to finish
-        const pdfPromise = new Promise<Buffer>((resolve, reject) => {
-          doc.on("end", () => {
-            const buffer = Buffer.concat(chunks);
-            console.log(`[QR Multiple] PDF generated for ${product.serialCode}, size: ${buffer.length}`);
-            resolve(buffer);
+          // Create PDF
+          const doc = new PDFDocument({
+            size: [595, 842], // A4 size
+            margin: 0,
           });
-          doc.on("error", (err) => {
-            console.error(`[QR Multiple] PDF generation error for ${product.serialCode}:`, err);
-            reject(err);
+
+          const chunks: Buffer[] = [];
+          doc.on("data", (chunk) => chunks.push(chunk));
+
+          // Wait for PDF to finish
+          const pdfPromise = new Promise<Buffer>((resolve, reject) => {
+            doc.on("end", () => {
+              const buffer = Buffer.concat(chunks);
+              console.log(`[QR Multiple] PDF generated for ${product.serialCode}, size: ${buffer.length}`);
+              resolve(buffer);
+            });
+            doc.on("error", (err) => {
+              console.error(`[QR Multiple] PDF generation error for ${product.serialCode}:`, err);
+              reject(err);
+            });
           });
-        });
 
-        // Add image to PDF - fit to A4 page for print
-        // Use data URL approach which is more reliable with PDFKit
-        const dataUrl = `data:image/png;base64,${pngBuffer.toString("base64")}`;
-        doc.image(dataUrl, {
-          fit: [595, 842], // Fit to full A4 page
-          align: "center",
-          valign: "center",
-        });
+          // Add image to PDF - fit to A4 page for print
+          // Use data URL approach which is more reliable with PDFKit
+          const dataUrl = `data:image/png;base64,${pngBuffer.toString("base64")}`;
+          doc.image(dataUrl, {
+            fit: [595, 842], // Fit to full A4 page
+            align: "center",
+            valign: "center",
+          });
 
-        doc.end();
+          doc.end();
 
-        const pdfBuffer = await pdfPromise;
+          const pdfBuffer = await pdfPromise;
 
-        if (!pdfBuffer || pdfBuffer.length === 0) {
-          throw new Error(`PDF buffer is empty for ${product.serialCode}`);
+          if (!pdfBuffer || pdfBuffer.length === 0) {
+            throw new Error(`PDF buffer is empty for ${product.serialCode}`);
+          }
+
+          // Sanitize filename
+          const sanitizedName = product.name
+            .trim()
+            .replace(/\s+/g, "-")
+            .replace(/[^a-zA-Z0-9-]/g, "")
+            .replace(/-+/g, "-")
+            .replace(/^-|-$/g, "");
+
+          const filename = `QR-${product.serialCode}${sanitizedName ? `-${sanitizedName}` : ""}.pdf`;
+
+          // Determine folder path based on weight grouping
+          let folderPath = "";
+          if (hasMultipleWeights) {
+            folderPath = `${product.weight}gr/`;
+          }
+
+          // Add PDF to ZIP
+          zip.file(`${folderPath}${filename}`, pdfBuffer);
+          successCount++;
+          console.log(`[QR Multiple] Added ${folderPath}${filename} to ZIP`);
+        } catch (error) {
+          failCount++;
+          console.error(`[QR Multiple] Failed to generate PDF for ${product.serialCode}:`, error);
+          // Continue with next product
         }
-
-        // Sanitize filename
-        const sanitizedName = product.name
-          .trim()
-          .replace(/\s+/g, "-")
-          .replace(/[^a-zA-Z0-9-]/g, "")
-          .replace(/-+/g, "-")
-          .replace(/^-|-$/g, "");
-
-        const filename = `QR-${product.serialCode}${sanitizedName ? `-${sanitizedName}` : ""}.pdf`;
-
-        // Determine folder path based on weight grouping
-        let folderPath = "";
-        if (hasMultipleWeights) {
-          folderPath = `${product.weight}gr/`;
-        }
-
-        // Add PDF to ZIP
-        zip.file(`${folderPath}${filename}`, pdfBuffer);
-        successCount++;
-        console.log(`[QR Multiple] Added ${folderPath}${filename} to ZIP`);
-      } catch (error) {
-        failCount++;
-        console.error(`[QR Multiple] Failed to generate PDF for ${product.serialCode}:`, error);
-        // Continue with next product
       }
     }
 
