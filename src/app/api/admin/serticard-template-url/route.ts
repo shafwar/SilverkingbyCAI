@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { fileExistsInR2 } from "@/lib/r2-client";
+import { uploadSerticardTemplates } from "@/lib/qr";
 
 /**
  * Get Serticard template URL
- * Returns R2 URL in production if available, otherwise falls back to local path
+ * Automatically uploads templates to R2 if they don't exist
+ * Returns R2 URL in production, local path in development
  * This ensures consistency with QR codes that are already in R2
  */
 export async function GET() {
@@ -29,15 +32,48 @@ export async function GET() {
         back: backTemplateUrl,
       });
     } else {
-      // Production: use R2 URL (consistent with QR codes)
+      // Production: check R2 first, auto-upload if not exists
       const base = R2_PUBLIC_URL.endsWith("/") ? R2_PUBLIC_URL.slice(0, -1) : R2_PUBLIC_URL;
-      frontTemplateUrl = `${base}/templates/serticard-01.png`;
-      backTemplateUrl = `${base}/templates/serticard-02.png`;
+      const frontR2Key = "templates/serticard-01.png";
+      const backR2Key = "templates/serticard-02.png";
       
-      console.log("[Template URL] Using R2 URLs (production):", {
-        front: frontTemplateUrl,
-        back: backTemplateUrl,
+      // Check if templates exist in R2
+      const frontExists = await fileExistsInR2(frontR2Key);
+      const backExists = await fileExistsInR2(backR2Key);
+      
+      console.log("[Template URL] R2 template check:", {
+        frontExists,
+        backExists,
       });
+      
+      // Auto-upload if templates don't exist in R2
+      if (!frontExists || !backExists) {
+        console.log("[Template URL] Templates not found in R2, auto-uploading...");
+        const { frontUrl, backUrl } = await uploadSerticardTemplates();
+        
+        if (frontUrl && backUrl) {
+          // Use uploaded R2 URLs
+          frontTemplateUrl = frontUrl;
+          backTemplateUrl = backUrl;
+          console.log("[Template URL] Templates auto-uploaded to R2:", {
+            front: frontTemplateUrl,
+            back: backTemplateUrl,
+          });
+        } else {
+          // Upload failed, fallback to local
+          console.warn("[Template URL] Failed to upload templates to R2, falling back to local paths");
+          frontTemplateUrl = "/images/serticard/Serticard-01.png";
+          backTemplateUrl = "/images/serticard/Serticard-02.png";
+        }
+      } else {
+        // Templates exist in R2, use R2 URLs
+        frontTemplateUrl = `${base}/${frontR2Key}`;
+        backTemplateUrl = `${base}/${backR2Key}`;
+        console.log("[Template URL] Using existing R2 URLs:", {
+          front: frontTemplateUrl,
+          back: backTemplateUrl,
+        });
+      }
     }
 
     return NextResponse.json({
@@ -46,10 +82,11 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Failed to get template URL:", error);
-    return NextResponse.json(
-      { error: "Failed to get template URL" },
-      { status: 500 }
-    );
+    // Fallback to local paths on error
+    return NextResponse.json({
+      frontTemplateUrl: "/images/serticard/Serticard-01.png",
+      backTemplateUrl: "/images/serticard/Serticard-02.png",
+    });
   }
 }
 

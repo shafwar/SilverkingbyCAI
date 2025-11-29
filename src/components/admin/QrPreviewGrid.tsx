@@ -144,14 +144,18 @@ export function QrPreviewGrid() {
     return filtered;
   }, [data?.products, searchQuery, selectedCategory]);
 
-  // Helper function to load image with better error handling
+  // Helper function to load image with better error handling and CORS support
+  // All images now go through proxy endpoints which have CORS headers
   const loadImage = (src: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
 
-      // Only set crossOrigin for external URLs (R2), not for same-origin (local)
-      // This prevents CORS issues with local images
-      if (src.startsWith("http") && !src.includes(window.location.hostname)) {
+      // All images now come from same-origin proxy endpoints with CORS headers
+      // Set crossOrigin for proxy endpoints to allow canvas export
+      const isProxyEndpoint =
+        src.includes("/api/admin/template-proxy") || src.includes("/api/admin/qr-proxy");
+
+      if (isProxyEndpoint) {
         img.crossOrigin = "anonymous";
       }
 
@@ -165,6 +169,7 @@ export function QrPreviewGrid() {
         console.log(`[LoadImage] Successfully loaded: ${src}`, {
           width: img.width,
           height: img.height,
+          crossOrigin: img.crossOrigin || "not set",
         });
         resolve(img);
       };
@@ -184,57 +189,62 @@ export function QrPreviewGrid() {
     try {
       console.log("[Download] Starting download for:", product.serialCode);
 
-      // Get template URLs (front and back) from R2 or local
-      const templateResponse = await fetch("/api/admin/serticard-template-url");
-      if (!templateResponse.ok) {
-        throw new Error("Failed to get template URL");
-      }
-      const { frontTemplateUrl, backTemplateUrl } = await templateResponse.json();
-      console.log("[Download] Template URLs:", { front: frontTemplateUrl, back: backTemplateUrl });
+      // Use proxy endpoint for templates to avoid CORS/tainted canvas issues
+      // Proxy will fetch from R2 and serve with proper CORS headers, or fallback to local
+      const absoluteFrontUrl = `${window.location.origin}/api/admin/template-proxy?template=front`;
+      const absoluteBackUrl = `${window.location.origin}/api/admin/template-proxy?template=back`;
 
-      // Ensure absolute URLs for templates
-      // If template URL is from R2 (starts with http), use it directly
-      // Otherwise, prepend origin for local paths
-      let absoluteFrontUrl: string;
-      let absoluteBackUrl: string;
-
-      if (frontTemplateUrl.startsWith("http")) {
-        absoluteFrontUrl = frontTemplateUrl;
-      } else {
-        absoluteFrontUrl = window.location.origin + frontTemplateUrl;
-      }
-
-      if (backTemplateUrl.startsWith("http")) {
-        absoluteBackUrl = backTemplateUrl;
-      } else {
-        absoluteBackUrl = window.location.origin + backTemplateUrl;
-      }
-
-      console.log("[Download] Absolute template URLs:", {
+      console.log("[Download] Using template proxy URLs:", {
         front: absoluteFrontUrl,
         back: absoluteBackUrl,
       });
 
-      // Get QR code ONLY (without text) for template overlay
-      const qrImageUrl = `${window.location.origin}/api/qr/${product.serialCode}/qr-only`;
-      console.log("[Download] QR URL:", qrImageUrl);
+      // Get QR code from R2 via proxy endpoint (prioritizes R2, fallback to API)
+      // This ensures QR code comes from R2 if available, with proper CORS headers
+      const qrImageUrl = `${window.location.origin}/api/admin/qr-proxy?serialCode=${encodeURIComponent(product.serialCode)}`;
+      console.log("[Download] QR URL (via proxy, from R2):", qrImageUrl);
 
       // Load all images: front template, back template, and QR code
+      // If R2 template fails, fallback to local paths
       console.log("[Download] Loading images...");
-      const [frontTemplateImg, backTemplateImg, qrImg] = await Promise.all([
-        loadImage(absoluteFrontUrl).catch((err) => {
-          console.error("[Download] Failed to load front template:", err);
-          throw new Error(`Failed to load front template: ${err.message}`);
-        }),
-        loadImage(absoluteBackUrl).catch((err) => {
-          console.error("[Download] Failed to load back template:", err);
-          throw new Error(`Failed to load back template: ${err.message}`);
-        }),
-        loadImage(qrImageUrl).catch((err) => {
-          console.error("[Download] Failed to load QR:", err);
-          throw new Error(`Failed to load QR code: ${err.message}`);
-        }),
-      ]);
+      let frontTemplateImg: HTMLImageElement;
+      let backTemplateImg: HTMLImageElement;
+
+      try {
+        frontTemplateImg = await loadImage(absoluteFrontUrl);
+        console.log("[Download] Front template loaded from:", absoluteFrontUrl);
+      } catch (frontErr: any) {
+        console.warn("[Download] Failed to load front template from R2, trying local:", frontErr);
+        // Fallback to local path
+        const localFrontUrl = window.location.origin + "/images/serticard/Serticard-01.png";
+        try {
+          frontTemplateImg = await loadImage(localFrontUrl);
+          console.log("[Download] Front template loaded from local:", localFrontUrl);
+        } catch (localErr: any) {
+          throw new Error(`Failed to load front template from R2 and local: ${frontErr.message}`);
+        }
+      }
+
+      try {
+        backTemplateImg = await loadImage(absoluteBackUrl);
+        console.log("[Download] Back template loaded from:", absoluteBackUrl);
+      } catch (backErr: any) {
+        console.warn("[Download] Failed to load back template from R2, trying local:", backErr);
+        // Fallback to local path
+        const localBackUrl = window.location.origin + "/images/serticard/Serticard-02.png";
+        try {
+          backTemplateImg = await loadImage(localBackUrl);
+          console.log("[Download] Back template loaded from local:", localBackUrl);
+        } catch (localErr: any) {
+          throw new Error(`Failed to load back template from R2 and local: ${backErr.message}`);
+        }
+      }
+
+      // Load QR code (required, no fallback)
+      const qrImg = await loadImage(qrImageUrl).catch((err) => {
+        console.error("[Download] Failed to load QR:", err);
+        throw new Error(`Failed to load QR code: ${err.message}`);
+      });
 
       console.log("[Download] Images loaded successfully", {
         frontSize: { width: frontTemplateImg.width, height: frontTemplateImg.height },
@@ -246,11 +256,29 @@ export function QrPreviewGrid() {
       const frontCanvas = document.createElement("canvas");
       frontCanvas.width = frontTemplateImg.width;
       frontCanvas.height = frontTemplateImg.height;
-      const frontCtx = frontCanvas.getContext("2d");
+      const frontCtx = frontCanvas.getContext("2d", {
+        willReadFrequently: false, // Optimize for drawing, not reading
+      });
       if (!frontCtx) throw new Error("Failed to get canvas context");
 
       // Draw front template as background
-      frontCtx.drawImage(frontTemplateImg, 0, 0);
+      // Use try-catch to handle potential tainted canvas errors
+      try {
+        frontCtx.drawImage(frontTemplateImg, 0, 0);
+      } catch (drawError: any) {
+        // If tainted canvas error, try to reload image without crossOrigin
+        if (drawError.message?.includes("tainted") || drawError.message?.includes("cross-origin")) {
+          console.warn(
+            "[Download] Tainted canvas detected, reloading front template without crossOrigin"
+          );
+          const localFrontUrl = window.location.origin + "/images/serticard/Serticard-01.png";
+          const fallbackImg = await loadImage(localFrontUrl);
+          frontCtx.drawImage(fallbackImg, 0, 0);
+          frontTemplateImg = fallbackImg; // Update reference for later use
+        } else {
+          throw drawError;
+        }
+      }
 
       // Calculate QR position based on template design
       // From image: QR is centered, serial below, product name above
@@ -306,16 +334,118 @@ export function QrPreviewGrid() {
       const backCanvas = document.createElement("canvas");
       backCanvas.width = backTemplateImg.width;
       backCanvas.height = backTemplateImg.height;
-      const backCtx = backCanvas.getContext("2d");
+      const backCtx = backCanvas.getContext("2d", {
+        willReadFrequently: false, // Optimize for drawing, not reading
+      });
       if (!backCtx) throw new Error("Failed to get canvas context");
 
       // Draw back template as background (no QR code, just the template)
-      backCtx.drawImage(backTemplateImg, 0, 0);
+      // Use try-catch to handle potential tainted canvas errors
+      try {
+        backCtx.drawImage(backTemplateImg, 0, 0);
+      } catch (drawError: any) {
+        // If tainted canvas error, try to reload image without crossOrigin
+        if (drawError.message?.includes("tainted") || drawError.message?.includes("cross-origin")) {
+          console.warn(
+            "[Download] Tainted canvas detected, reloading back template without crossOrigin"
+          );
+          const localBackUrl = window.location.origin + "/images/serticard/Serticard-02.png";
+          const fallbackImg = await loadImage(localBackUrl);
+          backCtx.drawImage(fallbackImg, 0, 0);
+          backTemplateImg = fallbackImg; // Update reference for later use
+        } else {
+          throw drawError;
+        }
+      }
 
       // Convert both canvases to image data
+      // Handle tainted canvas errors with fallback
       console.log("[Download] Converting canvases to image data...");
-      const frontImageData = frontCanvas.toDataURL("image/png", 1.0);
-      const backImageData = backCanvas.toDataURL("image/png", 1.0);
+      let frontImageData: string;
+      let backImageData: string;
+
+      try {
+        frontImageData = frontCanvas.toDataURL("image/png", 1.0);
+      } catch (toDataError: any) {
+        if (toDataError.message?.includes("tainted")) {
+          console.warn("[Download] Tainted canvas error on front, using local template fallback");
+          // Reload with local template and recreate canvas
+          const localFrontUrl = window.location.origin + "/images/serticard/Serticard-01.png";
+          const localFrontImg = await loadImage(localFrontUrl);
+          const fallbackCanvas = document.createElement("canvas");
+          fallbackCanvas.width = localFrontImg.width;
+          fallbackCanvas.height = localFrontImg.height;
+          const fallbackCtx = fallbackCanvas.getContext("2d");
+          if (!fallbackCtx) throw new Error("Failed to get canvas context");
+          fallbackCtx.drawImage(localFrontImg, 0, 0);
+          // Redraw QR and text on fallback canvas
+          const qrSize = Math.min(localFrontImg.width * 0.55, localFrontImg.height * 0.55, 900);
+          const qrX = (localFrontImg.width - qrSize) / 2;
+          const qrY = localFrontImg.height * 0.38;
+          const padding = 8;
+          fallbackCtx.fillStyle = "#ffffff";
+          fallbackCtx.fillRect(
+            qrX - padding,
+            qrY - padding,
+            qrSize + padding * 2,
+            qrSize + padding * 2
+          );
+          fallbackCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+          // Add product name and serial
+          if (product.name) {
+            const nameY = qrY - 35;
+            const nameFontSize = Math.floor(localFrontImg.width * 0.025);
+            fallbackCtx.fillStyle = "#222222";
+            fallbackCtx.textAlign = "center";
+            fallbackCtx.textBaseline = "middle";
+            fallbackCtx.font = `${nameFontSize}px Arial, sans-serif`;
+            let displayName = product.name;
+            const maxWidth = localFrontImg.width * 0.65;
+            const metrics = fallbackCtx.measureText(displayName);
+            if (metrics.width > maxWidth) {
+              while (
+                fallbackCtx.measureText(displayName + "...").width > maxWidth &&
+                displayName.length > 0
+              ) {
+                displayName = displayName.slice(0, -1);
+              }
+              displayName += "...";
+            }
+            fallbackCtx.fillText(displayName, localFrontImg.width / 2, nameY);
+          }
+          const serialY = qrY + qrSize + 35;
+          const fontSize = Math.floor(localFrontImg.width * 0.032);
+          fallbackCtx.fillStyle = "#222222";
+          fallbackCtx.textAlign = "center";
+          fallbackCtx.textBaseline = "middle";
+          fallbackCtx.font = `${fontSize}px "LucidaSans", "Lucida Console", "Courier New", monospace`;
+          fallbackCtx.fillText(product.serialCode, localFrontImg.width / 2, serialY);
+          frontImageData = fallbackCanvas.toDataURL("image/png", 1.0);
+        } else {
+          throw toDataError;
+        }
+      }
+
+      try {
+        backImageData = backCanvas.toDataURL("image/png", 1.0);
+      } catch (toDataError: any) {
+        if (toDataError.message?.includes("tainted")) {
+          console.warn("[Download] Tainted canvas error on back, using local template fallback");
+          // Reload with local template and recreate canvas
+          const localBackUrl = window.location.origin + "/images/serticard/Serticard-02.png";
+          const localBackImg = await loadImage(localBackUrl);
+          const fallbackCanvas = document.createElement("canvas");
+          fallbackCanvas.width = localBackImg.width;
+          fallbackCanvas.height = localBackImg.height;
+          const fallbackCtx = fallbackCanvas.getContext("2d");
+          if (!fallbackCtx) throw new Error("Failed to get canvas context");
+          fallbackCtx.drawImage(localBackImg, 0, 0);
+          backImageData = fallbackCanvas.toDataURL("image/png", 1.0);
+        } else {
+          throw toDataError;
+        }
+      }
+
       console.log("[Download] Image data lengths:", {
         front: frontImageData.length,
         back: backImageData.length,

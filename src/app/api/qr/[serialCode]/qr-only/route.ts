@@ -52,13 +52,16 @@ export async function GET(
     // Convert Buffer to Uint8Array for NextResponse
     const uint8Array = new Uint8Array(qrBuffer);
 
-    // Return as PNG image
+    // Return as PNG image with CORS headers
     return new NextResponse(uint8Array, {
       status: 200,
       headers: {
         "Content-Type": "image/png",
         "Cache-Control": "public, max-age=3600, must-revalidate",
         "ETag": `"${finalSerialCode}-qr-only"`,
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
       },
     });
   } catch (error) {
