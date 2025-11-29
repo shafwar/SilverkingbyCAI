@@ -223,7 +223,7 @@ export function QrPreviewGrid() {
 
       // Calculate QR position based on template design
       // From image: QR is centered, serial below, product name above
-      const qrSize = Math.min(frontTemplateImg.width * 0.45, frontTemplateImg.height * 0.45, 700);
+      const qrSize = Math.min(frontTemplateImg.width * 0.55, frontTemplateImg.height * 0.55, 900);
       const qrX = (frontTemplateImg.width - qrSize) / 2; // Center horizontally
       const qrY = frontTemplateImg.height * 0.38; // Position vertically
 
