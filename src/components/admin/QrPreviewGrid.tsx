@@ -619,9 +619,13 @@ export function QrPreviewGrid() {
   if (!data) {
     return <LoadingSkeleton className="h-64 w-full" />;
   }
-
   return (
     <>
+      {downloadPercent !== null && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/70 backdrop-blur">
+          <DownloadProgressBar percent={downloadPercent} label={downloadLabel} />
+        </div>
+      )}
       {/* Mesmerizing Header Section */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
