@@ -91,26 +91,56 @@ export async function POST(request: NextRequest) {
     let templateImage: any = null;
     const templatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-01.png");
     
+    console.log(`[QR Multiple] ====== TEMPLATE LOADING ======`);
     console.log(`[QR Multiple] Pre-loading template from: ${templatePath}`);
     console.log(`[QR Multiple] Current working directory: ${process.cwd()}`);
+    console.log(`[QR Multiple] NODE_ENV: ${process.env.NODE_ENV}`);
+    console.log(`[QR Multiple] RAILWAY_ENVIRONMENT: ${process.env.RAILWAY_ENVIRONMENT}`);
     
     try {
+      // Check if file exists
       await fs.access(templatePath);
+      console.log(`[QR Multiple] ✓ Template file exists at: ${templatePath}`);
+      
+      // Load template image
       templateImage = await loadImage(templatePath);
-      console.log(`[QR Multiple] Template pre-loaded successfully, size: ${templateImage.width}x${templateImage.height}`);
+      console.log(`[QR Multiple] ✓ Template pre-loaded successfully`);
+      console.log(`[QR Multiple] Template size: ${templateImage.width}x${templateImage.height} pixels`);
     } catch (templateError: any) {
-      const errorMsg = `Failed to load template from ${templatePath}. Error: ${templateError?.message || templateError}. Please ensure Serticard-01.png exists in public/images/serticard/`;
-      console.error(`[QR Multiple] ${errorMsg}`);
+      const errorMsg = `Failed to load template from ${templatePath}`;
+      const errorDetails = {
+        error: templateError?.message || String(templateError),
+        code: templateError?.code,
+        path: templatePath,
+        cwd: process.cwd(),
+        nodeEnv: process.env.NODE_ENV,
+      };
+      
+      console.error(`[QR Multiple] ✗ ${errorMsg}:`, errorDetails);
+      
       return NextResponse.json(
         {
+          success: false,
           error: "Template file not found",
-          message: errorMsg,
-          path: templatePath,
-          cwd: process.cwd(),
+          message: `${errorMsg}. Please ensure Serticard-01.png exists in public/images/serticard/`,
+          details: errorDetails,
         },
         { status: 500 }
       );
     }
+    
+    if (!templateImage) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Template image is null",
+          message: "Template loaded but image is null. This should not happen.",
+        },
+        { status: 500 }
+      );
+    }
+    
+    console.log(`[QR Multiple] ====== TEMPLATE LOADED SUCCESSFULLY ======`);
 
     // Create ZIP file (tetap di scope utama function!)
     const zip = new JSZip();
@@ -360,6 +390,7 @@ export async function POST(request: NextRequest) {
 
     if (r2Available) {
       try {
+        // Create R2 client with proper configuration (forcePathStyle is required for R2)
         const r2Client = new S3Client({
           region: "auto",
           endpoint: normalizedR2Endpoint,
@@ -367,6 +398,8 @@ export async function POST(request: NextRequest) {
             accessKeyId: R2_ACCESS_KEY_ID!,
             secretAccessKey: R2_SECRET_ACCESS_KEY!,
           },
+          forcePathStyle: true, // CRITICAL: Required for R2
+          maxAttempts: 3, // Retry up to 3 times
         });
 
         // Create R2 key with folder structure: qr-batches/batch-{number}-{date}/filename.zip
@@ -374,28 +407,35 @@ export async function POST(request: NextRequest) {
         const batchNum = batchNumber || Math.floor(Date.now() / 1000);
         const r2Key = `qr-batches/batch-${batchNum}-${dateStr}/${filename}`;
         
-        console.log(`[QR Multiple] Uploading ZIP to R2: ${r2Key}, size: ${zipBuffer.length} bytes`);
+        console.log(`[QR Multiple] Uploading ZIP to R2...`);
+        console.log(`[QR Multiple] R2 Key: ${r2Key}`);
+        console.log(`[QR Multiple] ZIP Size: ${zipBuffer.length} bytes (${(zipBuffer.length / 1024 / 1024).toFixed(2)} MB)`);
         console.log(`[QR Multiple] R2 Config:`, {
           bucket: R2_BUCKET,
-          endpoint: normalizedR2Endpoint?.substring(0, 50),
-          publicUrl: R2_PUBLIC_URL?.substring(0, 50),
+          endpoint: normalizedR2Endpoint?.substring(0, 50) + "...",
+          publicUrl: R2_PUBLIC_URL?.substring(0, 50) + "...",
+          hasAccessKey: !!R2_ACCESS_KEY_ID,
+          hasSecretKey: !!R2_SECRET_ACCESS_KEY,
         });
 
         try {
-          await r2Client.send(
-            new PutObjectCommand({
-              Bucket: R2_BUCKET,
-              Key: r2Key,
-              Body: zipBuffer,
-              ContentType: "application/zip",
-              CacheControl: "public, max-age=86400", // Cache for 1 day
-            })
-          );
+          // Upload to R2
+          const uploadCommand = new PutObjectCommand({
+            Bucket: R2_BUCKET,
+            Key: r2Key,
+            Body: zipBuffer,
+            ContentType: "application/zip",
+            CacheControl: "public, max-age=86400", // Cache for 1 day
+          });
 
+          await r2Client.send(uploadCommand);
+          console.log(`[QR Multiple] ZIP uploaded to R2 successfully`);
+
+          // Construct public URL
           const base = R2_PUBLIC_URL!.endsWith("/") ? R2_PUBLIC_URL!.slice(0, -1) : R2_PUBLIC_URL!;
           const downloadUrl = `${base}/${r2Key}`;
 
-          console.log(`[QR Multiple] ZIP uploaded to R2 successfully: ${downloadUrl}`);
+          console.log(`[QR Multiple] R2 Download URL: ${downloadUrl}`);
 
           // Return JSON with download URL instead of file
           return NextResponse.json({
@@ -406,14 +446,18 @@ export async function POST(request: NextRequest) {
             fileCount: successCount,
             failedCount: failCount,
             r2Key,
+            zipSize: zipBuffer.length,
             message: "ZIP file generated and uploaded to R2 successfully",
           });
         } catch (r2UploadError: any) {
           console.error(`[QR Multiple] R2 upload failed:`, {
             error: r2UploadError?.message,
+            name: r2UploadError?.name,
+            code: r2UploadError?.code,
             stack: r2UploadError?.stack,
             r2Key,
             bucket: R2_BUCKET,
+            endpoint: normalizedR2Endpoint,
           });
           // Fall through to direct download if R2 upload fails
           throw r2UploadError;
@@ -421,6 +465,8 @@ export async function POST(request: NextRequest) {
       } catch (r2Error: any) {
         console.error("[QR Multiple] Failed to upload ZIP to R2, falling back to direct download:", {
           error: r2Error?.message,
+          name: r2Error?.name,
+          code: r2Error?.code,
           stack: r2Error?.stack,
         });
         // Fallback to direct download if R2 upload fails

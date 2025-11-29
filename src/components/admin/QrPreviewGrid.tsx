@@ -462,10 +462,14 @@ export function QrPreviewGrid() {
                 try {
                   const errorJson = JSON.parse(errorText);
                   // Use message if available, otherwise use error field
-                  errorMessage = errorJson.message || errorJson.error || `Gagal mengunduh batch ${batchNumber}`;
+                  errorMessage =
+                    errorJson.message || errorJson.error || `Gagal mengunduh batch ${batchNumber}`;
                   // Add details if available (for debugging)
                   if (errorJson.details && process.env.NODE_ENV === "development") {
-                    console.error(`[Download] Error details for batch ${batchNumber}:`, errorJson.details);
+                    console.error(
+                      `[Download] Error details for batch ${batchNumber}:`,
+                      errorJson.details
+                    );
                   }
                 } catch {
                   errorMessage = errorText || `Gagal mengunduh batch ${batchNumber}`;
