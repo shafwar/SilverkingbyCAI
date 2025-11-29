@@ -46,7 +46,7 @@ export function QrPreviewGrid() {
     "/api/admin/qr-preview",
     fetcher,
     {
-    refreshInterval: 60000,
+      refreshInterval: 60000,
     }
   );
   const [selected, setSelected] = useState<Product | null>(null);
@@ -64,7 +64,6 @@ export function QrPreviewGrid() {
   // Tambah state untuk progress bar
   const [downloadPercent, setDownloadPercent] = useState<number | null>(null);
   const [downloadLabel, setDownloadLabel] = useState<string>("");
-
 
   // Extract categories from products (first 3 letters of serial code)
   const categories = useMemo(() => {
@@ -138,37 +137,50 @@ export function QrPreviewGrid() {
     return filtered;
   }, [data?.products, searchQuery, selectedCategory]);
 
-  // Helper function to load image with better error handling
-  const loadImage = (src: string): Promise<HTMLImageElement> => {
+  // Helper function to load image with better error handling and CORS support
+  const loadImage = (src: string, retryCount = 0): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      
-      // Only set crossOrigin for external URLs (R2), not for same-origin (local)
-      // This prevents CORS issues with local images
-      if (src.startsWith("http") && !src.includes(window.location.hostname)) {
+
+      // Determine if this is an external URL (R2) or same-origin
+      const isExternal = src.startsWith("http") && !src.includes(window.location.hostname);
+      const isSameOrigin = src.startsWith(window.location.origin) || src.startsWith("/");
+
+      // Set crossOrigin for external URLs (R2) to allow canvas export
+      // Don't set for same-origin to avoid CORS preflight issues
+      if (isExternal) {
         img.crossOrigin = "anonymous";
       }
-      
+
       // Set timeout to prevent hanging
       const timeout = setTimeout(() => {
         reject(new Error(`Image load timeout: ${src}`));
       }, 30000); // 30 seconds timeout
-      
+
       img.onload = () => {
         clearTimeout(timeout);
         console.log(`[LoadImage] Successfully loaded: ${src}`, {
           width: img.width,
           height: img.height,
+          crossOrigin: img.crossOrigin,
         });
         resolve(img);
       };
-      
+
       img.onerror = (error) => {
         clearTimeout(timeout);
         console.error(`[LoadImage] Failed to load image: ${src}`, error);
-        reject(new Error(`Failed to load image: ${src}. Please check if the file exists.`));
+        
+        // If external URL failed and we haven't retried, try without crossOrigin
+        if (isExternal && retryCount === 0) {
+          console.warn(`[LoadImage] Retrying without crossOrigin: ${src}`);
+          // Retry without crossOrigin (some R2 buckets may not have CORS configured)
+          return loadImage(src, 1).then(resolve).catch(reject);
+        }
+        
+        reject(new Error(`Failed to load image: ${src}. Please check if the file exists and CORS is configured.`));
       };
-      
+
       img.src = src;
     });
   };
@@ -177,7 +189,7 @@ export function QrPreviewGrid() {
     setIsDownloading(true);
     try {
       console.log("[Download] Starting download for:", product.serialCode);
-      
+
       // Get template URLs (front and back) from R2 or local
       // Endpoint will auto-upload to R2 if templates don't exist
       const templateResponse = await fetch("/api/admin/serticard-template-url");
@@ -189,7 +201,10 @@ export function QrPreviewGrid() {
         return { absoluteFrontUrl, absoluteBackUrl };
       }
       const { frontTemplateUrl, backTemplateUrl } = await templateResponse.json();
-      console.log("[Download] Template URLs from endpoint:", { front: frontTemplateUrl, back: backTemplateUrl });
+      console.log("[Download] Template URLs from endpoint:", {
+        front: frontTemplateUrl,
+        back: backTemplateUrl,
+      });
 
       // Ensure absolute URLs for templates
       // If template URL is from R2 (starts with http), use it directly
@@ -223,7 +238,7 @@ export function QrPreviewGrid() {
       console.log("[Download] Loading images...");
       let frontTemplateImg: HTMLImageElement;
       let backTemplateImg: HTMLImageElement;
-      
+
       try {
         frontTemplateImg = await loadImage(absoluteFrontUrl);
         console.log("[Download] Front template loaded from:", absoluteFrontUrl);
@@ -238,7 +253,7 @@ export function QrPreviewGrid() {
           throw new Error(`Failed to load front template from R2 and local: ${frontErr.message}`);
         }
       }
-      
+
       try {
         backTemplateImg = await loadImage(absoluteBackUrl);
         console.log("[Download] Back template loaded from:", absoluteBackUrl);
@@ -253,13 +268,13 @@ export function QrPreviewGrid() {
           throw new Error(`Failed to load back template from R2 and local: ${backErr.message}`);
         }
       }
-      
+
       // Load QR code (required, no fallback)
       const qrImg = await loadImage(qrImageUrl).catch((err) => {
         console.error("[Download] Failed to load QR:", err);
         throw new Error(`Failed to load QR code: ${err.message}`);
       });
-      
+
       console.log("[Download] Images loaded successfully", {
         frontSize: { width: frontTemplateImg.width, height: frontTemplateImg.height },
         backSize: { width: backTemplateImg.width, height: backTemplateImg.height },
@@ -270,11 +285,27 @@ export function QrPreviewGrid() {
       const frontCanvas = document.createElement("canvas");
       frontCanvas.width = frontTemplateImg.width;
       frontCanvas.height = frontTemplateImg.height;
-      const frontCtx = frontCanvas.getContext("2d");
+      const frontCtx = frontCanvas.getContext("2d", {
+        willReadFrequently: false, // Optimize for drawing, not reading
+      });
       if (!frontCtx) throw new Error("Failed to get canvas context");
 
       // Draw front template as background
-      frontCtx.drawImage(frontTemplateImg, 0, 0);
+      // Use try-catch to handle potential tainted canvas errors
+      try {
+        frontCtx.drawImage(frontTemplateImg, 0, 0);
+      } catch (drawError: any) {
+        // If tainted canvas error, try to reload image without crossOrigin
+        if (drawError.message?.includes("tainted") || drawError.message?.includes("cross-origin")) {
+          console.warn("[Download] Tainted canvas detected, reloading front template without crossOrigin");
+          const localFrontUrl = window.location.origin + "/images/serticard/Serticard-01.png";
+          const fallbackImg = await loadImage(localFrontUrl);
+          frontCtx.drawImage(fallbackImg, 0, 0);
+          frontTemplateImg = fallbackImg; // Update reference for later use
+        } else {
+          throw drawError;
+        }
+      }
 
       // Calculate QR position based on template design
       // From image: QR is centered, serial below, product name above
@@ -298,7 +329,7 @@ export function QrPreviewGrid() {
         frontCtx.textAlign = "center";
         frontCtx.textBaseline = "middle";
         frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
-        
+
         // Truncate if too long
         let displayName = product.name;
         const maxWidth = frontTemplateImg.width * 0.65;
@@ -312,7 +343,7 @@ export function QrPreviewGrid() {
           }
           displayName += "...";
         }
-        
+
         frontCtx.fillText(displayName, frontTemplateImg.width / 2, nameY);
       }
 
@@ -330,16 +361,108 @@ export function QrPreviewGrid() {
       const backCanvas = document.createElement("canvas");
       backCanvas.width = backTemplateImg.width;
       backCanvas.height = backTemplateImg.height;
-      const backCtx = backCanvas.getContext("2d");
+      const backCtx = backCanvas.getContext("2d", {
+        willReadFrequently: false, // Optimize for drawing, not reading
+      });
       if (!backCtx) throw new Error("Failed to get canvas context");
 
       // Draw back template as background (no QR code, just the template)
-      backCtx.drawImage(backTemplateImg, 0, 0);
+      // Use try-catch to handle potential tainted canvas errors
+      try {
+        backCtx.drawImage(backTemplateImg, 0, 0);
+      } catch (drawError: any) {
+        // If tainted canvas error, try to reload image without crossOrigin
+        if (drawError.message?.includes("tainted") || drawError.message?.includes("cross-origin")) {
+          console.warn("[Download] Tainted canvas detected, reloading back template without crossOrigin");
+          const localBackUrl = window.location.origin + "/images/serticard/Serticard-02.png";
+          const fallbackImg = await loadImage(localBackUrl);
+          backCtx.drawImage(fallbackImg, 0, 0);
+          backTemplateImg = fallbackImg; // Update reference for later use
+        } else {
+          throw drawError;
+        }
+      }
 
       // Convert both canvases to image data
+      // Handle tainted canvas errors with fallback
       console.log("[Download] Converting canvases to image data...");
-      const frontImageData = frontCanvas.toDataURL("image/png", 1.0);
-      const backImageData = backCanvas.toDataURL("image/png", 1.0);
+      let frontImageData: string;
+      let backImageData: string;
+      
+      try {
+        frontImageData = frontCanvas.toDataURL("image/png", 1.0);
+      } catch (toDataError: any) {
+        if (toDataError.message?.includes("tainted")) {
+          console.warn("[Download] Tainted canvas error on front, using local template fallback");
+          // Reload with local template and recreate canvas
+          const localFrontUrl = window.location.origin + "/images/serticard/Serticard-01.png";
+          const localFrontImg = await loadImage(localFrontUrl);
+          const fallbackCanvas = document.createElement("canvas");
+          fallbackCanvas.width = localFrontImg.width;
+          fallbackCanvas.height = localFrontImg.height;
+          const fallbackCtx = fallbackCanvas.getContext("2d");
+          if (!fallbackCtx) throw new Error("Failed to get canvas context");
+          fallbackCtx.drawImage(localFrontImg, 0, 0);
+          // Redraw QR and text on fallback canvas
+          const qrSize = Math.min(localFrontImg.width * 0.55, localFrontImg.height * 0.55, 900);
+          const qrX = (localFrontImg.width - qrSize) / 2;
+          const qrY = localFrontImg.height * 0.38;
+          const padding = 8;
+          fallbackCtx.fillStyle = "#ffffff";
+          fallbackCtx.fillRect(qrX - padding, qrY - padding, qrSize + padding * 2, qrSize + padding * 2);
+          fallbackCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+          // Add product name and serial
+          if (product.name) {
+            const nameY = qrY - 35;
+            const nameFontSize = Math.floor(localFrontImg.width * 0.025);
+            fallbackCtx.fillStyle = "#222222";
+            fallbackCtx.textAlign = "center";
+            fallbackCtx.textBaseline = "middle";
+            fallbackCtx.font = `${nameFontSize}px Arial, sans-serif`;
+            let displayName = product.name;
+            const maxWidth = localFrontImg.width * 0.65;
+            const metrics = fallbackCtx.measureText(displayName);
+            if (metrics.width > maxWidth) {
+              while (fallbackCtx.measureText(displayName + "...").width > maxWidth && displayName.length > 0) {
+                displayName = displayName.slice(0, -1);
+              }
+              displayName += "...";
+            }
+            fallbackCtx.fillText(displayName, localFrontImg.width / 2, nameY);
+          }
+          const serialY = qrY + qrSize + 35;
+          const fontSize = Math.floor(localFrontImg.width * 0.032);
+          fallbackCtx.fillStyle = "#222222";
+          fallbackCtx.textAlign = "center";
+          fallbackCtx.textBaseline = "middle";
+          fallbackCtx.font = `${fontSize}px "LucidaSans", "Lucida Console", "Courier New", monospace`;
+          fallbackCtx.fillText(product.serialCode, localFrontImg.width / 2, serialY);
+          frontImageData = fallbackCanvas.toDataURL("image/png", 1.0);
+        } else {
+          throw toDataError;
+        }
+      }
+      
+      try {
+        backImageData = backCanvas.toDataURL("image/png", 1.0);
+      } catch (toDataError: any) {
+        if (toDataError.message?.includes("tainted")) {
+          console.warn("[Download] Tainted canvas error on back, using local template fallback");
+          // Reload with local template and recreate canvas
+          const localBackUrl = window.location.origin + "/images/serticard/Serticard-02.png";
+          const localBackImg = await loadImage(localBackUrl);
+          const fallbackCanvas = document.createElement("canvas");
+          fallbackCanvas.width = localBackImg.width;
+          fallbackCanvas.height = localBackImg.height;
+          const fallbackCtx = fallbackCanvas.getContext("2d");
+          if (!fallbackCtx) throw new Error("Failed to get canvas context");
+          fallbackCtx.drawImage(localBackImg, 0, 0);
+          backImageData = fallbackCanvas.toDataURL("image/png", 1.0);
+        } else {
+          throw toDataError;
+        }
+      }
+      
       console.log("[Download] Image data lengths:", {
         front: frontImageData.length,
         back: backImageData.length,
@@ -370,22 +493,22 @@ export function QrPreviewGrid() {
       const cardWidth = (pageWidth - margin * 3) / 2; // Two cards with margins
       const cardHeightFront = (frontTemplateImg.height / frontTemplateImg.width) * cardWidth;
       const cardHeightBack = (backTemplateImg.height / backTemplateImg.width) * cardWidth;
-      
+
       // Use the maximum height to ensure both fit
       const maxCardHeight = Math.max(cardHeightFront, cardHeightBack);
-      
+
       // If cards are too tall, scale down proportionally
       const scaleFactor =
         maxCardHeight > pageHeight - margin * 2 ? (pageHeight - margin * 2) / maxCardHeight : 1;
-      
+
       const finalCardWidth = cardWidth * scaleFactor;
       const finalCardHeightFront = cardHeightFront * scaleFactor;
       const finalCardHeightBack = cardHeightBack * scaleFactor;
-      
+
       // Center vertically
       const yOffsetFront = (pageHeight - finalCardHeightFront) / 2;
       const yOffsetBack = (pageHeight - finalCardHeightBack) / 2;
-      
+
       console.log("[Download] PDF layout dimensions:", {
         pageWidth,
         pageHeight,
@@ -449,7 +572,7 @@ export function QrPreviewGrid() {
         stack: error?.stack,
         name: error?.name,
       });
-      
+
       // Show more detailed error message
       const errorMessage = error?.message || "Unknown error occurred";
       alert(`${t("downloadFailed")}: ${errorMessage}`);
@@ -495,10 +618,10 @@ export function QrPreviewGrid() {
           });
 
           // Check if response is OK
-      if (!response.ok) {
+          if (!response.ok) {
             let errorMessage = `Batch ${batchNumber} gagal`;
             try {
-        const errorText = await response.text();
+              const errorText = await response.text();
               if (
                 errorText.trim().startsWith("<!DOCTYPE") ||
                 errorText.trim().startsWith("<html")
@@ -638,25 +761,25 @@ export function QrPreviewGrid() {
 
             // Create blob and download this batch ZIP
             const blob = new Blob(chunks, { type: "application/zip" });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
 
-      const contentDisposition = response.headers.get("Content-Disposition");
+            const contentDisposition = response.headers.get("Content-Disposition");
             const dateStr = new Date().toISOString().split("T")[0];
             let filename = `Silver-King-QR-Batch-${batchNumber}-of-${totalBatches}-${dateStr}.zip`;
-      if (contentDisposition) {
+            if (contentDisposition) {
               const filenameMatch = contentDisposition.match(/filename=?"?([^\s"]+)"?/);
-        if (filenameMatch) {
+              if (filenameMatch) {
                 filename = filenameMatch[1].replace(/\.zip$/, `-batch-${batchNumber}.zip`);
-        }
-      }
+              }
+            }
 
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
 
             console.log(`[Download] Batch ${batchNumber}/${totalBatches} downloaded directly`);
           } else {
@@ -779,7 +902,7 @@ export function QrPreviewGrid() {
       if (!response.ok) {
         let errorMessage = "Gagal mengunduh file ZIP";
         try {
-        const errorText = await response.text();
+          const errorText = await response.text();
           // Check if response is HTML (error page from server)
           if (errorText.trim().startsWith("<!DOCTYPE") || errorText.trim().startsWith("<html")) {
             errorMessage = "Server error: Terjadi kesalahan pada server. Silakan coba lagi.";
@@ -958,7 +1081,6 @@ export function QrPreviewGrid() {
     if (!filteredProducts || filteredProducts.length === 0) return false;
     return filteredProducts.every((p) => selectedItems.has(p.id));
   }, [filteredProducts, selectedItems]);
-
 
   if (isLoading) {
     return <LoadingSkeleton className="h-64 w-full" />;
@@ -1514,8 +1636,8 @@ export function QrPreviewGrid() {
             ) : (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {filteredProducts.map((product, index) => {
-                const isItemSelected = selectedItems.has(product.id);
-                return (
+                  const isItemSelected = selectedItems.has(product.id);
+                  return (
                     <AnimatedCard
                       key={product.id}
                       delay={index * 0.05}
@@ -1539,23 +1661,23 @@ export function QrPreviewGrid() {
                             <Square className="h-5 w-5 text-white/40" />
                           )}
                         </button>
-                        </div>
+                      </div>
 
                       {/* QR Code Image */}
                       <div className="relative aspect-square w-full rounded-lg border border-white/10 bg-white p-3 sm:p-4 mb-3">
-                      <img
-                        src={`/api/qr/${product.serialCode}`}
-                        alt={product.name}
+                        <img
+                          src={`/api/qr/${product.serialCode}`}
+                          alt={product.name}
                           className="h-full w-full object-contain"
-                        loading="lazy"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          if (!target.dataset.retried) {
-                            target.dataset.retried = "true";
-                            target.src = `/api/qr/${product.serialCode}?t=${Date.now()}`;
-                          }
-                        }}
-                      />
+                          loading="lazy"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            if (!target.dataset.retried) {
+                              target.dataset.retried = "true";
+                              target.src = `/api/qr/${product.serialCode}?t=${Date.now()}`;
+                            }
+                          }}
+                        />
                       </div>
 
                       {/* Product Info */}
@@ -1570,7 +1692,7 @@ export function QrPreviewGrid() {
                       {/* Action Buttons */}
                       <div className="mt-4 flex items-center gap-2">
                         <motion.button
-                  onClick={() => setSelected(product)}
+                          onClick={() => setSelected(product)}
                           className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70 transition hover:border-[#FFD700]/40 hover:bg-white/10 hover:text-white"
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
@@ -1589,8 +1711,8 @@ export function QrPreviewGrid() {
                           {t("download")}
                         </motion.button>
                       </div>
-                  </AnimatedCard>
-                );
+                    </AnimatedCard>
+                  );
                 })}
               </div>
             )}
