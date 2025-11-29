@@ -7,19 +7,32 @@ import PDFDocument from "pdfkit";
 import JSZip from "jszip";
 
 /**
- * Generate ZIP file with all QR codes as PDFs (one PDF per QR code)
+ * Generate ZIP file with multiple PDFs (one PDF per QR code)
  * Organizes PDFs into subfolders based on weight (gramasi) if different weights exist
  */
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     if (!session || (session.user as any).role !== "ADMIN") {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Get all products with QR records
+    const body = await request.json();
+    const { serialCodes } = body;
+
+    if (!serialCodes || !Array.isArray(serialCodes) || serialCodes.length === 0) {
+      return NextResponse.json(
+        { error: "serialCodes array is required and must not be empty" },
+        { status: 400 }
+      );
+    }
+
+    // Get products matching the provided serial codes
     const products = await prisma.product.findMany({
       where: {
+        serialCode: {
+          in: serialCodes,
+        },
         qrRecord: {
           isNot: null,
         },
@@ -36,7 +49,10 @@ export async function GET(request: NextRequest) {
     });
 
     if (products.length === 0) {
-      return NextResponse.json({ error: "No products with QR codes found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "No products with QR codes found for the provided serial codes" },
+        { status: 404 }
+      );
     }
 
     // Group products by weight (gramasi)
@@ -59,7 +75,7 @@ export async function GET(request: NextRequest) {
     // Generate PDF for each product
     for (const product of products) {
       try {
-        console.log(`[QR All] Processing ${product.serialCode}...`);
+        console.log(`[QR Multiple] Processing ${product.serialCode}...`);
         const verifyUrl = getVerifyUrl(product.serialCode);
 
         // Generate QR with Serticard template
@@ -74,7 +90,7 @@ export async function GET(request: NextRequest) {
           throw new Error(`Failed to generate PNG buffer for ${product.serialCode}`);
         }
 
-        console.log(`[QR All] PNG generated for ${product.serialCode}, size: ${pngBuffer.length}`);
+        console.log(`[QR Multiple] PNG generated for ${product.serialCode}, size: ${pngBuffer.length}`);
 
         // Create PDF
         const doc = new PDFDocument({
@@ -89,11 +105,11 @@ export async function GET(request: NextRequest) {
         const pdfPromise = new Promise<Buffer>((resolve, reject) => {
           doc.on("end", () => {
             const buffer = Buffer.concat(chunks);
-            console.log(`[QR All] PDF generated for ${product.serialCode}, size: ${buffer.length}`);
+            console.log(`[QR Multiple] PDF generated for ${product.serialCode}, size: ${buffer.length}`);
             resolve(buffer);
           });
           doc.on("error", (err) => {
-            console.error(`[QR All] PDF generation error for ${product.serialCode}:`, err);
+            console.error(`[QR Multiple] PDF generation error for ${product.serialCode}:`, err);
             reject(err);
           });
         });
@@ -134,15 +150,15 @@ export async function GET(request: NextRequest) {
         // Add PDF to ZIP
         zip.file(`${folderPath}${filename}`, pdfBuffer);
         successCount++;
-        console.log(`[QR All] Added ${folderPath}${filename} to ZIP`);
+        console.log(`[QR Multiple] Added ${folderPath}${filename} to ZIP`);
       } catch (error) {
         failCount++;
-        console.error(`[QR All] Failed to generate PDF for ${product.serialCode}:`, error);
+        console.error(`[QR Multiple] Failed to generate PDF for ${product.serialCode}:`, error);
         // Continue with next product
       }
     }
 
-    console.log(`[QR All] PDF generation complete: ${successCount} success, ${failCount} failed`);
+    console.log(`[QR Multiple] PDF generation complete: ${successCount} success, ${failCount} failed`);
 
     if (successCount === 0) {
       return NextResponse.json(
@@ -158,9 +174,9 @@ export async function GET(request: NextRequest) {
       compressionOptions: { level: 9 },
     });
 
-    // Generate filename with date
+    // Generate filename with date and count
     const dateStr = new Date().toISOString().split("T")[0];
-    const filename = `Silver-King-All-QR-Codes-${products.length}-${dateStr}.zip`;
+    const filename = `Silver-King-QR-Codes-${products.length}-${dateStr}.zip`;
 
     // Return ZIP file
     return new NextResponse(zipBuffer, {
@@ -172,7 +188,8 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("All PDF ZIP generation failed:", error);
+    console.error("Multiple PDF ZIP generation failed:", error);
     return new NextResponse("Failed to generate ZIP file", { status: 500 });
   }
 }
+

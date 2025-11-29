@@ -53,9 +53,9 @@ const r2Client = r2Available
 const QR_FOLDER = path.join(process.cwd(), "public", "qr");
 
 // Register bundled font for QR labels so text renders consistently in all environments
-// We use SF Mono Regular from /public/fonts and expose it as "SKMono" family for QR rendering.
-const QR_FONT_FAMILY = "SKMono";
-const QR_FONT_PATH = path.join(process.cwd(), "public", "fonts", "SFMono-Regular.otf");
+// We use LucidaSans from /public/fonts for QR rendering.
+const QR_FONT_FAMILY = "LucidaSans";
+const QR_FONT_PATH = path.join(process.cwd(), "public", "fonts", "LucidaSans.ttf");
 
 try {
   registerFont(QR_FONT_PATH, { family: QR_FONT_FAMILY });
@@ -457,4 +457,157 @@ export async function deleteQrAsset(serialCode: string, existingUrl?: string) {
   }
 
   await deleteLocalQR(serialCode);
+}
+
+/**
+ * Upload Serticard template to R2
+ */
+export async function uploadSerticardTemplate(): Promise<string | null> {
+  if (!r2Available || !r2Client) {
+    console.warn("[Serticard] R2 not available, skipping template upload");
+    return null;
+  }
+
+  try {
+    const templatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-01.png");
+    const templateBuffer = await fs.readFile(templatePath);
+    
+    const objectKey = "templates/serticard-01.png";
+    
+    await r2Client.send(
+      new PutObjectCommand({
+        Bucket: R2_BUCKET,
+        Key: objectKey,
+        Body: templateBuffer,
+        ContentType: "image/png",
+        CacheControl: "public, max-age=31536000, immutable", // Cache forever
+      })
+    );
+
+    const base = R2_PUBLIC_URL!.endsWith("/") ? R2_PUBLIC_URL!.slice(0, -1) : R2_PUBLIC_URL!;
+    const templateUrl = `${base}/${objectKey}`;
+    
+    console.log("[Serticard] Template uploaded to R2:", templateUrl);
+    return templateUrl;
+  } catch (error) {
+    console.error("[Serticard] Failed to upload template to R2:", error);
+    return null;
+  }
+}
+
+/**
+ * Get Serticard template URL from R2 or fallback to local
+ * For local development/testing, always use local path
+ */
+export function getSerticardTemplateUrl(): string {
+  // For local development, always use local path
+  // In production with R2, check if template exists in R2 first
+  const isLocalDev = process.env.NODE_ENV === "development" || !r2Available;
+  
+  if (isLocalDev) {
+    return "/images/serticard/Serticard-01.png";
+  }
+  
+  // Production: try R2 first
+  if (r2Available && R2_PUBLIC_URL) {
+    const base = R2_PUBLIC_URL.endsWith("/") ? R2_PUBLIC_URL.slice(0, -1) : R2_PUBLIC_URL;
+    return `${base}/templates/serticard-01.png`;
+  }
+  
+  // Final fallback to local path
+  return "/images/serticard/Serticard-01.png";
+}
+
+/**
+ * Generate QR code with Serticard template
+ * Places QR code on the Serticard-01.png template
+ * Layout optimized for print output
+ */
+export async function generateQRWithSerticard(
+  serialCode: string,
+  targetUrl: string,
+  productName?: string,
+  productWeight?: number
+): Promise<Buffer> {
+  try {
+    // Load template image
+    const templatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-01.png");
+    const templateImage = await loadImage(templatePath);
+
+    // Generate QR code - larger size for better print quality
+    const qrBuffer = await QRCode.toBuffer(targetUrl, {
+      width: 800,
+      errorCorrectionLevel: "H",
+      color: { dark: "#0c0c0c", light: "#ffffff" },
+      margin: 2,
+    });
+
+    const qrImage = await loadImage(qrBuffer);
+
+    // Create canvas with template dimensions
+    const canvas = createCanvas(templateImage.width, templateImage.height);
+    const ctx = canvas.getContext("2d");
+
+    // Draw template as background
+    ctx.drawImage(templateImage, 0, 0);
+
+    // Calculate QR code position on template
+    // Position QR code in a suitable area of the template
+    // Adjust these values based on actual template design
+    const qrSize = Math.min(templateImage.width * 0.35, templateImage.height * 0.35, 800);
+    const qrX = (templateImage.width - qrSize) / 2; // Center horizontally
+    const qrY = templateImage.height * 0.35; // Position vertically (adjust as needed)
+
+    // Draw QR code on template with white background for better visibility
+    // Add small white padding around QR for better contrast
+    const padding = 10;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(qrX - padding, qrY - padding, qrSize + padding * 2, qrSize + padding * 2);
+    ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+
+    // Add serial number below QR code using LucidaSans font
+    const normalizedSerialCode = String(serialCode || "")
+      .trim()
+      .toUpperCase();
+
+    if (normalizedSerialCode && normalizedSerialCode.length >= 3) {
+      const serialY = qrY + qrSize + 40;
+      const fontSize = Math.floor(templateImage.width * 0.035); // Responsive font size
+      
+      ctx.fillStyle = "#222222";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `bold ${fontSize}px "${QR_FONT_FAMILY}"`;
+      ctx.fillText(normalizedSerialCode, templateImage.width / 2, serialY);
+    }
+
+    // Add product name if provided (above QR code)
+    if (productName) {
+      const nameY = qrY - 50;
+      const fontSize = Math.floor(templateImage.width * 0.028);
+      
+      ctx.fillStyle = "#222222";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+      
+      // Truncate if too long
+      let displayName = productName;
+      const maxWidth = templateImage.width * 0.7;
+      const metrics = ctx.measureText(displayName);
+      if (metrics.width > maxWidth) {
+        while (ctx.measureText(displayName + "...").width > maxWidth && displayName.length > 0) {
+          displayName = displayName.slice(0, -1);
+        }
+        displayName += "...";
+      }
+      
+      ctx.fillText(displayName, templateImage.width / 2, nameY);
+    }
+
+    return canvas.toBuffer("image/png");
+  } catch (error) {
+    console.error("Error generating QR with Serticard template:", error);
+    throw error;
+  }
 }

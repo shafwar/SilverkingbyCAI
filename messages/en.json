@@ -626,7 +626,10 @@
       "downloadAllFailed": "No products available to download.",
       "downloadSelectedFailed": "Please select at least one QR code to download.",
       "downloadSuccess": "Successfully downloaded PNG with {count} QR code(s)!",
-      "downloadSelectedSuccess": "Successfully downloaded PNG with {count} selected QR code(s)!"
+      "downloadSelectedSuccess": "Successfully downloaded PNG with {count} selected QR code(s)!",
+      "filterByCategory": "Filter by Category",
+      "allCategories": "All Categories",
+      "category": "Category"
     },
     "qrPreview": "QR Preview",
     "logs": "Logs",

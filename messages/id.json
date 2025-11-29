@@ -630,7 +630,10 @@
       "downloadAllFailed": "Tidak ada produk tersedia untuk diunduh.",
       "downloadSelectedFailed": "Silakan pilih setidaknya satu kode QR untuk diunduh.",
       "downloadSuccess": "Berhasil mengunduh PNG dengan {count} kode QR!",
-      "downloadSelectedSuccess": "Berhasil mengunduh PNG dengan {count} kode QR terpilih!"
+      "downloadSelectedSuccess": "Berhasil mengunduh PNG dengan {count} kode QR terpilih!",
+      "filterByCategory": "Filter berdasarkan Kategori",
+      "allCategories": "Semua Kategori",
+      "category": "Kategori"
     },
     "qrPreview": "Pratinjau QR",
     "logs": "Log",

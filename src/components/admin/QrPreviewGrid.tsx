@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import useSWR from "swr";
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,7 +15,11 @@ import {
   Table2,
   Search,
   RefreshCw,
+  Filter,
+  ChevronDown,
+  Check,
 } from "lucide-react";
+import jsPDF from "jspdf";
 
 import { fetcher } from "@/lib/fetcher";
 import { LoadingSkeleton } from "./LoadingSkeleton";
@@ -48,66 +52,334 @@ export function QrPreviewGrid() {
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [layoutView, setLayoutView] = useState<"table" | "grid">("table");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Filter products based on search query
+  // Extract categories from products (first 3 letters of serial code)
+  const categories = useMemo(() => {
+    if (!data?.products) return [];
+
+    const categoryMap = new Map<string, { prefix: string; weight: number; count: number }>();
+
+    data.products.forEach((product) => {
+      const prefix = product.serialCode.substring(0, 3).toUpperCase();
+      if (prefix.length === 3) {
+        const existing = categoryMap.get(prefix);
+        if (existing) {
+          existing.count += 1;
+        } else {
+          categoryMap.set(prefix, {
+            prefix,
+            weight: product.weight,
+            count: 1,
+          });
+        }
+      }
+    });
+
+    return Array.from(categoryMap.values()).sort((a, b) => a.prefix.localeCompare(b.prefix));
+  }, [data?.products]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        categoryDropdownRef.current &&
+        !categoryDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsCategoryDropdownOpen(false);
+      }
+    };
+
+    if (isCategoryDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isCategoryDropdownOpen]);
+
+  // Filter products based on search query and category
   const filteredProducts = useMemo(() => {
     if (!data?.products) return [];
 
-    if (!searchQuery.trim()) {
-      return data.products;
+    let filtered = data.products;
+
+    // Filter by category (serial prefix)
+    if (selectedCategory) {
+      filtered = filtered.filter((product) => {
+        const prefix = product.serialCode.substring(0, 3).toUpperCase();
+        return prefix === selectedCategory;
+      });
     }
 
-    const query = searchQuery.toLowerCase().trim();
-    return data.products.filter((product) => {
-      const nameMatch = product.name.toLowerCase().includes(query);
-      const serialMatch = product.serialCode.toLowerCase().includes(query);
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter((product) => {
+        const nameMatch = product.name.toLowerCase().includes(query);
+        const serialMatch = product.serialCode.toLowerCase().includes(query);
+        return nameMatch || serialMatch;
+      });
+    }
 
-      return nameMatch || serialMatch;
+    return filtered;
+  }, [data?.products, searchQuery, selectedCategory]);
+
+  // Helper function to load image with better error handling
+  const loadImage = (src: string): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      
+      // Only set crossOrigin for external URLs (R2), not for same-origin (local)
+      // This prevents CORS issues with local images
+      if (src.startsWith("http") && !src.includes(window.location.hostname)) {
+        img.crossOrigin = "anonymous";
+      }
+      
+      // Set timeout to prevent hanging
+      const timeout = setTimeout(() => {
+        reject(new Error(`Image load timeout: ${src}`));
+      }, 30000); // 30 seconds timeout
+      
+      img.onload = () => {
+        clearTimeout(timeout);
+        console.log(`[LoadImage] Successfully loaded: ${src}`, {
+          width: img.width,
+          height: img.height,
+        });
+        resolve(img);
+      };
+      
+      img.onerror = (error) => {
+        clearTimeout(timeout);
+        console.error(`[LoadImage] Failed to load image: ${src}`, error);
+        reject(new Error(`Failed to load image: ${src}. Please check if the file exists.`));
+      };
+      
+      img.src = src;
     });
-  }, [data?.products, searchQuery]);
+  };
 
   const handleDownload = async (product: Product) => {
     setIsDownloading(true);
     try {
-      // Use PNG download endpoint (more reliable than PDF)
-      const response = await fetch(`/api/qr/${product.serialCode}/download`);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || `Failed to fetch QR: ${response.statusText}`);
+      console.log("[Download] Starting download for:", product.serialCode);
+      
+      // Get template URLs (front and back) from R2 or local
+      const templateResponse = await fetch("/api/admin/serticard-template-url");
+      if (!templateResponse.ok) {
+        throw new Error("Failed to get template URL");
       }
+      const { frontTemplateUrl, backTemplateUrl } = await templateResponse.json();
+      console.log("[Download] Template URLs:", { front: frontTemplateUrl, back: backTemplateUrl });
+      
+      // Ensure absolute URLs for templates
+      const absoluteFrontUrl = frontTemplateUrl.startsWith("http") 
+        ? frontTemplateUrl 
+        : window.location.origin + frontTemplateUrl;
+      const absoluteBackUrl = backTemplateUrl.startsWith("http") 
+        ? backTemplateUrl 
+        : window.location.origin + backTemplateUrl;
 
-      const blob = await response.blob();
+      // Get QR code ONLY (without text) for template overlay
+      const qrImageUrl = `${window.location.origin}/api/qr/${product.serialCode}/qr-only`;
+      console.log("[Download] QR URL:", qrImageUrl);
 
-      // Create a download link
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
+      // Load all images: front template, back template, and QR code
+      console.log("[Download] Loading images...");
+      const [frontTemplateImg, backTemplateImg, qrImg] = await Promise.all([
+        loadImage(absoluteFrontUrl).catch((err) => {
+          console.error("[Download] Failed to load front template:", err);
+          throw new Error(`Failed to load front template: ${err.message}`);
+        }),
+        loadImage(absoluteBackUrl).catch((err) => {
+          console.error("[Download] Failed to load back template:", err);
+          throw new Error(`Failed to load back template: ${err.message}`);
+        }),
+        loadImage(qrImageUrl).catch((err) => {
+          console.error("[Download] Failed to load QR:", err);
+          throw new Error(`Failed to load QR code: ${err.message}`);
+        }),
+      ]);
+      
+      console.log("[Download] Images loaded successfully", {
+        frontSize: { width: frontTemplateImg.width, height: frontTemplateImg.height },
+        backSize: { width: backTemplateImg.width, height: backTemplateImg.height },
+        qrSize: { width: qrImg.width, height: qrImg.height },
+      });
 
-      // Get filename from Content-Disposition header or use default
-      const contentDisposition = response.headers.get("Content-Disposition");
-      let filename = `QR-${product.serialCode}.png`;
-      if (contentDisposition) {
-        // Handle both quoted and unquoted filenames
-        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/i);
-        if (filenameMatch && filenameMatch[1]) {
-          // Remove quotes if present
-          filename = filenameMatch[1].replace(/['"]/g, "").trim();
+      // Create canvas for FRONT template with QR code overlay
+      const frontCanvas = document.createElement("canvas");
+      frontCanvas.width = frontTemplateImg.width;
+      frontCanvas.height = frontTemplateImg.height;
+      const frontCtx = frontCanvas.getContext("2d");
+      if (!frontCtx) throw new Error("Failed to get canvas context");
+
+      // Draw front template as background
+      frontCtx.drawImage(frontTemplateImg, 0, 0);
+
+      // Calculate QR position based on template design
+      // From image: QR is centered, serial below, product name above
+      const qrSize = Math.min(frontTemplateImg.width * 0.32, frontTemplateImg.height * 0.32, 700);
+      const qrX = (frontTemplateImg.width - qrSize) / 2; // Center horizontally
+      const qrY = frontTemplateImg.height * 0.38; // Position vertically
+
+      // Draw white background for QR (optional, for better contrast)
+      const padding = 8;
+      frontCtx.fillStyle = "#ffffff";
+      frontCtx.fillRect(qrX - padding, qrY - padding, qrSize + padding * 2, qrSize + padding * 2);
+
+      // Draw QR code on front template
+      frontCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+
+      // Add product name above QR code
+      if (product.name) {
+        const nameY = qrY - 35;
+        const nameFontSize = Math.floor(frontTemplateImg.width * 0.025);
+        frontCtx.fillStyle = "#222222";
+        frontCtx.textAlign = "center";
+        frontCtx.textBaseline = "middle";
+        frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
+        
+        // Truncate if too long
+        let displayName = product.name;
+        const maxWidth = frontTemplateImg.width * 0.65;
+        const metrics = frontCtx.measureText(displayName);
+        if (metrics.width > maxWidth) {
+          while (frontCtx.measureText(displayName + "...").width > maxWidth && displayName.length > 0) {
+            displayName = displayName.slice(0, -1);
+          }
+          displayName += "...";
         }
+        
+        frontCtx.fillText(displayName, frontTemplateImg.width / 2, nameY);
       }
 
-      // Ensure filename is properly formatted (remove any encoding artifacts)
-      filename = decodeURIComponent(filename);
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
+      // Add serial number below QR code (using LucidaSans font)
+      const serialY = qrY + qrSize + 35;
+      const fontSize = Math.floor(frontTemplateImg.width * 0.032);
+      frontCtx.fillStyle = "#222222";
+      frontCtx.textAlign = "center";
+      frontCtx.textBaseline = "middle";
+      // Try to use LucidaSans, fallback to monospace for serial codes
+      frontCtx.font = `${fontSize}px "LucidaSans", "Lucida Console", "Courier New", monospace`;
+      frontCtx.fillText(product.serialCode, frontTemplateImg.width / 2, serialY);
 
-      // Cleanup
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      // Create canvas for BACK template (no QR, just the template)
+      const backCanvas = document.createElement("canvas");
+      backCanvas.width = backTemplateImg.width;
+      backCanvas.height = backTemplateImg.height;
+      const backCtx = backCanvas.getContext("2d");
+      if (!backCtx) throw new Error("Failed to get canvas context");
+
+      // Draw back template as background (no QR code, just the template)
+      backCtx.drawImage(backTemplateImg, 0, 0);
+
+      // Convert both canvases to image data
+      console.log("[Download] Converting canvases to image data...");
+      const frontImageData = frontCanvas.toDataURL("image/png", 1.0);
+      const backImageData = backCanvas.toDataURL("image/png", 1.0);
+      console.log("[Download] Image data lengths:", {
+        front: frontImageData.length,
+        back: backImageData.length,
+      });
+
+      if (!frontImageData || frontImageData === "data:," || !backImageData || backImageData === "data:,") {
+        throw new Error("Failed to generate image data from canvas");
+      }
+
+      // Create PDF using jsPDF with LANDSCAPE orientation for side-by-side layout
+      console.log("[Download] Creating PDF with side-by-side layout...");
+      const pdf = new jsPDF({
+        orientation: "landscape", // Landscape to fit two cards side by side
+        unit: "mm",
+        format: [297, 210], // A4 landscape: width=297mm, height=210mm
+      });
+
+      // Calculate dimensions for side-by-side layout
+      // Each card should fit in half the page width with some margin
+      const pageWidth = 297; // A4 landscape width in mm
+      const pageHeight = 210; // A4 landscape height in mm
+      const margin = 5; // Margin on each side
+      const cardWidth = (pageWidth - margin * 3) / 2; // Two cards with margins
+      const cardHeightFront = (frontTemplateImg.height / frontTemplateImg.width) * cardWidth;
+      const cardHeightBack = (backTemplateImg.height / backTemplateImg.width) * cardWidth;
+      
+      // Use the maximum height to ensure both fit
+      const maxCardHeight = Math.max(cardHeightFront, cardHeightBack);
+      
+      // If cards are too tall, scale down proportionally
+      const scaleFactor = maxCardHeight > (pageHeight - margin * 2) 
+        ? (pageHeight - margin * 2) / maxCardHeight 
+        : 1;
+      
+      const finalCardWidth = cardWidth * scaleFactor;
+      const finalCardHeightFront = cardHeightFront * scaleFactor;
+      const finalCardHeightBack = cardHeightBack * scaleFactor;
+      
+      // Center vertically
+      const yOffsetFront = (pageHeight - finalCardHeightFront) / 2;
+      const yOffsetBack = (pageHeight - finalCardHeightBack) / 2;
+      
+      console.log("[Download] PDF layout dimensions:", {
+        pageWidth,
+        pageHeight,
+        finalCardWidth,
+        finalCardHeightFront,
+        finalCardHeightBack,
+        yOffsetFront,
+        yOffsetBack,
+      });
+
+      // Add front template (left side)
+      try {
+        pdf.addImage(frontImageData, "PNG", margin, yOffsetFront, finalCardWidth, finalCardHeightFront);
+        console.log("[Download] Front template added to PDF");
+      } catch (pdfError: any) {
+        console.error("[Download] Failed to add front image to PDF:", pdfError);
+        throw new Error(`Failed to add front template to PDF: ${pdfError.message || "Unknown error"}`);
+      }
+
+      // Add back template (right side)
+      try {
+        const backX = margin * 2 + finalCardWidth; // Position to the right of front card
+        pdf.addImage(backImageData, "PNG", backX, yOffsetBack, finalCardWidth, finalCardHeightBack);
+        console.log("[Download] Back template added to PDF");
+      } catch (pdfError: any) {
+        console.error("[Download] Failed to add back image to PDF:", pdfError);
+        throw new Error(`Failed to add back template to PDF: ${pdfError.message || "Unknown error"}`);
+      }
+
+      console.log("[Download] PDF created successfully with side-by-side layout");
+
+      // Generate filename
+      const sanitizedName = product.name
+        .trim()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-zA-Z0-9-]/g, "")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+
+      const filename = `QR-${product.serialCode}${sanitizedName ? `-${sanitizedName}` : ""}.pdf`;
+
+      // Download PDF
+      console.log("[Download] Saving PDF:", filename);
+      pdf.save(filename);
+      console.log("[Download] Download completed successfully");
     } catch (error: any) {
-      console.error("Failed to download QR code:", error);
-      alert(`${t('downloadFailed')}: ${error.message || tCommon('tryAgain')}`);
+      console.error("[Download] Failed to download QR code:", error);
+      console.error("[Download] Error details:", {
+        message: error?.message,
+        stack: error?.stack,
+        name: error?.name,
+      });
+      
+      // Show more detailed error message
+      const errorMessage = error?.message || "Unknown error occurred";
+      alert(`${t('downloadFailed')}: ${errorMessage}`);
     } finally {
       setIsDownloading(false);
     }
@@ -121,12 +393,12 @@ export function QrPreviewGrid() {
 
     setIsDownloadingAll(true);
     try {
-      // Download all QR codes as a single PNG grid image
-      const response = await fetch("/api/qr/download-all-png");
+      // Download all QR codes as ZIP with PDFs (one PDF per QR)
+      const response = await fetch("/api/qr/download-all-pdf");
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || "Failed to generate PNG grid");
+        throw new Error(errorText || "Failed to generate ZIP file");
       }
 
       const blob = await response.blob();
@@ -136,7 +408,7 @@ export function QrPreviewGrid() {
 
       // Get filename from Content-Disposition header or use default
       const contentDisposition = response.headers.get("Content-Disposition");
-      let filename = `Silver-King-All-QR-Codes-${new Date().toISOString().split("T")[0]}.png`;
+      let filename = `Silver-King-All-QR-Codes-${new Date().toISOString().split("T")[0]}.zip`;
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
         if (filenameMatch) {
@@ -153,7 +425,7 @@ export function QrPreviewGrid() {
       // Show success message
       alert(t('downloadSuccess', { count: data.products.length }));
     } catch (error: any) {
-      console.error("Failed to download PNG:", error);
+      console.error("Failed to download ZIP:", error);
       alert(`${t('downloadFailed')}: ${error.message || tCommon('tryAgain')}`);
     } finally {
       setIsDownloadingAll(false);
@@ -173,8 +445,8 @@ export function QrPreviewGrid() {
 
     setIsDownloadingSelected(true);
     try {
-      // Download selected QR codes as a single PNG grid image
-      const response = await fetch("/api/qr/download-selected-png", {
+      // Download selected QR codes as ZIP with PDFs (one PDF per QR)
+      const response = await fetch("/api/qr/download-multiple-pdf", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -184,7 +456,7 @@ export function QrPreviewGrid() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || "Failed to generate PNG grid");
+        throw new Error(errorText || "Failed to generate ZIP file");
       }
 
       const blob = await response.blob();
@@ -194,7 +466,7 @@ export function QrPreviewGrid() {
 
       // Get filename from Content-Disposition header or use default
       const contentDisposition = response.headers.get("Content-Disposition");
-      let filename = `Silver-King-Selected-QR-Codes-${serialCodes.length}-${new Date().toISOString().split("T")[0]}.png`;
+      let filename = `Silver-King-Selected-QR-Codes-${serialCodes.length}-${new Date().toISOString().split("T")[0]}.zip`;
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/i);
         if (filenameMatch && filenameMatch[1]) {
@@ -212,7 +484,7 @@ export function QrPreviewGrid() {
       // Show success message
       alert(t('downloadSelectedSuccess', { count: serialCodes.length }));
     } catch (error: any) {
-      console.error("Failed to download selected PNG:", error);
+      console.error("Failed to download selected ZIP:", error);
       alert(`${t('downloadSelectedFailed')}: ${error.message || tCommon('tryAgain')}`);
     } finally {
       setIsDownloadingSelected(false);
@@ -398,6 +670,106 @@ export function QrPreviewGrid() {
               />
             </motion.div>
 
+            {/* Category Filter - Custom Dropdown */}
+            <motion.div
+              ref={categoryDropdownRef}
+              className="relative"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{
+                duration: 0.4,
+                ease: [0.22, 1, 0.36, 1],
+                delay: 0.52,
+              }}
+            >
+              <motion.button
+                type="button"
+                onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                className="group relative flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-light text-white backdrop-blur-sm transition-all hover:border-[#FFD700]/50 hover:bg-white/10 focus:border-[#FFD700]/50 focus:bg-white/10 focus:outline-none focus:shadow-[0_0_20px_rgba(255,215,0,0.15)] min-w-[200px] justify-between"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <Filter className="h-4 w-4 text-white/50 transition-colors group-hover:text-[#FFD700]/70 flex-shrink-0" />
+                  <span className="truncate">
+                    {selectedCategory
+                      ? (() => {
+                          const category = categories.find((c) => c.prefix === selectedCategory);
+                          return category
+                            ? `${category.prefix} (${category.weight} gr)`
+                            : selectedCategory;
+                        })()
+                      : t('allCategories')}
+                  </span>
+                </div>
+                <motion.div
+                  animate={{ rotate: isCategoryDropdownOpen ? 180 : 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <ChevronDown className="h-4 w-4 text-white/50 transition-colors group-hover:text-[#FFD700]/70 flex-shrink-0" />
+                </motion.div>
+              </motion.button>
+
+              <AnimatePresence>
+                {isCategoryDropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                    transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                    className="absolute top-full left-0 mt-2 z-50 w-full min-w-[280px] rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden"
+                  >
+                    <div className="max-h-[300px] overflow-y-auto scrollbar-show">
+                      <motion.button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategory("");
+                          setIsCategoryDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-4 py-3 text-left text-sm transition-colors ${
+                          selectedCategory === ""
+                            ? "bg-[#FFD700]/10 text-[#FFD700] border-l-2 border-[#FFD700]"
+                            : "text-white/70 hover:bg-white/5 hover:text-white"
+                        }`}
+                        whileHover={{ x: 4 }}
+                      >
+                        <span className="font-medium">{t('allCategories')}</span>
+                        {selectedCategory === "" && (
+                          <Check className="h-4 w-4 text-[#FFD700]" />
+                        )}
+                      </motion.button>
+                      {categories.map((category) => (
+                        <motion.button
+                          key={category.prefix}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCategory(category.prefix);
+                            setIsCategoryDropdownOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-4 py-3 text-left text-sm transition-colors border-t border-white/5 ${
+                            selectedCategory === category.prefix
+                              ? "bg-[#FFD700]/10 text-[#FFD700] border-l-2 border-[#FFD700]"
+                              : "text-white/70 hover:bg-white/5 hover:text-white"
+                          }`}
+                          whileHover={{ x: 4 }}
+                        >
+                          <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                            <span className="font-semibold">{category.prefix}</span>
+                            <span className="text-xs text-white/50">
+                              {category.weight} gr • {category.count} {category.count === 1 ? t('item') : t('items')}
+                            </span>
+                          </div>
+                          {selectedCategory === category.prefix && (
+                            <Check className="h-4 w-4 text-[#FFD700] flex-shrink-0 ml-2" />
+                          )}
+                        </motion.button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+
             {/* Layout Toggle - Fluid Switch */}
             <motion.div
               className="relative flex items-center gap-0.5 rounded-full border border-white/10 bg-black/40 p-1 backdrop-blur-sm"
@@ -491,7 +863,7 @@ export function QrPreviewGrid() {
               {selectedItems.size > 0
                 ? `${selectedItems.size} ${t('of')} ${filteredProducts.length} ${t('selected')}`
                 : `${filteredProducts.length} ${t('of')} ${data.products.length} ${t('products')}`}
-              {searchQuery && ` (${t('filtered')})`}
+              {(searchQuery || selectedCategory) && ` (${t('filtered')})`}
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -650,19 +1022,22 @@ export function QrPreviewGrid() {
                               <div className="flex items-center gap-3">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
-                                  src={`/api/qr/${product.serialCode}?t=${Date.now()}`}
+                                  src={`/api/qr/${product.serialCode}`}
                                   alt={product.name}
                                   className="h-14 w-14 sm:h-16 sm:w-16 flex-shrink-0 rounded-lg border border-white/10 bg-white p-1.5 sm:p-2 object-contain"
                                   loading="lazy"
+                                  key={product.serialCode}
                                   onError={(e) => {
-                                    // Fallback: try with different timestamp
+                                    // Only retry once if image fails to load
                                     const target = e.target as HTMLImageElement;
-                                    const newTimestamp = Date.now();
-                                    console.error("[QR Table] Image load error, retrying:", product.serialCode);
-                                    target.src = `/api/qr/${product.serialCode}?t=${newTimestamp}`;
-                                  }}
-                                  onLoad={() => {
-                                    console.log("[QR Table] QR image loaded:", product.serialCode);
+                                    if (!target.dataset.retried) {
+                                      target.dataset.retried = "true";
+                                      console.error("[QR Table] Image load error, retrying once:", product.serialCode);
+                                      // Force reload by adding cache buster only on retry
+                                      target.src = `/api/qr/${product.serialCode}?t=${Date.now()}`;
+                                    } else {
+                                      console.error("[QR Table] Image failed after retry:", product.serialCode);
+                                    }
                                   }}
                                 />
                               </div>
@@ -752,19 +1127,22 @@ export function QrPreviewGrid() {
               >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={`/api/qr/${product.serialCode}?t=${Date.now()}`}
+                        src={`/api/qr/${product.serialCode}`}
                         alt={product.name}
                         className="h-24 w-24 sm:h-28 sm:w-28 flex-shrink-0 rounded-2xl border border-white/10 bg-white p-2 sm:p-3 object-contain"
                         loading="lazy"
+                        key={product.serialCode}
                         onError={(e) => {
-                          // Fallback: try with different timestamp
+                          // Only retry once if image fails to load
                           const target = e.target as HTMLImageElement;
-                          const newTimestamp = Date.now();
-                          console.error("[QR Grid] Image load error, retrying:", product.serialCode);
-                          target.src = `/api/qr/${product.serialCode}?t=${newTimestamp}`;
-                        }}
-                        onLoad={() => {
-                          console.log("[QR Grid] QR image loaded:", product.serialCode);
+                          if (!target.dataset.retried) {
+                            target.dataset.retried = "true";
+                            console.error("[QR Grid] Image load error, retrying once:", product.serialCode);
+                            // Force reload by adding cache buster only on retry
+                            target.src = `/api/qr/${product.serialCode}?t=${Date.now()}`;
+                          } else {
+                            console.error("[QR Grid] Image failed after retry:", product.serialCode);
+                          }
                         }}
                       />
                 <button
@@ -791,27 +1169,22 @@ export function QrPreviewGrid() {
               <div className="relative aspect-square w-full rounded-3xl border border-white/10 bg-white p-4 sm:p-6 overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  key={`qr-modal-${selected.serialCode}-${Date.now()}`}
-                  src={`/api/qr/${selected.serialCode}?t=${Date.now()}`}
+                  key={`qr-modal-${selected.serialCode}`}
+                  src={`/api/qr/${selected.serialCode}`}
                   alt={selected.name}
                   className="h-full w-full object-contain transition-opacity duration-300"
                   loading="eager"
                   onError={(e) => {
-                    // Fallback: try with different timestamp
+                    // Only retry once if image fails to load
                     const target = e.target as HTMLImageElement;
-                    const newTimestamp = Date.now();
-                    console.error("[QR Modal] Image load error, retrying with new timestamp:", newTimestamp);
-                    // Force reload by changing src
-                    target.src = `/api/qr/${selected.serialCode}?t=${newTimestamp}`;
-                    // If still fails, show error message
-                    setTimeout(() => {
-                      if (target.complete && target.naturalWidth === 0) {
-                        console.error("[QR Modal] Image still failed to load after retry");
-                      }
-                    }, 2000);
-                  }}
-                  onLoad={() => {
-                    console.log("[QR Modal] QR image loaded successfully:", selected.serialCode);
+                    if (!target.dataset.retried) {
+                      target.dataset.retried = "true";
+                      console.error("[QR Modal] Image load error, retrying once:", selected.serialCode);
+                      // Force reload by adding cache buster only on retry
+                      target.src = `/api/qr/${selected.serialCode}?t=${Date.now()}`;
+                    } else {
+                      console.error("[QR Modal] Image failed after retry:", selected.serialCode);
+                    }
                   }}
                 />
               </div>
