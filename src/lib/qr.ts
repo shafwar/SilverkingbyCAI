@@ -560,11 +560,12 @@ export async function generateQRWithSerticard(
     ctx.drawImage(templateImage, 0, 0);
 
     // Calculate QR code position on template
-    // Position QR code in a suitable area of the template
-    // Adjust these values based on actual template design
-    const qrSize = Math.min(templateImage.width * 0.35, templateImage.height * 0.35, 800);
-    const qrX = (templateImage.width - qrSize) / 2; // Center horizontally
-    const qrY = templateImage.height * 0.35; // Position vertically (adjust as needed)
+    // Based on screenshot: QR code is larger and positioned on the left side of serticard
+    // QR code should be approximately 45-50% of template width for better visibility
+    const qrSize = Math.min(templateImage.width * 0.50, templateImage.height * 0.50, 900);
+    // Position QR code on the left side of the template (approximately 25% from left edge)
+    const qrX = templateImage.width * 0.25 - qrSize / 2; // Center horizontally on left side
+    const qrY = templateImage.height * 0.40; // Position vertically (slightly below center)
 
     // Draw QR code on template with white background for better visibility
     // Add small white padding around QR for better contrast
