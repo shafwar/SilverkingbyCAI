@@ -190,19 +190,19 @@ export function QrPreviewGrid() {
       // Otherwise, prepend origin for local paths
       let absoluteFrontUrl: string;
       let absoluteBackUrl: string;
-      
+
       if (frontTemplateUrl.startsWith("http")) {
         absoluteFrontUrl = frontTemplateUrl;
       } else {
         absoluteFrontUrl = window.location.origin + frontTemplateUrl;
       }
-      
+
       if (backTemplateUrl.startsWith("http")) {
         absoluteBackUrl = backTemplateUrl;
       } else {
         absoluteBackUrl = window.location.origin + backTemplateUrl;
       }
-      
+
       console.log("[Download] Absolute template URLs:", {
         front: absoluteFrontUrl,
         back: absoluteBackUrl,
