@@ -94,46 +94,122 @@ export async function POST(request: NextRequest) {
     console.log(`[QR Multiple] Will combine QR + template in canvas, then generate PDF with pdf-lib`);
 
     // Pre-load BOTH templates (front and back) once
-    const frontTemplatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-01.png");
-    const backTemplatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-02.png");
-    
-    console.log(`[QR Multiple] Loading templates...`);
-    console.log(`[QR Multiple] Front template: ${frontTemplatePath}`);
-    console.log(`[QR Multiple] Back template: ${backTemplatePath}`);
+    // Try R2 first, fallback to local file system
+    const R2_PUBLIC_URL_ENV = process.env.R2_PUBLIC_URL;
+    const isLocalDev = process.env.NODE_ENV === "development" || !R2_PUBLIC_URL_ENV;
     
     let frontTemplateImage;
     let backTemplateImage;
     
-    try {
-      await fs.access(frontTemplatePath);
-      frontTemplateImage = await loadImage(frontTemplatePath);
-      console.log(`[QR Multiple] Front template loaded: ${frontTemplateImage.width}x${frontTemplateImage.height}`);
-    } catch (templateError: any) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Front template file not found",
-          message: `Failed to load front template: ${templateError?.message}`,
-          path: frontTemplatePath,
-        },
-        { status: 500 }
-      );
-    }
-    
-    try {
-      await fs.access(backTemplatePath);
-      backTemplateImage = await loadImage(backTemplatePath);
-      console.log(`[QR Multiple] Back template loaded: ${backTemplateImage.width}x${backTemplateImage.height}`);
-    } catch (templateError: any) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Back template file not found",
-          message: `Failed to load back template: ${templateError?.message}`,
-          path: backTemplatePath,
-        },
-        { status: 500 }
-      );
+    if (isLocalDev) {
+      // Local development: load from file system
+      const frontTemplatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-01.png");
+      const backTemplatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-02.png");
+      
+      console.log(`[QR Multiple] Loading templates from file system (development)...`);
+      console.log(`[QR Multiple] Front template: ${frontTemplatePath}`);
+      console.log(`[QR Multiple] Back template: ${backTemplatePath}`);
+      
+      try {
+        await fs.access(frontTemplatePath);
+        frontTemplateImage = await loadImage(frontTemplatePath);
+        console.log(`[QR Multiple] Front template loaded: ${frontTemplateImage.width}x${frontTemplateImage.height}`);
+      } catch (templateError: any) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Front template file not found",
+            message: `Failed to load front template: ${templateError?.message}`,
+            path: frontTemplatePath,
+          },
+          { status: 500 }
+        );
+      }
+      
+      try {
+        await fs.access(backTemplatePath);
+        backTemplateImage = await loadImage(backTemplatePath);
+        console.log(`[QR Multiple] Back template loaded: ${backTemplateImage.width}x${backTemplateImage.height}`);
+      } catch (templateError: any) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Back template file not found",
+            message: `Failed to load back template: ${templateError?.message}`,
+            path: backTemplatePath,
+          },
+          { status: 500 }
+        );
+      }
+    } else {
+      // Production: try R2 first, fallback to local
+      const base = R2_PUBLIC_URL_ENV!.endsWith("/") ? R2_PUBLIC_URL_ENV!.slice(0, -1) : R2_PUBLIC_URL_ENV!;
+      const frontR2Url = `${base}/templates/serticard-01.png`;
+      const backR2Url = `${base}/templates/serticard-02.png`;
+      
+      console.log(`[QR Multiple] Loading templates from R2 (production)...`);
+      console.log(`[QR Multiple] Front template R2 URL: ${frontR2Url}`);
+      console.log(`[QR Multiple] Back template R2 URL: ${backR2Url}`);
+      
+      try {
+        // Try R2 first
+        const frontResponse = await fetch(frontR2Url);
+        if (frontResponse.ok) {
+          const frontBuffer = Buffer.from(await frontResponse.arrayBuffer());
+          frontTemplateImage = await loadImage(frontBuffer);
+          console.log(`[QR Multiple] Front template loaded from R2: ${frontTemplateImage.width}x${frontTemplateImage.height}`);
+        } else {
+          throw new Error(`R2 front template not found: ${frontResponse.status}`);
+        }
+      } catch (r2Error: any) {
+        // Fallback to local file system
+        console.warn(`[QR Multiple] Failed to load front template from R2, trying local: ${r2Error?.message}`);
+        const frontTemplatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-01.png");
+        try {
+          await fs.access(frontTemplatePath);
+          frontTemplateImage = await loadImage(frontTemplatePath);
+          console.log(`[QR Multiple] Front template loaded from local: ${frontTemplateImage.width}x${frontTemplateImage.height}`);
+        } catch (localError: any) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "Front template not found in R2 or local",
+              message: `R2 error: ${r2Error?.message}, Local error: ${localError?.message}`,
+            },
+            { status: 500 }
+          );
+        }
+      }
+      
+      try {
+        // Try R2 first
+        const backResponse = await fetch(backR2Url);
+        if (backResponse.ok) {
+          const backBuffer = Buffer.from(await backResponse.arrayBuffer());
+          backTemplateImage = await loadImage(backBuffer);
+          console.log(`[QR Multiple] Back template loaded from R2: ${backTemplateImage.width}x${backTemplateImage.height}`);
+        } else {
+          throw new Error(`R2 back template not found: ${backResponse.status}`);
+        }
+      } catch (r2Error: any) {
+        // Fallback to local file system
+        console.warn(`[QR Multiple] Failed to load back template from R2, trying local: ${r2Error?.message}`);
+        const backTemplatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-02.png");
+        try {
+          await fs.access(backTemplatePath);
+          backTemplateImage = await loadImage(backTemplatePath);
+          console.log(`[QR Multiple] Back template loaded from local: ${backTemplateImage.width}x${backTemplateImage.height}`);
+        } catch (localError: any) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "Back template not found in R2 or local",
+              message: `R2 error: ${r2Error?.message}, Local error: ${localError?.message}`,
+            },
+            { status: 500 }
+          );
+        }
+      }
     }
 
     // Get base URL for internal API calls

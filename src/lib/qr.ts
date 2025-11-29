@@ -460,39 +460,73 @@ export async function deleteQrAsset(serialCode: string, existingUrl?: string) {
 }
 
 /**
- * Upload Serticard template to R2
+ * Upload Serticard templates to R2 (both front and back)
+ * Returns URLs for both templates
  */
-export async function uploadSerticardTemplate(): Promise<string | null> {
+export async function uploadSerticardTemplates(): Promise<{ frontUrl: string | null; backUrl: string | null }> {
   if (!r2Available || !r2Client) {
     console.warn("[Serticard] R2 not available, skipping template upload");
-    return null;
+    return { frontUrl: null, backUrl: null };
   }
 
+  const base = R2_PUBLIC_URL!.endsWith("/") ? R2_PUBLIC_URL!.slice(0, -1) : R2_PUBLIC_URL!;
+  let frontUrl: string | null = null;
+  let backUrl: string | null = null;
+
   try {
-    const templatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-01.png");
-    const templateBuffer = await fs.readFile(templatePath);
-    
-    const objectKey = "templates/serticard-01.png";
+    // Upload front template (Serticard-01.png)
+    const frontTemplatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-01.png");
+    const frontTemplateBuffer = await fs.readFile(frontTemplatePath);
+    const frontObjectKey = "templates/serticard-01.png";
     
     await r2Client.send(
       new PutObjectCommand({
         Bucket: R2_BUCKET,
-        Key: objectKey,
-        Body: templateBuffer,
+        Key: frontObjectKey,
+        Body: frontTemplateBuffer,
         ContentType: "image/png",
         CacheControl: "public, max-age=31536000, immutable", // Cache forever
       })
     );
 
-    const base = R2_PUBLIC_URL!.endsWith("/") ? R2_PUBLIC_URL!.slice(0, -1) : R2_PUBLIC_URL!;
-    const templateUrl = `${base}/${objectKey}`;
-    
-    console.log("[Serticard] Template uploaded to R2:", templateUrl);
-    return templateUrl;
+    frontUrl = `${base}/${frontObjectKey}`;
+    console.log("[Serticard] Front template uploaded to R2:", frontUrl);
   } catch (error) {
-    console.error("[Serticard] Failed to upload template to R2:", error);
-    return null;
+    console.error("[Serticard] Failed to upload front template to R2:", error);
   }
+
+  try {
+    // Upload back template (Serticard-02.png)
+    const backTemplatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-02.png");
+    const backTemplateBuffer = await fs.readFile(backTemplatePath);
+    const backObjectKey = "templates/serticard-02.png";
+    
+    await r2Client.send(
+      new PutObjectCommand({
+        Bucket: R2_BUCKET,
+        Key: backObjectKey,
+        Body: backTemplateBuffer,
+        ContentType: "image/png",
+        CacheControl: "public, max-age=31536000, immutable", // Cache forever
+      })
+    );
+
+    backUrl = `${base}/${backObjectKey}`;
+    console.log("[Serticard] Back template uploaded to R2:", backUrl);
+  } catch (error) {
+    console.error("[Serticard] Failed to upload back template to R2:", error);
+  }
+
+  return { frontUrl, backUrl };
+}
+
+/**
+ * Upload Serticard template to R2 (legacy - for backward compatibility)
+ * @deprecated Use uploadSerticardTemplates() instead
+ */
+export async function uploadSerticardTemplate(): Promise<string | null> {
+  const { frontUrl } = await uploadSerticardTemplates();
+  return frontUrl;
 }
 
 /**

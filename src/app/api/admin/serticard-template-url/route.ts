@@ -3,8 +3,9 @@ import { auth } from "@/lib/auth";
 
 /**
  * Get Serticard template URL
- * For local development/testing, always use local path
- * In production, can use R2 if configured
+ * Returns R2 URL if available, otherwise falls back to local path
+ * For local development/testing, uses local path
+ * In production with R2, uses R2 URL
  */
 export async function GET() {
   try {
@@ -13,16 +14,32 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // For local development/testing, always use local path
-    // This ensures it works without R2 configuration
-    // Return both front and back templates for side-by-side layout
-    const frontTemplateUrl = "/images/serticard/Serticard-01.png";
-    const backTemplateUrl = "/images/serticard/Serticard-02.png";
+    const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL;
+    const isLocalDev = process.env.NODE_ENV === "development" || !R2_PUBLIC_URL;
 
-    console.log("[Template URL] Returning local template paths:", {
-      front: frontTemplateUrl,
-      back: backTemplateUrl,
-    });
+    let frontTemplateUrl: string;
+    let backTemplateUrl: string;
+
+    if (isLocalDev) {
+      // Local development: use local path
+      frontTemplateUrl = "/images/serticard/Serticard-01.png";
+      backTemplateUrl = "/images/serticard/Serticard-02.png";
+      
+      console.log("[Template URL] Using local paths (development):", {
+        front: frontTemplateUrl,
+        back: backTemplateUrl,
+      });
+    } else {
+      // Production: use R2 URL if available
+      const base = R2_PUBLIC_URL.endsWith("/") ? R2_PUBLIC_URL.slice(0, -1) : R2_PUBLIC_URL;
+      frontTemplateUrl = `${base}/templates/serticard-01.png`;
+      backTemplateUrl = `${base}/templates/serticard-02.png`;
+      
+      console.log("[Template URL] Using R2 URLs (production):", {
+        front: frontTemplateUrl,
+        back: backTemplateUrl,
+      });
+    }
 
     return NextResponse.json({
       frontTemplateUrl,

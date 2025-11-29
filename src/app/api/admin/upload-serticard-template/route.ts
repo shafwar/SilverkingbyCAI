@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { uploadSerticardTemplate } from "@/lib/qr";
+import { uploadSerticardTemplates } from "@/lib/qr";
 
 /**
- * Upload Serticard template to R2
- * This endpoint should be called once to upload the template
+ * Upload Serticard templates to R2 (both front and back)
+ * This endpoint should be called once to upload both templates
  */
 export async function POST() {
   try {
@@ -13,24 +13,29 @@ export async function POST() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const templateUrl = await uploadSerticardTemplate();
+    const { frontUrl, backUrl } = await uploadSerticardTemplates();
 
-    if (!templateUrl) {
+    if (!frontUrl || !backUrl) {
       return NextResponse.json(
-        { error: "Failed to upload template. R2 may not be configured." },
+        { 
+          error: "Failed to upload templates. R2 may not be configured.",
+          frontUrl,
+          backUrl,
+        },
         { status: 500 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      templateUrl,
-      message: "Template uploaded successfully to R2",
+      frontTemplateUrl: frontUrl,
+      backTemplateUrl: backUrl,
+      message: "Both templates uploaded successfully to R2",
     });
   } catch (error) {
     console.error("Template upload failed:", error);
     return NextResponse.json(
-      { error: "Failed to upload template" },
+      { error: "Failed to upload templates" },
       { status: 500 }
     );
   }
