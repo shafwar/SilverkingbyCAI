@@ -167,7 +167,8 @@ export async function POST(request: NextRequest) {
 
     // CRITICAL: Filter out products with missing data BEFORE processing
     // These products will be skipped to prevent "0000" or empty text
-    const validProducts = products.filter(
+    // Use productsData (from frontend or database)
+    const validProducts = productsData.filter(
       (p) =>
         p.name &&
         p.serialCode &&
@@ -736,16 +737,20 @@ export async function POST(request: NextRequest) {
     if (successCount === 0) {
       // Get more details about the failure
       const errorDetails = {
-        totalProducts: products.length,
+        totalProducts: productsData.length,
+        validProducts: validProducts.length,
         failedCount: failCount,
         message: "Failed to generate any PDFs. All products failed.",
         suggestion:
           "Please check server logs for detailed error messages. Common issues: template file not found, image processing errors, or memory issues.",
-        requestedSerialCodes: serialCodes.length,
-        foundProducts: products.length,
+        requestedCount: productsData.length,
+        foundProducts: productsData.length,
       };
       console.error("[QR Multiple] All PDFs failed:", errorDetails);
-      console.error("[QR Multiple] First few serial codes that failed:", serialCodes.slice(0, 5));
+      console.error(
+        "[QR Multiple] First few products that failed:",
+        productsData.slice(0, 5).map((p) => p.serialCode)
+      );
       return NextResponse.json(
         {
           error: errorDetails.message,
@@ -758,7 +763,7 @@ export async function POST(request: NextRequest) {
     // Log warning if some failed but not all
     if (failCount > 0) {
       console.warn(
-        `[QR Multiple] Partial success: ${successCount} succeeded, ${failCount} failed out of ${products.length} total`
+        `[QR Multiple] Partial success: ${successCount} succeeded, ${failCount} failed out of ${validProducts.length} total`
       );
     }
 
@@ -771,7 +776,7 @@ export async function POST(request: NextRequest) {
 
     // Generate filename with date and count
     const dateStr = new Date().toISOString().split("T")[0];
-    const filename = `Silver-King-QR-Codes-${products.length}-${dateStr}.zip`;
+    const filename = `Silver-King-QR-Codes-${validProducts.length}-${dateStr}.zip`;
 
     // Upload ZIP to R2 if available
     const R2_ENDPOINT = process.env.R2_ENDPOINT;
