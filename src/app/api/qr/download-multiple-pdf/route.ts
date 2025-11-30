@@ -252,7 +252,30 @@ export async function POST(request: NextRequest) {
     // Process all products
     for (const product of products) {
       try {
-        console.log(`[QR Multiple] Processing ${product.serialCode}...`);
+        // CRITICAL: Validate product data before processing
+        if (!product.serialCode || product.serialCode.trim().length === 0) {
+          console.error(`[QR Multiple] Invalid serialCode for product:`, {
+            productId: product.id,
+            serialCode: product.serialCode,
+            name: product.name,
+          });
+          throw new Error(`Invalid serialCode: ${product.serialCode}`);
+        }
+        
+        if (!product.name || product.name.trim().length === 0) {
+          console.error(`[QR Multiple] Invalid product name for serialCode:`, {
+            productId: product.id,
+            serialCode: product.serialCode,
+            name: product.name,
+          });
+          throw new Error(`Invalid product name for serialCode: ${product.serialCode}`);
+        }
+        
+        console.log(`[QR Multiple] Processing ${product.serialCode}...`, {
+          productName: product.name,
+          serialCode: product.serialCode,
+          weight: product.weight,
+        });
         
         // 1. Get QR code from endpoint (no PDFKit)
         const qrUrl = `${internalBaseUrl}/api/qr/${encodeURIComponent(product.serialCode)}/qr-only`;
@@ -278,37 +301,42 @@ export async function POST(request: NextRequest) {
         frontCtx.fillRect(qrX - padding, qrY - padding, qrSize + padding * 2, qrSize + padding * 2);
         frontCtx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
         
-        // Add product name above QR code
-        if (product.name) {
-          const nameY = qrY - 35;
-          const nameFontSize = Math.floor(frontTemplateImage.width * 0.025);
-          frontCtx.fillStyle = "#222222";
-          frontCtx.textAlign = "center";
-          frontCtx.textBaseline = "middle";
-          frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
-          
-          // Truncate if too long (same as frontend)
-          let displayName = product.name;
-          const maxWidth = frontTemplateImage.width * 0.65;
-          const metrics = frontCtx.measureText(displayName);
-          if (metrics.width > maxWidth) {
-            while (frontCtx.measureText(displayName + "...").width > maxWidth && displayName.length > 0) {
-              displayName = displayName.slice(0, -1);
-            }
-            displayName += "...";
+        // Add product name above QR code - CRITICAL: Always use full product.name
+        const nameY = qrY - 35;
+        const nameFontSize = Math.floor(frontTemplateImage.width * 0.025);
+        frontCtx.fillStyle = "#222222";
+        frontCtx.textAlign = "center";
+        frontCtx.textBaseline = "middle";
+        frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
+        
+        // Use product.name as-is (full name, no truncation unless absolutely necessary)
+        let displayName = product.name.trim();
+        const maxWidth = frontTemplateImage.width * 0.65;
+        const metrics = frontCtx.measureText(displayName);
+        if (metrics.width > maxWidth) {
+          // Only truncate if text is too wide, but preserve as much as possible
+          while (frontCtx.measureText(displayName + "...").width > maxWidth && displayName.length > 0) {
+            displayName = displayName.slice(0, -1);
           }
-          
-          frontCtx.fillText(displayName, frontTemplateImage.width / 2, nameY);
+          displayName += "...";
         }
         
-        // Add serial number below QR code
+        // CRITICAL: Always draw product name (never skip)
+        frontCtx.fillText(displayName, frontTemplateImage.width / 2, nameY);
+        console.log(`[QR Multiple] Product name drawn for ${product.serialCode}: "${displayName}" (original: "${product.name}")`);
+        
+        // Add serial number below QR code - CRITICAL: Always use product.serialCode from database
         const serialY = qrY + qrSize + 35;
         const fontSize = Math.floor(frontTemplateImage.width * 0.032);
         frontCtx.fillStyle = "#222222";
         frontCtx.textAlign = "center";
         frontCtx.textBaseline = "middle";
         frontCtx.font = `${fontSize}px "LucidaSans", "Lucida Console", "Courier New", monospace`;
-        frontCtx.fillText(product.serialCode, frontTemplateImage.width / 2, serialY);
+        
+        // CRITICAL: Always use product.serialCode from database (never use "0000" or empty)
+        const serialCodeToDisplay = product.serialCode.trim();
+        frontCtx.fillText(serialCodeToDisplay, frontTemplateImage.width / 2, serialY);
+        console.log(`[QR Multiple] Serial code drawn for ${product.serialCode}: "${serialCodeToDisplay}"`);
         
         const frontBuffer = frontCanvas.toBuffer("image/png");
         console.log(`[QR Multiple] Front image for ${product.serialCode}: ${frontBuffer.length} bytes`);
