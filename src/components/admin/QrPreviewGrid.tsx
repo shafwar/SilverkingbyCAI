@@ -295,28 +295,23 @@ export function QrPreviewGrid() {
       // Draw QR code on front template
       frontCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
 
-      // === MATCH SKN350 LAYOUT: Hanya 2 text elements, tidak ada duplikasi ===
-      // 1. Nama produk di atas QR (sekali saja, sesuai SKN350)
-      // Extract hanya bagian weight jika product.name mengandung "Silver King" (hindari duplikasi dengan template)
+      // === MATCH SKN350 LAYOUT: Hanya 2 text elements, TIDAK ADA DUPLIKASI ===
+      // CRITICAL: Hanya draw text sekali untuk setiap element (nama produk & serial code)
+      // Template background mungkin sudah ada text, jadi kita hanya tambahkan text yang diperlukan
+      
+      // 1. Nama produk di atas QR (sekali saja, sesuai SKN350 - "Silver King 250gr")
       if (product.name) {
-        let displayName = product.name;
-        // Jika nama mengandung "Silver King", extract hanya bagian weight (mis: "250gr" dari "Silver King 250gr")
-        // Ini mencegah duplikasi dengan text "SILVER KING" yang mungkin ada di template header
-        const silverKingMatch = displayName.match(/(\d+gr)/i);
-        if (silverKingMatch) {
-          displayName = silverKingMatch[1]; // Hanya ambil weight (mis: "250gr")
-        }
-        
         const nameFontSize = Math.floor(frontTemplateImg.width * 0.027);
         const nameY = qrY - nameFontSize * 1.3;
         frontCtx.fillStyle = "#222222";
         frontCtx.textAlign = "center";
         frontCtx.textBaseline = "bottom";
         frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
-        frontCtx.fillText(displayName, frontTemplateImg.width / 2, nameY);
+        // Gunakan product.name as-is (tidak extract, sesuai SKN350 yang menampilkan "Silver King 250gr" lengkap)
+        frontCtx.fillText(product.name, frontTemplateImg.width / 2, nameY);
       }
 
-      // 2. Serial code di bawah QR (sekali saja, sesuai SKN350)
+      // 2. Serial code di bawah QR (sekali saja, sesuai SKN350 - "SKA000300")
       const serialFontSize = Math.floor(frontTemplateImg.width * 0.031);
       const serialY = qrY + qrSize + serialFontSize * 1.5;
       frontCtx.fillStyle = "#222222";
@@ -324,7 +319,7 @@ export function QrPreviewGrid() {
       frontCtx.textBaseline = "top";
       frontCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
       frontCtx.fillText(product.serialCode, frontTemplateImg.width / 2, serialY);
-      // === END: Hanya 2 text elements, tidak ada duplikasi ===
+      // === END: Hanya 2 fillText calls, tidak ada duplikasi ===
 
       // Create canvas for BACK template (no QR, just the template)
       const backCanvas = document.createElement("canvas");
@@ -387,23 +382,20 @@ export function QrPreviewGrid() {
             qrSize + padding * 2
           );
           fallbackCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-          // === MATCH SKN350 LAYOUT: Hanya 2 text elements, tidak ada duplikasi ===
-          // 1. Nama produk di atas QR (sekali saja, extract weight jika perlu)
+          // === MATCH SKN350 LAYOUT: Hanya 2 text elements, TIDAK ADA DUPLIKASI ===
+          // CRITICAL: Hanya draw text sekali untuk setiap element (nama produk & serial code)
+          // SAMA dengan logic utama di atas
+          
+          // 1. Nama produk di atas QR (sekali saja, sesuai SKN350)
           if (product.name) {
-            let displayName = product.name;
-            // Extract hanya bagian weight jika product.name mengandung "Silver King"
-            const silverKingMatch = displayName.match(/(\d+gr)/i);
-            if (silverKingMatch) {
-              displayName = silverKingMatch[1]; // Hanya ambil weight (mis: "250gr")
-            }
-            
             const nameFontSize = Math.floor(localFrontImg.width * 0.027);
             const nameY = qrY - nameFontSize * 1.3;
             fallbackCtx.fillStyle = "#222222";
             fallbackCtx.textAlign = "center";
             fallbackCtx.textBaseline = "bottom";
             fallbackCtx.font = `${nameFontSize}px Arial, sans-serif`;
-            fallbackCtx.fillText(displayName, localFrontImg.width / 2, nameY);
+            // Gunakan product.name as-is (tidak extract, sesuai SKN350)
+            fallbackCtx.fillText(product.name, localFrontImg.width / 2, nameY);
           }
           // 2. Serial code di bawah QR (sekali saja)
           const serialFontSize = Math.floor(localFrontImg.width * 0.031);
@@ -413,7 +405,7 @@ export function QrPreviewGrid() {
           fallbackCtx.textBaseline = "top";
           fallbackCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
           fallbackCtx.fillText(product.serialCode, localFrontImg.width / 2, serialY);
-          // === END: Hanya 2 text elements, tidak ada duplikasi ===
+          // === END: Hanya 2 fillText calls, tidak ada duplikasi ===
           frontImageData = fallbackCanvas.toDataURL("image/png", 1.0);
         } else {
           throw toDataError;
