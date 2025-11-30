@@ -33,75 +33,97 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { serialCodes, batchNumber } = body; // batchNumber is optional, used for R2 folder naming
+    // CRITICAL: Accept products (full objects) from frontend, same as handleDownload (single)
+    // This ensures we use data directly from frontend, not query database again
+    // This matches the working handleDownload (single) approach
+    const { products: productsFromFrontend, serialCodes, batchNumber } = body;
 
-    if (!serialCodes || !Array.isArray(serialCodes) || serialCodes.length === 0) {
-      console.error("[QR Multiple] Invalid serialCodes:", {
-        serialCodes,
-        type: typeof serialCodes,
+    // Support both formats: products (new, preferred) or serialCodes (legacy, fallback)
+    let productsData: Array<{ id: number; name: string; serialCode: string; weight: number }>;
+
+    if (productsFromFrontend && Array.isArray(productsFromFrontend) && productsFromFrontend.length > 0) {
+      // NEW APPROACH: Use products directly from frontend (same as handleDownload single)
+      console.log(
+        `[QR Multiple] Received ${productsFromFrontend.length} product objects from frontend (NEW APPROACH - same as handleDownload single)`
+      );
+      console.log(`[QR Multiple] Sample products from frontend:`, productsFromFrontend.slice(0, 3));
+
+      // CRITICAL: Use products directly from frontend, no database query needed
+      // This is the SAME approach as handleDownload (single) that works correctly
+      productsData = productsFromFrontend.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        serialCode: p.serialCode,
+        weight: p.weight,
+      }));
+
+      console.log(`[QR Multiple] Using products from frontend (no database query):`, {
+        count: productsData.length,
+        sample: productsData.slice(0, 3),
+      });
+    } else if (serialCodes && Array.isArray(serialCodes) && serialCodes.length > 0) {
+      // LEGACY APPROACH: Query database using serialCodes (fallback for backward compatibility)
+      console.log(
+        `[QR Multiple] Received ${serialCodes.length} serial codes (LEGACY APPROACH - querying database)`
+      );
+
+      // Normalize serialCodes to match database format (uppercase, trimmed)
+      const normalizedSerialCodes = serialCodes.map((sc: string) => String(sc).trim().toUpperCase());
+      console.log(`[QR Multiple] ====== DATABASE QUERY START (LEGACY) ======`);
+      console.log(`[QR Multiple] Normalized serialCodes:`, {
+        original: serialCodes.slice(0, 5),
+        normalized: normalizedSerialCodes.slice(0, 5),
+        total: normalizedSerialCodes.length,
+      });
+
+      // Query database to get product data
+      const products = await prisma.product.findMany({
+        where: {
+          serialCode: {
+            in: normalizedSerialCodes,
+          },
+          qrRecord: {
+            isNot: null,
+          },
+        },
+        include: {
+          qrRecord: true,
+        },
+        orderBy: {
+          serialCode: "asc",
+        },
+      });
+
+      // Extract only the fields we need
+      productsData = products.map((p) => ({
+        id: p.id,
+        name: p.name,
+        serialCode: p.serialCode,
+        weight: p.weight,
+      }));
+
+      console.log(`[QR Multiple] ====== DATABASE QUERY END (LEGACY) ======`);
+    } else {
+      console.error("[QR Multiple] Invalid request:", {
+        hasProducts: !!productsFromFrontend,
+        hasSerialCodes: !!serialCodes,
+        productsType: typeof productsFromFrontend,
+        serialCodesType: typeof serialCodes,
       });
       return NextResponse.json(
-        { error: "serialCodes array is required and must not be empty" },
+        { error: "Either 'products' array or 'serialCodes' array is required and must not be empty" },
         { status: 400 }
       );
     }
 
+    // CRITICAL: Log products data to verify it's correct
+    console.log(`[QR Multiple] ====== PRODUCTS DATA VERIFICATION ======`);
     console.log(
-      `[QR Multiple] Received request for ${serialCodes.length} serial codes, batchNumber: ${batchNumber}`
-    );
-
-    // Get products matching the provided serial codes
-    // CRITICAL: Normalize serialCodes to match database format (uppercase, trimmed)
-    const normalizedSerialCodes = serialCodes.map((sc: string) => String(sc).trim().toUpperCase());
-    console.log(`[QR Multiple] ====== DATABASE QUERY START ======`);
-    console.log(`[QR Multiple] Normalized serialCodes:`, {
-      original: serialCodes.slice(0, 5),
-      normalized: normalizedSerialCodes.slice(0, 5),
-      total: normalizedSerialCodes.length,
-    });
-
-    // CRITICAL: Query database to get product data (name, serialCode) from database, NOT from R2 template
-    // CRITICAL: Use EXACT same query structure as /api/admin/qr-preview that successfully returns data
-    // Use 'include' instead of 'select' to ensure all data is properly loaded
-    // This matches the working endpoint that frontend uses to display products
-    const products = await prisma.product.findMany({
-      where: {
-        serialCode: {
-          in: normalizedSerialCodes,
-        },
-        qrRecord: {
-          isNot: null,
-        },
-      },
-      include: {
-        qrRecord: true,
-      },
-      orderBy: {
-        serialCode: "asc",
-      },
-    });
-
-    // CRITICAL: Extract only the fields we need, ensuring data is properly extracted
-    // This ensures we get the exact same data structure as /api/admin/qr-preview
-    const productsData = products.map((p) => ({
-      id: p.id,
-      name: p.name,
-      serialCode: p.serialCode,
-      weight: p.weight,
-    }));
-
-    // CRITICAL: Log raw database results to verify data is actually returned
-    console.log(`[QR Multiple] ====== RAW DATABASE RESULTS ======`);
-    console.log(
-      `[QR Multiple] Raw products from database (with include):`,
-      JSON.stringify(products.slice(0, 3), null, 2)
-    );
-    console.log(
-      `[QR Multiple] Extracted products data:`,
+      `[QR Multiple] Products data (from frontend or database):`,
       JSON.stringify(productsData.slice(0, 3), null, 2)
     );
     productsData.slice(0, 3).forEach((p, idx) => {
-      console.log(`[QR Multiple] Product ${idx + 1} (extracted):`, {
+      console.log(`[QR Multiple] Product ${idx + 1}:`, {
         id: p.id,
         name: p.name,
         serialCode: p.serialCode,
@@ -183,7 +205,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[QR Multiple] Valid products count: ${validProducts.length}/${productsData.length}`);
+    console.log(
+      `[QR Multiple] Valid products count: ${validProducts.length}/${productsData.length}`
+    );
     console.log(`[QR Multiple] ====== DATABASE QUERY END ======`);
 
     // Group VALID products by weight (gramasi)

@@ -583,24 +583,34 @@ export function QrPreviewGrid() {
       let downloadedBatches = 0;
 
       // Split products into batches of 100 and download each batch as a separate ZIP
+      // CRITICAL: Send full product objects (like handleDownload single), not just serialCodes
+      // This ensures backend uses data directly from frontend, same as handleDownload (single) that works
       for (let i = 0; i < allProducts.length; i += BATCH_SIZE) {
         const batch = allProducts.slice(i, i + BATCH_SIZE);
         const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
-        const serialCodes = batch.map((p) => p.serialCode);
+        // CRITICAL: Send full product objects with name and serialCode, not just serialCodes
+        const products = batch.map((p) => ({
+          id: p.id,
+          name: p.name,
+          serialCode: p.serialCode,
+          weight: p.weight,
+        }));
 
         setDownloadLabel(
-          `Menggenerate batch ${batchNumber}/${totalBatches}... (${serialCodes.length} file)`
+          `Menggenerate batch ${batchNumber}/${totalBatches}... (${products.length} file)`
         );
         setDownloadPercent(Math.round((downloadedBatches / totalBatches) * 100));
 
         try {
           // Call endpoint for this batch (100 files) - backend will generate and return 1 ZIP
+          // CRITICAL: Send products (full objects) instead of serialCodes
+          // Backend will use these products directly, same as handleDownload (single)
           const response = await fetch("/api/qr/download-multiple-pdf", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ serialCodes, batchNumber }), // Pass batchNumber for R2 folder naming
+            body: JSON.stringify({ products, batchNumber }), // Pass full product objects, not just serialCodes
             signal: abortController.signal,
           });
 
