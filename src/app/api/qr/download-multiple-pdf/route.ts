@@ -46,9 +46,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(
-      `[QR Multiple] Received request for ${serialCodes.length} serial codes, batchNumber: ${batchNumber}`
-    );
+    console.log(`[QR Multiple] Received request for ${serialCodes.length} serial codes, batchNumber: ${batchNumber}`);
 
     // Get products matching the provided serial codes
     const products = await prisma.product.findMany({
@@ -361,9 +359,7 @@ export async function POST(request: NextRequest) {
         frontCtx.fillText(product.serialCode, frontTemplateImage.width / 2, serialY);
 
         const frontBuffer = frontCanvas.toBuffer("image/png");
-        console.log(
-          `[QR Multiple] Front image for ${product.serialCode}: ${frontBuffer.length} bytes`
-        );
+        console.log(`[QR Multiple] Front image for ${product.serialCode}: ${frontBuffer.length} bytes`);
 
         // 3. Create BACK canvas (no QR, just template)
         // Validate back template is loaded
