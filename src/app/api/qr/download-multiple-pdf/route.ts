@@ -51,10 +51,18 @@ export async function POST(request: NextRequest) {
     );
 
     // Get products matching the provided serial codes
+    // CRITICAL: Normalize serialCodes to match database format (uppercase, trimmed)
+    const normalizedSerialCodes = serialCodes.map((sc: string) => String(sc).trim().toUpperCase());
+    console.log(`[QR Multiple] Normalized serialCodes:`, {
+      original: serialCodes.slice(0, 5),
+      normalized: normalizedSerialCodes.slice(0, 5),
+      total: normalizedSerialCodes.length,
+    });
+
     const products = await prisma.product.findMany({
       where: {
         serialCode: {
-          in: serialCodes,
+          in: normalizedSerialCodes,
         },
         qrRecord: {
           isNot: null,
@@ -71,10 +79,40 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    console.log(`[QR Multiple] Database query result:`, {
+      requestedCount: normalizedSerialCodes.length,
+      foundCount: products.length,
+      sampleProducts: products.slice(0, 3).map((p) => ({
+        id: p.id,
+        name: p.name,
+        serialCode: p.serialCode,
+        nameLength: p.name?.length || 0,
+        serialCodeLength: p.serialCode?.length || 0,
+      })),
+    });
+
     if (products.length === 0) {
+      console.error(`[QR Multiple] No products found for serialCodes:`, {
+        requested: normalizedSerialCodes.slice(0, 10),
+        total: normalizedSerialCodes.length,
+      });
       return NextResponse.json(
         { error: "No products with QR codes found for the provided serial codes" },
         { status: 404 }
+      );
+    }
+
+    // CRITICAL: Log products with missing data
+    const productsWithMissingData = products.filter(
+      (p) => !p.name || !p.serialCode || p.name.trim().length === 0 || p.serialCode.trim().length === 0
+    );
+    if (productsWithMissingData.length > 0) {
+      console.error(`[QR Multiple] WARNING: Found ${productsWithMissingData.length} products with missing data:`, 
+        productsWithMissingData.map((p) => ({
+          id: p.id,
+          name: p.name,
+          serialCode: p.serialCode,
+        }))
       );
     }
 
