@@ -543,10 +543,30 @@ export async function POST(request: NextRequest) {
         // CRITICAL: Use productName and productSerialCode from database (already validated above)
         // DO NOT use data from R2 template - template only provides the background image
 
+        // CRITICAL: Overwrite template placeholder "0000" text with white background BEFORE drawing new text
+        // Template may have placeholder text that needs to be covered
+        const textOverwritePadding = 5;
+        
         // 1. Nama produk di ATAS QR (persis seperti handleDownload)
         // CRITICAL: productName is already validated and trimmed above
         const nameFontSize = Math.floor(frontTemplateImage.width * 0.027); // SAMA dengan handleDownload
         const nameY = qrY - 40; // SAMA dengan handleDownload (bukan -35)
+        
+        // CRITICAL: Measure text width to create proper white background
+        frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
+        const nameTextWidth = frontCtx.measureText(productName).width;
+        const nameTextHeight = nameFontSize;
+        
+        // Overwrite placeholder area with white background
+        frontCtx.fillStyle = "#ffffff";
+        frontCtx.fillRect(
+          frontTemplateImage.width / 2 - nameTextWidth / 2 - textOverwritePadding,
+          nameY - nameTextHeight - textOverwritePadding,
+          nameTextWidth + textOverwritePadding * 2,
+          nameTextHeight + textOverwritePadding * 2
+        );
+        
+        // Draw product name
         frontCtx.fillStyle = "#222222";
         frontCtx.textAlign = "center";
         frontCtx.textBaseline = "bottom"; // SAMA dengan handleDownload (bukan "middle")
@@ -561,6 +581,22 @@ export async function POST(request: NextRequest) {
         // CRITICAL: productSerialCode is already validated, trimmed, and uppercased above
         const serialFontSize = Math.floor(frontTemplateImage.width * 0.031); // SAMA dengan handleDownload
         const serialY = qrY + qrSize + 40; // SAMA dengan handleDownload (bukan +35)
+        
+        // CRITICAL: Measure text width to create proper white background
+        frontCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
+        const serialTextWidth = frontCtx.measureText(productSerialCode).width;
+        const serialTextHeight = serialFontSize;
+        
+        // Overwrite placeholder area with white background
+        frontCtx.fillStyle = "#ffffff";
+        frontCtx.fillRect(
+          frontTemplateImage.width / 2 - serialTextWidth / 2 - textOverwritePadding,
+          serialY - textOverwritePadding,
+          serialTextWidth + textOverwritePadding * 2,
+          serialTextHeight + textOverwritePadding * 2
+        );
+        
+        // Draw serial code
         frontCtx.fillStyle = "#222222";
         frontCtx.textAlign = "center";
         frontCtx.textBaseline = "top"; // SAMA dengan handleDownload (bukan "middle")
