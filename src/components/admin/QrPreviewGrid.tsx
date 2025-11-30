@@ -376,34 +376,23 @@ export function QrPreviewGrid() {
             qrSize + padding * 2
           );
           fallbackCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-          // Add product name and serial
+          // Nama produk persis atas QR (SAMA dengan logic utama, tanpa truncation)
           if (product.name) {
-            const nameY = qrY - 35;
-            const nameFontSize = Math.floor(localFrontImg.width * 0.025);
+            const nameFontSize = Math.floor(localFrontImg.width * 0.027);
+            const nameY = qrY - nameFontSize * 1.3;
             fallbackCtx.fillStyle = "#222222";
             fallbackCtx.textAlign = "center";
-            fallbackCtx.textBaseline = "middle";
+            fallbackCtx.textBaseline = "bottom";
             fallbackCtx.font = `${nameFontSize}px Arial, sans-serif`;
-            let displayName = product.name;
-            const maxWidth = localFrontImg.width * 0.65;
-            const metrics = fallbackCtx.measureText(displayName);
-            if (metrics.width > maxWidth) {
-              while (
-                fallbackCtx.measureText(displayName + "...").width > maxWidth &&
-                displayName.length > 0
-              ) {
-                displayName = displayName.slice(0, -1);
-              }
-              displayName += "...";
-            }
-            fallbackCtx.fillText(displayName, localFrontImg.width / 2, nameY);
+            fallbackCtx.fillText(product.name, localFrontImg.width / 2, nameY);
           }
-          const serialY = qrY + qrSize + 35;
-          const fontSize = Math.floor(localFrontImg.width * 0.032);
+          // Serial only bawah QR (SAMA dengan logic utama, tanpa duplikasi)
+          const serialFontSize = Math.floor(localFrontImg.width * 0.031);
+          const serialY = qrY + qrSize + serialFontSize * 1.5;
           fallbackCtx.fillStyle = "#222222";
           fallbackCtx.textAlign = "center";
-          fallbackCtx.textBaseline = "middle";
-          fallbackCtx.font = `${fontSize}px "LucidaSans", "Lucida Console", "Courier New", monospace`;
+          fallbackCtx.textBaseline = "top";
+          fallbackCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
           fallbackCtx.fillText(product.serialCode, localFrontImg.width / 2, serialY);
           frontImageData = fallbackCanvas.toDataURL("image/png", 1.0);
         } else {
