@@ -29,8 +29,31 @@ export async function GET(request: NextRequest) {
     let fallbackUrl: string;
 
     if (!isLocalDev && R2_PUBLIC_URL) {
-      const base = R2_PUBLIC_URL.endsWith("/") ? R2_PUBLIC_URL.slice(0, -1) : R2_PUBLIC_URL;
+      // CRITICAL: Normalize R2_PUBLIC_URL to remove bucket name if present
+      // R2_PUBLIC_URL should be just the base URL (e.g., https://assets.cahayasilverking.id)
+      // NOT include bucket name (e.g., NOT https://assets.cahayasilverking.id/silverking-assets)
+      let base = R2_PUBLIC_URL.endsWith("/") ? R2_PUBLIC_URL.slice(0, -1) : R2_PUBLIC_URL;
+      
+      // Remove bucket name from path if present (e.g., /silverking-assets)
+      // This prevents duplicate paths like silverking-assets/silverking-assets/qr/
+      const R2_BUCKET = process.env.R2_BUCKET || process.env.R2_BUCKET_NAME || "silverking-assets";
+      if (base.includes(`/${R2_BUCKET}`)) {
+        base = base.replace(`/${R2_BUCKET}`, "");
+        console.log(`[QR Proxy] Normalized R2_PUBLIC_URL (removed bucket name): ${base}`);
+      }
+      
+      // CRITICAL: qrR2Key is already just "qr/{serialCode}.png" (no bucket name)
+      // So final URL should be: {base}/qr/{serialCode}.png
+      // NOT: {base}/silverking-assets/qr/{serialCode}.png
       qrR2Url = `${base}/${qrR2Key}`;
+      
+      console.log(`[QR Proxy] R2 URL construction:`, {
+        originalR2PublicUrl: R2_PUBLIC_URL,
+        normalizedBase: base,
+        qrR2Key,
+        qrR2Url,
+      });
+      
       fallbackUrl = `/api/qr/${encodeURIComponent(serialCode)}/qr-only`;
     } else {
       // Local dev: use API endpoint directly
