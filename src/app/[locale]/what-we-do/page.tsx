@@ -320,11 +320,11 @@ const NarrativeImageSection = forwardRef<
                           sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 440px"
                           priority={idx < 3}
                           loading={idx < 3 ? "eager" : "lazy"}
-                          quality={isMobile ? 85 : 92}
+                          quality={isMobile ? 75 : 92}
                           unoptimized={false}
                           fetchPriority={idx < 3 ? "high" : "auto"}
                           placeholder="blur"
-                          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
+                          blurDataURL="data:image/svg+xml,%3Csvg width='16' height='12' xmlns='http://www.w3.org/2000/svg'%3E%3ClinearGradient id='g'%3E%3Cstop stop-color='%23090'/%3E%3Cstop offset='1' stop-color='%23000'/%3E%3C/linearGradient%3E%3Crect width='16' height='12' fill='url(%23g)'/%3E%3C/svg%3E"
                           onLoad={() => {
                             // Mark as loaded immediately
                             setImageLoaded((prev) => ({
@@ -345,7 +345,16 @@ const NarrativeImageSection = forwardRef<
                     {/* Error fallback */}
                     {hasImageError && (
                       <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-black/80 to-black/60 z-10">
-                        <p className="text-xs sm:text-sm text-white/60 px-4 text-center">Image unavailable</p>
+                        {/* Minimalist Gold SVG fallback icon instead of text fallback */}
+                        <svg width="46" height="32" viewBox="0 0 46 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <rect width="46" height="32" rx="8" fill="url(#gold)"/>
+                          <defs>
+                            <linearGradient id="gold" x1="0" y1="0" x2="46" y2="32" gradientUnits="userSpaceOnUse">
+                              <stop stop-color="#B8960E"/>
+                              <stop offset="1" stop-color="#FFD700"/>
+                            </linearGradient>
+                          </defs>
+                        </svg>
                       </div>
                     )}
                   </div>

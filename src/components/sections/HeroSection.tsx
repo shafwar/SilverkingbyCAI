@@ -487,7 +487,10 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             <h1
               ref={headlineRef}
               className="mb-2 sm:mb-3 md:mb-5 font-sans text-[1.7rem] sm:text-[2.25rem] md:text-[3rem] lg:text-[3.5rem] xl:text-[4rem] 2xl:text-[4.5rem] font-semibold tracking-tight md:tracking-[-0.03em] leading-[1.2] sm:leading-[1.2] md:leading-[1.25] text-white"
-              style={{ perspective: "1000px" }}
+              style={{
+                perspective: "1000px",
+                fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c",
+              }}
             >
               {/* Fragment 1 */}
               <span
@@ -528,6 +531,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             <p
               ref={subtitleRef}
               className="max-w-[92%] sm:max-w-[88%] md:max-w-[85%] font-sans text-[0.875rem] sm:text-[0.9375rem] md:text-[1rem] lg:text-[1.0625rem] leading-[1.65] sm:leading-[1.65] md:leading-[1.7] font-light text-white/75 mt-3.5 sm:mt-5 md:mt-0"
+              style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
             >
               {t.rich("subtitle", {
                 gold: (chunks) => <span className="font-medium text-white/90">{chunks}</span>,
@@ -545,13 +549,22 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
                   <div className="absolute left-0 top-0 bottom-0 w-[1.5px] bg-gradient-to-b from-transparent via-white/25 to-transparent">
                     <div className="absolute -left-[2.5px] top-1.5 h-1.5 w-1.5 rounded-full bg-gradient-to-r from-white/60 to-white/20" />
                   </div>
-                  <p className="font-sans text-[0.52rem] uppercase tracking-[0.45em] text-white/45">
+                  <p
+                    className="font-sans text-[0.52rem] uppercase tracking-[0.45em] text-white/45"
+                    style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
+                  >
                     {item.label}
                   </p>
-                  <p className="mt-1 font-sans text-[1.05rem] font-semibold bg-gradient-to-r from-white via-white/80 to-white/60 bg-clip-text text-transparent tracking-tight leading-snug">
+                  <p
+                    className="mt-1 font-sans text-[1.05rem] font-semibold bg-gradient-to-r from-white via-white/80 to-white/60 bg-clip-text text-transparent tracking-tight leading-snug"
+                    style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
+                  >
                     {item.title}
                   </p>
-                  <p className="mt-1 font-sans text-[0.75rem] text-white/55 leading-relaxed">
+                  <p
+                    className="mt-1 font-sans text-[0.75rem] text-white/55 leading-relaxed"
+                    style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
+                  >
                     {item.body}
                   </p>
                 </div>
@@ -589,18 +602,28 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
               document.head.appendChild(link);
             }
           }}
+          style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
         >
           <div className="flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border border-white/20 bg-black/40">
             <QrCode className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[0.45rem] sm:text-[0.5rem] uppercase tracking-[0.4em] sm:tracking-[0.45em] text-white/55">
+            <p
+              className="text-[0.45rem] sm:text-[0.5rem] uppercase tracking-[0.4em] sm:tracking-[0.45em] text-white/55"
+              style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
+            >
               {t("qrCard.label")}
             </p>
-            <p className="mt-0.5 text-[0.75rem] sm:text-[0.8125rem] md:text-[0.95rem] font-sans font-semibold text-white tracking-tight leading-tight">
+            <p
+              className="mt-0.5 text-[0.75rem] sm:text-[0.8125rem] md:text-[0.95rem] font-sans font-semibold text-white tracking-tight leading-tight"
+              style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
+            >
               {t("qrCard.title")}
             </p>
-            <p className="mt-0.5 text-[0.6rem] sm:text-[0.625rem] font-sans text-white/60 leading-relaxed line-clamp-2">
+            <p
+              className="mt-0.5 text-[0.6rem] sm:text-[0.625rem] font-sans text-white/60 leading-relaxed line-clamp-2"
+              style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
+            >
               {t("qrCard.description")}
             </p>
           </div>

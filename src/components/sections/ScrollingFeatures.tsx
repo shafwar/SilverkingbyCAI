@@ -111,13 +111,13 @@ export default function ScrollingFeatures({
 
             {/* Content - optimized spacing and typography */}
             <div className="pl-4 pr-2">
-              <p className="font-sans text-[0.5rem] sm:text-[0.52rem] uppercase tracking-[0.4em] sm:tracking-[0.45em] text-white/50 mb-2.5">
+              <p className="font-sans text-[0.5rem] sm:text-[0.52rem] uppercase tracking-[0.4em] sm:tracking-[0.45em] text-white/50 mb-2.5" style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}>
                 {feature.label}
               </p>
-              <p className="font-sans text-[0.875rem] sm:text-[0.95rem] font-semibold text-white/95 tracking-tight leading-snug mb-2">
+              <p className="font-sans text-[0.875rem] sm:text-[0.95rem] font-semibold text-white/95 tracking-tight leading-snug mb-2" style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}>
                 {feature.title}
               </p>
-              <p className="font-sans text-[0.7rem] sm:text-[0.75rem] text-white/60 leading-relaxed">
+              <p className="font-sans text-[0.7rem] sm:text-[0.75rem] text-white/60 leading-relaxed" style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}>
                 {feature.body}
               </p>
             </div>

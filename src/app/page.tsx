@@ -32,12 +32,10 @@ export default async function RootPage() {
 
   return (
     <NextIntlClientProvider messages={messages}>
-      <NavigationTransitionProvider>
-        <Providers>
-          <RootPageContent />
-        </Providers>
-        <PageTransitionOverlay />
-      </NavigationTransitionProvider>
+      {/* HAPUS NavigationTransitionProvider & PageTransitionOverlay */}
+      <Providers>
+        <RootPageContent />
+      </Providers>
     </NextIntlClientProvider>
   );
 }

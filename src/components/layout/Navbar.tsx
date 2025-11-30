@@ -5,7 +5,7 @@ import { Link } from "@/i18n/routing";
 import Image from "next/image";
 import { ArrowRight, X, QrCode } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigationTransition } from "./NavigationTransitionProvider";
+// HAPUS: import { useNavigationTransition } from "./NavigationTransitionProvider";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useTranslations, useLocale } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/routing";
@@ -18,7 +18,7 @@ export default function Navbar() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
-  const { beginTransition } = useNavigationTransition();
+  // HAPUS: const { beginTransition } = useNavigationTransition();
   const t = useTranslations('nav');
   const locale = useLocale();
   const pathname = usePathname();
@@ -221,17 +221,15 @@ export default function Navbar() {
     if (isHashLink) {
       return;
     }
-    
     // CRITICAL: For non-default locale, skip transition for faster navigation
     // Transition overlay can block navigation for /id routes
     if (locale !== routing.defaultLocale) {
       // Don't start transition - let navigation happen immediately
       return;
     }
-    
-    // Start transition animation only for default locale
+    // --- REMOVE BEGINTRANSITION ---
+    // (Transition removed for all cases to ensure fast, native navigation)
     // Link component from next-intl will handle navigation automatically
-    beginTransition(href);
     // Navigation is handled by Link component - no need to preventDefault or router.push
   };
 
@@ -289,8 +287,9 @@ export default function Navbar() {
                 className="relative font-sans text-[0.9375rem] font-medium text-white/70 transition-all duration-300 hover:text-white focus-visible:text-white group-hover:text-white/40 group-hover:hover:text-white"
                 onClick={(event) => handleNavClick(event, link.href)}
                 role="menuitem"
+                style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
               >
-                <span className="relative z-10">{link.name}</span>
+                <span className="relative z-10" style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}>{link.name}</span>
               </Link>
             ))}
           </div>
@@ -303,8 +302,9 @@ export default function Navbar() {
               prefetch={true}
               onClick={(event) => handleNavClick(event, '/contact')}
               className="group relative overflow-hidden inline-flex items-center gap-2.5 rounded-full bg-gradient-to-r from-white/[0.12] to-white/[0.08] backdrop-blur-xl border border-white/[0.15] px-6 py-3 font-sans text-[0.9375rem] font-semibold text-white shadow-[0_8px_32px_rgba(0,0,0,0.12)] transition-all duration-500 hover:shadow-[0_8px_32px_rgba(212,175,55,0.25)] hover:scale-105 hover:border-luxury-gold/30"
+              style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
             >
-              <span className="relative z-10 transition-colors duration-300 group-hover:text-luxury-gold">
+              <span className="relative z-10 transition-colors duration-300 group-hover:text-luxury-gold" style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}>
                 {t('getInTouch')}
               </span>
               <ArrowRight className="relative z-10 h-4 w-4 transition-all duration-300 group-hover:translate-x-1 group-hover:text-luxury-gold" />
@@ -319,6 +319,7 @@ export default function Navbar() {
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="md:hidden flex flex-col gap-1.5 p-2 relative z-[101]"
               aria-label="Toggle menu"
+              style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
             >
               <motion.span
                 animate={{ rotate: 0, y: 0 }}
@@ -388,6 +389,7 @@ export default function Navbar() {
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="flex items-center justify-center w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 transition-colors"
                       aria-label="Close menu"
+                      style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
                     >
                       <X className="h-5 w-5 text-white" />
                     </button>
@@ -410,6 +412,7 @@ export default function Navbar() {
                             setIsMobileMenuOpen(false);
                           }}
                           className="block font-sans text-2xl sm:text-3xl font-medium text-white py-4 transition-all duration-300 hover:text-white/80"
+                          style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
                         >
                           {link.name}
                         </Link>
@@ -439,6 +442,7 @@ export default function Navbar() {
                       prefetch={true}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="group block relative overflow-hidden rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all duration-300 hover:border-white/20"
+                      style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
                     >
                       <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4">
                         {/* Icon/Thumbnail - Smaller */}
@@ -448,13 +452,13 @@ export default function Navbar() {
 
                         {/* Content - Compact */}
                         <div className="flex-1 min-w-0">
-                          <p className="font-sans text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.25em] sm:tracking-[0.3em] text-white/50 mb-1">
+                          <p className="font-sans text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.25em] sm:tracking-[0.3em] text-white/50 mb-1" style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}>
                             SCAN & VERIFY
                           </p>
-                          <h3 className="font-sans text-sm sm:text-base font-semibold text-white leading-tight group-hover:text-white/90 transition-colors">
+                          <h3 className="font-sans text-sm sm:text-base font-semibold text-white leading-tight group-hover:text-white/90 transition-colors" style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}>
                             Tap to launch Silver King QR scanner
                           </h3>
-                          <p className="font-sans text-xs sm:text-sm text-white/60 leading-relaxed mt-1 line-clamp-2">
+                          <p className="font-sans text-xs sm:text-sm text-white/60 leading-relaxed mt-1 line-clamp-2" style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}>
                             Capture the QR seal to view purity & provenance.
                           </p>
                         </div>
@@ -477,6 +481,7 @@ export default function Navbar() {
                         setIsMobileMenuOpen(false);
                       }}
                       className="group flex items-center justify-center gap-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/20 px-6 py-4 font-sans text-base font-semibold text-white transition-all duration-300 hover:scale-[1.02]"
+                      style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
                     >
                       <span>Get in touch</span>
                       <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />

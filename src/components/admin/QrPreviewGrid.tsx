@@ -66,12 +66,6 @@ export function QrPreviewGrid() {
   const [downloadPercent, setDownloadPercent] = useState<number | null>(null);
   const [downloadLabel, setDownloadLabel] = useState<string>("");
 
-  // State untuk upload template ke R2
-  const [isUploadingTemplate, setIsUploadingTemplate] = useState(false);
-  const [templateUploadStatus, setTemplateUploadStatus] = useState<"idle" | "success" | "error">(
-    "idle"
-  );
-
   // Extract categories from products (first 3 letters of serial code)
   const categories = useMemo(() => {
     if (!data?.products) return [];
@@ -1065,36 +1059,6 @@ export function QrPreviewGrid() {
     return filteredProducts.every((p) => selectedItems.has(p.id));
   }, [filteredProducts, selectedItems]);
 
-  // Function to upload templates to R2
-  const handleUploadTemplatesToR2 = async () => {
-    setIsUploadingTemplate(true);
-    setTemplateUploadStatus("idle");
-    try {
-      const response = await fetch("/api/admin/upload-serticard-template", {
-        method: "POST",
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to upload templates");
-      }
-
-      const result = await response.json();
-      setTemplateUploadStatus("success");
-      alert(
-        `✅ Template berhasil di-upload ke R2!\n\nFront: ${result.frontTemplateUrl}\nBack: ${result.backTemplateUrl}\n\nSistem sekarang akan menggunakan template dari R2 untuk generate PDF.`
-      );
-    } catch (error: any) {
-      console.error("Failed to upload templates:", error);
-      setTemplateUploadStatus("error");
-      alert(
-        `❌ Gagal upload template ke R2: ${error.message}\n\nPastikan R2 environment variables sudah dikonfigurasi dengan benar.`
-      );
-    } finally {
-      setIsUploadingTemplate(false);
-    }
-  };
-
   if (isLoading) {
     return <LoadingSkeleton className="h-64 w-full" />;
   }
@@ -1474,27 +1438,6 @@ export function QrPreviewGrid() {
                   {isDownloadingAll
                     ? t("generatingPng")
                     : `${t("downloadAll")} (${data.products.length})`}
-                </span>
-              </motion.button>
-
-              {/* Upload Template Button - Tertiary Action (Lower Visual Hierarchy) */}
-              <motion.button
-                onClick={handleUploadTemplatesToR2}
-                disabled={isUploadingTemplate}
-                className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-blue-500/60 bg-blue-500/10 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-all hover:border-blue-500 hover:bg-blue-500/20 hover:shadow-[0_0_20px_rgba(59,130,246,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
-                whileHover={{ scale: isUploadingTemplate ? 1 : 1.02 }}
-                whileTap={{ scale: isUploadingTemplate ? 1 : 0.98 }}
-                title="Upload template Serticard-01.png dan Serticard-02.png ke R2 untuk digunakan di production"
-                aria-label="Upload template ke R2"
-              >
-                <CloudUpload
-                  className={`h-4 w-4 flex-shrink-0 transition-transform ${isUploadingTemplate ? "animate-pulse" : "group-hover:translate-y-0.5"}`}
-                />
-                <span className="hidden whitespace-nowrap sm:inline">
-                  {isUploadingTemplate ? "Uploading..." : "Upload Template ke R2"}
-                </span>
-                <span className="whitespace-nowrap sm:hidden">
-                  {isUploadingTemplate ? "Uploading..." : "Upload"}
                 </span>
               </motion.button>
             </div>

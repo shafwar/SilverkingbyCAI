@@ -149,13 +149,14 @@ export default function LanguageSwitcher() {
         disabled={isPending}
         className="flex items-center justify-center gap-2 px-4 py-2.5 md:px-3 md:py-1.5 rounded-lg md:rounded-md bg-white/10 hover:bg-white/15 md:bg-white/5 md:hover:bg-white/10 text-white hover:text-white transition-all duration-200 text-sm md:text-xs font-semibold md:font-medium disabled:opacity-50 disabled:cursor-not-allowed border border-white/20 md:border-transparent shadow-lg md:shadow-none"
         aria-label="Switch language"
+        style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
       >
         {isPending ? (
           <Loader2 className="w-4 h-4 md:w-3.5 md:h-3.5 animate-spin" />
         ) : (
           <Globe className="w-4 h-4 md:w-3.5 md:h-3.5" />
         )}
-        <span className="font-semibold">{switchingTo ? languages.find(l => l.code === switchingTo)?.name || currentLanguage.name : currentLanguage.name}</span>
+        <span className="font-semibold" style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}>{switchingTo ? languages.find(l => l.code === switchingTo)?.name || currentLanguage.name : currentLanguage.name}</span>
       </button>
 
       {isOpen && !isPending && (
@@ -177,7 +178,7 @@ export default function LanguageSwitcher() {
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 <span className="flex items-center justify-between">
-                  <span className="font-semibold md:font-normal">{lang.name}</span>
+                  <span className="font-semibold md:font-normal" style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}>{lang.name}</span>
                   {locale === lang.code && (
                     <span className="ml-2 text-sm md:text-xs">✓</span>
                   )}
