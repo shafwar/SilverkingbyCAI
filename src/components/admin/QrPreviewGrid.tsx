@@ -298,7 +298,7 @@ export function QrPreviewGrid() {
       // === MATCH SKN350 LAYOUT: Hanya 2 text elements, TIDAK ADA DUPLIKASI ===
       // CRITICAL: Hanya draw text SEKALI untuk setiap element (nama produk & serial code)
       // Pastikan tidak ada duplikasi dengan memastikan hanya 2 fillText calls total
-      
+
       // 1. Nama produk di ATAS QR (sekali saja, sesuai SKN350 - "Silver King 250gr")
       // Position: Di atas QR code, dengan spacing yang tepat
       if (product.name && product.name.trim().length > 0) {
@@ -322,8 +322,14 @@ export function QrPreviewGrid() {
         frontCtx.textAlign = "center";
         frontCtx.textBaseline = "top";
         frontCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
-        frontCtx.fillText(product.serialCode.trim().toUpperCase(), frontTemplateImg.width / 2, serialY);
-        console.log(`[Download] Serial code drawn: "${product.serialCode.trim().toUpperCase()}" at Y=${serialY}`);
+        frontCtx.fillText(
+          product.serialCode.trim().toUpperCase(),
+          frontTemplateImg.width / 2,
+          serialY
+        );
+        console.log(
+          `[Download] Serial code drawn: "${product.serialCode.trim().toUpperCase()}" at Y=${serialY}`
+        );
       }
       // === END: Hanya 2 fillText calls total, tidak ada duplikasi ===
 
@@ -391,7 +397,7 @@ export function QrPreviewGrid() {
           // === MATCH SKN350 LAYOUT: Hanya 2 text elements, TIDAK ADA DUPLIKASI ===
           // CRITICAL: Hanya draw text SEKALI untuk setiap element (nama produk & serial code)
           // SAMA dengan logic utama di atas - pastikan tidak ada duplikasi
-          
+
           // 1. Nama produk di ATAS QR (sekali saja, sesuai SKN350)
           if (product.name && product.name.trim().length > 0) {
             const nameFontSize = Math.floor(localFrontImg.width * 0.027);
@@ -411,7 +417,11 @@ export function QrPreviewGrid() {
             fallbackCtx.textAlign = "center";
             fallbackCtx.textBaseline = "top";
             fallbackCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
-            fallbackCtx.fillText(product.serialCode.trim().toUpperCase(), localFrontImg.width / 2, serialY);
+            fallbackCtx.fillText(
+              product.serialCode.trim().toUpperCase(),
+              localFrontImg.width / 2,
+              serialY
+            );
           }
           // === END: Hanya 2 fillText calls total, tidak ada duplikasi ===
           frontImageData = fallbackCanvas.toDataURL("image/png", 1.0);
@@ -589,12 +599,42 @@ export function QrPreviewGrid() {
         const batch = allProducts.slice(i, i + BATCH_SIZE);
         const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
         // CRITICAL: Send full product objects with name and serialCode, not just serialCodes
-        const products = batch.map((p) => ({
+        // CRITICAL: Validate data before sending to ensure we don't send empty/null data
+        const products = batch
+          .map((p) => ({
+            id: p.id,
+            name: p.name || "",
+            serialCode: p.serialCode || "",
+            weight: p.weight || 0,
+          }))
+          .filter((p) => {
+            // CRITICAL: Filter out products with missing data BEFORE sending to backend
+            const isValid = p.name && p.serialCode && p.name.trim().length > 0 && p.serialCode.trim().length > 0;
+            if (!isValid) {
+              console.warn(`[DownloadAll] Skipping invalid product:`, {
+                id: p.id,
+                name: p.name,
+                serialCode: p.serialCode,
+              });
+            }
+            return isValid;
+          });
+
+        // CRITICAL: Log products being sent to backend
+        console.log(`[DownloadAll] Batch ${batchNumber}: Sending ${products.length} products to backend`);
+        console.log(`[DownloadAll] Sample products (first 3):`, products.slice(0, 3).map((p) => ({
           id: p.id,
           name: p.name,
           serialCode: p.serialCode,
-          weight: p.weight,
-        }));
+          nameLength: p.name?.length || 0,
+          serialCodeLength: p.serialCode?.length || 0,
+        })));
+
+        if (products.length === 0) {
+          console.error(`[DownloadAll] Batch ${batchNumber}: No valid products to send!`);
+          toast.error(`Batch ${batchNumber} tidak memiliki produk valid`);
+          continue;
+        }
 
         setDownloadLabel(
           `Menggenerate batch ${batchNumber}/${totalBatches}... (${products.length} file)`
@@ -605,12 +645,16 @@ export function QrPreviewGrid() {
           // Call endpoint for this batch (100 files) - backend will generate and return 1 ZIP
           // CRITICAL: Send products (full objects) instead of serialCodes
           // Backend will use these products directly, same as handleDownload (single)
+          const requestBody = { products, batchNumber };
+          console.log(`[DownloadAll] Request body size:`, JSON.stringify(requestBody).length, "bytes");
+          console.log(`[DownloadAll] First product in request:`, requestBody.products[0]);
+          
           const response = await fetch("/api/qr/download-multiple-pdf", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ products, batchNumber }), // Pass full product objects, not just serialCodes
+            body: JSON.stringify(requestBody), // Pass full product objects, not just serialCodes
             signal: abortController.signal,
           });
 
