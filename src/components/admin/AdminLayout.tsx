@@ -9,6 +9,8 @@ import { useTranslations, useLocale } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import { Toaster } from "sonner";
 import { getR2UrlClient } from "@/utils/r2-url";
+import { DownloadCard } from "./DownloadCard";
+import { useDownload } from "@/contexts/DownloadContext";
 import {
   LayoutDashboard,
   PackageSearch,
@@ -35,6 +37,9 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  
+  // Get download state from context
+  const { downloadState, cancelDownload, setIsDownloadMinimized } = useDownload();
   
   // Safe translation helper with fallback
   const safeT = useMemo(
@@ -173,15 +178,20 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         position="top-center"
         richColors
         closeButton
+        duration={4000}
         toastOptions={{
           className: "toast-minimalist",
           style: {
-            background: "rgba(0, 0, 0, 0.9)",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
-            borderRadius: "12px",
+            background: "rgba(0, 0, 0, 0.95)",
+            border: "1px solid rgba(255, 255, 255, 0.08)",
+            borderRadius: "8px",
             color: "#fff",
-            backdropFilter: "blur(12px)",
-            maxWidth: "calc(100vw - 2rem)",
+            backdropFilter: "blur(16px)",
+            maxWidth: "420px",
+            padding: "12px 16px",
+            fontSize: "14px",
+            fontWeight: 400,
+            boxShadow: "0 4px 16px rgba(0, 0, 0, 0.3)",
           },
           classNames: {
             success: "toast-success",
@@ -191,6 +201,17 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
           },
         }}
       />
+
+      {/* Global Download Card - persists across navigation */}
+      {downloadState.percent !== null && (
+        <DownloadCard
+          percent={downloadState.percent}
+          label={downloadState.label}
+          onCancel={cancelDownload}
+          isMinimized={downloadState.isMinimized}
+          onToggleMinimize={() => setIsDownloadMinimized(!downloadState.isMinimized)}
+        />
+      )}
     </div>
   );
 }

@@ -26,7 +26,8 @@ import { fetcher } from "@/lib/fetcher";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import { Modal } from "./Modal";
 import { AnimatedCard } from "./AnimatedCard";
-import { DownloadProgressBar } from "./DownloadProgressBar";
+import { useDownload } from "@/contexts/DownloadContext";
+import { toast } from "sonner";
 
 type Product = {
   id: number;
@@ -62,9 +63,15 @@ export function QrPreviewGrid() {
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Tambah state untuk progress bar
-  const [downloadPercent, setDownloadPercent] = useState<number | null>(null);
-  const [downloadLabel, setDownloadLabel] = useState<string>("");
+  // Use download context for global state management
+  const {
+    setDownloadPercent,
+    setDownloadLabel,
+    setIsDownloadMinimized,
+    setDownloadAbortController,
+    cancelDownload,
+    resetDownload,
+  } = useDownload();
 
   // Extract categories from products (first 3 letters of serial code)
   const categories = useMemo(() => {
@@ -552,7 +559,9 @@ export function QrPreviewGrid() {
 
       // Show more detailed error message
       const errorMessage = error?.message || "Unknown error occurred";
-      alert(`${t("downloadFailed")}: ${errorMessage}`);
+      toast.error(t("downloadFailed"), {
+        description: errorMessage,
+      });
     } finally {
       setIsDownloading(false);
     }
@@ -560,12 +569,17 @@ export function QrPreviewGrid() {
 
   const handleDownloadAll = async () => {
     if (!data?.products || data.products.length === 0) {
-      alert(t("downloadAllFailed"));
+      toast.error(t("downloadAllFailed"));
       return;
     }
     setIsDownloadingAll(true);
     setDownloadPercent(0);
     setDownloadLabel("Menyiapkan... 0%");
+    setIsDownloadMinimized(false);
+
+    // Create abort controller for cancellation
+    const abortController = new AbortController();
+    setDownloadAbortController(abortController);
 
     try {
       const allProducts = data.products;
@@ -592,6 +606,7 @@ export function QrPreviewGrid() {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({ serialCodes, batchNumber }), // Pass batchNumber for R2 folder naming
+            signal: abortController.signal,
           });
 
           // Check if response is OK
@@ -640,7 +655,9 @@ export function QrPreviewGrid() {
               console.log(`[Download] Downloading from R2: ${result.downloadUrl}`);
 
               // Download from R2 URL with progress tracking
-              const r2Response = await fetch(result.downloadUrl);
+              const r2Response = await fetch(result.downloadUrl, {
+                signal: abortController.signal,
+              });
               if (!r2Response.ok) {
                 throw new Error(
                   `Gagal mengunduh dari R2 untuk batch ${batchNumber}. Status: ${r2Response.status}`
@@ -661,6 +678,10 @@ export function QrPreviewGrid() {
 
               const r2Chunks: BlobPart[] = [];
               while (true) {
+                // Check for abort during download
+                if (abortController.signal.aborted) {
+                  throw new Error("Download cancelled");
+                }
                 const { done, value } = await r2Reader.read();
                 if (done) break;
 
@@ -713,8 +734,17 @@ export function QrPreviewGrid() {
               throw new Error(`Stream download tidak tersedia untuk batch ${batchNumber}`);
             }
 
+            // Check for abort before starting to read
+            if (abortController.signal.aborted) {
+              throw new Error("Download cancelled");
+            }
+
             const chunks: BlobPart[] = [];
             while (true) {
+              // Check for abort during download
+              if (abortController.signal.aborted) {
+                throw new Error("Download cancelled");
+              }
               const { done, value } = await reader.read();
               if (done) break;
 
@@ -799,12 +829,21 @@ export function QrPreviewGrid() {
       setTimeout(() => {
         setDownloadPercent(null);
         setDownloadLabel("");
+        setIsDownloadMinimized(false);
       }, 2000);
 
-      alert(
-        `Berhasil mengunduh ${totalBatches} file ZIP (${allProducts.length} file QR total). Setiap ZIP berisi 100 file PDF (kecuali batch terakhir).`
-      );
+      toast.success("Download berhasil", {
+        description: `Berhasil mengunduh ${totalBatches} file ZIP (${allProducts.length} file QR total). Setiap ZIP berisi 100 file PDF (kecuali batch terakhir).`,
+      });
     } catch (error: any) {
+      // Check if error is due to abort
+      if (error?.name === "AbortError" || abortController.signal.aborted) {
+        console.log("[Download] Download cancelled by user");
+        setDownloadPercent(null);
+        setDownloadLabel("");
+        return;
+      }
+
       setDownloadPercent(null);
       setDownloadLabel("");
       console.error("Failed to download batch ZIPs:", error);
@@ -844,15 +883,18 @@ export function QrPreviewGrid() {
         stack: error?.stack,
       });
 
-      alert(`Gagal mengunduh: ${errorMessage}`);
+      toast.error("Gagal mengunduh", {
+        description: errorMessage,
+      });
     } finally {
       setIsDownloadingAll(false);
+      setDownloadAbortController(null);
     }
   };
 
   const handleDownloadSelected = async () => {
     if (selectedItems.size === 0) {
-      alert(t("downloadSelectedFailed"));
+      toast.error(t("downloadSelectedFailed"));
       return;
     }
 
@@ -863,7 +905,12 @@ export function QrPreviewGrid() {
 
     setIsDownloadingSelected(true);
     setDownloadPercent(0);
-    setDownloadLabel("Mengunduh... 0%");
+    setDownloadLabel("Menyiapkan... 0%");
+    setIsDownloadMinimized(false);
+
+    // Create abort controller for cancellation
+    const abortController = new AbortController();
+    setDownloadAbortController(abortController);
 
     try {
       // Download selected QR codes as ZIP with PDFs (one PDF per QR)
@@ -873,6 +920,7 @@ export function QrPreviewGrid() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ serialCodes }),
+        signal: abortController.signal,
       });
 
       // Check if response is OK
@@ -905,78 +953,159 @@ export function QrPreviewGrid() {
         throw new Error(errorMessage);
       }
 
-      // Check Content-Type to ensure it's a ZIP file
+      // Check Content-Type - could be JSON (R2 URL) or ZIP (direct download)
       const contentType = response.headers.get("Content-Type");
-      if (!contentType || !contentType.startsWith("application/zip")) {
+
+      if (contentType?.includes("application/json")) {
+        // Response is JSON with R2 download URL
+        const result = await response.json();
+        if (result.success && result.downloadUrl) {
+          setDownloadLabel(`Mengunduh dari R2...`);
+          setDownloadPercent(50);
+
+          console.log(`[Download] Downloading from R2: ${result.downloadUrl}`);
+
+          // Download from R2 URL with progress tracking
+          const r2Response = await fetch(result.downloadUrl, {
+            signal: abortController.signal,
+          });
+          if (!r2Response.ok) {
+            throw new Error(`Gagal mengunduh dari R2. Status: ${r2Response.status}`);
+          }
+
+          // Track download progress from R2
+          const r2ContentLength = r2Response.headers.get("content-length");
+          const r2Total = r2ContentLength ? parseInt(r2ContentLength, 10) : null;
+          let r2Loaded = 0;
+
+          const r2Reader = r2Response.body?.getReader();
+          if (!r2Reader) {
+            throw new Error(`Stream download tidak tersedia dari R2`);
+          }
+
+          const r2Chunks: BlobPart[] = [];
+          while (true) {
+            // Check for abort during download
+            if (abortController.signal.aborted) {
+              throw new Error("Download cancelled");
+            }
+            const { done, value } = await r2Reader.read();
+            if (done) break;
+
+            if (value) {
+              r2Chunks.push(value);
+              r2Loaded += value.length;
+
+              // Update progress
+              if (r2Total) {
+                const r2Progress = Math.round((r2Loaded / r2Total) * 100);
+                const overallProgress = Math.round(50 + r2Progress / 2); // 50-100%
+                setDownloadPercent(overallProgress);
+                setDownloadLabel(`Mengunduh dari R2... ${r2Progress}%`);
+              }
+            }
+          }
+
+          const r2Blob = new Blob(r2Chunks, { type: "application/zip" });
+          const url = window.URL.createObjectURL(r2Blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download =
+            result.filename ||
+            `Silver-King-Selected-QR-Codes-${serialCodes.length}-${new Date().toISOString().split("T")[0]}.zip`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+
+          console.log(`[Download] Downloaded from R2 successfully: ${result.downloadUrl}`);
+        } else {
+          throw new Error(result.error || `Gagal mendapatkan URL download`);
+        }
+      } else if (contentType?.startsWith("application/zip")) {
+        // Direct ZIP download (fallback)
+        // Stream download with progress
+        const contentLength = response.headers.get("content-length");
+        const total = contentLength ? parseInt(contentLength, 10) : null;
+        let loaded = 0;
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          setDownloadPercent(null);
+          setDownloadLabel("");
+          throw new Error("Stream download tidak tersedia. Silakan coba lagi.");
+        }
+
+        const chunks: BlobPart[] = [];
+        while (true) {
+          // Check for abort during download
+          if (abortController.signal.aborted) {
+            throw new Error("Download cancelled");
+          }
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          if (value) {
+            chunks.push(value);
+            loaded += value.length;
+          }
+
+          if (total) {
+            const percent = Math.round((loaded / total) * 100);
+            setDownloadPercent(percent);
+            setDownloadLabel(`Mengunduh... ${percent}%`);
+          } else {
+            // If no content-length, show indeterminate progress
+            setDownloadLabel("Mengunduh...");
+          }
+        }
+
+        // Create blob and download
+        const blob = new Blob(chunks, { type: "application/zip" });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+
+        const contentDisposition = response.headers.get("Content-Disposition");
+        let filename = `Silver-King-Selected-QR-Codes-${serialCodes.length}-${new Date().toISOString().split("T")[0]}.zip`;
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename=?"?([^\s"]+)"?/);
+          if (filenameMatch) {
+            filename = filenameMatch[1];
+          }
+        }
+
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } else {
         const errorText = await response.text();
         if (errorText.trim().startsWith("<!DOCTYPE") || errorText.trim().startsWith("<html")) {
           throw new Error("Server error: Terjadi kesalahan pada server. Silakan coba lagi.");
         }
-        throw new Error("Response bukan file ZIP. Silakan coba lagi.");
+        throw new Error("Response tidak valid. Silakan coba lagi.");
       }
-
-      // Stream download with progress
-      const contentLength = response.headers.get("content-length");
-      const total = contentLength ? parseInt(contentLength, 10) : null;
-      let loaded = 0;
-
-      const reader = response.body?.getReader();
-      if (!reader) {
-        setDownloadPercent(null);
-        setDownloadLabel("");
-        throw new Error("Stream download tidak tersedia. Silakan coba lagi.");
-      }
-
-      const chunks: BlobPart[] = [];
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        if (value) {
-          chunks.push(value);
-          loaded += value.length;
-        }
-
-        if (total) {
-          const percent = Math.round((loaded / total) * 100);
-          setDownloadPercent(percent);
-          setDownloadLabel(`Mengunduh... ${percent}%`);
-        } else {
-          // If no content-length, show indeterminate progress
-          setDownloadLabel("Mengunduh...");
-        }
-      }
-
-      // Create blob and download
-      const blob = new Blob(chunks, { type: "application/zip" });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-
-      const contentDisposition = response.headers.get("Content-Disposition");
-      let filename = `Silver-King-Selected-QR-Codes-${serialCodes.length}-${new Date().toISOString().split("T")[0]}.zip`;
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename=?"?([^\s"]+)"?/);
-        if (filenameMatch) {
-          filename = filenameMatch[1];
-        }
-      }
-
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
 
       setDownloadPercent(100);
       setDownloadLabel("Selesai!");
       setTimeout(() => {
         setDownloadPercent(null);
         setDownloadLabel("");
+        setIsDownloadMinimized(false);
       }, 2000);
 
-      alert(t("downloadSelectedSuccess", { count: serialCodes.length }));
+      toast.success(t("downloadSelectedSuccess", { count: serialCodes.length }));
     } catch (error: any) {
+      // Check if error is due to abort
+      if (error?.name === "AbortError" || abortController.signal.aborted) {
+        console.log("[Download] Download cancelled by user");
+        setDownloadPercent(null);
+        setDownloadLabel("");
+        return;
+      }
+
       setDownloadPercent(null);
       setDownloadLabel("");
       console.error("Failed to download selected ZIP:", error);
@@ -994,10 +1123,21 @@ export function QrPreviewGrid() {
           "Terjadi kesalahan pada server. Silakan coba lagi atau hubungi administrator.";
       }
 
-      alert(`Gagal mengunduh: ${errorMessage}`);
+      toast.error("Gagal mengunduh", {
+        description: errorMessage,
+      });
     } finally {
       setIsDownloadingSelected(false);
+      setDownloadAbortController(null);
     }
+  };
+
+  // Note: handleCancelDownload is now handled by context's cancelDownload
+  // This function is kept for backward compatibility but uses context
+  const handleCancelDownload = () => {
+    cancelDownload();
+    setIsDownloadingSelected(false);
+    setIsDownloadingAll(false);
   };
 
   const toggleSelectItem = (productId: number) => {
@@ -1083,11 +1223,6 @@ export function QrPreviewGrid() {
   }
   return (
     <>
-      {downloadPercent !== null && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/70 backdrop-blur">
-          <DownloadProgressBar percent={downloadPercent} label={downloadLabel} />
-        </div>
-      )}
       {/* Mesmerizing Header Section */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
@@ -1606,110 +1741,179 @@ export function QrPreviewGrid() {
                 </table>
               </div>
 
-              {/* Mobile Cards - Compact Table-like Layout */}
-              <div className="md:hidden divide-y divide-white/5">
-                {filteredProducts.length === 0 ? (
-                  <div className="px-4 py-12 text-center text-white/40 text-sm">
-                    {t("noProductsFound")} {searchQuery && `${t("matching")} "${searchQuery}"`}
-                  </div>
-                ) : (
-                  filteredProducts.map((product) => {
-                    const isItemSelected = selectedItems.has(product.id);
-                    return (
-                      <div
-                        key={product.id}
-                        className={`px-4 py-3 border-t border-white/5 transition-colors active:bg-white/5 ${
-                          isItemSelected ? "bg-[#FFD700]/5" : ""
-                        }`}
-                      >
-                        {/* Header Row: Checkbox, Name, and ID */}
-                        <div className="flex items-center gap-3 mb-2">
-                          <button
-                            type="button"
-                            onClick={() => toggleSelectItem(product.id)}
-                            className="inline-flex items-center justify-center text-white/60 hover:text-white transition-colors flex-shrink-0"
-                            aria-label={isItemSelected ? t("selected") : t("selected")}
-                            aria-checked={isItemSelected}
-                          >
-                            {isItemSelected ? (
-                              <CheckSquare2 className="h-5 w-5 text-[#FFD700]" />
-                            ) : (
+              {/* Mobile Cards - Compact Table-like Layout with Header */}
+              <div className="md:hidden">
+                {/* Mobile Table Header - Sticky */}
+                {filteredProducts.length > 0 && (
+                  <div className="sticky top-0 z-10 bg-white/[0.03] border-b border-white/10 backdrop-blur-sm">
+                    <div className="px-4 py-2.5 flex items-center gap-3">
+                      {/* Select All Checkbox */}
+                      <div className="flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={toggleSelectAll}
+                          className="inline-flex items-center justify-center text-white/60 hover:text-white transition-colors"
+                          aria-label={isAllSelected ? t("selected") : t("selected")}
+                        >
+                          {isAllSelected ? (
+                            <CheckSquare2 className="h-5 w-5 text-[#FFD700]" />
+                          ) : isIndeterminate ? (
+                            <div className="relative h-5 w-5">
                               <Square className="h-5 w-5 text-white/40" />
-                            )}
-                          </button>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-white text-sm truncate">
-                              {product.name}
-                            </p>
-                          </div>
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="h-2 w-2 bg-[#FFD700]" />
+                              </div>
+                            </div>
+                          ) : (
+                            <Square className="h-5 w-5 text-white/40" />
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Column Headers */}
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        {/* Serial Code Header */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white/40 text-[10px] uppercase tracking-[0.1em] font-medium">
+                            {t("serialCode")}
+                          </p>
                         </div>
 
-                        {/* Content Row: Serial, Weight, QR, and Actions */}
-                        <div className="flex items-center gap-3">
-                          {/* Serial Code */}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-white/40 text-[10px] uppercase tracking-[0.1em] mb-0.5">
-                              {t("serialCode")}
-                            </p>
-                            <p className="font-mono text-sm text-white/80 truncate">
-                              {product.serialCode}
-                            </p>
-                          </div>
+                        {/* Weight Header */}
+                        <div className="w-16 flex-shrink-0">
+                          <p className="text-white/40 text-[10px] uppercase tracking-[0.1em] font-medium">
+                            {t("weight")}
+                          </p>
+                        </div>
 
-                          {/* Weight */}
-                          <div className="w-16 flex-shrink-0">
-                            <p className="text-white/40 text-[10px] uppercase tracking-[0.1em] mb-0.5">
-                              {t("weight")}
-                            </p>
-                            <p className="text-sm text-white/80 whitespace-nowrap">
-                              {product.weight} gr
-                            </p>
-                          </div>
+                        {/* QR Preview Header */}
+                        <div className="w-12 flex-shrink-0">
+                          <p className="text-white/40 text-[10px] uppercase tracking-[0.1em] font-medium text-center">
+                            {t("qrPreview")}
+                          </p>
+                        </div>
 
-                          {/* QR Preview */}
-                          <div className="flex-shrink-0">
-                            <img
-                              src={`/api/qr/${product.serialCode}`}
-                              alt={`QR code for ${product.name} - ${product.serialCode}`}
-                              className="h-12 w-12 flex-shrink-0 rounded-lg border border-white/10 bg-white p-1.5 object-contain"
-                              loading="lazy"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                if (!target.dataset.retried) {
-                                  target.dataset.retried = "true";
-                                  target.src = `/api/qr/${product.serialCode}?t=${Date.now()}`;
-                                }
-                              }}
-                            />
-                          </div>
-
-                          {/* Actions */}
-                          <div className="flex items-center gap-1.5 flex-shrink-0">
-                            <motion.button
-                              onClick={() => setSelected(product)}
-                              className="inline-flex items-center justify-center rounded-full border border-white/15 p-1.5 text-white/70 transition hover:border-white/40 hover:bg-white/5 active:scale-95 touch-manipulation"
-                              whileTap={{ scale: 0.95 }}
-                              aria-label={t("enlarge")}
-                              title={t("enlarge")}
-                            >
-                              <Maximize2 className="h-3.5 w-3.5" />
-                            </motion.button>
-                            <motion.button
-                              onClick={() => handleDownload(product)}
-                              disabled={isDownloading}
-                              className="inline-flex items-center justify-center rounded-full border border-white/15 p-1.5 text-white/70 transition hover:border-white/40 hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 touch-manipulation"
-                              whileTap={{ scale: isDownloading ? 1 : 0.95 }}
-                              aria-label={t("download")}
-                              title={t("download")}
-                            >
-                              <Download className="h-3.5 w-3.5" />
-                            </motion.button>
-                          </div>
+                        {/* Actions Header */}
+                        <div className="w-16 flex-shrink-0">
+                          <p className="text-white/40 text-[10px] uppercase tracking-[0.1em] font-medium text-right">
+                            {t("actions")}
+                          </p>
                         </div>
                       </div>
-                    );
-                  })
+                    </div>
+                  </div>
                 )}
+
+                {/* Mobile Table Body */}
+                <div className="divide-y divide-white/5">
+                  {filteredProducts.length === 0 ? (
+                    <div className="px-4 py-12 text-center text-white/40 text-sm">
+                      {t("noProductsFound")} {searchQuery && `${t("matching")} "${searchQuery}"`}
+                    </div>
+                  ) : (
+                    filteredProducts.map((product) => {
+                      const isItemSelected = selectedItems.has(product.id);
+                      return (
+                        <div
+                          key={product.id}
+                          className={`px-4 py-3 transition-colors active:bg-white/5 ${
+                            isItemSelected ? "bg-[#FFD700]/5" : ""
+                          }`}
+                        >
+                          {/* Content Row: Checkbox, Serial, Weight, QR, and Actions */}
+                          <div className="flex items-center gap-3">
+                            {/* Checkbox */}
+                            <div className="flex-shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => toggleSelectItem(product.id)}
+                                className="inline-flex items-center justify-center text-white/60 hover:text-white transition-colors"
+                                aria-label={isItemSelected ? t("selected") : t("selected")}
+                                aria-checked={isItemSelected}
+                              >
+                                {isItemSelected ? (
+                                  <CheckSquare2 className="h-5 w-5 text-[#FFD700]" />
+                                ) : (
+                                  <Square className="h-5 w-5 text-white/40" />
+                                )}
+                              </button>
+                            </div>
+
+                            {/* Serial Code */}
+                            <div className="flex-1 min-w-0">
+                              <p
+                                className="font-mono text-sm text-white/80 truncate"
+                                title={product.serialCode}
+                              >
+                                {product.serialCode}
+                              </p>
+                              <p
+                                className="font-semibold text-white text-xs truncate mt-0.5"
+                                title={product.name}
+                              >
+                                {product.name}
+                              </p>
+                            </div>
+
+                            {/* Weight */}
+                            <div className="w-16 flex-shrink-0">
+                              <p className="text-sm text-white/80 whitespace-nowrap">
+                                {product.weight} gr
+                              </p>
+                            </div>
+
+                            {/* QR Preview - Clickable to view details */}
+                            <div className="flex-shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setSelected(product)}
+                                className="inline-block focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 rounded-lg transition-transform active:scale-95"
+                                aria-label={t("enlarge")}
+                              >
+                                <img
+                                  src={`/api/qr/${product.serialCode}`}
+                                  alt={`QR code for ${product.name} - ${product.serialCode}`}
+                                  className="h-12 w-12 flex-shrink-0 rounded-lg border border-white/10 bg-white p-1.5 object-contain hover:border-[#FFD700]/50 transition-colors"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    if (!target.dataset.retried) {
+                                      target.dataset.retried = "true";
+                                      target.src = `/api/qr/${product.serialCode}?t=${Date.now()}`;
+                                    }
+                                  }}
+                                />
+                              </button>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-1 flex-shrink-0 w-16 justify-end">
+                              <motion.button
+                                onClick={() => setSelected(product)}
+                                className="inline-flex items-center justify-center rounded-full border border-white/15 p-1.5 text-white/70 transition hover:border-white/40 hover:bg-white/5 active:scale-95 touch-manipulation"
+                                whileTap={{ scale: 0.95 }}
+                                aria-label={t("enlarge")}
+                                title={t("enlarge")}
+                              >
+                                <Maximize2 className="h-3.5 w-3.5" />
+                              </motion.button>
+                              <motion.button
+                                onClick={() => handleDownload(product)}
+                                disabled={isDownloading}
+                                className="inline-flex items-center justify-center rounded-full border border-white/15 p-1.5 text-white/70 transition hover:border-white/40 hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 touch-manipulation"
+                                whileTap={{ scale: isDownloading ? 1 : 0.95 }}
+                                aria-label={t("download")}
+                                title={t("download")}
+                              >
+                                <Download className="h-3.5 w-3.5" />
+                              </motion.button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               </div>
             </div>
           </motion.div>
