@@ -53,12 +53,14 @@ export async function POST(request: NextRequest) {
     // Get products matching the provided serial codes
     // CRITICAL: Normalize serialCodes to match database format (uppercase, trimmed)
     const normalizedSerialCodes = serialCodes.map((sc: string) => String(sc).trim().toUpperCase());
+    console.log(`[QR Multiple] ====== DATABASE QUERY START ======`);
     console.log(`[QR Multiple] Normalized serialCodes:`, {
       original: serialCodes.slice(0, 5),
       normalized: normalizedSerialCodes.slice(0, 5),
       total: normalizedSerialCodes.length,
     });
 
+    // CRITICAL: Query database to get product data (name, serialCode) from database, NOT from R2 template
     const products = await prisma.product.findMany({
       where: {
         serialCode: {
@@ -79,20 +81,23 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    console.log(`[QR Multiple] ====== DATABASE QUERY RESULT ======`);
     console.log(`[QR Multiple] Database query result:`, {
       requestedCount: normalizedSerialCodes.length,
       foundCount: products.length,
-      sampleProducts: products.slice(0, 3).map((p) => ({
+      sampleProducts: products.slice(0, 5).map((p) => ({
         id: p.id,
         name: p.name,
         serialCode: p.serialCode,
         nameLength: p.name?.length || 0,
         serialCodeLength: p.serialCode?.length || 0,
+        nameIsValid: !!(p.name && p.name.trim().length > 0),
+        serialCodeIsValid: !!(p.serialCode && p.serialCode.trim().length > 0),
       })),
     });
 
     if (products.length === 0) {
-      console.error(`[QR Multiple] No products found for serialCodes:`, {
+      console.error(`[QR Multiple] ERROR: No products found for serialCodes:`, {
         requested: normalizedSerialCodes.slice(0, 10),
         total: normalizedSerialCodes.length,
       });
@@ -102,23 +107,54 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // CRITICAL: Log products with missing data
-    const productsWithMissingData = products.filter(
-      (p) => !p.name || !p.serialCode || p.name.trim().length === 0 || p.serialCode.trim().length === 0
+    // CRITICAL: Filter out products with missing data BEFORE processing
+    // These products will be skipped to prevent "0000" or empty text
+    const validProducts = products.filter(
+      (p) =>
+        p.name &&
+        p.serialCode &&
+        p.name.trim().length > 0 &&
+        p.serialCode.trim().length > 0 &&
+        p.serialCode.trim().toUpperCase() !== "0000" &&
+        p.name.trim().toUpperCase() !== "0000"
     );
-    if (productsWithMissingData.length > 0) {
-      console.error(`[QR Multiple] WARNING: Found ${productsWithMissingData.length} products with missing data:`, 
-        productsWithMissingData.map((p) => ({
+
+    const invalidProducts = products.filter(
+      (p) =>
+        !p.name ||
+        !p.serialCode ||
+        p.name.trim().length === 0 ||
+        p.serialCode.trim().length === 0 ||
+        p.serialCode.trim().toUpperCase() === "0000" ||
+        p.name.trim().toUpperCase() === "0000"
+    );
+
+    if (invalidProducts.length > 0) {
+      console.error(
+        `[QR Multiple] WARNING: Found ${invalidProducts.length} products with invalid/missing data (will be skipped):`,
+        invalidProducts.map((p) => ({
           id: p.id,
-          name: p.name,
-          serialCode: p.serialCode,
+          name: p.name || "NULL",
+          serialCode: p.serialCode || "NULL",
         }))
       );
     }
 
-    // Group products by weight (gramasi)
-    const productsByWeight = new Map<number, typeof products>();
-    products.forEach((product) => {
+    if (validProducts.length === 0) {
+      console.error(`[QR Multiple] ERROR: No valid products found after filtering`);
+      return NextResponse.json(
+        { error: "No valid products found (all products have missing or invalid data)" },
+        { status: 400 }
+      );
+    }
+
+    console.log(`[QR Multiple] Valid products count: ${validProducts.length}/${products.length}`);
+    console.log(`[QR Multiple] ====== DATABASE QUERY END ======`);
+
+    // Group VALID products by weight (gramasi)
+    // CRITICAL: Use validProducts, not products, to ensure we only group valid data
+    const productsByWeight = new Map<number, typeof validProducts>();
+    validProducts.forEach((product) => {
       const weight = product.weight;
       if (!productsByWeight.has(weight)) {
         productsByWeight.set(weight, []);
@@ -337,50 +373,55 @@ export async function POST(request: NextRequest) {
     let successCount = 0;
     let failCount = 0;
 
-    // Process all products
-    for (const product of products) {
+    // Process all VALID products (already filtered above)
+    // CRITICAL: Use validProducts, not products, to ensure we only process products with valid data
+    for (const product of validProducts) {
       try {
-        // CRITICAL: Validate and log product data before processing
-        console.log(`[QR Multiple] Processing product:`, {
+        // CRITICAL: Double-check product data before processing (defensive programming)
+        // This ensures we NEVER draw "0000" or empty text
+        const productName = String(product.name || "").trim();
+        const productSerialCode = String(product.serialCode || "").trim().toUpperCase();
+
+        // Final validation before processing
+        if (!productName || productName.length === 0 || productName === "0000") {
+          console.error(
+            `[QR Multiple] SKIPPING: Invalid product name for product ID ${product.id}: "${productName}"`
+          );
+          failCount++;
+          continue;
+        }
+
+        if (!productSerialCode || productSerialCode.length === 0 || productSerialCode === "0000") {
+          console.error(
+            `[QR Multiple] SKIPPING: Invalid serialCode for product ID ${product.id}: "${productSerialCode}"`
+          );
+          failCount++;
+          continue;
+        }
+
+        // CRITICAL: Log product data that will be used for drawing
+        console.log(`[QR Multiple] ====== PROCESSING PRODUCT ======`);
+        console.log(`[QR Multiple] Product data (from DATABASE, NOT from R2 template):`, {
           id: product.id,
-          serialCode: product.serialCode,
-          name: product.name,
+          serialCode: productSerialCode,
+          name: productName,
           weight: product.weight,
-          serialCodeType: typeof product.serialCode,
-          nameType: typeof product.name,
-          serialCodeLength: product.serialCode?.length || 0,
-          nameLength: product.name?.length || 0,
+          serialCodeLength: productSerialCode.length,
+          nameLength: productName.length,
         });
 
-        // Validate product data
-        if (!product.serialCode || String(product.serialCode).trim().length === 0) {
-          console.error(
-            `[QR Multiple] SKIPPING: Invalid serialCode for product ID ${product.id}:`,
-            product.serialCode
-          );
-          failCount++;
-          continue;
-        }
-
-        if (!product.name || String(product.name).trim().length === 0) {
-          console.error(
-            `[QR Multiple] SKIPPING: Invalid product name for serialCode ${product.serialCode}:`,
-            product.name
-          );
-          failCount++;
-          continue;
-        }
-
         // 1. Get QR code from endpoint (no PDFKit)
-        const qrUrl = `${internalBaseUrl}/api/qr/${encodeURIComponent(product.serialCode)}/qr-only`;
+        // CRITICAL: Use productSerialCode (validated, uppercased) for QR generation
+        const qrUrl = `${internalBaseUrl}/api/qr/${encodeURIComponent(productSerialCode)}/qr-only`;
+        console.log(`[QR Multiple] Fetching QR from: ${qrUrl}`);
         const qrResponse = await fetch(qrUrl);
         if (!qrResponse.ok) {
-          throw new Error(`Failed to fetch QR: ${qrResponse.status}`);
+          throw new Error(`Failed to fetch QR for ${productSerialCode}: ${qrResponse.status}`);
         }
         const qrBuffer = Buffer.from(await qrResponse.arrayBuffer());
         const qrImage = await loadImage(qrBuffer);
         console.log(
-          `[QR Multiple] QR loaded for ${product.serialCode}: ${qrImage.width}x${qrImage.height}`
+          `[QR Multiple] QR loaded for ${productSerialCode}: ${qrImage.width}x${qrImage.height}`
         );
 
         // 2. Create FRONT canvas with QR + template (same as frontend)
@@ -403,39 +444,42 @@ export async function POST(request: NextRequest) {
 
         // === MATCH SINGLE DOWNLOAD (handleDownload) EXACTLY ===
         // CRITICAL: Use EXACT same logic as frontend handleDownload that works correctly
+        // CRITICAL: Use productName and productSerialCode from database (already validated above)
+        // DO NOT use data from R2 template - template only provides the background image
+        
         // 1. Nama produk di ATAS QR (persis seperti handleDownload)
-        if (product.name && product.name.trim().length > 0) {
-          const nameFontSize = Math.floor(frontTemplateImage.width * 0.027); // SAMA dengan handleDownload
-          const nameY = qrY - 40; // SAMA dengan handleDownload (bukan -35)
-          frontCtx.fillStyle = "#222222";
-          frontCtx.textAlign = "center";
-          frontCtx.textBaseline = "bottom"; // SAMA dengan handleDownload (bukan "middle")
-          frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
-          // Gunakan product.name as-is (tidak extract, sesuai handleDownload)
-          frontCtx.fillText(product.name.trim(), frontTemplateImage.width / 2, nameY);
-          console.log(`[QR Multiple] Product name drawn for ${product.serialCode}: "${product.name.trim()}" at Y=${nameY}`);
-        }
+        // CRITICAL: productName is already validated and trimmed above
+        const nameFontSize = Math.floor(frontTemplateImage.width * 0.027); // SAMA dengan handleDownload
+        const nameY = qrY - 40; // SAMA dengan handleDownload (bukan -35)
+        frontCtx.fillStyle = "#222222";
+        frontCtx.textAlign = "center";
+        frontCtx.textBaseline = "bottom"; // SAMA dengan handleDownload (bukan "middle")
+        frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
+        // CRITICAL: Use productName from database (NOT from R2 template)
+        frontCtx.fillText(productName, frontTemplateImage.width / 2, nameY);
+        console.log(
+          `[QR Multiple] Product name drawn (from DATABASE): "${productName}" at Y=${nameY} for serialCode: ${productSerialCode}`
+        );
 
         // 2. Serial code di BAWAH QR (persis seperti handleDownload)
-        if (product.serialCode && product.serialCode.trim().length > 0) {
-          const serialFontSize = Math.floor(frontTemplateImage.width * 0.031); // SAMA dengan handleDownload
-          const serialY = qrY + qrSize + 40; // SAMA dengan handleDownload (bukan +35)
-          frontCtx.fillStyle = "#222222";
-          frontCtx.textAlign = "center";
-          frontCtx.textBaseline = "top"; // SAMA dengan handleDownload (bukan "middle")
-          frontCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`; // SAMA dengan handleDownload
-          frontCtx.fillText(
-            product.serialCode.trim().toUpperCase(),
-            frontTemplateImage.width / 2,
-            serialY
-          );
-          console.log(`[QR Multiple] Serial code drawn for ${product.serialCode}: "${product.serialCode.trim().toUpperCase()}" at Y=${serialY}`);
-        }
+        // CRITICAL: productSerialCode is already validated, trimmed, and uppercased above
+        const serialFontSize = Math.floor(frontTemplateImage.width * 0.031); // SAMA dengan handleDownload
+        const serialY = qrY + qrSize + 40; // SAMA dengan handleDownload (bukan +35)
+        frontCtx.fillStyle = "#222222";
+        frontCtx.textAlign = "center";
+        frontCtx.textBaseline = "top"; // SAMA dengan handleDownload (bukan "middle")
+        frontCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`; // SAMA dengan handleDownload
+        // CRITICAL: Use productSerialCode from database (NOT from R2 template)
+        frontCtx.fillText(productSerialCode, frontTemplateImage.width / 2, serialY);
+        console.log(
+          `[QR Multiple] Serial code drawn (from DATABASE): "${productSerialCode}" at Y=${serialY}`
+        );
+        console.log(`[QR Multiple] ====== PRODUCT PROCESSING COMPLETE ======`);
         // === END: Persis sama dengan handleDownload ===
 
         const frontBuffer = frontCanvas.toBuffer("image/png");
         console.log(
-          `[QR Multiple] Front image for ${product.serialCode}: ${frontBuffer.length} bytes`
+          `[QR Multiple] Front image for ${productSerialCode}: ${frontBuffer.length} bytes`
         );
 
         // 3. Create BACK canvas (no QR, just template)
