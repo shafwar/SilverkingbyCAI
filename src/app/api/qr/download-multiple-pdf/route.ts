@@ -61,8 +61,9 @@ export async function POST(request: NextRequest) {
     });
 
     // CRITICAL: Query database to get product data (name, serialCode) from database, NOT from R2 template
-    // CRITICAL: Use EXACT same query structure as handleDownload (single) that works correctly
-    // Ensure we get ALL required fields: id, name, serialCode, weight
+    // CRITICAL: Use EXACT same query structure as /api/admin/qr-preview that successfully returns data
+    // Use 'include' instead of 'select' to ensure all data is properly loaded
+    // This matches the working endpoint that frontend uses to display products
     const products = await prisma.product.findMany({
       where: {
         serialCode: {
@@ -72,22 +73,35 @@ export async function POST(request: NextRequest) {
           isNot: null,
         },
       },
-      select: {
-        id: true,
-        name: true,
-        serialCode: true,
-        weight: true,
+      include: {
+        qrRecord: true,
       },
       orderBy: {
         serialCode: "asc",
       },
     });
 
+    // CRITICAL: Extract only the fields we need, ensuring data is properly extracted
+    // This ensures we get the exact same data structure as /api/admin/qr-preview
+    const productsData = products.map((p) => ({
+      id: p.id,
+      name: p.name,
+      serialCode: p.serialCode,
+      weight: p.weight,
+    }));
+
     // CRITICAL: Log raw database results to verify data is actually returned
     console.log(`[QR Multiple] ====== RAW DATABASE RESULTS ======`);
-    console.log(`[QR Multiple] Raw products from database:`, JSON.stringify(products.slice(0, 3), null, 2));
-    products.slice(0, 3).forEach((p, idx) => {
-      console.log(`[QR Multiple] Product ${idx + 1}:`, {
+    console.log(
+      `[QR Multiple] Raw products from database (with include):`,
+      JSON.stringify(products.slice(0, 3), null, 2)
+    );
+    console.log(
+      `[QR Multiple] Extracted products data:`,
+      JSON.stringify(productsData.slice(0, 3), null, 2)
+    );
+    productsData.slice(0, 3).forEach((p, idx) => {
+      console.log(`[QR Multiple] Product ${idx + 1} (extracted):`, {
         id: p.id,
         name: p.name,
         serialCode: p.serialCode,
@@ -140,7 +154,7 @@ export async function POST(request: NextRequest) {
         p.name.trim().toUpperCase() !== "0000"
     );
 
-    const invalidProducts = products.filter(
+    const invalidProducts = productsData.filter(
       (p) =>
         !p.name ||
         !p.serialCode ||
@@ -169,7 +183,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[QR Multiple] Valid products count: ${validProducts.length}/${products.length}`);
+    console.log(`[QR Multiple] Valid products count: ${validProducts.length}/${productsData.length}`);
     console.log(`[QR Multiple] ====== DATABASE QUERY END ======`);
 
     // Group VALID products by weight (gramasi)
@@ -446,14 +460,11 @@ export async function POST(request: NextRequest) {
         }
 
         if (!productSerialCode || productSerialCode.length === 0 || productSerialCode === "0000") {
-          console.error(
-            `[QR Multiple] SKIPPING: Invalid serialCode for product ID ${product.id}`,
-            {
-              rawSerialCode: product.serialCode,
-              transformedSerialCode: productSerialCode,
-              serialCodeType: typeof product.serialCode,
-            }
-          );
+          console.error(`[QR Multiple] SKIPPING: Invalid serialCode for product ID ${product.id}`, {
+            rawSerialCode: product.serialCode,
+            transformedSerialCode: productSerialCode,
+            serialCodeType: typeof product.serialCode,
+          });
           failCount++;
           continue;
         }
