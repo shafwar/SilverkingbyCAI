@@ -544,8 +544,9 @@ export async function POST(request: NextRequest) {
         // DO NOT use data from R2 template - template only provides the background image
 
         // CRITICAL: Overwrite template placeholder "0000" text with white background BEFORE drawing new text
-        // Template may have placeholder text that needs to be covered
-        const textOverwritePadding = 5;
+        // Template may have placeholder text "0000000000000000" that needs to be completely covered
+        // Use larger padding to ensure complete coverage of placeholder area
+        const textOverwritePadding = 20; // Increased padding to cover full placeholder width
         
         // 1. Nama produk di ATAS QR (persis seperti handleDownload)
         // CRITICAL: productName is already validated and trimmed above
@@ -553,19 +554,22 @@ export async function POST(request: NextRequest) {
         const nameY = qrY - 40; // SAMA dengan handleDownload (bukan -35)
         
         // CRITICAL: Measure text width to create proper white background
+        // Also measure placeholder width to ensure complete coverage
         frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
         const nameTextWidth = frontCtx.measureText(productName).width;
+        const placeholderNameWidth = frontCtx.measureText("0000000000000000").width; // Template placeholder width
         const nameTextHeight = nameFontSize;
+        const overwriteWidth = Math.max(nameTextWidth, placeholderNameWidth) + textOverwritePadding * 2;
         
-        // Overwrite placeholder area with white background
+        // Overwrite placeholder area with white background (cover full placeholder width)
         frontCtx.fillStyle = "#ffffff";
         frontCtx.fillRect(
-          frontTemplateImage.width / 2 - nameTextWidth / 2 - textOverwritePadding,
+          frontTemplateImage.width / 2 - overwriteWidth / 2,
           nameY - nameTextHeight - textOverwritePadding,
-          nameTextWidth + textOverwritePadding * 2,
+          overwriteWidth,
           nameTextHeight + textOverwritePadding * 2
         );
-        
+
         // Draw product name
         frontCtx.fillStyle = "#222222";
         frontCtx.textAlign = "center";
@@ -583,19 +587,22 @@ export async function POST(request: NextRequest) {
         const serialY = qrY + qrSize + 40; // SAMA dengan handleDownload (bukan +35)
         
         // CRITICAL: Measure text width to create proper white background
+        // Also measure placeholder width to ensure complete coverage
         frontCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
         const serialTextWidth = frontCtx.measureText(productSerialCode).width;
+        const placeholderSerialWidth = frontCtx.measureText("00000000").width; // Template placeholder width
         const serialTextHeight = serialFontSize;
+        const overwriteSerialWidth = Math.max(serialTextWidth, placeholderSerialWidth) + textOverwritePadding * 2;
         
-        // Overwrite placeholder area with white background
+        // Overwrite placeholder area with white background (cover full placeholder width)
         frontCtx.fillStyle = "#ffffff";
         frontCtx.fillRect(
-          frontTemplateImage.width / 2 - serialTextWidth / 2 - textOverwritePadding,
+          frontTemplateImage.width / 2 - overwriteSerialWidth / 2,
           serialY - textOverwritePadding,
-          serialTextWidth + textOverwritePadding * 2,
+          overwriteSerialWidth,
           serialTextHeight + textOverwritePadding * 2
         );
-        
+
         // Draw serial code
         frontCtx.fillStyle = "#222222";
         frontCtx.textAlign = "center";
