@@ -395,14 +395,15 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Certificate Section - Moved after Why Choose Us */}
-      <section className="relative py-16 md:py-20 px-6 flex flex-col items-center justify-center w-full">
+      {/* Certificate Section - Improved spacing and responsive layout */}
+      <section className="relative py-12 sm:py-16 md:py-20 lg:py-24 px-4 sm:px-6 md:px-8 flex flex-col items-center justify-center w-full">
         {/* Subtle gradient background */}
         <div className="absolute inset-0 bg-gradient-to-b from-[#161616] via-[#0f0f0f] to-[#0a0a0a]" />
         <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-luxury-black via-transparent to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-luxury-black via-transparent to-transparent" />
 
-        <div className="relative z-10 mx-auto w-full max-w-4xl">
+        {/* Container with proper max-width and responsive padding */}
+        <div className="relative z-10 mx-auto w-full max-w-5xl px-2 sm:px-4 md:px-6">
           <Suspense fallback={null}>
             <CertificateCard />
           </Suspense>
