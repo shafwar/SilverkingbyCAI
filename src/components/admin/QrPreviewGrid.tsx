@@ -464,15 +464,15 @@ export function QrPreviewGrid() {
       // Create PDF using pdf-lib with custom page size (same as multiple download)
       // Calculate optimal page size based on template dimensions to avoid white space
       console.log("[Download] Creating PDF with side-by-side layout using pdf-lib...");
-      
+
       // Use the height of the taller template as page height
       const maxTemplateHeight = Math.max(frontTemplateImg.height, backTemplateImg.height);
       const pageHeight = maxTemplateHeight;
-      
+
       // Page width = front width + back width + small gap between them
       const gap = 20; // Small gap between front and back (in pixels/points)
       const pageWidth = frontTemplateImg.width + backTemplateImg.width + gap;
-      
+
       console.log("[Download] PDF dimensions:", {
         pageWidth,
         pageHeight,
@@ -484,13 +484,11 @@ export function QrPreviewGrid() {
       const page = pdfDoc.addPage([pageWidth, pageHeight]);
 
       // Convert base64 image data to Uint8Array for pdf-lib
-      const frontImageBytes = Uint8Array.from(
-        atob(frontImageData.split(",")[1]),
-        (c) => c.charCodeAt(0)
+      const frontImageBytes = Uint8Array.from(atob(frontImageData.split(",")[1]), (c) =>
+        c.charCodeAt(0)
       );
-      const backImageBytes = Uint8Array.from(
-        atob(backImageData.split(",")[1]),
-        (c) => c.charCodeAt(0)
+      const backImageBytes = Uint8Array.from(atob(backImageData.split(",")[1]), (c) =>
+        c.charCodeAt(0)
       );
 
       // Embed images
@@ -543,7 +541,7 @@ export function QrPreviewGrid() {
 
       // Download PDF
       console.log("[Download] Saving PDF:", filename);
-      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      const blob = new Blob([new Uint8Array(Array.from(pdfBytes))], { type: "application/pdf" });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;

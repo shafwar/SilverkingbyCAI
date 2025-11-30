@@ -239,7 +239,7 @@ const CategoryGridItem = ({
         {!isHovered && category.products.length > 1 && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
             <div className="rounded-full bg-white/10 px-4 py-2 text-xs text-white/80 backdrop-blur-sm">
-              {t('hoverToView')}
+              {t("hoverToView")}
             </div>
           </div>
         )}
@@ -249,8 +249,8 @@ const CategoryGridItem = ({
 };
 
 export default function ProductsPage() {
-  const t = useTranslations('products');
-  const tNav = useTranslations('nav');
+  const t = useTranslations("products");
+  const tNav = useTranslations("nav");
   const locale = useLocale();
   const pageRef = useRef<HTMLDivElement | null>(null);
   const heroRef = useRef<HTMLDivElement | null>(null);
@@ -265,33 +265,33 @@ export default function ProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
   const [isMounted, setIsMounted] = useState(false);
-  
+
   // CRITICAL: Delay heavy animations until after initial render
   useEffect(() => {
     setIsMounted(true);
   }, []);
-  
+
   // CRITICAL: Prefetch other pages when this page loads
   // This ensures fast navigation when user clicks nav links
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const paths = ['/', '/what-we-do', '/authenticity', '/about', '/contact'];
+    if (typeof window !== "undefined") {
+      const paths = ["/", "/what-we-do", "/authenticity", "/about", "/contact"];
       paths.forEach((path) => {
         try {
-          const fullPath = locale === 'en' ? path : `/${locale}${path === '/' ? '' : path}`;
+          const fullPath = locale === "en" ? path : `/${locale}${path === "/" ? "" : path}`;
           // Prefetch using link element
-          const link = document.createElement('link');
-          link.rel = 'prefetch';
-          link.as = 'document';
+          const link = document.createElement("link");
+          link.rel = "prefetch";
+          link.as = "document";
           link.href = fullPath;
           document.head.appendChild(link);
-          
+
           // Also prefetch RSC payload
-          const rscLink = document.createElement('link');
-          rscLink.rel = 'prefetch';
-          rscLink.as = 'fetch';
+          const rscLink = document.createElement("link");
+          rscLink.rel = "prefetch";
+          rscLink.as = "fetch";
           rscLink.href = `${fullPath}?_rsc=`;
-          rscLink.crossOrigin = 'anonymous';
+          rscLink.crossOrigin = "anonymous";
           document.head.appendChild(rscLink);
         } catch (error) {
           // Silently fail
@@ -305,43 +305,43 @@ export default function ProductsPage() {
     () => [
       {
         icon: Gem,
-        title: t('categories.250gram.title'),
-        description: t('categories.250gram.description'),
+        title: t("categories.250gram.title"),
+        description: t("categories.250gram.description"),
         gradient: "from-luxury-gold to-luxury-lightGold",
         products: [],
       },
       {
         icon: Gem,
-        title: t('categories.100gram.title'),
-        description: t('categories.100gram.description'),
+        title: t("categories.100gram.title"),
+        description: t("categories.100gram.description"),
         gradient: "from-luxury-gold via-luxury-lightGold to-luxury-gold",
         products: [],
       },
       {
         icon: Gem,
-        title: t('categories.50gram.title'),
-        description: t('categories.50gram.description'),
+        title: t("categories.50gram.title"),
+        description: t("categories.50gram.description"),
         gradient: "from-luxury-gold to-luxury-silver",
         products: [],
       },
       {
         icon: Gem,
-        title: t('categories.25gram.title'),
-        description: t('categories.25gram.description'),
+        title: t("categories.25gram.title"),
+        description: t("categories.25gram.description"),
         gradient: "from-luxury-silver to-luxury-lightSilver",
         products: [],
       },
       {
         icon: Gem,
-        title: t('categories.10gram.title'),
-        description: t('categories.10gram.description'),
+        title: t("categories.10gram.title"),
+        description: t("categories.10gram.description"),
         gradient: "from-luxury-lightSilver to-luxury-silver",
         products: [],
       },
       {
         icon: Gem,
-        title: t('categories.5gram.title'),
-        description: t('categories.5gram.description'),
+        title: t("categories.5gram.title"),
+        description: t("categories.5gram.description"),
         gradient: "from-luxury-silver via-luxury-gold to-luxury-lightSilver",
         products: [],
       },
@@ -355,231 +355,231 @@ export default function ProductsPage() {
       // 250 Gram products
       {
         id: "250gr-1",
-        name: `${t('product.name')} 250gr`,
-        rangeName: t('product.rangeName'),
+        name: `${t("product.name")} 250gr`,
+        rangeName: t("product.rangeName"),
         image: getR2UrlClient("/images/silverking-gold.jpeg"),
-        purity: t('product.purity'),
+        purity: t("product.purity"),
         weight: "250gr",
-        description: `${t('product.description')} SKU: SKA000001`,
-        category: t('categories.250gram.title'),
+        description: `${t("product.description")} SKU: SKA000001`,
+        category: t("categories.250gram.title"),
         memberPrice: 18000000,
         regularPrice: 22000000,
         awards: ["gold", "trophy"],
       },
       {
         id: "250gr-2",
-        name: `${t('product.name')} 250gr`,
-        rangeName: t('product.rangeName'),
+        name: `${t("product.name")} 250gr`,
+        rangeName: t("product.rangeName"),
         image: getR2UrlClient("/images/silverking-gold.jpeg"),
-        purity: t('product.purity'),
+        purity: t("product.purity"),
         weight: "250gr",
-        description: `${t('product.descriptionShort')} SKU: SKA000002`,
-        category: t('categories.250gram.title'),
+        description: `${t("product.descriptionShort")} SKU: SKA000002`,
+        category: t("categories.250gram.title"),
         memberPrice: 18000000,
         regularPrice: 22000000,
         awards: ["gold", "silver"],
       },
       {
         id: "250gr-3",
-        name: `${t('product.name')} 250gr`,
-        rangeName: t('product.rangeName'),
+        name: `${t("product.name")} 250gr`,
+        rangeName: t("product.rangeName"),
         image: getR2UrlClient("/images/silverking-gold.jpeg"),
-        purity: t('product.purity'),
+        purity: t("product.purity"),
         weight: "250gr",
-        description: `${t('product.descriptionShort')} SKU: SKA000003`,
-        category: t('categories.250gram.title'),
+        description: `${t("product.descriptionShort")} SKU: SKA000003`,
+        category: t("categories.250gram.title"),
         memberPrice: 18000000,
         regularPrice: 22000000,
       },
       // 100 Gram products
       {
         id: "100gr-1",
-        name: `${t('product.name')} 100gr`,
-        rangeName: t('product.rangeName'),
+        name: `${t("product.name")} 100gr`,
+        rangeName: t("product.rangeName"),
         image: getR2UrlClient("/images/silverking-gold.jpeg"),
-        purity: t('product.purity'),
+        purity: t("product.purity"),
         weight: "100gr",
-        description: `${t('product.description')} SKU: SKP000001`,
-        category: t('categories.100gram.title'),
+        description: `${t("product.description")} SKU: SKP000001`,
+        category: t("categories.100gram.title"),
         memberPrice: 7000000,
         regularPrice: 7500000,
         awards: ["gold", "silver", "bronze", "trophy"],
       },
       {
         id: "100gr-2",
-        name: `${t('product.name')} 100gr`,
-        rangeName: t('product.rangeName'),
+        name: `${t("product.name")} 100gr`,
+        rangeName: t("product.rangeName"),
         image: getR2UrlClient("/images/silverking-gold.jpeg"),
-        purity: t('product.purity'),
+        purity: t("product.purity"),
         weight: "100gr",
-        description: `${t('product.descriptionShort')} SKU: SKP000002`,
-        category: t('categories.100gram.title'),
+        description: `${t("product.descriptionShort")} SKU: SKP000002`,
+        category: t("categories.100gram.title"),
         memberPrice: 7000000,
         regularPrice: 7500000,
         awards: ["gold", "silver"],
       },
       {
         id: "100gr-3",
-        name: `${t('product.name')} 100gr`,
-        rangeName: t('product.rangeName'),
+        name: `${t("product.name")} 100gr`,
+        rangeName: t("product.rangeName"),
         image: getR2UrlClient("/images/silverking-gold.jpeg"),
-        purity: t('product.purity'),
+        purity: t("product.purity"),
         weight: "100gr",
-        description: `${t('product.descriptionShort')} SKU: SKP000003`,
-        category: t('categories.100gram.title'),
+        description: `${t("product.descriptionShort")} SKU: SKP000003`,
+        category: t("categories.100gram.title"),
         memberPrice: 7000000,
         regularPrice: 7500000,
       },
       // 50 Gram products
       {
         id: "50gr-1",
-        name: `${t('product.name')} 50gr`,
-        rangeName: t('product.rangeName'),
+        name: `${t("product.name")} 50gr`,
+        rangeName: t("product.rangeName"),
         image: getR2UrlClient("/images/silverking-gold.jpeg"),
-        purity: t('product.purity'),
+        purity: t("product.purity"),
         weight: "50gr",
-        description: `${t('product.description')} SKU: SKN000001`,
-        category: t('categories.50gram.title'),
+        description: `${t("product.description")} SKU: SKN000001`,
+        category: t("categories.50gram.title"),
         memberPrice: 3500000,
         regularPrice: 4000000,
         awards: ["gold", "silver", "bronze"],
       },
       {
         id: "50gr-2",
-        name: `${t('product.name')} 50gr`,
-        rangeName: t('product.rangeName'),
+        name: `${t("product.name")} 50gr`,
+        rangeName: t("product.rangeName"),
         image: getR2UrlClient("/images/silverking-gold.jpeg"),
-        purity: t('product.purity'),
+        purity: t("product.purity"),
         weight: "50gr",
-        description: `${t('product.descriptionShort')} SKU: SKN000002`,
-        category: t('categories.50gram.title'),
+        description: `${t("product.descriptionShort")} SKU: SKN000002`,
+        category: t("categories.50gram.title"),
         memberPrice: 3500000,
         regularPrice: 4000000,
         awards: ["gold", "silver"],
       },
       {
         id: "50gr-3",
-        name: `${t('product.name')} 50gr`,
-        rangeName: t('product.rangeName'),
+        name: `${t("product.name")} 50gr`,
+        rangeName: t("product.rangeName"),
         image: getR2UrlClient("/images/silverking-gold.jpeg"),
-        purity: t('product.purity'),
+        purity: t("product.purity"),
         weight: "50gr",
-        description: `${t('product.descriptionShort')} SKU: SKN000003`,
-        category: t('categories.50gram.title'),
+        description: `${t("product.descriptionShort")} SKU: SKN000003`,
+        category: t("categories.50gram.title"),
         memberPrice: 3500000,
         regularPrice: 4000000,
       },
       // 25 Gram products
       {
         id: "25gr-1",
-        name: `${t('product.name')} 25gr`,
-        rangeName: t('product.rangeName'),
+        name: `${t("product.name")} 25gr`,
+        rangeName: t("product.rangeName"),
         image: getR2UrlClient("/images/silverking-gold.jpeg"),
-        purity: t('product.purity'),
+        purity: t("product.purity"),
         weight: "25gr",
-        description: `${t('product.description')} SKU: SKC000001`,
-        category: t('categories.25gram.title'),
+        description: `${t("product.description")} SKU: SKC000001`,
+        category: t("categories.25gram.title"),
         memberPrice: 1800000,
         regularPrice: 2200000,
         awards: ["gold", "silver"],
       },
       {
         id: "25gr-2",
-        name: `${t('product.name')} 25gr`,
-        rangeName: t('product.rangeName'),
+        name: `${t("product.name")} 25gr`,
+        rangeName: t("product.rangeName"),
         image: getR2UrlClient("/images/silverking-gold.jpeg"),
-        purity: t('product.purity'),
+        purity: t("product.purity"),
         weight: "25gr",
-        description: `${t('product.descriptionShort')} SKU: SKC000002`,
-        category: t('categories.25gram.title'),
+        description: `${t("product.descriptionShort")} SKU: SKC000002`,
+        category: t("categories.25gram.title"),
         memberPrice: 1800000,
         regularPrice: 2200000,
       },
       {
         id: "25gr-3",
-        name: `${t('product.name')} 25gr`,
-        rangeName: t('product.rangeName'),
+        name: `${t("product.name")} 25gr`,
+        rangeName: t("product.rangeName"),
         image: getR2UrlClient("/images/silverking-gold.jpeg"),
-        purity: t('product.purity'),
+        purity: t("product.purity"),
         weight: "25gr",
-        description: `${t('product.descriptionShort')} SKU: SKC000003`,
-        category: t('categories.25gram.title'),
+        description: `${t("product.descriptionShort")} SKU: SKC000003`,
+        category: t("categories.25gram.title"),
         memberPrice: 1800000,
         regularPrice: 2200000,
       },
       // 10 Gram products
       {
         id: "10gr-1",
-        name: `${t('product.name')} 10gr`,
-        rangeName: t('product.rangeName'),
+        name: `${t("product.name")} 10gr`,
+        rangeName: t("product.rangeName"),
         image: getR2UrlClient("/images/silverking-gold.jpeg"),
-        purity: t('product.purity'),
+        purity: t("product.purity"),
         weight: "10gr",
-        description: `${t('product.description')} SKU: SKI000001`,
-        category: t('categories.10gram.title'),
+        description: `${t("product.description")} SKU: SKI000001`,
+        category: t("categories.10gram.title"),
         memberPrice: 700000,
         regularPrice: 850000,
         awards: ["gold", "silver"],
       },
       {
         id: "10gr-2",
-        name: `${t('product.name')} 10gr`,
-        rangeName: t('product.rangeName'),
+        name: `${t("product.name")} 10gr`,
+        rangeName: t("product.rangeName"),
         image: getR2UrlClient("/images/silverking-gold.jpeg"),
-        purity: t('product.purity'),
+        purity: t("product.purity"),
         weight: "10gr",
-        description: `${t('product.descriptionShort')} SKU: SKI000002`,
-        category: t('categories.10gram.title'),
+        description: `${t("product.descriptionShort")} SKU: SKI000002`,
+        category: t("categories.10gram.title"),
         memberPrice: 700000,
         regularPrice: 850000,
       },
       {
         id: "10gr-3",
-        name: `${t('product.name')} 10gr`,
-        rangeName: t('product.rangeName'),
+        name: `${t("product.name")} 10gr`,
+        rangeName: t("product.rangeName"),
         image: getR2UrlClient("/images/silverking-gold.jpeg"),
-        purity: t('product.purity'),
+        purity: t("product.purity"),
         weight: "10gr",
-        description: `${t('product.descriptionShort')} SKU: SKI000003`,
-        category: t('categories.10gram.title'),
+        description: `${t("product.descriptionShort")} SKU: SKI000003`,
+        category: t("categories.10gram.title"),
         memberPrice: 700000,
         regularPrice: 850000,
       },
       // 5 Gram products
       {
         id: "5gr-1",
-        name: `${t('product.name')} 5gr`,
-        rangeName: t('product.rangeName'),
+        name: `${t("product.name")} 5gr`,
+        rangeName: t("product.rangeName"),
         image: getR2UrlClient("/images/silverking-gold.jpeg"),
-        purity: t('product.purity'),
+        purity: t("product.purity"),
         weight: "5gr",
-        description: `${t('product.description')} SKU: SKT000001`,
-        category: t('categories.5gram.title'),
+        description: `${t("product.description")} SKU: SKT000001`,
+        category: t("categories.5gram.title"),
         memberPrice: 350000,
         regularPrice: 420000,
         awards: ["gold", "silver"],
       },
       {
         id: "5gr-2",
-        name: `${t('product.name')} 5gr`,
-        rangeName: t('product.rangeName'),
+        name: `${t("product.name")} 5gr`,
+        rangeName: t("product.rangeName"),
         image: getR2UrlClient("/images/silverking-gold.jpeg"),
-        purity: t('product.purity'),
+        purity: t("product.purity"),
         weight: "5gr",
-        description: `${t('product.descriptionShort')} SKU: SKT000002`,
-        category: t('categories.5gram.title'),
+        description: `${t("product.descriptionShort")} SKU: SKT000002`,
+        category: t("categories.5gram.title"),
         memberPrice: 350000,
         regularPrice: 420000,
       },
       {
         id: "5gr-3",
-        name: `${t('product.name')} 5gr`,
-        rangeName: t('product.rangeName'),
+        name: `${t("product.name")} 5gr`,
+        rangeName: t("product.rangeName"),
         image: getR2UrlClient("/images/silverking-gold.jpeg"),
-        purity: t('product.purity'),
+        purity: t("product.purity"),
         weight: "5gr",
-        description: `${t('product.descriptionShort')} SKU: SKT000003`,
-        category: t('categories.5gram.title'),
+        description: `${t("product.descriptionShort")} SKU: SKT000003`,
+        category: t("categories.5gram.title"),
         memberPrice: 350000,
         regularPrice: 420000,
       },
@@ -737,242 +737,242 @@ export default function ProductsPage() {
           }
 
           // Hero animation with stagger
-        if (heroRef.current) {
-          const heroElements = heroRef.current.querySelectorAll("[data-hero]");
-          const heroAccentElements = heroRef.current.querySelectorAll("[data-hero-accent]");
+          if (heroRef.current) {
+            const heroElements = heroRef.current.querySelectorAll("[data-hero]");
+            const heroAccentElements = heroRef.current.querySelectorAll("[data-hero-accent]");
 
-          if (heroElements.length > 0 || heroAccentElements.length > 0) {
-            const heroTimeline = gsap.timeline({ defaults: { ease: "power3.out" } });
+            if (heroElements.length > 0 || heroAccentElements.length > 0) {
+              const heroTimeline = gsap.timeline({ defaults: { ease: "power3.out" } });
 
-            if (heroElements.length > 0) {
-              heroTimeline.fromTo(
-                heroElements,
-                { autoAlpha: 0, y: 60, scale: 0.95 },
-                { autoAlpha: 1, y: 0, scale: 1, duration: 1, stagger: 0.2 }
-              );
+              if (heroElements.length > 0) {
+                heroTimeline.fromTo(
+                  heroElements,
+                  { autoAlpha: 0, y: 60, scale: 0.95 },
+                  { autoAlpha: 1, y: 0, scale: 1, duration: 1, stagger: 0.2 }
+                );
+              }
+
+              if (heroAccentElements.length > 0) {
+                heroTimeline.fromTo(
+                  heroAccentElements,
+                  { scale: 0, rotate: -180 },
+                  { scale: 1, rotate: 0, duration: 0.8, ease: "back.out(1.7)" },
+                  "<0.3"
+                );
+              }
             }
-
-            if (heroAccentElements.length > 0) {
-              heroTimeline.fromTo(
-                heroAccentElements,
-                { scale: 0, rotate: -180 },
-                { scale: 1, rotate: 0, duration: 0.8, ease: "back.out(1.7)" },
-                "<0.3"
-              );
-            }
-          }
-        }
-
-        // Fade to black effect when scrolling from hero to product section
-        if (fadeOverlayRef.current && sectionsRef.current[0] && sectionsRef.current[1]) {
-          const heroSection = sectionsRef.current[0];
-          const productSection = sectionsRef.current[1];
-
-          // Initialize overlay opacity
-          gsap.set(fadeOverlayRef.current, { opacity: 0 });
-
-          ScrollTrigger.create({
-            trigger: heroSection,
-            start: "bottom center",
-            end: "bottom top",
-            scrub: 0.5,
-            onUpdate: (self) => {
-              const progress = self.progress;
-              // Fade overlay to black
-              if (fadeOverlayRef.current) {
-                gsap.to(fadeOverlayRef.current, {
-                  opacity: progress,
-                  duration: 0.1,
-                  ease: "none",
-                });
-              }
-              // Also fade video opacity gradually
-              if (videoRef.current) {
-                const videoOpacity = Math.max(0.1, 1 - progress * 0.9);
-                gsap.to(videoRef.current, {
-                  opacity: videoOpacity,
-                  duration: 0.1,
-                  ease: "none",
-                });
-              }
-            },
-          });
-
-          // Additional fade when product section comes into view
-          ScrollTrigger.create({
-            trigger: productSection,
-            start: "top center",
-            end: "top top",
-            scrub: 0.5,
-            onUpdate: (self) => {
-              const progress = self.progress;
-              // Complete fade to black
-              if (fadeOverlayRef.current) {
-                gsap.to(fadeOverlayRef.current, {
-                  opacity: Math.min(1, 0.5 + progress * 0.5),
-                  duration: 0.1,
-                  ease: "none",
-                });
-              }
-              // Fade video completely
-              if (videoRef.current) {
-                const videoOpacity = Math.max(0.05, 0.1 - progress * 0.05);
-                gsap.to(videoRef.current, {
-                  opacity: videoOpacity,
-                  duration: 0.1,
-                  ease: "none",
-                });
-              }
-            },
-          });
-        }
-
-        // Section reveal with ScrollTrigger
-        sectionsRef.current.forEach((section) => {
-          if (!section) return;
-          const targets = section.querySelectorAll("[data-reveal]");
-
-          if (targets.length > 0) {
-            ScrollTrigger.batch(targets, {
-              start: "top 85%",
-              onEnter: (batch) =>
-                gsap.to(batch, {
-                  autoAlpha: 1,
-                  y: 0,
-                  duration: 0.8,
-                  stagger: 0.15,
-                  ease: "power3.out",
-                }),
-              once: true,
-            });
-          }
-        });
-
-        // Floating animation for accents
-        const floatElements = document.querySelectorAll("[data-float]");
-        if (floatElements.length > 0) {
-          gsap.to(floatElements, {
-            y: "random(-20, 20)",
-            duration: "random(2, 4)",
-            repeat: -1,
-            yoyo: true,
-            ease: "power1.inOut",
-            stagger: {
-              each: 0.2,
-              from: "random",
-            },
-          });
-        }
-
-        // Bottom section reading text reveal animation
-        if (bottomSectionRef.current && readingTextRef.current) {
-          const textElements = readingTextRef.current.querySelectorAll("[data-reading-text]");
-          const ctaElement = readingTextRef.current.querySelector("[data-cta-card]");
-
-          // Set initial state
-          gsap.set(textElements, {
-            opacity: 0.4,
-            y: 30,
-          });
-
-          if (ctaElement) {
-            gsap.set(ctaElement, {
-              opacity: 0,
-              y: 40,
-            });
           }
 
-          // Create scroll trigger for text reveal
-          ScrollTrigger.create({
-            trigger: bottomSectionRef.current,
-            start: "top bottom",
-            end: "bottom top",
-            scrub: 1,
-            onUpdate: (self) => {
-              const progress = self.progress;
+          // Fade to black effect when scrolling from hero to product section
+          if (fadeOverlayRef.current && sectionsRef.current[0] && sectionsRef.current[1]) {
+            const heroSection = sectionsRef.current[0];
+            const productSection = sectionsRef.current[1];
 
-              // Animate text elements with smooth stagger
-              textElements.forEach((el, index) => {
-                const staggerDelay = index * 0.15;
-                const adjustedProgress = Math.min(1, Math.max(0, progress - staggerDelay));
+            // Initialize overlay opacity
+            gsap.set(fadeOverlayRef.current, { opacity: 0 });
 
-                // Smooth reveal: start at 0.4 opacity, end at 1.0
-                const elOpacity = 0.4 + adjustedProgress * 0.6;
-                // Smooth translate: start at 30px, end at 0px
-                const elTranslateY = 30 - adjustedProgress * 30;
-
-                gsap.to(el, {
-                  opacity: elOpacity,
-                  y: elTranslateY,
-                  duration: 0.1,
-                  ease: "none",
-                });
-              });
-
-              // Animate CTA card - appears earlier and more visible
-              if (ctaElement) {
-                const ctaStartProgress = 0.3; // Start appearing earlier
-                if (progress > ctaStartProgress) {
-                  const ctaProgress = Math.min(
-                    1,
-                    (progress - ctaStartProgress) / (1 - ctaStartProgress)
-                  );
-                  // Ensure minimum opacity for visibility
-                  const finalOpacity = Math.max(0.8, ctaProgress);
-
-                  gsap.to(ctaElement, {
-                    opacity: finalOpacity,
-                    y: 40 - ctaProgress * 40,
+            ScrollTrigger.create({
+              trigger: heroSection,
+              start: "bottom center",
+              end: "bottom top",
+              scrub: 0.5,
+              onUpdate: (self) => {
+                const progress = self.progress;
+                // Fade overlay to black
+                if (fadeOverlayRef.current) {
+                  gsap.to(fadeOverlayRef.current, {
+                    opacity: progress,
                     duration: 0.1,
                     ease: "none",
                   });
-
-                  // Add floating class when CTA is visible
-                  if (ctaProgress > 0.5 && !ctaElement.classList.contains("is-floating")) {
-                    ctaElement.classList.add("is-floating");
-                  }
-                } else {
-                  // Keep some visibility even when not fully scrolled
-                  gsap.to(ctaElement, {
-                    opacity: progress * 0.5, // Partial visibility
-                    y: 40 - progress * 20,
-                    duration: 0.1,
-                    ease: "none",
-                  });
-                  ctaElement.classList.remove("is-floating");
                 }
-              }
-            },
+                // Also fade video opacity gradually
+                if (videoRef.current) {
+                  const videoOpacity = Math.max(0.1, 1 - progress * 0.9);
+                  gsap.to(videoRef.current, {
+                    opacity: videoOpacity,
+                    duration: 0.1,
+                    ease: "none",
+                  });
+                }
+              },
+            });
+
+            // Additional fade when product section comes into view
+            ScrollTrigger.create({
+              trigger: productSection,
+              start: "top center",
+              end: "top top",
+              scrub: 0.5,
+              onUpdate: (self) => {
+                const progress = self.progress;
+                // Complete fade to black
+                if (fadeOverlayRef.current) {
+                  gsap.to(fadeOverlayRef.current, {
+                    opacity: Math.min(1, 0.5 + progress * 0.5),
+                    duration: 0.1,
+                    ease: "none",
+                  });
+                }
+                // Fade video completely
+                if (videoRef.current) {
+                  const videoOpacity = Math.max(0.05, 0.1 - progress * 0.05);
+                  gsap.to(videoRef.current, {
+                    opacity: videoOpacity,
+                    duration: 0.1,
+                    ease: "none",
+                  });
+                }
+              },
+            });
+          }
+
+          // Section reveal with ScrollTrigger
+          sectionsRef.current.forEach((section) => {
+            if (!section) return;
+            const targets = section.querySelectorAll("[data-reveal]");
+
+            if (targets.length > 0) {
+              ScrollTrigger.batch(targets, {
+                start: "top 85%",
+                onEnter: (batch) =>
+                  gsap.to(batch, {
+                    autoAlpha: 1,
+                    y: 0,
+                    duration: 0.8,
+                    stagger: 0.15,
+                    ease: "power3.out",
+                  }),
+                once: true,
+              });
+            }
           });
 
-          // Floating animation for CTA card using CSS animation
-          // This will be handled by CSS class, no GSAP needed to avoid conflicts
-
-          // Fallback: Ensure CTA is visible after a delay if scroll trigger doesn't work
-          if (ctaElement) {
-            setTimeout(() => {
-              const computedStyle = window.getComputedStyle(ctaElement);
-              const currentOpacity = parseFloat(computedStyle.opacity);
-              if (currentOpacity < 0.5) {
-                // If CTA is still not visible, make it visible
-                gsap.to(ctaElement, {
-                  opacity: 0.9,
-                  y: 0,
-                  duration: 0.8,
-                  ease: "power2.out",
-                });
-                ctaElement.classList.add("is-floating");
-              }
-            }, 2000);
+          // Floating animation for accents
+          const floatElements = document.querySelectorAll("[data-float]");
+          if (floatElements.length > 0) {
+            gsap.to(floatElements, {
+              y: "random(-20, 20)",
+              duration: "random(2, 4)",
+              repeat: -1,
+              yoyo: true,
+              ease: "power1.inOut",
+              stagger: {
+                each: 0.2,
+                from: "random",
+              },
+            });
           }
-        }
-      }, pageRef);
-      
-      return () => ctx.revert();
-    };
+
+          // Bottom section reading text reveal animation
+          if (bottomSectionRef.current && readingTextRef.current) {
+            const textElements = readingTextRef.current.querySelectorAll("[data-reading-text]");
+            const ctaElement = readingTextRef.current.querySelector("[data-cta-card]");
+
+            // Set initial state
+            gsap.set(textElements, {
+              opacity: 0.4,
+              y: 30,
+            });
+
+            if (ctaElement) {
+              gsap.set(ctaElement, {
+                opacity: 0,
+                y: 40,
+              });
+            }
+
+            // Create scroll trigger for text reveal
+            ScrollTrigger.create({
+              trigger: bottomSectionRef.current,
+              start: "top bottom",
+              end: "bottom top",
+              scrub: 1,
+              onUpdate: (self) => {
+                const progress = self.progress;
+
+                // Animate text elements with smooth stagger
+                textElements.forEach((el, index) => {
+                  const staggerDelay = index * 0.15;
+                  const adjustedProgress = Math.min(1, Math.max(0, progress - staggerDelay));
+
+                  // Smooth reveal: start at 0.4 opacity, end at 1.0
+                  const elOpacity = 0.4 + adjustedProgress * 0.6;
+                  // Smooth translate: start at 30px, end at 0px
+                  const elTranslateY = 30 - adjustedProgress * 30;
+
+                  gsap.to(el, {
+                    opacity: elOpacity,
+                    y: elTranslateY,
+                    duration: 0.1,
+                    ease: "none",
+                  });
+                });
+
+                // Animate CTA card - appears earlier and more visible
+                if (ctaElement) {
+                  const ctaStartProgress = 0.3; // Start appearing earlier
+                  if (progress > ctaStartProgress) {
+                    const ctaProgress = Math.min(
+                      1,
+                      (progress - ctaStartProgress) / (1 - ctaStartProgress)
+                    );
+                    // Ensure minimum opacity for visibility
+                    const finalOpacity = Math.max(0.8, ctaProgress);
+
+                    gsap.to(ctaElement, {
+                      opacity: finalOpacity,
+                      y: 40 - ctaProgress * 40,
+                      duration: 0.1,
+                      ease: "none",
+                    });
+
+                    // Add floating class when CTA is visible
+                    if (ctaProgress > 0.5 && !ctaElement.classList.contains("is-floating")) {
+                      ctaElement.classList.add("is-floating");
+                    }
+                  } else {
+                    // Keep some visibility even when not fully scrolled
+                    gsap.to(ctaElement, {
+                      opacity: progress * 0.5, // Partial visibility
+                      y: 40 - progress * 20,
+                      duration: 0.1,
+                      ease: "none",
+                    });
+                    ctaElement.classList.remove("is-floating");
+                  }
+                }
+              },
+            });
+
+            // Floating animation for CTA card using CSS animation
+            // This will be handled by CSS class, no GSAP needed to avoid conflicts
+
+            // Fallback: Ensure CTA is visible after a delay if scroll trigger doesn't work
+            if (ctaElement) {
+              setTimeout(() => {
+                const computedStyle = window.getComputedStyle(ctaElement);
+                const currentOpacity = parseFloat(computedStyle.opacity);
+                if (currentOpacity < 0.5) {
+                  // If CTA is still not visible, make it visible
+                  gsap.to(ctaElement, {
+                    opacity: 0.9,
+                    y: 0,
+                    duration: 0.8,
+                    ease: "power2.out",
+                  });
+                  ctaElement.classList.add("is-floating");
+                }
+              }, 2000);
+            }
+          }
+        }, pageRef);
+
+        return () => ctx.revert();
+      };
 
       // Defer heavy animations until browser is idle
-      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      if (typeof window !== "undefined" && "requestIdleCallback" in window) {
         requestIdleCallback(initAnimations, { timeout: 1000 });
       } else {
         // Fallback for browsers without requestIdleCallback
@@ -1054,9 +1054,9 @@ export default function ProductsPage() {
               className="text-[1.5rem] md:text-[3.5rem] lg:text-[2.5rem] xl:text-[3.5rem] 2xl:text-[4rem] font-sans font-light leading-[1.15] tracking-[-0.02em] md:tracking-[-0.03em] text-white"
               data-hero
             >
-              {t('hero.title')}
+              {t("hero.title")}
               <br />
-              <span className="font-sans font-normal">{t('hero.titleBold')}</span>
+              <span className="font-sans font-normal">{t("hero.titleBold")}</span>
             </motion.h1>
           </motion.div>
         </div>
@@ -1087,9 +1087,7 @@ export default function ProductsPage() {
                 ease: "easeInOut",
               }}
             >
-              <span className="text-sm md:text-base font-light tracking-wide">
-                {t('explore')}
-              </span>
+              <span className="text-sm md:text-base font-light tracking-wide">{t("explore")}</span>
               <ArrowDown className="h-4 w-4 md:h-5 md:w-5 transition-transform duration-300 group-hover:translate-y-1" />
             </motion.button>
           </motion.div>
@@ -1139,11 +1137,15 @@ export default function ProductsPage() {
                       filtered = filtered.filter((p) => p.awards?.includes("trophy"));
                     } else if (selectedFilter === "large") {
                       filtered = filtered.filter(
-                        (p) => p.category === t('categories.250gram.title') || p.category === t('categories.100gram.title')
+                        (p) =>
+                          p.category === t("categories.250gram.title") ||
+                          p.category === t("categories.100gram.title")
                       );
                     } else if (selectedFilter === "small") {
                       filtered = filtered.filter(
-                        (p) => p.category === t('categories.10gram.title') || p.category === t('categories.5gram.title')
+                        (p) =>
+                          p.category === t("categories.10gram.title") ||
+                          p.category === t("categories.5gram.title")
                       );
                     }
 
@@ -1173,7 +1175,7 @@ export default function ProductsPage() {
                       : "text-[#8b7355]/70 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
                   }`}
                 >
-                  {t('filters.all')}
+                  {t("filters.all")}
                 </button>
                 <button
                   onClick={() => {
@@ -1186,7 +1188,7 @@ export default function ProductsPage() {
                       : "text-[#8b7355]/50 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
                   }`}
                 >
-                  {t('filters.awardWinning')}
+                  {t("filters.awardWinning")}
                 </button>
                 <button
                   onClick={() => {
@@ -1199,7 +1201,7 @@ export default function ProductsPage() {
                       : "text-[#8b7355]/50 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
                   }`}
                 >
-                  {t('filters.exclusives')}
+                  {t("filters.exclusives")}
                 </button>
                 <button
                   onClick={() => {
@@ -1212,7 +1214,7 @@ export default function ProductsPage() {
                       : "text-[#8b7355]/50 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
                   }`}
                 >
-                  {t('filters.large')}
+                  {t("filters.large")}
                 </button>
                 <button
                   onClick={() => {
@@ -1225,7 +1227,7 @@ export default function ProductsPage() {
                       : "text-[#8b7355]/50 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
                   }`}
                 >
-                  {t('filters.small')}
+                  {t("filters.small")}
                 </button>
               </motion.div>
             </motion.div>
@@ -1247,11 +1249,15 @@ export default function ProductsPage() {
                   filtered = filtered.filter((p) => p.awards?.includes("trophy"));
                 } else if (selectedFilter === "large") {
                   filtered = filtered.filter(
-                    (p) => p.category === t('categories.250gram.title') || p.category === t('categories.100gram.title')
+                    (p) =>
+                      p.category === t("categories.250gram.title") ||
+                      p.category === t("categories.100gram.title")
                   );
                 } else if (selectedFilter === "small") {
                   filtered = filtered.filter(
-                    (p) => p.category === t('categories.10gram.title') || p.category === t('categories.5gram.title')
+                    (p) =>
+                      p.category === t("categories.10gram.title") ||
+                      p.category === t("categories.5gram.title")
                   );
                 }
 
@@ -1261,7 +1267,7 @@ export default function ProductsPage() {
               if (filteredProducts.length === 0) {
                 return (
                   <div className="text-center py-20">
-                    <p className="text-[#8b7355]/60">{t('filters.noProducts')}</p>
+                    <p className="text-[#8b7355]/60">{t("filters.noProducts")}</p>
                   </div>
                 );
               }
@@ -1340,31 +1346,31 @@ export default function ProductsPage() {
                     ✦
                   </span>
                   <span className="text-xs md:text-sm font-extralight tracking-[0.2em] uppercase text-white/40">
-                    {t('runningText.premiumQuality')}
+                    {t("runningText.premiumQuality")}
                   </span>
                   <span className="text-xs md:text-sm font-extralight tracking-[0.3em] uppercase text-white/30">
                     ✦
                   </span>
                   <span className="text-xs md:text-sm font-extralight tracking-[0.2em] uppercase text-white/40">
-                    {t('runningText.certified')}
+                    {t("runningText.certified")}
                   </span>
                   <span className="text-xs md:text-sm font-extralight tracking-[0.3em] uppercase text-white/30">
                     ✦
                   </span>
                   <span className="text-xs md:text-sm font-extralight tracking-[0.2em] uppercase text-white/40">
-                    {t('runningText.secure')}
+                    {t("runningText.secure")}
                   </span>
                   <span className="text-xs md:text-sm font-extralight tracking-[0.3em] uppercase text-white/30">
                     ✦
                   </span>
                   <span className="text-xs md:text-sm font-extralight tracking-[0.2em] uppercase text-white/40">
-                    {t('runningText.trusted')}
+                    {t("runningText.trusted")}
                   </span>
                   <span className="text-xs md:text-sm font-extralight tracking-[0.3em] uppercase text-white/30">
                     ✦
                   </span>
                   <span className="text-xs md:text-sm font-extralight tracking-[0.2em] uppercase text-white/40">
-                    {t('runningText.qrVerification')}
+                    {t("runningText.qrVerification")}
                   </span>
                   <span className="text-xs md:text-sm font-extralight tracking-[0.3em] uppercase text-white/30">
                     ✦
@@ -1428,16 +1434,16 @@ export default function ProductsPage() {
                 variants={textRevealVariants}
                 className="inline-block text-[0.7rem] md:text-sm font-extralight tracking-[0.3em] uppercase text-white/40 letter-spacing-wider"
               >
-                {t('bottom.crafted')}
+                {t("bottom.crafted")}
               </motion.span>
 
               <motion.h2
                 variants={textRevealVariants}
                 className="text-5xl md:text-4xl lg:text-4xl xl:text-4xl font-extralight leading-[1.15] tracking-[-0.03em] text-white px-4 md:px-6"
               >
-                {t('bottom.preserved')}
+                {t("bottom.preserved")}
                 <br />
-                <span className="font-light">{t('bottom.trusted')}</span>
+                <span className="font-light">{t("bottom.trusted")}</span>
               </motion.h2>
             </div>
           </motion.div>
@@ -1473,13 +1479,13 @@ export default function ProductsPage() {
                   </motion.div>
                   <div className="space-y-2.5">
                     <p className="text-[0.7rem] uppercase tracking-[0.25em] text-white/45 font-extralight letter-spacing-wider">
-                      {t('bottom.scanVerify')}
+                      {t("bottom.scanVerify")}
                     </p>
                     <p className="text-lg md:text-lg font-extralight text-white/95 tracking-[-0.01em] leading-relaxed">
-                      {t('bottom.tapToLaunch')}
+                      {t("bottom.tapToLaunch")}
                     </p>
                     <p className="text-xs md:text-xs text-white/35 font-extralight leading-relaxed max-w-md mx-auto tracking-wide">
-                      {t('bottom.captureQR')}
+                      {t("bottom.captureQR")}
                     </p>
                   </div>
                 </motion.div>

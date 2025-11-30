@@ -37,7 +37,6 @@ const CertificateCard: React.FC = () => {
       scale: 1,
       transition: {
         duration: 0.8,
-        ease: [0.22, 1, 0.36, 1],
         staggerChildren: 0.1,
       },
     },
@@ -50,7 +49,6 @@ const CertificateCard: React.FC = () => {
       y: 0,
       transition: {
         duration: 0.6,
-        ease: [0.22, 1, 0.36, 1],
       },
     },
   };
@@ -63,7 +61,6 @@ const CertificateCard: React.FC = () => {
       y: 0,
       transition: {
         duration: 0.7,
-        ease: [0.22, 1, 0.36, 1],
         delay: 0.2,
       },
     },
@@ -71,7 +68,6 @@ const CertificateCard: React.FC = () => {
       scale: 1.03,
       transition: {
         duration: 0.4,
-        ease: [0.22, 1, 0.36, 1],
       },
     },
   };

@@ -193,9 +193,7 @@ export function PageTransitionOverlay() {
   }
 
   // Optimized easing function untuk smoother animation
-  const easingFunction = deviceInfo.isMobile
-    ? [0.4, 0, 0.2, 1] // Faster easing on mobile
-    : [0.25, 0.1, 0.25, 1]; // Smoother easing on desktop
+  const easingFunction = "easeInOut";
 
   return (
     <AnimatePresence mode="wait">
