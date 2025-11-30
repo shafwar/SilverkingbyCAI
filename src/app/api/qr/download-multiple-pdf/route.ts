@@ -41,7 +41,11 @@ export async function POST(request: NextRequest) {
     // Support both formats: products (new, preferred) or serialCodes (legacy, fallback)
     let productsData: Array<{ id: number; name: string; serialCode: string; weight: number }>;
 
-    if (productsFromFrontend && Array.isArray(productsFromFrontend) && productsFromFrontend.length > 0) {
+    if (
+      productsFromFrontend &&
+      Array.isArray(productsFromFrontend) &&
+      productsFromFrontend.length > 0
+    ) {
       // NEW APPROACH: Use products directly from frontend (same as handleDownload single)
       console.log(
         `[QR Multiple] Received ${productsFromFrontend.length} product objects from frontend (NEW APPROACH - same as handleDownload single)`
@@ -68,7 +72,9 @@ export async function POST(request: NextRequest) {
       );
 
       // Normalize serialCodes to match database format (uppercase, trimmed)
-      const normalizedSerialCodes = serialCodes.map((sc: string) => String(sc).trim().toUpperCase());
+      const normalizedSerialCodes = serialCodes.map((sc: string) =>
+        String(sc).trim().toUpperCase()
+      );
       console.log(`[QR Multiple] ====== DATABASE QUERY START (LEGACY) ======`);
       console.log(`[QR Multiple] Normalized serialCodes:`, {
         original: serialCodes.slice(0, 5),
@@ -111,7 +117,9 @@ export async function POST(request: NextRequest) {
         serialCodesType: typeof serialCodes,
       });
       return NextResponse.json(
-        { error: "Either 'products' array or 'serialCodes' array is required and must not be empty" },
+        {
+          error: "Either 'products' array or 'serialCodes' array is required and must not be empty",
+        },
         { status: 400 }
       );
     }
@@ -138,11 +146,10 @@ export async function POST(request: NextRequest) {
       });
     });
 
-    console.log(`[QR Multiple] ====== DATABASE QUERY RESULT ======`);
-    console.log(`[QR Multiple] Database query result:`, {
-      requestedCount: normalizedSerialCodes.length,
-      foundCount: products.length,
-      sampleProducts: products.slice(0, 5).map((p) => ({
+    console.log(`[QR Multiple] ====== PRODUCTS DATA SUMMARY ======`);
+    console.log(`[QR Multiple] Products data summary:`, {
+      totalCount: productsData.length,
+      sampleProducts: productsData.slice(0, 5).map((p) => ({
         id: p.id,
         name: p.name,
         serialCode: p.serialCode,
@@ -153,15 +160,9 @@ export async function POST(request: NextRequest) {
       })),
     });
 
-    if (products.length === 0) {
-      console.error(`[QR Multiple] ERROR: No products found for serialCodes:`, {
-        requested: normalizedSerialCodes.slice(0, 10),
-        total: normalizedSerialCodes.length,
-      });
-      return NextResponse.json(
-        { error: "No products with QR codes found for the provided serial codes" },
-        { status: 404 }
-      );
+    if (productsData.length === 0) {
+      console.error(`[QR Multiple] ERROR: No products data available`);
+      return NextResponse.json({ error: "No products data provided or found" }, { status: 404 });
     }
 
     // CRITICAL: Filter out products with missing data BEFORE processing
