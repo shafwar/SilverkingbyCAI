@@ -295,40 +295,24 @@ export function QrPreviewGrid() {
       // Draw QR code on front template
       frontCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
 
-      // Add product name above QR code
+      // Nama produk persis atas QR (tanpa truncation/elses)
       if (product.name) {
-        const nameY = qrY - 35;
-        const nameFontSize = Math.floor(frontTemplateImg.width * 0.025);
+        const nameFontSize = Math.floor(frontTemplateImg.width * 0.027);
+        const nameY = qrY - nameFontSize * 1.3;
         frontCtx.fillStyle = "#222222";
         frontCtx.textAlign = "center";
-        frontCtx.textBaseline = "middle";
+        frontCtx.textBaseline = "bottom";
         frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
-
-        // Truncate if too long
-        let displayName = product.name;
-        const maxWidth = frontTemplateImg.width * 0.65;
-        const metrics = frontCtx.measureText(displayName);
-        if (metrics.width > maxWidth) {
-          while (
-            frontCtx.measureText(displayName + "...").width > maxWidth &&
-            displayName.length > 0
-          ) {
-            displayName = displayName.slice(0, -1);
-          }
-          displayName += "...";
-        }
-
-        frontCtx.fillText(displayName, frontTemplateImg.width / 2, nameY);
+        frontCtx.fillText(product.name, frontTemplateImg.width / 2, nameY);
       }
 
-      // Add serial number below QR code (using LucidaSans font)
-      const serialY = qrY + qrSize + 35;
-      const fontSize = Math.floor(frontTemplateImg.width * 0.032);
+      // Serial only bawah QR (tanpa duplikasi, proporsional)
+      const serialFontSize = Math.floor(frontTemplateImg.width * 0.031);
+      const serialY = qrY + qrSize + serialFontSize * 1.5;
       frontCtx.fillStyle = "#222222";
       frontCtx.textAlign = "center";
-      frontCtx.textBaseline = "middle";
-      // Try to use LucidaSans, fallback to monospace for serial codes
-      frontCtx.font = `${fontSize}px "LucidaSans", "Lucida Console", "Courier New", monospace`;
+      frontCtx.textBaseline = "top";
+      frontCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
       frontCtx.fillText(product.serialCode, frontTemplateImg.width / 2, serialY);
 
       // Create canvas for BACK template (no QR, just the template)

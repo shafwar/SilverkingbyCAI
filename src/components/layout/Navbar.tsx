@@ -25,6 +25,9 @@ export default function Navbar() {
   const router = useRouter();
 
   useEffect(() => {
+    // PRODUCTION-SAFE: Ensure window exists
+    if (typeof window === "undefined") return;
+
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
       const scrollThreshold = 10; // Lower threshold for mobile responsiveness
@@ -94,8 +97,11 @@ export default function Navbar() {
     return () => observer.disconnect();
   }, []);
 
-  // Lock body scroll when mobile menu is open
+  // Lock body scroll when mobile menu is open - PRODUCTION-SAFE
   useEffect(() => {
+    // PRODUCTION-SAFE: Ensure document exists
+    if (typeof window === "undefined" || typeof document === "undefined" || !document.body) return;
+
     if (isMobileMenuOpen) {
       document.body.style.overflow = "hidden";
     } else {

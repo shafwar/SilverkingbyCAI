@@ -38,10 +38,9 @@ export default function ProductCard({ product, onProductSelect, index = 0 }: Pro
   const displayPrice = product.memberPrice || product.regularPrice;
 
   // Split product name into range name and product name
-  const rangeName = product.rangeName || "Silver King";
-  // Remove the weight from the product name since we'll show it separately
-  const productNameWithoutWeight = product.name.replace(/\s*\d+gr\s*/i, "").trim();
-  const productName = productNameWithoutWeight || product.name;
+  const rangeName = product.rangeName || "";
+  // Use product name as-is (no weight removal needed)
+  const productName = product.name;
 
   return (
     <motion.div
@@ -92,25 +91,27 @@ export default function ProductCard({ product, onProductSelect, index = 0 }: Pro
             }}
             className="product-title block group-hover:text-[#8b7355] transition-colors"
           >
-            <span className="product-title__range-name block text-xs font-extralight text-[#8b7355]/60 mb-2 tracking-wide uppercase">
-              {rangeName}
-            </span>
+            {rangeName && (
+              <span className="product-title__range-name block text-xs font-extralight text-[#8b7355]/60 mb-2 tracking-wide uppercase">
+                {rangeName}
+              </span>
+            )}
             <span className="product-title__name block text-sm font-extralight text-[#5a4a3a] leading-relaxed">
               {productName}
             </span>
-            <span className="product-title__weight block text-xs font-extralight text-[#8b7355]/50 mt-1">
-              {product.weight}
-            </span>
+            {product.weight && (
+              <span className="product-title__weight block text-xs font-extralight text-[#8b7355]/50 mt-1">
+                {product.weight}
+              </span>
+            )}
           </Link>
 
-          {/* Single Price */}
-          {displayPrice && (
-            <div className="product-card__price pt-2">
-              <span className="text-xs font-extralight text-[#8b7355]/70 tracking-wide">
-                {formatPrice(displayPrice)}
-              </span>
-            </div>
-          )}
+          {/* Single Price - Always show, display "-" if no price */}
+          <div className="product-card__price pt-2">
+            <span className="text-xs font-extralight text-[#8b7355]/70 tracking-wide">
+              {displayPrice ? formatPrice(displayPrice) : "-"}
+            </span>
+          </div>
         </div>
       </div>
 

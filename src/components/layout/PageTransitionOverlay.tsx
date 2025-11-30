@@ -17,23 +17,30 @@ import {
  * Page Transition Overlay dengan Blur + Fade Effect
  * Mirip dengan antikode.com - smooth blur out pada halaman yang keluar
  * Optimized untuk mobile dan reduced motion preferences
+ * PRODUCTION-SAFE: Enhanced with proper client-side checks and DOM readiness
  */
 export function PageTransitionOverlay() {
   const { isActive } = useNavigationTransition();
   const [isBlurring, setIsBlurring] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const [deviceInfo, setDeviceInfo] = useState({
     isMobile: false,
     prefersReducedMotion: false,
     isLowPerformance: false,
   });
 
-  // Detect device capabilities once on mount
+  // CRITICAL: Ensure component only runs on client (production-safe)
   useEffect(() => {
-    setDeviceInfo({
-      isMobile: isMobileDevice(),
-      prefersReducedMotion: prefersReducedMotion(),
-      isLowPerformance: isLowPerformanceDevice(),
-    });
+    setIsMounted(true);
+
+    // Detect device capabilities once on mount (only on client)
+    if (typeof window !== "undefined") {
+      setDeviceInfo({
+        isMobile: isMobileDevice(),
+        prefersReducedMotion: prefersReducedMotion(),
+        isLowPerformance: isLowPerformanceDevice(),
+      });
+    }
   }, []);
 
   // Optimized transition settings based on device - ULTRA FAST
@@ -90,32 +97,67 @@ export function PageTransitionOverlay() {
 
   // Apply blur to body when transitioning dengan optimasi mobile
   // ALWAYS ensure HeroSection gets blur effect during transition
+  // PRODUCTION-SAFE: Enhanced with DOM readiness checks
   useEffect(() => {
-    if (isBlurring && transitionSettings.blur > 0) {
-      // Use will-change untuk better performance
-      document.body.style.willChange = "filter";
-      document.body.style.filter = `blur(${transitionSettings.blur}px)`;
-      document.body.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
-      document.body.style.overflow = "hidden";
+    // CRITICAL: Only run on client and when mounted
+    if (typeof window === "undefined" || !isMounted) return;
 
-      // ALWAYS apply blur to hero section for consistent transition effect
-      // Use multiple requestAnimationFrame to ensure DOM is ready and visible
-      // CRITICAL: Apply blur immediately and keep it visible (opacity 1) like other pages
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          const heroSection = document.querySelector(".hero-section-transition");
-          if (heroSection) {
-            const heroEl = heroSection as HTMLElement;
-            // Apply blur transition to hero section
-            heroEl.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
-            heroEl.style.willChange = "filter, opacity";
-            // CRITICAL: Ensure hero section gets blurred AND stays visible (opacity 1)
-            // This matches the behavior of other pages - visible but blurred
-            heroEl.style.filter = `blur(${transitionSettings.blur}px)`;
-            heroEl.style.opacity = "1"; // FORCE opacity to 1 to keep it visible with blur
+    if (isBlurring && transitionSettings.blur > 0) {
+      // Ensure document.body exists (production-safe)
+      if (!document.body) {
+        // Retry after a short delay if body not ready
+        const retryTimer = setTimeout(() => {
+          if (document.body && isBlurring) {
+            applyBlurEffects();
           }
-        });
-      });
+        }, 10);
+        return () => clearTimeout(retryTimer);
+      }
+
+      const applyBlurEffects = () => {
+        // Use will-change untuk better performance
+        document.body.style.willChange = "filter";
+        document.body.style.filter = `blur(${transitionSettings.blur}px)`;
+        document.body.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
+        document.body.style.overflow = "hidden";
+
+        // ALWAYS apply blur to hero section for consistent transition effect
+        // Use multiple requestAnimationFrame to ensure DOM is ready and visible
+        // PRODUCTION-SAFE: Enhanced with proper DOM checks
+        const applyHeroBlur = () => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              // Double-check DOM is ready (production-safe)
+              if (typeof document === "undefined") return;
+
+              const heroSection = document.querySelector(".hero-section-transition");
+              if (heroSection) {
+                const heroEl = heroSection as HTMLElement;
+                // Apply blur transition to hero section
+                heroEl.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
+                heroEl.style.willChange = "filter, opacity";
+                // CRITICAL: Ensure hero section gets blurred AND stays visible (opacity 1)
+                // This matches the behavior of other pages - visible but blurred
+                heroEl.style.filter = `blur(${transitionSettings.blur}px)`;
+                heroEl.style.opacity = "1"; // FORCE opacity to 1 to keep it visible with blur
+              }
+            });
+          });
+        };
+
+        // Apply hero blur with retry mechanism for production
+        applyHeroBlur();
+
+        // Retry after a short delay if hero section not found (production-safe)
+        setTimeout(() => {
+          const heroSection = document.querySelector(".hero-section-transition");
+          if (!heroSection && isBlurring) {
+            applyHeroBlur();
+          }
+        }, 50);
+      };
+
+      applyBlurEffects();
 
       // Remove will-change after transition untuk cleanup - faster cleanup
       setTimeout(
@@ -133,12 +175,17 @@ export function PageTransitionOverlay() {
       );
     } else if (!isBlurring) {
       // Remove blur INSTANTLY for faster transitions
+      // PRODUCTION-SAFE: Enhanced with DOM checks
       const removeBlur = () => {
+        if (typeof window === "undefined" || !document.body) return;
+
         document.body.style.filter = "blur(0px)";
         document.body.style.overflow = "";
 
         // Also remove from hero section - ensure smooth removal
         requestAnimationFrame(() => {
+          if (typeof document === "undefined") return;
+
           const heroSection = document.querySelector(".hero-section-transition");
           if (heroSection) {
             const heroEl = heroSection as HTMLElement;
@@ -174,18 +221,27 @@ export function PageTransitionOverlay() {
     }
 
     return () => {
-      // Cleanup
+      // Cleanup - PRODUCTION-SAFE: Check for window and document
+      if (typeof window === "undefined" || !document.body) return;
+
       document.body.style.filter = "";
       document.body.style.overflow = "";
       document.body.style.willChange = "auto";
 
-      const heroSection = document.querySelector(".hero-section-transition");
-      if (heroSection) {
-        (heroSection as HTMLElement).style.filter = "";
-        (heroSection as HTMLElement).style.willChange = "auto";
+      if (typeof document !== "undefined") {
+        const heroSection = document.querySelector(".hero-section-transition");
+        if (heroSection) {
+          (heroSection as HTMLElement).style.filter = "";
+          (heroSection as HTMLElement).style.willChange = "auto";
+        }
       }
     };
-  }, [isBlurring, transitionSettings]);
+  }, [isBlurring, transitionSettings, isMounted]);
+
+  // CRITICAL: Don't render until mounted (prevents hydration mismatch)
+  if (!isMounted) {
+    return null;
+  }
 
   // Skip overlay animation if reduced motion
   if (deviceInfo.prefersReducedMotion) {

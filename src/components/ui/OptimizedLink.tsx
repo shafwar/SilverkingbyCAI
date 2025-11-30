@@ -4,7 +4,7 @@ import { Link } from "@/i18n/routing";
 import { useRouter } from "@/i18n/routing";
 import { useLocale } from "next-intl";
 import { routing } from "@/i18n/routing";
-import { useCallback, useRef, type ComponentProps, type ReactNode } from "react";
+import { useCallback, useRef, useEffect, type ComponentProps, type ReactNode } from "react";
 import { useNavigationTransitionSafe } from "@/components/layout/NavigationTransitionProvider";
 
 interface OptimizedLinkProps extends Omit<ComponentProps<typeof Link>, "prefetch"> {
@@ -69,8 +69,8 @@ export function OptimizedLink({
         // Silently fail
       }
 
-      // Strategy 2: Browser link prefetch
-      if (typeof window !== "undefined") {
+      // Strategy 2: Browser link prefetch - PRODUCTION-SAFE: Enhanced checks
+      if (typeof window !== "undefined" && typeof document !== "undefined" && document.head) {
         try {
           const link = document.createElement("link");
           link.rel = "prefetch";
@@ -110,12 +110,15 @@ export function OptimizedLink({
     [router, getFullPath]
   );
 
-  // Prefetch on mount
-  if (prefetch && typeof window !== "undefined") {
-    setTimeout(() => {
-      prefetchRoute(href.toString());
-    }, prefetchDelay);
-  }
+  // Prefetch on mount - PRODUCTION-SAFE: Enhanced with proper checks
+  useEffect(() => {
+    if (prefetch && typeof window !== "undefined" && typeof document !== "undefined") {
+      const timer = setTimeout(() => {
+        prefetchRoute(href.toString());
+      }, prefetchDelay);
+      return () => clearTimeout(timer);
+    }
+  }, [prefetch, prefetchDelay, href, prefetchRoute]);
 
   // Handle hover prefetching
   const handleMouseEnter = useCallback(() => {

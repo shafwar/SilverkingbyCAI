@@ -34,7 +34,7 @@ export default function HomePage() {
     if (typeof window !== "undefined") {
       try {
         const splashShown = sessionStorage.getItem("splashShown");
-
+        
         if (splashShown === "true") {
           // Skip splash entirely - set immediately
           setShowSplash(false);

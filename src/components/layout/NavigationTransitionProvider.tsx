@@ -50,7 +50,20 @@ export function NavigationTransitionProvider({ children }: { children: ReactNode
 
   const beginTransition = useCallback(
     (href: string) => {
+      // PRODUCTION-SAFE: Ensure window exists
       if (typeof window === "undefined") return;
+
+      // PRODUCTION-SAFE: Ensure document is ready
+      if (typeof document === "undefined" || !document.body) {
+        // Retry after DOM is ready
+        const retryTimer = setTimeout(() => {
+          if (typeof document !== "undefined" && document.body) {
+            beginTransition(href);
+          }
+        }, 10);
+        return;
+      }
+
       const normalized = normalizeHref(href);
       if (!normalized) return;
       if (normalized === pathname) return;
@@ -68,6 +81,9 @@ export function NavigationTransitionProvider({ children }: { children: ReactNode
   );
 
   useEffect(() => {
+    // PRODUCTION-SAFE: Ensure window exists
+    if (typeof window === "undefined") return;
+
     if (!isActive || !targetPathRef.current) return;
 
     // Normalize pathname for comparison (home paths: "/", "/en", "/id" → "/")
@@ -85,9 +101,11 @@ export function NavigationTransitionProvider({ children }: { children: ReactNode
 
       // ULTRA FAST transition timing based on device
       // Mobile: ultra fast (100ms), Desktop: fast (150ms)
+      // PRODUCTION-SAFE: Enhanced window checks
       const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
       const prefersReducedMotion =
         typeof window !== "undefined" &&
+        typeof window.matchMedia !== "undefined" &&
         window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
       // Significantly reduced timing for faster transitions
