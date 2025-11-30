@@ -20,7 +20,7 @@ import {
   Check,
   CloudUpload,
 } from "lucide-react";
-import jsPDF from "jspdf";
+import { PDFDocument } from "pdf-lib";
 
 import { fetcher } from "@/lib/fetcher";
 import { LoadingSkeleton } from "./LoadingSkeleton";
@@ -461,79 +461,75 @@ export function QrPreviewGrid() {
         throw new Error("Failed to generate image data from canvas");
       }
 
-      // Create PDF using jsPDF with LANDSCAPE orientation for side-by-side layout
-      console.log("[Download] Creating PDF with side-by-side layout...");
-      const pdf = new jsPDF({
-        orientation: "landscape", // Landscape to fit two cards side by side
-        unit: "mm",
-        format: [297, 210], // A4 landscape: width=297mm, height=210mm
-      });
-
-      // Calculate dimensions for side-by-side layout
-      // Each card should fit in half the page width with some margin
-      const pageWidth = 297; // A4 landscape width in mm
-      const pageHeight = 210; // A4 landscape height in mm
-      const margin = 5; // Margin on each side
-      const cardWidth = (pageWidth - margin * 3) / 2; // Two cards with margins
-      const cardHeightFront = (frontTemplateImg.height / frontTemplateImg.width) * cardWidth;
-      const cardHeightBack = (backTemplateImg.height / backTemplateImg.width) * cardWidth;
-
-      // Use the maximum height to ensure both fit
-      const maxCardHeight = Math.max(cardHeightFront, cardHeightBack);
-
-      // If cards are too tall, scale down proportionally
-      const scaleFactor =
-        maxCardHeight > pageHeight - margin * 2 ? (pageHeight - margin * 2) / maxCardHeight : 1;
-
-      const finalCardWidth = cardWidth * scaleFactor;
-      const finalCardHeightFront = cardHeightFront * scaleFactor;
-      const finalCardHeightBack = cardHeightBack * scaleFactor;
-
-      // Center vertically
-      const yOffsetFront = (pageHeight - finalCardHeightFront) / 2;
-      const yOffsetBack = (pageHeight - finalCardHeightBack) / 2;
-
-      console.log("[Download] PDF layout dimensions:", {
+      // Create PDF using pdf-lib with custom page size (same as multiple download)
+      // Calculate optimal page size based on template dimensions to avoid white space
+      console.log("[Download] Creating PDF with side-by-side layout using pdf-lib...");
+      
+      // Use the height of the taller template as page height
+      const maxTemplateHeight = Math.max(frontTemplateImg.height, backTemplateImg.height);
+      const pageHeight = maxTemplateHeight;
+      
+      // Page width = front width + back width + small gap between them
+      const gap = 20; // Small gap between front and back (in pixels/points)
+      const pageWidth = frontTemplateImg.width + backTemplateImg.width + gap;
+      
+      console.log("[Download] PDF dimensions:", {
         pageWidth,
         pageHeight,
-        finalCardWidth,
-        finalCardHeightFront,
-        finalCardHeightBack,
-        yOffsetFront,
-        yOffsetBack,
+        frontSize: `${frontTemplateImg.width}x${frontTemplateImg.height}`,
+        backSize: `${backTemplateImg.width}x${backTemplateImg.height}`,
       });
 
-      // Add front template (left side)
-      try {
-        pdf.addImage(
-          frontImageData,
-          "PNG",
-          margin,
-          yOffsetFront,
-          finalCardWidth,
-          finalCardHeightFront
-        );
-        console.log("[Download] Front template added to PDF");
-      } catch (pdfError: any) {
-        console.error("[Download] Failed to add front image to PDF:", pdfError);
-        throw new Error(
-          `Failed to add front template to PDF: ${pdfError.message || "Unknown error"}`
-        );
-      }
+      const pdfDoc = await PDFDocument.create();
+      const page = pdfDoc.addPage([pageWidth, pageHeight]);
 
-      // Add back template (right side)
-      try {
-        const backX = margin * 2 + finalCardWidth; // Position to the right of front card
-        pdf.addImage(backImageData, "PNG", backX, yOffsetBack, finalCardWidth, finalCardHeightBack);
-        console.log("[Download] Back template added to PDF");
-      } catch (pdfError: any) {
-        console.error("[Download] Failed to add back image to PDF:", pdfError);
-        throw new Error(
-          `Failed to add back template to PDF: ${pdfError.message || "Unknown error"}`
-        );
-      }
+      // Convert base64 image data to Uint8Array for pdf-lib
+      const frontImageBytes = Uint8Array.from(
+        atob(frontImageData.split(",")[1]),
+        (c) => c.charCodeAt(0)
+      );
+      const backImageBytes = Uint8Array.from(
+        atob(backImageData.split(",")[1]),
+        (c) => c.charCodeAt(0)
+      );
 
-      console.log("[Download] PDF created successfully with side-by-side layout");
+      // Embed images
+      const frontPngImage = await pdfDoc.embedPng(frontImageBytes);
+      const backPngImage = await pdfDoc.embedPng(backImageBytes);
+
+      console.log("[Download] Embedding images to PDF:", {
+        frontSize: `${frontTemplateImg.width}x${frontTemplateImg.height}`,
+        backSize: `${backTemplateImg.width}x${backTemplateImg.height}`,
+        pageSize: `${pageWidth}x${pageHeight}`,
+      });
+
+      // Add front template (left side) - full size, no scaling
+      page.drawImage(frontPngImage, {
+        x: 0,
+        y: pageHeight - frontTemplateImg.height, // Align to top (PDF coordinates start from bottom)
+        width: frontTemplateImg.width,
+        height: frontTemplateImg.height,
+      });
+
+      // Add back template (right side) - full size, no scaling
+      const backX = frontTemplateImg.width + gap;
+      const backY = pageHeight - backTemplateImg.height; // Align to top
+      page.drawImage(backPngImage, {
+        x: backX,
+        y: backY,
+        width: backTemplateImg.width,
+        height: backTemplateImg.height,
+      });
+
+      console.log("[Download] Both templates drawn to PDF:", {
+        frontPosition: `(0, ${pageHeight - frontTemplateImg.height})`,
+        backPosition: `(${backX}, ${backY})`,
+        frontDrawn: true,
+        backDrawn: true,
+      });
+
+      // Generate PDF bytes
+      const pdfBytes = await pdfDoc.save();
 
       // Generate filename
       const sanitizedName = product.name
@@ -547,7 +543,15 @@ export function QrPreviewGrid() {
 
       // Download PDF
       console.log("[Download] Saving PDF:", filename);
-      pdf.save(filename);
+      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
       console.log("[Download] Download completed successfully");
     } catch (error: any) {
       console.error("[Download] Failed to download QR code:", error);
