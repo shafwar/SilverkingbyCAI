@@ -1,0 +1,88 @@
+/* NProgress Custom Styling - Antikode.com Style */
+/* Thin white progress bar at the top */
+/* Optimized for mobile and reduced motion */
+
+#nprogress {
+  pointer-events: none;
+  z-index: 99999;
+}
+
+#nprogress .bar {
+  background: #ffffff;
+  position: fixed;
+  z-index: 99999;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  box-shadow:
+    0 0 10px rgba(255, 255, 255, 0.5),
+    0 0 5px rgba(255, 255, 255, 0.3);
+  /* GPU acceleration for smooth animation */
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Remove default spinner */
+#nprogress .peg {
+  display: none;
+}
+
+/* Optional: Add subtle glow effect - disabled on mobile for performance */
+#nprogress .bar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+  animation: shimmer 1.5s infinite;
+  /* Disable shimmer on mobile for better performance */
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  #nprogress .bar {
+    height: 1.5px; /* Thinner on mobile */
+    box-shadow:
+      0 0 8px rgba(255, 255, 255, 0.4),
+      0 0 4px rgba(255, 255, 255, 0.2);
+  }
+
+  /* Disable shimmer animation on mobile */
+  #nprogress .bar::after {
+    display: none;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  #nprogress .bar {
+    transition: none;
+    animation: none;
+  }
+
+  #nprogress .bar::after {
+    display: none;
+  }
+}
+
+/* Low performance device optimizations */
+@media (prefers-reduced-motion: no-preference) {
+  /* Only enable advanced effects on capable devices */
+  @media (min-width: 769px) {
+    #nprogress .bar::after {
+      display: block;
+    }
+  }
+}

@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 @import "./logo-adaptive.css";
+@import "./nprogress.css";
 
 @layer base {
   * {
@@ -39,6 +40,11 @@
     -ms-overflow-style: none;
     /* Prevent flash of content before splash screen */
     overflow-x: hidden;
+    /* Optimize for transitions */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* GPU acceleration for smooth transitions */
+    transform: translateZ(0);
   }
 
   /* CRITICAL: Hide splash screen text until animation starts */
@@ -274,6 +280,53 @@
 
   .animate-fade-in {
     animation: fade-in 0.6s ease-out forwards;
+  }
+
+  /* Lightweight fade-in animations for about page */
+  .fade-in {
+    opacity: 0;
+    transform: translateY(15px);
+    transition:
+      opacity 0.4s ease-out,
+      transform 0.4s ease-out;
+  }
+
+  .fade-in.fade-in-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .hero-fade-in {
+    opacity: 1;
+    animation: fade-in 0.6s ease-out;
+  }
+
+  /* Hero Section Transition - ULTRA FAST blur and fade for page transitions */
+  .hero-section-transition {
+    /* Ensure ultra-fast smooth transitions */
+    transition:
+      filter 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+      opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    /* GPU acceleration */
+    transform: translateZ(0);
+    backfacevisibility: hidden;
+    -webkit-backfacevisibility: hidden;
+  }
+
+  /* Mobile optimization for hero section transitions - ULTRA FAST */
+  @media (max-width: 768px) {
+    .hero-section-transition {
+      transition:
+        filter 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+        opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    .hero-section-transition {
+      transition: none;
+    }
   }
 
   @keyframes float {

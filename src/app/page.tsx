@@ -1,6 +1,6 @@
-import { NextIntlClientProvider } from 'next-intl';
-import { getMessages } from 'next-intl/server';
-import { routing } from '@/i18n/routing';
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages } from "next-intl/server";
+import { routing } from "@/i18n/routing";
 import { GeistSans } from "geist/font/sans";
 import { Playfair_Display } from "next/font/google";
 import "@/styles/globals.css";
@@ -19,7 +19,7 @@ const playfair = Playfair_Display({
 // Root page - uses default locale without prefix
 export default async function RootPage() {
   const locale = routing.defaultLocale;
-  
+
   // Add error handling for getMessages to prevent 502 errors
   let messages;
   try {
@@ -32,11 +32,12 @@ export default async function RootPage() {
 
   return (
     <NextIntlClientProvider messages={messages}>
-      {/* HAPUS NavigationTransitionProvider & PageTransitionOverlay */}
-      <Providers>
-        <RootPageContent />
-      </Providers>
+      <NavigationTransitionProvider>
+        <Providers>
+          <RootPageContent />
+        </Providers>
+        <PageTransitionOverlay />
+      </NavigationTransitionProvider>
     </NextIntlClientProvider>
   );
 }
-

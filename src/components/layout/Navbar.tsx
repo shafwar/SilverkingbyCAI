@@ -5,7 +5,7 @@ import { Link } from "@/i18n/routing";
 import Image from "next/image";
 import { ArrowRight, X, QrCode } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-// HAPUS: import { useNavigationTransition } from "./NavigationTransitionProvider";
+import { useNavigationTransition } from "./NavigationTransitionProvider";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useTranslations, useLocale } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/routing";
@@ -18,8 +18,8 @@ export default function Navbar() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
-  // HAPUS: const { beginTransition } = useNavigationTransition();
-  const t = useTranslations('nav');
+  const { beginTransition } = useNavigationTransition();
+  const t = useTranslations("nav");
   const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
@@ -29,20 +29,20 @@ export default function Navbar() {
       const currentScrollY = window.scrollY;
       const scrollThreshold = 10; // Lower threshold for mobile responsiveness
       const scrollDelta = 5; // Minimum scroll delta to trigger hide/show
-      
+
       // Update isScrolled for background styling
       setIsScrolled(currentScrollY > scrollThreshold);
-      
+
       // Always show navbar at top of page (below threshold)
       if (currentScrollY < scrollThreshold) {
         setIsVisible(true);
         setLastScrollY(currentScrollY);
         return;
       }
-      
+
       // Calculate scroll direction with delta threshold
       const scrollDifference = currentScrollY - lastScrollY;
-      
+
       // Hide navbar when scrolling down (with delta threshold to prevent jitter)
       if (scrollDifference > scrollDelta) {
         setIsVisible(false);
@@ -52,7 +52,7 @@ export default function Navbar() {
         setIsVisible(true);
       }
       // If scroll difference is small, maintain current state
-      
+
       setLastScrollY(currentScrollY);
     };
 
@@ -108,20 +108,24 @@ export default function Navbar() {
 
   // Use paths without locale prefix - Link from next-intl will handle locale automatically
   // Wrap in useMemo to prevent dependency changes on every render
-  const navLinks = useMemo(() => [
-    { name: t('whatWeDo'), href: '/what-we-do' },
-    { name: t('authenticity'), href: '/authenticity' },
-    { name: t('products'), href: '/products' },
-    { name: t('aboutUs'), href: '/about' },
-  ], [t]);
+  const navLinks = useMemo(
+    () => [
+      { name: t("whatWeDo"), href: "/what-we-do" },
+      { name: t("authenticity"), href: "/authenticity" },
+      { name: t("products"), href: "/products" },
+      { name: t("aboutUs"), href: "/about" },
+    ],
+    [t]
+  );
 
-  // CRITICAL: ULTRA-AGGRESSIVE prefetch for ALL navigation links
+  // OPTIMIZED: ULTRA-AGGRESSIVE prefetch for ALL navigation links
   // Uses multiple strategies including Next.js native router for locale routes
+  // Enhanced with immediate prefetching and hover prefetching
   useEffect(() => {
     const prefetchNavLinks = () => {
       // Include contact page in prefetch list
-      const allLinks = [...navLinks, { name: 'contact', href: '/contact' }];
-      
+      const allLinks = [...navLinks, { name: "contact", href: "/contact" }];
+
       allLinks.forEach((link) => {
         // Strategy 1: Use next-intl router.prefetch (handles locale automatically)
         try {
@@ -129,63 +133,34 @@ export default function Navbar() {
         } catch (error) {
           // Silently fail
         }
-        
-        // Strategy 2: Use Next.js native router for explicit locale prefetch
-        // This is CRITICAL for non-default locale routes
-        if (typeof window !== 'undefined' && 'next' in window) {
-          try {
-            // Import Next.js router dynamically for prefetch
-            import('next/navigation').then(({ useRouter: useNextRouter }) => {
-              // This ensures Next.js internal prefetch works
-            }).catch(() => {});
-          } catch (error) {
-            // Silently fail
-          }
-        }
-        
-        // Strategy 3: Direct link prefetch with explicit locale path
+
+        // Strategy 2: Direct link prefetch with explicit locale path
         // This ensures the browser caches the exact URL with locale prefix
-        try {
-          const prefetchLink = document.createElement('link');
-          prefetchLink.rel = 'prefetch';
-          prefetchLink.as = 'document';
-          // Build full path with locale prefix
-          const fullPath = locale === routing.defaultLocale
-            ? link.href
-            : `/${locale}${link.href === '/' ? '' : link.href}`;
-          prefetchLink.href = fullPath;
-          document.head.appendChild(prefetchLink);
-        } catch (error) {
-          // Silently fail
-        }
-        
-        // Strategy 3: Prefetch RSC payload for non-default locale
-        // Next.js uses ?_rsc= query param for React Server Components
-        if (locale !== routing.defaultLocale) {
+        if (typeof window !== "undefined") {
           try {
-            const fullPath = `/${locale}${link.href === '/' ? '' : link.href}`;
-            // Prefetch RSC payload
-            const rscLink = document.createElement('link');
-            rscLink.rel = 'prefetch';
-            rscLink.as = 'fetch';
+            const fullPath =
+              locale === routing.defaultLocale
+                ? link.href
+                : `/${locale}${link.href === "/" ? "" : link.href}`;
+
+            // Prefetch document
+            const prefetchLink = document.createElement("link");
+            prefetchLink.rel = "prefetch";
+            prefetchLink.as = "document";
+            prefetchLink.href = fullPath;
+            if (!document.querySelector(`link[rel="prefetch"][href="${fullPath}"]`)) {
+              document.head.appendChild(prefetchLink);
+            }
+
+            // Prefetch RSC payload (React Server Components)
+            const rscLink = document.createElement("link");
+            rscLink.rel = "prefetch";
+            rscLink.as = "fetch";
             rscLink.href = `${fullPath}?_rsc=`;
-            rscLink.crossOrigin = 'anonymous';
-            document.head.appendChild(rscLink);
-          } catch (error) {
-            // Silently fail
-          }
-        }
-        
-        // Strategy 4: Additional prefetch for non-default locale with crossorigin
-        if (locale !== routing.defaultLocale) {
-          try {
-            const fullPath = `/${locale}${link.href === '/' ? '' : link.href}`;
-            const prefetchLink2 = document.createElement('link');
-            prefetchLink2.rel = 'prefetch';
-            prefetchLink2.as = 'document';
-            prefetchLink2.href = fullPath;
-            prefetchLink2.crossOrigin = 'anonymous';
-            document.head.appendChild(prefetchLink2);
+            rscLink.crossOrigin = "anonymous";
+            if (!document.querySelector(`link[rel="prefetch"][href="${fullPath}?_rsc="]`)) {
+              document.head.appendChild(rscLink);
+            }
           } catch (error) {
             // Silently fail
           }
@@ -193,22 +168,32 @@ export default function Navbar() {
       });
     };
 
-    // Prefetch immediately on mount and when locale changes
+    // Prefetch immediately on mount
     prefetchNavLinks();
-    
+
     // Also prefetch again after a short delay to ensure it's cached
     const timeoutId = setTimeout(() => {
       prefetchNavLinks();
-    }, 500);
-    
+    }, 300);
+
     // Prefetch one more time after page is fully loaded
-    const loadTimeoutId = setTimeout(() => {
+    const handleLoad = () => {
       prefetchNavLinks();
-    }, 2000);
-    
+    };
+
+    if (typeof window !== "undefined") {
+      if (document.readyState === "complete") {
+        handleLoad();
+      } else {
+        window.addEventListener("load", handleLoad, { once: true });
+      }
+    }
+
     return () => {
       clearTimeout(timeoutId);
-      clearTimeout(loadTimeoutId);
+      if (typeof window !== "undefined") {
+        window.removeEventListener("load", handleLoad);
+      }
     };
   }, [locale, router, navLinks]); // Re-prefetch when locale changes
 
@@ -221,27 +206,23 @@ export default function Navbar() {
     if (isHashLink) {
       return;
     }
-    // CRITICAL: For non-default locale, skip transition for faster navigation
-    // Transition overlay can block navigation for /id routes
-    if (locale !== routing.defaultLocale) {
-      // Don't start transition - let navigation happen immediately
-      return;
-    }
-    // --- REMOVE BEGINTRANSITION ---
-    // (Transition removed for all cases to ensure fast, native navigation)
-    // Link component from next-intl will handle navigation automatically
-    // Navigation is handled by Link component - no need to preventDefault or router.push
+
+    // Start smooth transition dengan blur effect
+    // Use requestAnimationFrame untuk ensure smooth start
+    requestAnimationFrame(() => {
+      beginTransition(href);
+    });
   };
 
   return (
     <motion.header
       initial={false}
       animate={{
-        opacity: isModalOpen ? 0 : (isVisible ? 1 : 0),
-        y: isModalOpen ? -100 : (isVisible ? 0 : -100),
+        opacity: isModalOpen ? 0 : isVisible ? 1 : 0,
+        y: isModalOpen ? -100 : isVisible ? 0 : -100,
       }}
-      transition={{ 
-        duration: 0.35, 
+      transition={{
+        duration: 0.35,
         ease: [0.25, 0.1, 0.25, 1], // Smooth cubic-bezier easing for mobile
         opacity: { duration: 0.3, ease: "easeOut" },
         y: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] },
@@ -255,7 +236,20 @@ export default function Navbar() {
       <nav className="mx-auto max-w-[1440px] px-4 sm:px-6 md:px-10 lg:px-16 xl:px-20">
         <div className="flex items-center justify-between h-[4.5rem] sm:h-[5rem] md:h-[5.5rem]">
           {/* Logo - Smaller for mobile */}
-          <Link href="/" prefetch={true} className="group relative flex items-center">
+          <Link
+            href="/"
+            prefetch={true}
+            className="group relative flex items-center"
+            onClick={(e) => {
+              // ALWAYS trigger transition when clicking logo to go home
+              const href = locale === routing.defaultLocale ? "/" : `/${locale}`;
+              if (pathname !== href) {
+                requestAnimationFrame(() => {
+                  beginTransition(href);
+                });
+              }
+            }}
+          >
             <div className="relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-[8deg]">
               <Image
                 src={getR2UrlClient("/images/cai-logo.png")}
@@ -286,10 +280,37 @@ export default function Navbar() {
                 prefetch={true}
                 className="relative font-sans text-[0.9375rem] font-medium text-white/70 transition-all duration-300 hover:text-white focus-visible:text-white group-hover:text-white/40 group-hover:hover:text-white"
                 onClick={(event) => handleNavClick(event, link.href)}
+                onMouseEnter={() => {
+                  // Aggressive hover prefetching for instant navigation
+                  try {
+                    router.prefetch(link.href);
+                    const fullPath =
+                      locale === routing.defaultLocale
+                        ? link.href
+                        : `/${locale}${link.href === "/" ? "" : link.href}`;
+                    if (
+                      typeof window !== "undefined" &&
+                      !document.querySelector(`link[rel="prefetch"][href="${fullPath}"]`)
+                    ) {
+                      const prefetchLink = document.createElement("link");
+                      prefetchLink.rel = "prefetch";
+                      prefetchLink.as = "document";
+                      prefetchLink.href = fullPath;
+                      document.head.appendChild(prefetchLink);
+                    }
+                  } catch (e) {
+                    // Silently fail
+                  }
+                }}
                 role="menuitem"
                 style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
               >
-                <span className="relative z-10" style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}>{link.name}</span>
+                <span
+                  className="relative z-10"
+                  style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
+                >
+                  {link.name}
+                </span>
               </Link>
             ))}
           </div>
@@ -300,12 +321,35 @@ export default function Navbar() {
             <Link
               href="/contact"
               prefetch={true}
-              onClick={(event) => handleNavClick(event, '/contact')}
+              onClick={(event) => handleNavClick(event, "/contact")}
+              onMouseEnter={() => {
+                // Aggressive hover prefetching
+                try {
+                  router.prefetch("/contact");
+                  const fullPath =
+                    locale === routing.defaultLocale ? "/contact" : `/${locale}/contact`;
+                  if (
+                    typeof window !== "undefined" &&
+                    !document.querySelector(`link[rel="prefetch"][href="${fullPath}"]`)
+                  ) {
+                    const prefetchLink = document.createElement("link");
+                    prefetchLink.rel = "prefetch";
+                    prefetchLink.as = "document";
+                    prefetchLink.href = fullPath;
+                    document.head.appendChild(prefetchLink);
+                  }
+                } catch (e) {
+                  // Silently fail
+                }
+              }}
               className="group relative overflow-hidden inline-flex items-center gap-2.5 rounded-full bg-gradient-to-r from-white/[0.12] to-white/[0.08] backdrop-blur-xl border border-white/[0.15] px-6 py-3 font-sans text-[0.9375rem] font-semibold text-white shadow-[0_8px_32px_rgba(0,0,0,0.12)] transition-all duration-500 hover:shadow-[0_8px_32px_rgba(212,175,55,0.25)] hover:scale-105 hover:border-luxury-gold/30"
               style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
             >
-              <span className="relative z-10 transition-colors duration-300 group-hover:text-luxury-gold" style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}>
-                {t('getInTouch')}
+              <span
+                className="relative z-10 transition-colors duration-300 group-hover:text-luxury-gold"
+                style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
+              >
+                {t("getInTouch")}
               </span>
               <ArrowRight className="relative z-10 h-4 w-4 transition-all duration-300 group-hover:translate-x-1 group-hover:text-luxury-gold" />
               {/* Gradient overlay on hover */}
@@ -365,7 +409,16 @@ export default function Navbar() {
                     <Link
                       href="/"
                       prefetch={true}
-                      onClick={() => setIsMobileMenuOpen(false)}
+                      onClick={(e) => {
+                        setIsMobileMenuOpen(false);
+                        // ALWAYS trigger transition when clicking logo to go home
+                        const href = locale === routing.defaultLocale ? "/" : `/${locale}`;
+                        if (pathname !== href) {
+                          requestAnimationFrame(() => {
+                            beginTransition(href);
+                          });
+                        }
+                      }}
                       className="flex items-center"
                     >
                       <div className="relative w-10 h-10 sm:w-12 sm:h-12">
@@ -411,6 +464,28 @@ export default function Navbar() {
                             handleNavClick(event, link.href);
                             setIsMobileMenuOpen(false);
                           }}
+                          onMouseEnter={() => {
+                            // Aggressive hover prefetching for mobile menu
+                            try {
+                              router.prefetch(link.href);
+                              const fullPath =
+                                locale === routing.defaultLocale
+                                  ? link.href
+                                  : `/${locale}${link.href === "/" ? "" : link.href}`;
+                              if (
+                                typeof window !== "undefined" &&
+                                !document.querySelector(`link[rel="prefetch"][href="${fullPath}"]`)
+                              ) {
+                                const prefetchLink = document.createElement("link");
+                                prefetchLink.rel = "prefetch";
+                                prefetchLink.as = "document";
+                                prefetchLink.href = fullPath;
+                                document.head.appendChild(prefetchLink);
+                              }
+                            } catch (e) {
+                              // Silently fail
+                            }
+                          }}
                           className="block font-sans text-2xl sm:text-3xl font-medium text-white py-4 transition-all duration-300 hover:text-white/80"
                           style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
                         >
@@ -452,13 +527,28 @@ export default function Navbar() {
 
                         {/* Content - Compact */}
                         <div className="flex-1 min-w-0">
-                          <p className="font-sans text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.25em] sm:tracking-[0.3em] text-white/50 mb-1" style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}>
+                          <p
+                            className="font-sans text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.25em] sm:tracking-[0.3em] text-white/50 mb-1"
+                            style={{
+                              fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c",
+                            }}
+                          >
                             SCAN & VERIFY
                           </p>
-                          <h3 className="font-sans text-sm sm:text-base font-semibold text-white leading-tight group-hover:text-white/90 transition-colors" style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}>
+                          <h3
+                            className="font-sans text-sm sm:text-base font-semibold text-white leading-tight group-hover:text-white/90 transition-colors"
+                            style={{
+                              fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c",
+                            }}
+                          >
                             Tap to launch Silver King QR scanner
                           </h3>
-                          <p className="font-sans text-xs sm:text-sm text-white/60 leading-relaxed mt-1 line-clamp-2" style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}>
+                          <p
+                            className="font-sans text-xs sm:text-sm text-white/60 leading-relaxed mt-1 line-clamp-2"
+                            style={{
+                              fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c",
+                            }}
+                          >
                             Capture the QR seal to view purity & provenance.
                           </p>
                         </div>
@@ -477,7 +567,7 @@ export default function Navbar() {
                       href="/contact"
                       prefetch={true}
                       onClick={(event) => {
-                        handleNavClick(event, '/contact');
+                        handleNavClick(event, "/contact");
                         setIsMobileMenuOpen(false);
                       }}
                       className="group flex items-center justify-center gap-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/20 px-6 py-4 font-sans text-base font-semibold text-white transition-all duration-300 hover:scale-[1.02]"

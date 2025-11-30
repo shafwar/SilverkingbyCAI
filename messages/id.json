@@ -330,6 +330,20 @@
         }
       }
     },
+    "certificate": {
+      "title": "Sertifikasi",
+      "titleBold": "Perusahaan",
+      "subtitle": "Komitmen kami terhadap keunggulan divalidasi oleh standar kualitas internasional",
+      "certificateName": "Sertifikat ISO 9001:2015 - PT Cahaya Abu Indonesia",
+      "clickToView": "Klik gambar untuk melihat detail sertifikat",
+      "description": {
+        "title": "Jaminan Kualitas Internasional",
+        "paragraph1": "PT Cahaya Abu Indonesia dengan bangga memegang sertifikasi ISO 9001:2015, menunjukkan komitmen kami yang tak tergoyahkan terhadap sistem manajemen kualitas dan keunggulan operasional dalam manufaktur logam mulia.",
+        "paragraph2": "Sertifikasi yang diakui secara internasional ini memvalidasi proses kontrol kualitas kami yang ketat, memastikan bahwa setiap produk Silver King memenuhi standar tertinggi kemurnian, presisi, dan keaslian.",
+        "paragraph3": "Sertifikasi ISO 9001:2015 kami mencakup proses manufaktur lengkap logam mulia, dari pengadaan bahan baku hingga verifikasi produk akhir, memberikan kepercayaan kepada pelanggan kami dalam setiap batangan yang mereka investasikan."
+      },
+      "badge": "BERSERTIFIKAT"
+    },
     "cta": {
       "title": "Siap untuk memverifikasi",
       "titleBold": "logam mulia Anda?",
@@ -684,4 +698,3 @@
     }
   }
 }
-

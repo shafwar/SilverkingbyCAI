@@ -7,6 +7,8 @@ import { QrCode } from "lucide-react";
 import ScrollingFeatures from "./ScrollingFeatures";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useTranslations } from "next-intl";
+import { usePathname } from "next/navigation";
+import { useNavigationTransitionSafe } from "@/components/layout/NavigationTransitionProvider";
 
 interface HeroSectionProps {
   shouldAnimate?: boolean;
@@ -109,12 +111,116 @@ const bubbleOrbs = [
 
 export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) {
   const t = useTranslations("home.hero");
+  const pathname = usePathname();
+  const transitionContext = useNavigationTransitionSafe();
+  const isTransitionActive = transitionContext?.isActive ?? false;
   const containerRef = useRef<HTMLDivElement>(null);
   const headlineRef = useRef<HTMLHeadingElement>(null);
   const subtitleRef = useRef<HTMLParagraphElement>(null);
   const statsRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isPageTransitioning, setIsPageTransitioning] = useState(false);
+  const prevPathnameRef = useRef<string | null>(null);
+  const fadeInTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Detect page transition untuk smooth fade-in saat kembali ke home
+  // ALWAYS ensure transition blur effect works when navigating to home
+  useEffect(() => {
+    // Normalize pathname untuk consistent detection
+    const normalizedPathname = pathname.replace(/^\/[a-z]{2}$/, "/").replace(/^\/[a-z]{2}\//, "/");
+    const isHomePage =
+      normalizedPathname === "/" || pathname === "/" || pathname === "/en" || pathname === "/id";
+
+    // Check if we just navigated to home page (more robust detection)
+    const wasDifferentPage =
+      prevPathnameRef.current !== null &&
+      prevPathnameRef.current !== pathname &&
+      prevPathnameRef.current !== normalizedPathname;
+
+    if (isHomePage) {
+      // Always ensure HeroSection is visible and ready for transition
+      if (wasDifferentPage) {
+        // User just navigated back to home - ALWAYS trigger fade-in
+        console.log("[HeroSection] Navigating to home, triggering fade-in", {
+          prevPath: prevPathnameRef.current,
+          currentPath: pathname,
+          isTransitionActive,
+        });
+
+        setIsPageTransitioning(true);
+
+        // Clear any existing fade-in timeout
+        if (fadeInTimeoutRef.current) {
+          clearTimeout(fadeInTimeoutRef.current);
+        }
+
+        // IMPORTANT: Don't set opacity to 0 immediately - keep it visible with blur
+        // This ensures blur effect is visible like other pages
+        if (containerRef.current) {
+          // Keep opacity at 1 but apply blur - same as other pages
+          gsap.set(containerRef.current, {
+            opacity: 1,
+            filter: "blur(6px)", // Start with blur matching transition blur - KEEP VISIBLE
+          });
+        }
+
+        // Wait for page transition blur to be applied and visible
+        // Then start fade-in animation
+        const fadeInDelay = isTransitionActive ? 250 : 150; // Wait for blur to be visible
+
+        fadeInTimeoutRef.current = setTimeout(() => {
+          if (containerRef.current) {
+            // Smooth fade-in animation dengan GSAP
+            // Start from blurred state (opacity 1, blur 6px) to clear (opacity 1, blur 0px)
+            gsap.fromTo(
+              containerRef.current,
+              {
+                opacity: 1,
+                filter: "blur(6px)", // Start blurred but visible
+              },
+              {
+                opacity: 1,
+                filter: "blur(0px)", // Fade blur to clear
+                duration: 0.5, // Smooth blur removal
+                ease: "power2.out",
+                onComplete: () => {
+                  setIsPageTransitioning(false);
+                  console.log("[HeroSection] Fade-in complete");
+                },
+              }
+            );
+          }
+        }, fadeInDelay);
+      } else if (prevPathnameRef.current === null) {
+        // Initial mount - ensure visible
+        if (containerRef.current) {
+          gsap.set(containerRef.current, {
+            opacity: 1,
+            filter: "blur(0px)",
+          });
+        }
+      } else {
+        // Already on home page, ensure it's visible
+        if (containerRef.current) {
+          gsap.set(containerRef.current, {
+            opacity: 1,
+            filter: "blur(0px)",
+          });
+        }
+      }
+    }
+
+    // Always update prevPathnameRef
+    prevPathnameRef.current = pathname;
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (fadeInTimeoutRef.current) {
+        clearTimeout(fadeInTimeoutRef.current);
+      }
+    };
+  }, [pathname, isTransitionActive]);
 
   // Features data from translations - simple and stable
   const featuresData = [
@@ -259,9 +365,70 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
   }, []);
 
   const animationState = shouldAnimate ? "visible" : "hidden";
+  const [animationsReady, setAnimationsReady] = useState(false);
+
+  // Defer heavy animations until after initial page load
+  useEffect(() => {
+    // Wait for page to be interactive before starting heavy animations
+    if (typeof window !== "undefined") {
+      if (document.readyState === "complete") {
+        // Use requestIdleCallback to defer animations
+        if ("requestIdleCallback" in window) {
+          requestIdleCallback(
+            () => {
+              setAnimationsReady(true);
+            },
+            { timeout: 1000 }
+          );
+        } else {
+          setTimeout(() => setAnimationsReady(true), 500);
+        }
+      } else {
+        window.addEventListener(
+          "load",
+          () => {
+            if ("requestIdleCallback" in window) {
+              requestIdleCallback(
+                () => {
+                  setAnimationsReady(true);
+                },
+                { timeout: 1000 }
+              );
+            } else {
+              setTimeout(() => setAnimationsReady(true), 500);
+            }
+          },
+          { once: true }
+        );
+      }
+    }
+  }, []);
 
   // SET INITIAL STATES IMMEDIATELY - NO FLICKER (useLayoutEffect runs BEFORE browser paint)
   useLayoutEffect(() => {
+    // Only run heavy GSAP animations if animations are ready and should animate
+    if (!animationsReady || !shouldAnimate) {
+      // Set initial states without animations
+      if (headlineRef.current) {
+        const words = headlineRef.current.querySelectorAll(".word");
+        gsap.set(words, { opacity: 1, y: 0, rotationX: 0, scale: 1, filter: "blur(0px)" });
+      }
+      if (subtitleRef.current) {
+        gsap.set(subtitleRef.current, {
+          opacity: 1,
+          y: 0,
+          clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%)",
+          filter: "blur(0px)",
+        });
+      }
+      if (statsRef.current) {
+        gsap.set(statsRef.current, { opacity: 1, x: 0 });
+        const statItems = statsRef.current.querySelectorAll(".stat-item");
+        gsap.set(statItems, { opacity: 1, x: 0, y: 0, filter: "blur(0px)" });
+      }
+      return;
+    }
+
     const ctx = gsap.context(() => {
       // Headline words - hidden initially
       if (headlineRef.current) {
@@ -300,7 +467,8 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
     });
 
     return () => ctx.revert();
-  }, []); // Run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount - animationsReady and shouldAnimate handled in separate effect
 
   // ANIMATE WHEN shouldAnimate becomes true
   useEffect(() => {
@@ -403,13 +571,19 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
     });
 
     return () => ctx.revert();
-  }, [shouldAnimate]);
+  }, [shouldAnimate, animationsReady]); // Dependencies included for proper effect updates
 
   return (
     <section
       ref={containerRef}
-      className="relative h-screen w-full overflow-hidden bg-black"
-      style={{ pointerEvents: "auto" }}
+      className="relative h-screen w-full overflow-hidden bg-black hero-section-transition"
+      style={{
+        pointerEvents: "auto",
+        // ALWAYS ensure HeroSection participates in page transition blur
+        willChange: isPageTransitioning || isTransitionActive ? "opacity, filter" : "auto",
+        // Ensure initial state is correct for transitions
+        // Don't set opacity to 0 if not transitioning to prevent flash
+      }}
     >
       {/* Video Background */}
       <motion.div
@@ -428,7 +602,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             loop
             muted
             playsInline
-            preload="auto"
+            preload="metadata"
             disablePictureInPicture
             disableRemotePlayback
             className="absolute inset-0 h-full w-full object-cover"

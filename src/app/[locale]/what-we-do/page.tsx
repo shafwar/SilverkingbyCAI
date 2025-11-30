@@ -81,7 +81,10 @@ const FeatureCard = ({
   const isInView = useInView(containerRef, { amount: 0.45, margin: "-15% 0px" });
 
   return (
-    <div ref={containerRef} className="group relative min-h-[280px] sm:min-h-[320px] md:min-h-[360px]">
+    <div
+      ref={containerRef}
+      className="group relative min-h-[280px] sm:min-h-[320px] md:min-h-[360px]"
+    >
       <AnimatePresence mode="sync">
         {isInView && (
           <motion.div
@@ -153,7 +156,7 @@ const NarrativeImageSection = forwardRef<
     cards.forEach((card, idx) => {
       if (card.images[0]) {
         const imageUrl = card.images[0];
-        
+
         // Use link preload with fetchpriority="high" for ALL 3 critical images
         const link = document.createElement("link");
         link.rel = "preload";
@@ -172,10 +175,11 @@ const NarrativeImageSection = forwardRef<
         if (imageUrl.startsWith("http") && !imageUrl.includes("localhost")) {
           img.crossOrigin = "anonymous";
         }
-        
+
         // Decode ALL 3 first images IMMEDIATELY - they're all above the fold and critical
         const preloadImage = () => {
-          img.decode()
+          img
+            .decode()
             .then(() => {
               // Image decoded successfully, mark as loaded IMMEDIATELY
               setImageLoaded((prev) => ({
@@ -215,7 +219,7 @@ const NarrativeImageSection = forwardRef<
   // Simplified timeout - only set for images that haven't loaded after 5 seconds
   useEffect(() => {
     const timeouts: NodeJS.Timeout[] = [];
-    
+
     cards.forEach((_, idx) => {
       const imageKey = `${idx}-0`;
       // Only set timeout if image hasn't loaded yet
@@ -241,7 +245,6 @@ const NarrativeImageSection = forwardRef<
     };
   }, [cards, imageLoaded, imageError]); // Include all dependencies
 
-
   return (
     <section
       ref={ref}
@@ -255,7 +258,9 @@ const NarrativeImageSection = forwardRef<
               {title || columns[0]?.title || "Craft from raw bullion"}
             </h2>
             <p className="text-base sm:text-lg md:text-xl leading-relaxed text-neutral-300 max-w-2xl">
-              {description || columns[0]?.description || "We transform responsibly sourced gold, silver, and palladium into investment-grade bars using tightly controlled refining and casting lines."}
+              {description ||
+                columns[0]?.description ||
+                "We transform responsibly sourced gold, silver, and palladium into investment-grade bars using tightly controlled refining and casting lines."}
             </p>
           </div>
         </div>
@@ -267,30 +272,30 @@ const NarrativeImageSection = forwardRef<
             const imageKey = `${idx}-0`;
             const isImageLoaded = imageLoaded[imageKey];
             const hasImageError = imageError[imageKey];
-            
+
             return (
               <div
                 key={card.label}
                 className="relative w-full opacity-0 animate-fade-in"
                 style={{
                   animationDelay: `${idx * 100}ms`,
-                  animationFillMode: 'forwards',
+                  animationFillMode: "forwards",
                 }}
               >
                 {/* Enhanced Card - Pixelmatters style */}
                 <div
                   className="relative w-full overflow-hidden rounded-2xl bg-black/40 border border-white/5 shadow-lg md:shadow-xl transition-all duration-300 flex flex-col"
-                  style={{ 
+                  style={{
                     aspectRatio: "4/3",
                     minHeight: "280px",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'scale(1.02)';
-                    e.currentTarget.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.5)';
+                    e.currentTarget.style.transform = "scale(1.02)";
+                    e.currentTarget.style.boxShadow = "0 25px 50px -12px rgba(0, 0, 0, 0.5)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'scale(1)';
-                    e.currentTarget.style.boxShadow = '';
+                    e.currentTarget.style.transform = "scale(1)";
+                    e.currentTarget.style.boxShadow = "";
                   }}
                 >
                   {/* Image container - large image at top */}
@@ -301,7 +306,7 @@ const NarrativeImageSection = forwardRef<
                         <div className="h-6 w-6 sm:h-8 sm:w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
                       </div>
                     )}
-                    
+
                     {/* Image */}
                     {!hasImageError && (
                       <div
@@ -309,7 +314,7 @@ const NarrativeImageSection = forwardRef<
                           isImageLoaded ? "opacity-100" : "opacity-0"
                         }`}
                         style={{
-                          willChange: isImageLoaded ? 'auto' : 'opacity',
+                          willChange: isImageLoaded ? "auto" : "opacity",
                         }}
                       >
                         <Image
@@ -341,17 +346,30 @@ const NarrativeImageSection = forwardRef<
                         />
                       </div>
                     )}
-                    
+
                     {/* Error fallback */}
                     {hasImageError && (
                       <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-black/80 to-black/60 z-10">
                         {/* Minimalist Gold SVG fallback icon instead of text fallback */}
-                        <svg width="46" height="32" viewBox="0 0 46 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <rect width="46" height="32" rx="8" fill="url(#gold)"/>
+                        <svg
+                          width="46"
+                          height="32"
+                          viewBox="0 0 46 32"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <rect width="46" height="32" rx="8" fill="url(#gold)" />
                           <defs>
-                            <linearGradient id="gold" x1="0" y1="0" x2="46" y2="32" gradientUnits="userSpaceOnUse">
-                              <stop stop-color="#B8960E"/>
-                              <stop offset="1" stop-color="#FFD700"/>
+                            <linearGradient
+                              id="gold"
+                              x1="0"
+                              y1="0"
+                              x2="46"
+                              y2="32"
+                              gradientUnits="userSpaceOnUse"
+                            >
+                              <stop stop-color="#B8960E" />
+                              <stop offset="1" stop-color="#FFD700" />
                             </linearGradient>
                           </defs>
                         </svg>
@@ -367,7 +385,7 @@ const NarrativeImageSection = forwardRef<
                         {card.label}
                       </p>
                     </div>
-                    
+
                     {/* Description text - small and clean */}
                     <p className="text-xs md:text-sm leading-relaxed text-neutral-300 line-clamp-2">
                       {card.caption}
@@ -388,8 +406,8 @@ NarrativeImageSection.displayName = "NarrativeImageSection";
 // End of file helpers
 
 export default function WhatWeDoPage() {
-  const t = useTranslations('whatWeDo');
-  const tNav = useTranslations('nav');
+  const t = useTranslations("whatWeDo");
+  const tNav = useTranslations("nav");
   const locale = useLocale();
   const pageRef = useRef<HTMLDivElement | null>(null);
   const heroRef = useRef<HTMLDivElement | null>(null);
@@ -400,20 +418,20 @@ export default function WhatWeDoPage() {
   const featureItems = useMemo(
     () => [
       {
-        title: t('capabilities.features.fabrication.title'),
-        description: t('capabilities.features.fabrication.description'),
+        title: t("capabilities.features.fabrication.title"),
+        description: t("capabilities.features.fabrication.description"),
         icon: Sparkles,
         gradient: "from-luxury-gold to-luxury-lightGold",
       },
       {
-        title: t('capabilities.features.purityLab.title'),
-        description: t('capabilities.features.purityLab.description'),
+        title: t("capabilities.features.purityLab.title"),
+        description: t("capabilities.features.purityLab.description"),
         icon: FlaskConical,
         gradient: "from-luxury-silver to-white",
       },
       {
-        title: t('capabilities.features.security.title'),
-        description: t('capabilities.features.security.description'),
+        title: t("capabilities.features.security.title"),
+        description: t("capabilities.features.security.description"),
         icon: Shield,
         gradient: "from-luxury-gold to-luxury-lightGold",
       },
@@ -429,23 +447,23 @@ export default function WhatWeDoPage() {
 
   const narrativeColumns = [
     {
-      title: t('title'),
-      description: t('description'),
+      title: t("title"),
+      description: t("description"),
     },
     {
-      title: t('card2.title'),
-      description: t('card2.description'),
+      title: t("card2.title"),
+      description: t("card2.description"),
     },
     {
-      title: t('card3.title'),
-      description: t('card3.description'),
+      title: t("card3.title"),
+      description: t("card3.description"),
     },
   ] as const;
 
   const narrativeCards = [
     {
-      label: t('card1.label'),
-      caption: t('card1.caption'),
+      label: t("card1.label"),
+      caption: t("card1.caption"),
       images: [
         getR2UrlClient("/images/pexels-3d-render-1058120333-33539240.jpg"),
         getR2UrlClient("/images/pexels-sejio402-29336321.jpg"),
@@ -453,8 +471,8 @@ export default function WhatWeDoPage() {
       ],
     },
     {
-      label: t('card2.label'),
-      caption: t('card2.caption'),
+      label: t("card2.label"),
+      caption: t("card2.caption"),
       images: [
         getR2UrlClient("/images/pexels-michael-steinberg-95604-386318.jpg"),
         getR2UrlClient("/images/pexels-sejio402-29336326.jpg"),
@@ -462,8 +480,8 @@ export default function WhatWeDoPage() {
       ],
     },
     {
-      label: t('card3.label'),
-      caption: t('card3.caption'),
+      label: t("card3.label"),
+      caption: t("card3.caption"),
       images: [
         getR2UrlClient("/images/pexels-sejio402-29336327.jpg"),
         getR2UrlClient("/images/pexels-sejio402-29336321.jpg"),
@@ -483,7 +501,7 @@ export default function WhatWeDoPage() {
         sectionsRef.current.forEach((section) => {
           if (!section) return;
           const targets = section.querySelectorAll("[data-reveal]");
-          
+
           // Skip if no targets found
           if (targets.length === 0) return;
 
@@ -562,7 +580,9 @@ export default function WhatWeDoPage() {
                         // Second retry after longer delay
                         setTimeout(() => {
                           video.play().catch(() => {
-                            console.warn("[WhatWeDoPage] Video autoplay failed after multiple retries");
+                            console.warn(
+                              "[WhatWeDoPage] Video autoplay failed after multiple retries"
+                            );
                           });
                         }, 500);
                       });
@@ -615,7 +635,7 @@ export default function WhatWeDoPage() {
                   // But we can also try to play if it's paused
                   if (video.paused && !video.ended) {
                     setTimeout(() => {
-                    forcePlay();
+                      forcePlay();
                     }, 100);
                   }
                 };
@@ -665,7 +685,10 @@ export default function WhatWeDoPage() {
             disablePictureInPicture
             disableRemotePlayback
           >
-            <source src={getR2UrlClient("/videos/hero/metal crafting hands.mp4")} type="video/mp4" />
+            <source
+              src={getR2UrlClient("/videos/hero/metal crafting hands.mp4")}
+              type="video/mp4"
+            />
           </video>
 
           {/* Dark overlays for readability - properly contained */}
@@ -694,15 +717,15 @@ export default function WhatWeDoPage() {
               className="text-[1.75rem] sm:text-[2rem] md:text-[3.5rem] lg:text-[2.5rem] xl:text-[3.5rem] 2xl:text-[4rem] font-sans font-light leading-tight sm:leading-[1.15] tracking-tight md:tracking-[-0.02em] lg:tracking-[-0.03em] text-white"
               data-hero
             >
-              {t('hero.title')}
+              {t("hero.title")}
               <br />
-              <span className="font-sans font-normal">{t('hero.titleBold')}</span>
+              <span className="font-sans font-normal">{t("hero.titleBold")}</span>
             </motion.h1>
             <motion.p
               data-hero
               className="mt-4 sm:mt-6 max-w-xl text-sm sm:text-[0.9375rem] md:text-base font-sans font-light leading-relaxed text-luxury-silver/80"
             >
-              {t('hero.subtitle')}
+              {t("hero.subtitle")}
             </motion.p>
           </motion.div>
         </div>
@@ -715,8 +738,8 @@ export default function WhatWeDoPage() {
         }}
         columns={narrativeColumns}
         cards={narrativeCards}
-        title={t('title')}
-        description={t('description')}
+        title={t("title")}
+        description={t("description")}
       />
 
       {/* Impact Section – similar to Pixelmatters "The impact you can expect" - Mobile optimized */}
@@ -730,9 +753,9 @@ export default function WhatWeDoPage() {
           {/* Left title block */}
           <div className="max-w-md" data-reveal>
             <h2 className="text-2xl sm:text-3xl md:text-5xl lg:text-[52px] font-light leading-tight tracking-tight text-white">
-              {t('impact.title')}
+              {t("impact.title")}
               <br />
-              {t('impact.titleLine2')}
+              {t("impact.titleLine2")}
             </h2>
           </div>
 
@@ -740,20 +763,20 @@ export default function WhatWeDoPage() {
           <div className="flex-1 space-y-8 sm:space-y-10 md:space-y-6" data-reveal>
             {[
               {
-                title: t('impact.items.traceable.title'),
-                body: t('impact.items.traceable.body'),
+                title: t("impact.items.traceable.title"),
+                body: t("impact.items.traceable.body"),
               },
               {
-                title: t('impact.items.operational.title'),
-                body: t('impact.items.operational.body'),
+                title: t("impact.items.operational.title"),
+                body: t("impact.items.operational.body"),
               },
               {
-                title: t('impact.items.customer.title'),
-                body: t('impact.items.customer.body'),
+                title: t("impact.items.customer.title"),
+                body: t("impact.items.customer.body"),
               },
               {
-                title: t('impact.items.compliance.title'),
-                body: t('impact.items.compliance.body'),
+                title: t("impact.items.compliance.title"),
+                body: t("impact.items.compliance.body"),
               },
             ].map((item, idx, arr) => (
               <div key={item.title}>
@@ -779,7 +802,7 @@ export default function WhatWeDoPage() {
             type="button"
             className="group inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/[0.04] px-6 py-2 text-xs font-medium text-white backdrop-blur-md transition-all duration-300 hover:border-white/60 hover:bg-white/[0.08]"
           >
-            <span>{t('capabilities.exploreButton')}</span>
+            <span>{t("capabilities.exploreButton")}</span>
             <span className="text-lg leading-none group-hover:translate-y-[1px] transition-transform">
               ↓
             </span>
@@ -802,13 +825,13 @@ export default function WhatWeDoPage() {
         <div className="relative z-10 mx-auto max-w-[1320px]">
           <motion.div className="mb-12 sm:mb-16 md:mb-20 text-center" data-reveal>
             <h2 className="mb-4 sm:mb-5 text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-light tracking-tight">
-              <span className="text-white">{t('capabilities.title')}</span>{" "}
+              <span className="text-white">{t("capabilities.title")}</span>{" "}
               <span className="bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text text-transparent">
-                {t('capabilities.titleBold')}
+                {t("capabilities.titleBold")}
               </span>
             </h2>
             <p className="mx-auto max-w-3xl text-sm sm:text-base md:text-lg lg:text-xl text-luxury-silver/70 px-4 sm:px-0">
-              {t('capabilities.subtitle')}
+              {t("capabilities.subtitle")}
             </p>
           </motion.div>
 
@@ -846,7 +869,9 @@ export default function WhatWeDoPage() {
                         // Second retry after longer delay
                         setTimeout(() => {
                           video.play().catch(() => {
-                            console.warn("[WhatWeDoPage] Video autoplay failed after multiple retries");
+                            console.warn(
+                              "[WhatWeDoPage] Video autoplay failed after multiple retries"
+                            );
                           });
                         }, 500);
                       });
@@ -899,7 +924,7 @@ export default function WhatWeDoPage() {
                   // But we can also try to play if it's paused
                   if (video.paused && !video.ended) {
                     setTimeout(() => {
-                    forcePlay();
+                      forcePlay();
                     }, 100);
                   }
                 };
@@ -948,7 +973,10 @@ export default function WhatWeDoPage() {
             disablePictureInPicture
             disableRemotePlayback
           >
-            <source src={getR2UrlClient("/videos/hero/molten metal slow motion.mp4")} type="video/mp4" />
+            <source
+              src={getR2UrlClient("/videos/hero/molten metal slow motion.mp4")}
+              type="video/mp4"
+            />
           </video>
           {/* Dark overlay for text readability - properly contained */}
           <div className="absolute inset-0 bg-gradient-to-b from-luxury-black/85 via-luxury-black/75 to-luxury-black/85 z-10" />
@@ -963,10 +991,10 @@ export default function WhatWeDoPage() {
             transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
             className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl xl:text-7xl font-light leading-tight tracking-tight text-white"
           >
-            {t('footer.cta')}
+            {t("footer.cta")}
             <br />
             <span className="bg-gradient-to-r from-luxury-gold via-luxury-lightGold to-luxury-gold bg-clip-text text-transparent">
-              {t('footer.ctaBold')}
+              {t("footer.ctaBold")}
             </span>
           </motion.h2>
         </div>
@@ -984,27 +1012,31 @@ export default function WhatWeDoPage() {
             <span className="text-white/40 text-sm">×</span>
             <Link
               href={`/${locale}/what-we-do`}
+              prefetch={true}
               className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
             >
-              {tNav('whatWeDo')}
+              {tNav("whatWeDo")}
             </Link>
             <Link
               href={`/${locale}/authenticity`}
+              prefetch={true}
               className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
             >
-              {tNav('authenticity')}
+              {tNav("authenticity")}
             </Link>
             <Link
               href={`/${locale}/products`}
+              prefetch={true}
               className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
             >
-              {tNav('products')}
+              {tNav("products")}
             </Link>
             <Link
               href={`/${locale}/about`}
+              prefetch={true}
               className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
             >
-              {tNav('aboutUs')}
+              {tNav("aboutUs")}
             </Link>
           </motion.div>
 
