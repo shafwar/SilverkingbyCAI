@@ -400,15 +400,46 @@ export async function POST(request: NextRequest) {
       try {
         // CRITICAL: Double-check product data before processing (defensive programming)
         // This ensures we NEVER draw "0000" or empty text
-        const productName = String(product.name || "").trim();
-        const productSerialCode = String(product.serialCode || "")
-          .trim()
-          .toUpperCase();
+        // CRITICAL: Log raw product data BEFORE any transformation
+        console.log(`[QR Multiple] ====== RAW PRODUCT DATA (BEFORE TRANSFORMATION) ======`);
+        console.log(`[QR Multiple] Raw product object:`, {
+          id: product.id,
+          name: product.name,
+          serialCode: product.serialCode,
+          nameType: typeof product.name,
+          serialCodeType: typeof product.serialCode,
+          nameIsNull: product.name === null,
+          nameIsUndefined: product.name === undefined,
+          serialCodeIsNull: product.serialCode === null,
+          serialCodeIsUndefined: product.serialCode === undefined,
+          nameRawValue: JSON.stringify(product.name),
+          serialCodeRawValue: JSON.stringify(product.serialCode),
+        });
+
+        // CRITICAL: Extract and validate product data
+        // Use same approach as handleDownload (single) that works correctly
+        const productName = product.name ? String(product.name).trim() : "";
+        const productSerialCode = product.serialCode
+          ? String(product.serialCode).trim().toUpperCase()
+          : "";
+
+        console.log(`[QR Multiple] ====== TRANSFORMED PRODUCT DATA ======`);
+        console.log(`[QR Multiple] Transformed values:`, {
+          productName,
+          productSerialCode,
+          productNameLength: productName.length,
+          productSerialCodeLength: productSerialCode.length,
+        });
 
         // Final validation before processing
         if (!productName || productName.length === 0 || productName === "0000") {
           console.error(
-            `[QR Multiple] SKIPPING: Invalid product name for product ID ${product.id}: "${productName}"`
+            `[QR Multiple] SKIPPING: Invalid product name for product ID ${product.id}`,
+            {
+              rawName: product.name,
+              transformedName: productName,
+              nameType: typeof product.name,
+            }
           );
           failCount++;
           continue;
@@ -416,7 +447,12 @@ export async function POST(request: NextRequest) {
 
         if (!productSerialCode || productSerialCode.length === 0 || productSerialCode === "0000") {
           console.error(
-            `[QR Multiple] SKIPPING: Invalid serialCode for product ID ${product.id}: "${productSerialCode}"`
+            `[QR Multiple] SKIPPING: Invalid serialCode for product ID ${product.id}`,
+            {
+              rawSerialCode: product.serialCode,
+              transformedSerialCode: productSerialCode,
+              serialCodeType: typeof product.serialCode,
+            }
           );
           failCount++;
           continue;
