@@ -296,30 +296,36 @@ export function QrPreviewGrid() {
       frontCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
 
       // === MATCH SKN350 LAYOUT: Hanya 2 text elements, TIDAK ADA DUPLIKASI ===
-      // CRITICAL: Hanya draw text sekali untuk setiap element (nama produk & serial code)
-      // Template background mungkin sudah ada text, jadi kita hanya tambahkan text yang diperlukan
+      // CRITICAL: Hanya draw text SEKALI untuk setiap element (nama produk & serial code)
+      // Pastikan tidak ada duplikasi dengan memastikan hanya 2 fillText calls total
       
-      // 1. Nama produk di atas QR (sekali saja, sesuai SKN350 - "Silver King 250gr")
-      if (product.name) {
+      // 1. Nama produk di ATAS QR (sekali saja, sesuai SKN350 - "Silver King 250gr")
+      // Position: Di atas QR code, dengan spacing yang tepat
+      if (product.name && product.name.trim().length > 0) {
         const nameFontSize = Math.floor(frontTemplateImg.width * 0.027);
-        const nameY = qrY - nameFontSize * 1.3;
+        const nameY = qrY - 40; // Fixed spacing above QR
         frontCtx.fillStyle = "#222222";
         frontCtx.textAlign = "center";
         frontCtx.textBaseline = "bottom";
         frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
         // Gunakan product.name as-is (tidak extract, sesuai SKN350 yang menampilkan "Silver King 250gr" lengkap)
-        frontCtx.fillText(product.name, frontTemplateImg.width / 2, nameY);
+        frontCtx.fillText(product.name.trim(), frontTemplateImg.width / 2, nameY);
+        console.log(`[Download] Product name drawn: "${product.name.trim()}" at Y=${nameY}`);
       }
 
-      // 2. Serial code di bawah QR (sekali saja, sesuai SKN350 - "SKA000300")
-      const serialFontSize = Math.floor(frontTemplateImg.width * 0.031);
-      const serialY = qrY + qrSize + serialFontSize * 1.5;
-      frontCtx.fillStyle = "#222222";
-      frontCtx.textAlign = "center";
-      frontCtx.textBaseline = "top";
-      frontCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
-      frontCtx.fillText(product.serialCode, frontTemplateImg.width / 2, serialY);
-      // === END: Hanya 2 fillText calls, tidak ada duplikasi ===
+      // 2. Serial code di BAWAH QR (sekali saja, sesuai SKN350 - "SKA000300")
+      // Position: Di bawah QR code, dengan spacing yang tepat
+      if (product.serialCode && product.serialCode.trim().length > 0) {
+        const serialFontSize = Math.floor(frontTemplateImg.width * 0.031);
+        const serialY = qrY + qrSize + 40; // Fixed spacing below QR
+        frontCtx.fillStyle = "#222222";
+        frontCtx.textAlign = "center";
+        frontCtx.textBaseline = "top";
+        frontCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
+        frontCtx.fillText(product.serialCode.trim().toUpperCase(), frontTemplateImg.width / 2, serialY);
+        console.log(`[Download] Serial code drawn: "${product.serialCode.trim().toUpperCase()}" at Y=${serialY}`);
+      }
+      // === END: Hanya 2 fillText calls total, tidak ada duplikasi ===
 
       // Create canvas for BACK template (no QR, just the template)
       const backCanvas = document.createElement("canvas");
@@ -383,29 +389,31 @@ export function QrPreviewGrid() {
           );
           fallbackCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
           // === MATCH SKN350 LAYOUT: Hanya 2 text elements, TIDAK ADA DUPLIKASI ===
-          // CRITICAL: Hanya draw text sekali untuk setiap element (nama produk & serial code)
-          // SAMA dengan logic utama di atas
+          // CRITICAL: Hanya draw text SEKALI untuk setiap element (nama produk & serial code)
+          // SAMA dengan logic utama di atas - pastikan tidak ada duplikasi
           
-          // 1. Nama produk di atas QR (sekali saja, sesuai SKN350)
-          if (product.name) {
+          // 1. Nama produk di ATAS QR (sekali saja, sesuai SKN350)
+          if (product.name && product.name.trim().length > 0) {
             const nameFontSize = Math.floor(localFrontImg.width * 0.027);
-            const nameY = qrY - nameFontSize * 1.3;
+            const nameY = qrY - 40; // Fixed spacing above QR (same as main path)
             fallbackCtx.fillStyle = "#222222";
             fallbackCtx.textAlign = "center";
             fallbackCtx.textBaseline = "bottom";
             fallbackCtx.font = `${nameFontSize}px Arial, sans-serif`;
             // Gunakan product.name as-is (tidak extract, sesuai SKN350)
-            fallbackCtx.fillText(product.name, localFrontImg.width / 2, nameY);
+            fallbackCtx.fillText(product.name.trim(), localFrontImg.width / 2, nameY);
           }
-          // 2. Serial code di bawah QR (sekali saja)
-          const serialFontSize = Math.floor(localFrontImg.width * 0.031);
-          const serialY = qrY + qrSize + serialFontSize * 1.5;
-          fallbackCtx.fillStyle = "#222222";
-          fallbackCtx.textAlign = "center";
-          fallbackCtx.textBaseline = "top";
-          fallbackCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
-          fallbackCtx.fillText(product.serialCode, localFrontImg.width / 2, serialY);
-          // === END: Hanya 2 fillText calls, tidak ada duplikasi ===
+          // 2. Serial code di BAWAH QR (sekali saja)
+          if (product.serialCode && product.serialCode.trim().length > 0) {
+            const serialFontSize = Math.floor(localFrontImg.width * 0.031);
+            const serialY = qrY + qrSize + 40; // Fixed spacing below QR (same as main path)
+            fallbackCtx.fillStyle = "#222222";
+            fallbackCtx.textAlign = "center";
+            fallbackCtx.textBaseline = "top";
+            fallbackCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
+            fallbackCtx.fillText(product.serialCode.trim().toUpperCase(), localFrontImg.width / 2, serialY);
+          }
+          // === END: Hanya 2 fillText calls total, tidak ada duplikasi ===
           frontImageData = fallbackCanvas.toDataURL("image/png", 1.0);
         } else {
           throw toDataError;
