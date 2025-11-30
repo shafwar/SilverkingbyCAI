@@ -61,6 +61,8 @@ export async function POST(request: NextRequest) {
     });
 
     // CRITICAL: Query database to get product data (name, serialCode) from database, NOT from R2 template
+    // CRITICAL: Use EXACT same query structure as handleDownload (single) that works correctly
+    // Ensure we get ALL required fields: id, name, serialCode, weight
     const products = await prisma.product.findMany({
       where: {
         serialCode: {
@@ -79,6 +81,25 @@ export async function POST(request: NextRequest) {
       orderBy: {
         serialCode: "asc",
       },
+    });
+
+    // CRITICAL: Log raw database results to verify data is actually returned
+    console.log(`[QR Multiple] ====== RAW DATABASE RESULTS ======`);
+    console.log(`[QR Multiple] Raw products from database:`, JSON.stringify(products.slice(0, 3), null, 2));
+    products.slice(0, 3).forEach((p, idx) => {
+      console.log(`[QR Multiple] Product ${idx + 1}:`, {
+        id: p.id,
+        name: p.name,
+        serialCode: p.serialCode,
+        nameType: typeof p.name,
+        serialCodeType: typeof p.serialCode,
+        nameIsNull: p.name === null,
+        nameIsUndefined: p.name === undefined,
+        serialCodeIsNull: p.serialCode === null,
+        serialCodeIsUndefined: p.serialCode === undefined,
+        nameValue: JSON.stringify(p.name),
+        serialCodeValue: JSON.stringify(p.serialCode),
+      });
     });
 
     console.log(`[QR Multiple] ====== DATABASE QUERY RESULT ======`);
@@ -380,7 +401,9 @@ export async function POST(request: NextRequest) {
         // CRITICAL: Double-check product data before processing (defensive programming)
         // This ensures we NEVER draw "0000" or empty text
         const productName = String(product.name || "").trim();
-        const productSerialCode = String(product.serialCode || "").trim().toUpperCase();
+        const productSerialCode = String(product.serialCode || "")
+          .trim()
+          .toUpperCase();
 
         // Final validation before processing
         if (!productName || productName.length === 0 || productName === "0000") {
@@ -446,7 +469,7 @@ export async function POST(request: NextRequest) {
         // CRITICAL: Use EXACT same logic as frontend handleDownload that works correctly
         // CRITICAL: Use productName and productSerialCode from database (already validated above)
         // DO NOT use data from R2 template - template only provides the background image
-        
+
         // 1. Nama produk di ATAS QR (persis seperti handleDownload)
         // CRITICAL: productName is already validated and trimmed above
         const nameFontSize = Math.floor(frontTemplateImage.width * 0.027); // SAMA dengan handleDownload
