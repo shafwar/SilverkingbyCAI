@@ -73,73 +73,120 @@ export function PageTransitionOverlay() {
   }, [deviceInfo]);
 
   useEffect(() => {
+    // PRODUCTION-SAFE: Only run when mounted and window is available
+    if (!isMounted || typeof window === "undefined") return;
+
     if (isActive) {
       // Start blur effect on current page
       setIsBlurring(true);
 
-      // Start NProgress with optimized settings
-      NProgress.start();
+      // PRODUCTION-SAFE: Initialize NProgress with error handling
+      try {
+        // Start NProgress with optimized settings
+        NProgress.start();
 
-      // Configure NProgress untuk ULTRA FAST animation dengan optimasi mobile
-      NProgress.configure({
-        showSpinner: false,
-        trickleSpeed: deviceInfo.isMobile ? 100 : 150, // Much faster trickle
-        minimum: deviceInfo.isMobile ? 0.05 : 0.03, // Lower minimum for faster start
-        easing: "ease-out",
-        speed: transitionSettings.progressSpeed,
-      });
+        // Configure NProgress untuk ULTRA FAST animation dengan optimasi mobile
+        NProgress.configure({
+          showSpinner: false,
+          trickleSpeed: deviceInfo.isMobile ? 100 : 150, // Much faster trickle
+          minimum: deviceInfo.isMobile ? 0.05 : 0.03, // Lower minimum for faster start
+          easing: "ease-out",
+          speed: transitionSettings.progressSpeed,
+        });
+      } catch (error) {
+        console.error("[PageTransition] Error initializing NProgress:", error);
+        // Continue without NProgress if it fails
+      }
     } else {
       // Remove blur when transition completes
       setIsBlurring(false);
-      NProgress.done();
+      
+      // PRODUCTION-SAFE: Stop NProgress with error handling
+      try {
+        NProgress.done();
+      } catch (error) {
+        console.error("[PageTransition] Error stopping NProgress:", error);
+      }
     }
-  }, [isActive, deviceInfo.isMobile, transitionSettings.progressSpeed]);
+  }, [isActive, deviceInfo.isMobile, transitionSettings.progressSpeed, isMounted]);
 
   // Apply blur to body when transitioning dengan optimasi mobile
   // ALWAYS ensure HeroSection gets blur effect during transition
-  // PRODUCTION-SAFE: Enhanced with DOM readiness checks
+  // PRODUCTION-SAFE: Enhanced with robust DOM readiness checks and retry mechanism
   useEffect(() => {
     // CRITICAL: Only run on client and when mounted
     if (typeof window === "undefined" || !isMounted) return;
 
     if (isBlurring && transitionSettings.blur > 0) {
-      // Ensure document.body exists (production-safe)
+      // PRODUCTION-SAFE: Enhanced DOM readiness check with multiple retry attempts
       if (!document.body) {
-        // Retry after a short delay if body not ready
-        const retryTimer = setTimeout(() => {
+        let retryCount = 0;
+        const maxRetries = 10;
+        const retryInterval = setInterval(() => {
+          retryCount++;
           if (document.body && isBlurring) {
-            applyBlurEffects();
+            clearInterval(retryInterval);
+            // Use requestAnimationFrame to ensure DOM is fully ready
+            requestAnimationFrame(() => {
+              applyBlurEffects();
+            });
+          } else if (retryCount >= maxRetries) {
+            clearInterval(retryInterval);
+            console.warn("[PageTransition] Document.body not ready after retries");
           }
         }, 10);
-        return () => clearTimeout(retryTimer);
+        return () => clearInterval(retryInterval);
       }
 
       const applyBlurEffects = () => {
-        // Use will-change untuk better performance
-        document.body.style.willChange = "filter";
-        document.body.style.filter = `blur(${transitionSettings.blur}px)`;
-        document.body.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
-        document.body.style.overflow = "hidden";
+        // PRODUCTION-SAFE: Double-check body exists before applying styles
+        if (!document.body) {
+          console.warn("[PageTransition] Document.body not available, skipping blur");
+          return;
+        }
+
+        try {
+          // Use will-change untuk better performance
+          document.body.style.willChange = "filter";
+          document.body.style.filter = `blur(${transitionSettings.blur}px)`;
+          document.body.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
+          document.body.style.overflow = "hidden";
+        } catch (error) {
+          console.error("[PageTransition] Error applying body blur:", error);
+        }
 
         // ALWAYS apply blur to hero section for consistent transition effect
-        // Use multiple requestAnimationFrame to ensure DOM is ready and visible
-        // PRODUCTION-SAFE: Enhanced with proper DOM checks
-        const applyHeroBlur = () => {
+        // PRODUCTION-SAFE: Enhanced with robust retry mechanism and DOM checks
+        const applyHeroBlur = (attempt = 0) => {
+          const maxAttempts = 5;
+          
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-              // Double-check DOM is ready (production-safe)
-              if (typeof document === "undefined") return;
+              // PRODUCTION-SAFE: Enhanced DOM checks
+              if (typeof document === "undefined" || !document.body) {
+                if (attempt < maxAttempts) {
+                  setTimeout(() => applyHeroBlur(attempt + 1), 20);
+                }
+                return;
+              }
 
               const heroSection = document.querySelector(".hero-section-transition");
               if (heroSection) {
-                const heroEl = heroSection as HTMLElement;
-                // Apply blur transition to hero section
-                heroEl.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
-                heroEl.style.willChange = "filter, opacity";
-                // CRITICAL: Ensure hero section gets blurred AND stays visible (opacity 1)
-                // This matches the behavior of other pages - visible but blurred
-                heroEl.style.filter = `blur(${transitionSettings.blur}px)`;
-                heroEl.style.opacity = "1"; // FORCE opacity to 1 to keep it visible with blur
+                try {
+                  const heroEl = heroSection as HTMLElement;
+                  // Apply blur transition to hero section
+                  heroEl.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
+                  heroEl.style.willChange = "filter, opacity";
+                  // CRITICAL: Ensure hero section gets blurred AND stays visible (opacity 1)
+                  heroEl.style.filter = `blur(${transitionSettings.blur}px)`;
+                  heroEl.style.opacity = "1"; // FORCE opacity to 1 to keep it visible with blur
+                  console.log("[PageTransition] Hero section blur applied");
+                } catch (error) {
+                  console.error("[PageTransition] Error applying hero blur:", error);
+                }
+              } else if (attempt < maxAttempts && isBlurring) {
+                // Retry if hero section not found yet
+                setTimeout(() => applyHeroBlur(attempt + 1), 50);
               }
             });
           });
@@ -147,27 +194,36 @@ export function PageTransitionOverlay() {
 
         // Apply hero blur with retry mechanism for production
         applyHeroBlur();
-
-        // Retry after a short delay if hero section not found (production-safe)
-        setTimeout(() => {
-          const heroSection = document.querySelector(".hero-section-transition");
-          if (!heroSection && isBlurring) {
-            applyHeroBlur();
-          }
-        }, 50);
       };
 
-      applyBlurEffects();
+      // PRODUCTION-SAFE: Apply blur effects with error handling
+      try {
+        applyBlurEffects();
+      } catch (error) {
+        console.error("[PageTransition] Error in applyBlurEffects:", error);
+      }
 
       // Remove will-change after transition untuk cleanup - faster cleanup
       setTimeout(
         () => {
-          document.body.style.willChange = "auto";
+          if (document.body) {
+            try {
+              document.body.style.willChange = "auto";
+            } catch (error) {
+              console.error("[PageTransition] Error cleaning up body willChange:", error);
+            }
+          }
           // Also cleanup hero section
           requestAnimationFrame(() => {
-            const heroSection = document.querySelector(".hero-section-transition");
-            if (heroSection) {
-              (heroSection as HTMLElement).style.willChange = "auto";
+            if (typeof document !== "undefined") {
+              const heroSection = document.querySelector(".hero-section-transition");
+              if (heroSection) {
+                try {
+                  (heroSection as HTMLElement).style.willChange = "auto";
+                } catch (error) {
+                  console.error("[PageTransition] Error cleaning up hero willChange:", error);
+                }
+              }
             }
           });
         },
@@ -175,38 +231,78 @@ export function PageTransitionOverlay() {
       );
     } else if (!isBlurring) {
       // Remove blur INSTANTLY for faster transitions
-      // PRODUCTION-SAFE: Enhanced with DOM checks
+      // PRODUCTION-SAFE: Enhanced with robust DOM checks and error handling
       const removeBlur = () => {
-        if (typeof window === "undefined" || !document.body) return;
+        if (typeof window === "undefined" || !document.body) {
+          console.warn("[PageTransition] Window or document.body not available for blur removal");
+          return;
+        }
 
-        document.body.style.filter = "blur(0px)";
-        document.body.style.overflow = "";
+        try {
+          document.body.style.filter = "blur(0px)";
+          document.body.style.overflow = "";
+        } catch (error) {
+          console.error("[PageTransition] Error removing body blur:", error);
+        }
 
         // Also remove from hero section - ensure smooth removal
-        requestAnimationFrame(() => {
-          if (typeof document === "undefined") return;
+        // PRODUCTION-SAFE: Enhanced with retry mechanism
+        const removeHeroBlur = (attempt = 0) => {
+          requestAnimationFrame(() => {
+            if (typeof document === "undefined" || !document.body) {
+              if (attempt < 3) {
+                setTimeout(() => removeHeroBlur(attempt + 1), 20);
+              }
+              return;
+            }
 
-          const heroSection = document.querySelector(".hero-section-transition");
-          if (heroSection) {
-            const heroEl = heroSection as HTMLElement;
-            // Faster blur removal - reduced duration
-            heroEl.style.transition = `filter ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1)`;
-            heroEl.style.filter = "blur(0px)";
-          }
-        });
+            const heroSection = document.querySelector(".hero-section-transition");
+            if (heroSection) {
+              try {
+                const heroEl = heroSection as HTMLElement;
+                // Faster blur removal - reduced duration
+                heroEl.style.transition = `filter ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1)`;
+                heroEl.style.filter = "blur(0px)";
+              } catch (error) {
+                console.error("[PageTransition] Error removing hero blur:", error);
+              }
+            } else if (attempt < 3) {
+              // Retry if hero section not found
+              setTimeout(() => removeHeroBlur(attempt + 1), 50);
+            }
+          });
+        };
+
+        removeHeroBlur();
 
         // Faster cleanup - reduced delays
         setTimeout(() => {
-          document.body.style.willChange = "auto";
+          if (document.body) {
+            try {
+              document.body.style.willChange = "auto";
+            } catch (error) {
+              console.error("[PageTransition] Error cleaning up body willChange:", error);
+            }
+          }
           requestAnimationFrame(() => {
-            const heroSection = document.querySelector(".hero-section-transition");
-            if (heroSection) {
-              const heroEl = heroSection as HTMLElement;
-              heroEl.style.willChange = "auto";
-              // Remove transition after animation completes - faster cleanup
-              setTimeout(() => {
-                heroEl.style.transition = "";
-              }, transitionSettings.duration * 600); // Reduced from 800ms
+            if (typeof document !== "undefined") {
+              const heroSection = document.querySelector(".hero-section-transition");
+              if (heroSection) {
+                try {
+                  const heroEl = heroSection as HTMLElement;
+                  heroEl.style.willChange = "auto";
+                  // Remove transition after animation completes - faster cleanup
+                  setTimeout(() => {
+                    try {
+                      heroEl.style.transition = "";
+                    } catch (error) {
+                      console.error("[PageTransition] Error removing hero transition:", error);
+                    }
+                  }, transitionSettings.duration * 600); // Reduced from 800ms
+                } catch (error) {
+                  console.error("[PageTransition] Error cleaning up hero styles:", error);
+                }
+              }
             }
           });
         }, 50); // Reduced from 100ms to 50ms

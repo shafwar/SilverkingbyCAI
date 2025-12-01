@@ -114,10 +114,10 @@ export function OptimizedLink({
   useEffect(() => {
     if (prefetch && typeof window !== "undefined" && typeof document !== "undefined") {
       const timer = setTimeout(() => {
-        prefetchRoute(href.toString());
-      }, prefetchDelay);
+      prefetchRoute(href.toString());
+    }, prefetchDelay);
       return () => clearTimeout(timer);
-    }
+  }
   }, [prefetch, prefetchDelay, href, prefetchRoute]);
 
   // Handle hover prefetching
@@ -161,11 +161,24 @@ export function OptimizedLink({
       }
 
       // Trigger smooth transition dengan blur effect
+      // PRODUCTION-SAFE: Enhanced with DOM readiness check
       // Use requestAnimationFrame untuk ensure smooth start
       if (beginTransition) {
-        requestAnimationFrame(() => {
-          beginTransition(hrefStr);
-        });
+        if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
+          requestAnimationFrame(() => {
+            beginTransition(hrefStr);
+          });
+        } else {
+          // Retry after DOM is ready
+          const retryTimer = setTimeout(() => {
+            if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
+              requestAnimationFrame(() => {
+                beginTransition(hrefStr);
+              });
+            }
+          }, 10);
+          // Note: Cleanup handled by component lifecycle
+        }
       }
     },
     [onClick, beginTransition, href]

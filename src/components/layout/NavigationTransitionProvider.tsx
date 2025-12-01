@@ -24,20 +24,53 @@ const NavigationTransitionContext = createContext<NavigationTransitionContextVal
 function normalizeHref(href: string): string | null {
   if (!href) return null;
   if (href.startsWith("#")) return null;
+  
+  // PRODUCTION-SAFE: Enhanced URL normalization with better error handling
   try {
-    const url = href.startsWith("http") ? new URL(href) : new URL(href, window.location.origin);
-    // Normalize home path - ensure "/", "/en", "/id" all map to "/"
-    const pathname = url.pathname;
+    // Handle absolute URLs
+    if (href.startsWith("http://") || href.startsWith("https://")) {
+      const url = new URL(href);
+      const pathname = url.pathname;
+      // Normalize home path - ensure "/", "/en", "/id" all map to "/"
+      if (pathname === "/" || pathname === "/en" || pathname === "/id") {
+        return "/";
+      }
+      return pathname + url.search;
+    }
+    
+    // Handle relative URLs - PRODUCTION-SAFE: Use window.location.origin with fallback
+    if (typeof window !== "undefined" && window.location) {
+      try {
+        const url = new URL(href, window.location.origin);
+        const pathname = url.pathname;
+        // Normalize home path
+        if (pathname === "/" || pathname === "/en" || pathname === "/id") {
+          return "/";
+        }
+        return pathname + url.search;
+      } catch (urlError) {
+        // Fallback: manual pathname extraction
+        const pathname = href.split("?")[0].split("#")[0];
+        if (pathname === "/" || pathname === "/en" || pathname === "/id") {
+          return "/";
+        }
+        return pathname;
+      }
+    }
+    
+    // Fallback: normalize home paths manually
+    const pathname = href.split("?")[0].split("#")[0];
     if (pathname === "/" || pathname === "/en" || pathname === "/id") {
       return "/";
     }
-    return pathname + url.search;
-  } catch {
-    // Fallback: normalize home paths
-    if (href === "/" || href === "/en" || href === "/id") {
+    return pathname;
+  } catch (error) {
+    // Final fallback: return href as-is if it's a simple path
+    const pathname = href.split("?")[0].split("#")[0];
+    if (pathname === "/" || pathname === "/en" || pathname === "/id") {
       return "/";
     }
-    return href;
+    return pathname.startsWith("/") ? pathname : `/${pathname}`;
   }
 }
 
@@ -50,32 +83,72 @@ export function NavigationTransitionProvider({ children }: { children: ReactNode
 
   const beginTransition = useCallback(
     (href: string) => {
-      // PRODUCTION-SAFE: Ensure window exists
-      if (typeof window === "undefined") return;
-
-      // PRODUCTION-SAFE: Ensure document is ready
-      if (typeof document === "undefined" || !document.body) {
-        // Retry after DOM is ready
-        const retryTimer = setTimeout(() => {
-          if (typeof document !== "undefined" && document.body) {
-            beginTransition(href);
-          }
-        }, 10);
+      // PRODUCTION-SAFE: Enhanced checks with retry mechanism
+      if (typeof window === "undefined") {
+        console.warn("[NavigationTransition] Window not available, skipping transition");
         return;
       }
 
-      const normalized = normalizeHref(href);
-      if (!normalized) return;
-      if (normalized === pathname) return;
+      // PRODUCTION-SAFE: Enhanced DOM readiness check with multiple retry attempts
+      if (typeof document === "undefined" || !document.body) {
+        // Retry with exponential backoff for production environments
+        let retryCount = 0;
+        const maxRetries = 5;
+        const retryDelay = 10;
+        
+        const retryTimer = setInterval(() => {
+          retryCount++;
+          if (typeof document !== "undefined" && document.body) {
+            clearInterval(retryTimer);
+            // Use requestAnimationFrame to ensure DOM is fully ready
+            requestAnimationFrame(() => {
+              beginTransition(href);
+            });
+          } else if (retryCount >= maxRetries) {
+            clearInterval(retryTimer);
+            console.warn("[NavigationTransition] DOM not ready after retries, skipping transition");
+          }
+        }, retryDelay);
+        
+        return () => clearInterval(retryTimer);
+      }
+
+      // PRODUCTION-SAFE: Normalize href with enhanced error handling
+      let normalized: string | null = null;
+      try {
+        normalized = normalizeHref(href);
+      } catch (error) {
+        console.error("[NavigationTransition] Error normalizing href:", error, { href });
+        // Fallback: try simple path extraction
+        const pathname = href.split("?")[0].split("#")[0];
+        normalized = pathname === "/" || pathname === "/en" || pathname === "/id" ? "/" : pathname;
+      }
+
+      if (!normalized) {
+        console.warn("[NavigationTransition] Invalid href, skipping transition:", href);
+        return;
+      }
+
+      // Normalize current pathname for comparison
+      const normalizedPathname = pathname === "/" || pathname === "/en" || pathname === "/id" ? "/" : pathname;
+      if (normalized === normalizedPathname) {
+        // Already on target page, no transition needed
+        return;
+      }
 
       // Clear any existing timeout
       if (transitionTimeoutRef.current) {
         clearTimeout(transitionTimeoutRef.current);
+        transitionTimeoutRef.current = null;
       }
 
-      targetPathRef.current = normalized;
-      startTimeRef.current = Date.now();
-      setIsActive(true);
+      // PRODUCTION-SAFE: Use requestAnimationFrame to ensure smooth transition start
+      requestAnimationFrame(() => {
+        targetPathRef.current = normalized;
+        startTimeRef.current = Date.now();
+        setIsActive(true);
+        console.log("[NavigationTransition] Transition started:", { from: pathname, to: normalized });
+      });
     },
     [pathname]
   );

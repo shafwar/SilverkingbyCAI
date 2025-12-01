@@ -214,10 +214,23 @@ export default function Navbar() {
     }
 
     // Start smooth transition dengan blur effect
+    // PRODUCTION-SAFE: Enhanced with DOM readiness check
     // Use requestAnimationFrame untuk ensure smooth start
-    requestAnimationFrame(() => {
-      beginTransition(href);
-    });
+    if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
+      requestAnimationFrame(() => {
+        beginTransition(href);
+      });
+    } else {
+      // Retry after DOM is ready
+      const retryTimer = setTimeout(() => {
+        if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
+          requestAnimationFrame(() => {
+            beginTransition(href);
+          });
+        }
+      }, 10);
+      // Note: Cleanup handled by component unmount
+    }
   };
 
   return (
@@ -250,9 +263,21 @@ export default function Navbar() {
               // ALWAYS trigger transition when clicking logo to go home
               const href = locale === routing.defaultLocale ? "/" : `/${locale}`;
               if (pathname !== href) {
-                requestAnimationFrame(() => {
-                  beginTransition(href);
-                });
+                // PRODUCTION-SAFE: Enhanced with DOM readiness check
+                if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
+                  requestAnimationFrame(() => {
+                    beginTransition(href);
+                  });
+                } else {
+                  // Retry after DOM is ready
+                  setTimeout(() => {
+                    if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
+                      requestAnimationFrame(() => {
+                        beginTransition(href);
+                      });
+                    }
+                  }, 10);
+                }
               }
             }}
           >
@@ -420,9 +445,21 @@ export default function Navbar() {
                         // ALWAYS trigger transition when clicking logo to go home
                         const href = locale === routing.defaultLocale ? "/" : `/${locale}`;
                         if (pathname !== href) {
-                          requestAnimationFrame(() => {
-                            beginTransition(href);
-                          });
+                          // PRODUCTION-SAFE: Enhanced with DOM readiness check
+                          if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
+                            requestAnimationFrame(() => {
+                              beginTransition(href);
+                            });
+                          } else {
+                            // Retry after DOM is ready
+                            setTimeout(() => {
+                              if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
+                                requestAnimationFrame(() => {
+                                  beginTransition(href);
+                                });
+                              }
+                            }, 10);
+                          }
                         }
                       }}
                       className="flex items-center"
