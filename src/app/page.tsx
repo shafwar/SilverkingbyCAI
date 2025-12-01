@@ -5,8 +5,6 @@ import { GeistSans } from "geist/font/sans";
 import { Playfair_Display } from "next/font/google";
 import "@/styles/globals.css";
 import { Providers } from "./providers";
-import { NavigationTransitionProvider } from "@/components/layout/NavigationTransitionProvider";
-import { PageTransitionOverlay } from "@/components/layout/PageTransitionOverlay";
 import RootPageContent from "./RootPageContent";
 
 const playfair = Playfair_Display({
@@ -32,12 +30,9 @@ export default async function RootPage() {
 
   return (
     <NextIntlClientProvider messages={messages}>
-      <NavigationTransitionProvider>
-        <Providers>
-          <RootPageContent />
-        </Providers>
-        <PageTransitionOverlay />
-      </NavigationTransitionProvider>
+      <Providers>
+        <RootPageContent />
+      </Providers>
     </NextIntlClientProvider>
   );
 }

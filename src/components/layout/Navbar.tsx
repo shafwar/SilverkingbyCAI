@@ -5,7 +5,6 @@ import { Link } from "@/i18n/routing";
 import Image from "next/image";
 import { ArrowRight, X, QrCode } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigationTransition } from "./NavigationTransitionProvider";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useTranslations, useLocale } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/routing";
@@ -18,7 +17,6 @@ export default function Navbar() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
-  const { beginTransition } = useNavigationTransition();
   const t = useTranslations("nav");
   const locale = useLocale();
   const pathname = usePathname();
@@ -213,29 +211,7 @@ export default function Navbar() {
       return;
     }
 
-    // Start smooth transition dengan blur effect
-    // ENHANCED: Trigger blur IMMEDIATELY BEFORE navigation for visible effect
-    // PRODUCTION-SAFE: Enhanced with DOM readiness check
-    if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
-      // Call immediately to trigger blur on current page (same as OptimizedLink)
-      beginTransition(href);
-
-      // Then use requestAnimationFrame to ensure smooth animation
-      requestAnimationFrame(() => {
-        // Ensure blur is applied
-        if (document.body) {
-          // Blur should already be applied by PageTransitionOverlay
-        }
-      });
-    } else {
-      // Retry after DOM is ready
-      const retryTimer = setTimeout(() => {
-        if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
-          beginTransition(href);
-        }
-      }, 10);
-      // Note: Cleanup handled by component unmount
-    }
+    // No transition - direct navigation
   };
 
   return (
@@ -264,31 +240,8 @@ export default function Navbar() {
             href="/"
             prefetch={true}
             className="group relative flex items-center"
-            onClick={(e) => {
-              // ALWAYS trigger transition when clicking logo to go home
-              const href = locale === routing.defaultLocale ? "/" : `/${locale}`;
-              if (pathname !== href) {
-                // PRODUCTION-SAFE: Enhanced with DOM readiness check
-                // Call immediately for immediate blur effect
-                if (
-                  typeof window !== "undefined" &&
-                  typeof document !== "undefined" &&
-                  document.body
-                ) {
-                  beginTransition(href);
-                } else {
-                  // Retry after DOM is ready
-                  setTimeout(() => {
-                    if (
-                      typeof window !== "undefined" &&
-                      typeof document !== "undefined" &&
-                      document.body
-                    ) {
-                      beginTransition(href);
-                    }
-                  }, 10);
-                }
-              }
+            onClick={() => {
+              // Direct navigation - no transition
             }}
           >
             <div className="relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-[8deg]">
@@ -462,7 +415,7 @@ export default function Navbar() {
                             typeof document !== "undefined" &&
                             document.body
                           ) {
-                            beginTransition(href);
+                            // No transition
                           } else {
                             // Retry after DOM is ready
                             setTimeout(() => {
@@ -471,7 +424,7 @@ export default function Navbar() {
                                 typeof document !== "undefined" &&
                                 document.body
                               ) {
-                                beginTransition(href);
+                                // No transition
                               }
                             }, 10);
                           }
