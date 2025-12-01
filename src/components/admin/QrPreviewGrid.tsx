@@ -295,11 +295,10 @@ export function QrPreviewGrid() {
       // Draw QR code on front template
       frontCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
 
-      // === MATCH handleDownloadAll LAYOUT: Hanya product name di ATAS QR, TIDAK ADA TEXT DI BAWAH QR ===
-      // CRITICAL: Sama seperti handleDownloadAll yang berhasil - hanya product name di atas QR
-      // TIDAK ada text di bawah QR (no serial code, no duplicate product name)
+      // === LAYOUT: Nama produk di ATAS QR, Serial code di BAWAH QR (diluar box QR) ===
+      // CRITICAL: Sama seperti gambar ska299 - product name di atas, serial code di bawah (tanpa duplikasi nama)
 
-      // 1. Nama produk di ATAS QR saja (sama seperti handleDownloadAll)
+      // 1. Nama produk di ATAS QR
       // Position: Di atas QR code, dengan spacing yang tepat
       if (product.name && product.name.trim().length > 0) {
         const nameFontSize = Math.floor(frontTemplateImg.width * 0.027);
@@ -308,14 +307,24 @@ export function QrPreviewGrid() {
         frontCtx.textAlign = "center";
         frontCtx.textBaseline = "bottom";
         frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
-        // Gunakan product.name as-is (tidak extract, sesuai handleDownloadAll)
+        // Gunakan product.name as-is
         frontCtx.fillText(product.name.trim(), frontTemplateImg.width / 2, nameY);
         console.log(`[Download] Product name drawn: "${product.name.trim()}" at Y=${nameY}`);
       }
 
-      // CRITICAL: TIDAK ada text di bawah QR (sama seperti handleDownloadAll)
-      // Serial code dan duplicate product name di bawah QR telah dihapus
-      // === END: Hanya 1 fillText call (product name di atas QR), tidak ada text di bawah QR ===
+      // 2. Serial code di BAWAH QR (diluar dari box QR nya)
+      // Position: Di bawah QR code, dengan spacing yang tepat
+      if (product.serialCode && product.serialCode.trim().length > 0) {
+        const serialFontSize = Math.floor(frontTemplateImg.width * 0.031);
+        const serialY = qrY + qrSize + 40; // Fixed spacing below QR (diluar box QR)
+        frontCtx.fillStyle = "#222222";
+        frontCtx.textAlign = "center";
+        frontCtx.textBaseline = "top";
+        frontCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
+        frontCtx.fillText(product.serialCode.trim().toUpperCase(), frontTemplateImg.width / 2, serialY);
+        console.log(`[Download] Serial code drawn: "${product.serialCode.trim().toUpperCase()}" at Y=${serialY}`);
+      }
+      // === END: 2 fillText calls - product name di atas QR, serial code di bawah QR ===
 
       // Create canvas for BACK template (no QR, just the template)
       const backCanvas = document.createElement("canvas");
