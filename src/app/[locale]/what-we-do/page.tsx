@@ -557,11 +557,15 @@ export default function WhatWeDoPage() {
       {/* Shared Navbar */}
       <Navbar />
 
-      {/* Hero Background – metal crafting hands video, matching products hero style */}
-      {/* ENHANCED: Better container for proportional video */}
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden isolate">
-        <div className="absolute inset-0 overflow-hidden">
-          {/* Fallback dark gradient */}
+      {/* Hero Section with Video Background - matching Authenticity style */}
+      <section
+        ref={(element) => {
+          sectionsRef.current[0] = element as HTMLDivElement | null;
+        }}
+        className="relative flex min-h-[80vh] md:min-h-[85vh] lg:min-h-[90vh] items-center justify-center overflow-hidden px-6 pt-24 pb-12"
+      >
+        {/* Video Background */}
+        <div className="absolute inset-0 z-0 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-luxury-black via-luxury-black/95 to-luxury-black z-0" />
 
           <video
@@ -683,7 +687,9 @@ export default function WhatWeDoPage() {
             preload="auto"
             className="absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 will-change-transform z-10"
             style={{
-              transform: "scale(1.0)",
+              objectFit: "cover",
+              objectPosition: "center center",
+              transform: "scale(0.85)",
               transformOrigin: "center center",
             }}
             disablePictureInPicture
@@ -701,22 +707,15 @@ export default function WhatWeDoPage() {
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.8)_100%)] z-20" />
           <div className="absolute inset-x-0 bottom-0 h-40 md:h-52 lg:h-64 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-transparent pointer-events-none z-20" />
         </div>
-      </div>
 
-      {/* ENHANCED: Hero Section – typography & layout with better proportions - Mobile optimized */}
-      <section
-        ref={(element) => {
-          sectionsRef.current[0] = element as HTMLDivElement | null;
-        }}
-        className="relative px-4 sm:px-6 md:px-8 lg:px-12 pt-[calc(env(safe-area-inset-top)+4rem)] sm:pt-28 md:pt-36 lg:pt-44 pb-12 sm:pb-20 md:pb-28 lg:pb-36 min-h-[75vh] sm:min-h-[70vh] md:min-h-[80vh] lg:min-h-[85vh] flex items-center"
-      >
-        <div className="relative z-10 w-full max-w-[1400px] mx-auto">
+        {/* Hero Content - matching Authenticity layout */}
+        <div className="relative z-10 w-full max-w-[1400px] mx-auto text-center">
           <motion.div
             ref={heroRef}
             variants={revealVariants}
             initial="initial"
             animate="animate"
-            className="text-left max-w-4xl"
+            className="max-w-4xl mx-auto"
           >
             <motion.h1
               className="text-[1.75rem] sm:text-[2rem] md:text-[3.5rem] lg:text-[2.5rem] xl:text-[3.5rem] 2xl:text-[4rem] font-sans font-light leading-tight sm:leading-[1.15] tracking-tight md:tracking-[-0.02em] lg:tracking-[-0.03em] text-white"
