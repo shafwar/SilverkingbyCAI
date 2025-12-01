@@ -9,6 +9,7 @@ import { getR2UrlClient } from "@/utils/r2-url";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import { useNavigationTransitionSafe } from "@/components/layout/NavigationTransitionProvider";
+import { OptimizedLink } from "@/components/ui/OptimizedLink";
 
 interface HeroSectionProps {
   shouldAnimate?: boolean;
@@ -124,24 +125,32 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
   const prevPathnameRef = useRef<string | null>(null);
   const fadeInTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Detect page transition untuk smooth fade-in saat kembali ke home
-  // ALWAYS ensure transition blur effect works when navigating to home
+  // ENHANCED: Detect page transition untuk smooth fade-in/out
+  // Works for BOTH navigating TO home AND FROM home to other pages
   useEffect(() => {
     // Normalize pathname untuk consistent detection
     const normalizedPathname = pathname.replace(/^\/[a-z]{2}$/, "/").replace(/^\/[a-z]{2}\//, "/");
     const isHomePage =
       normalizedPathname === "/" || pathname === "/" || pathname === "/en" || pathname === "/id";
 
-    // Check if we just navigated to home page (more robust detection)
+    // Check if pathname changed
     const wasDifferentPage =
       prevPathnameRef.current !== null &&
       prevPathnameRef.current !== pathname &&
       prevPathnameRef.current !== normalizedPathname;
 
+    // Check if we were on home page before
+    const wasOnHomePage =
+      prevPathnameRef.current !== null &&
+      (prevPathnameRef.current === "/" ||
+        prevPathnameRef.current === "/en" ||
+        prevPathnameRef.current === "/id" ||
+        prevPathnameRef.current.replace(/^\/[a-z]{2}$/, "/").replace(/^\/[a-z]{2}\//, "/") === "/");
+
     if (isHomePage) {
-      // Always ensure HeroSection is visible and ready for transition
-      if (wasDifferentPage) {
-        // User just navigated back to home - ALWAYS trigger fade-in
+      // We're on home page now
+      if (wasDifferentPage && wasOnHomePage === false) {
+        // User just navigated TO home from another page - trigger fade-in
         console.log("[HeroSection] Navigating to home, triggering fade-in", {
           prevPath: prevPathnameRef.current,
           currentPath: pathname,
@@ -156,34 +165,30 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         }
 
         // IMPORTANT: Don't set opacity to 0 immediately - keep it visible with blur
-        // This ensures blur effect is visible like other pages
+        // Match the DEEP blur from PageTransitionOverlay (14px * 1.2 = ~17px)
         if (containerRef.current) {
-          // Keep opacity at 1 but apply blur - enhanced blur for better visibility
-          // Match the enhanced blur from PageTransitionOverlay (8px * 1.2 = ~10px)
           gsap.set(containerRef.current, {
-            opacity: 0.98,
-            filter: "blur(10px)", // Enhanced blur matching PageTransitionOverlay hero blur
+            opacity: 0.94,
+            filter: "blur(17px)", // DEEP blur matching PageTransitionOverlay hero blur
           });
         }
 
         // Wait for page transition blur to be applied and visible
-        // Then start fade-in animation with longer delay for better effect
-        const fadeInDelay = isTransitionActive ? 300 : 200; // Wait for blur to be fully visible
+        const fadeInDelay = isTransitionActive ? 350 : 250; // Wait for blur to be fully visible
 
         fadeInTimeoutRef.current = setTimeout(() => {
           if (containerRef.current) {
             // Smooth fade-in animation dengan GSAP
-            // Start from blurred state (opacity 0.98, blur 10px) to clear (opacity 1, blur 0px)
             gsap.fromTo(
               containerRef.current,
               {
-                opacity: 0.98,
-                filter: "blur(10px)", // Start blurred but visible
+                opacity: 0.94,
+                filter: "blur(17px)", // DEEP blur
               },
               {
                 opacity: 1,
-                filter: "blur(0px)", // Fade blur to clear
-                duration: 0.6, // Longer duration for smoother blur removal
+                filter: "blur(0px)",
+                duration: 0.7, // Longer duration for smoother blur removal
                 ease: "power2.out",
                 onComplete: () => {
                   setIsPageTransitioning(false);
@@ -209,6 +214,24 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             filter: "blur(0px)",
           });
         }
+      }
+    } else if (wasOnHomePage && wasDifferentPage) {
+      // ENHANCED: User navigated FROM home to another page
+      // Ensure hero section participates in blur transition
+      console.log("[HeroSection] Navigating from home to another page", {
+        prevPath: prevPathnameRef.current,
+        currentPath: pathname,
+        isTransitionActive,
+      });
+
+      // Hero section will be blurred by PageTransitionOverlay
+      // Just ensure it's ready for transition with DEEP blur
+      if (containerRef.current && isTransitionActive) {
+        // Apply DEEP blur immediately to match global blur
+        gsap.set(containerRef.current, {
+          opacity: 0.94,
+          filter: "blur(17px)", // DEEP blur matching PageTransitionOverlay
+        });
       }
     }
 
@@ -765,18 +788,9 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         transition={{ duration: 1, delay: 1.1, ease: "easeOut" }}
         className="absolute bottom-[calc(50px+env(safe-area-inset-bottom))] sm:bottom-[calc(55px+env(safe-area-inset-bottom))] md:bottom-8 inset-x-0 z-30 flex justify-center px-3.5 sm:px-4 pointer-events-auto"
       >
-        <a
+        <OptimizedLink
           href="/authenticity"
           className="group inline-flex items-center gap-2.5 sm:gap-3 text-left w-full max-w-[min(calc(100vw-28px),358px)] sm:max-w-[368px] backdrop-blur-sm bg-black/50 border border-white/10 rounded-2xl p-3 sm:p-3.5 transition-all duration-300 hover:bg-black/60 hover:border-white/20 pointer-events-auto"
-          onMouseEnter={() => {
-            // Prefetch on hover for faster navigation
-            if (typeof window !== "undefined") {
-              const link = document.createElement("link");
-              link.rel = "prefetch";
-              link.href = "/authenticity";
-              document.head.appendChild(link);
-            }
-          }}
           style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
         >
           <div className="flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border border-white/20 bg-black/40">
@@ -802,7 +816,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
               {t("qrCard.description")}
             </p>
           </div>
-        </a>
+        </OptimizedLink>
       </motion.div>
 
       {/* Bottom Fade */}

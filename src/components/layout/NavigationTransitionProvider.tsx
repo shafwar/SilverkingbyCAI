@@ -186,7 +186,7 @@ export function NavigationTransitionProvider({ children }: { children: ReactNode
       const elapsed = Date.now() - startTimeRef.current;
 
       // ENHANCED transition timing - longer duration for visible blur effect
-      // Mobile: 400ms, Desktop: 500ms - ensures blur is clearly visible
+      // Mobile: 450ms, Desktop: 550ms - ensures blur is clearly visible and smooth
       // PRODUCTION-SAFE: Enhanced window checks
       const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
       const prefersReducedMotion =
@@ -194,12 +194,13 @@ export function NavigationTransitionProvider({ children }: { children: ReactNode
         typeof window.matchMedia !== "undefined" &&
         window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-      // Longer timing to ensure blur effect is visible and smooth
-      let minimumVisible = 500; // Increased for visible blur effect
+      // Longer timing to ensure DEEP blur effect is visible and smooth
+      // Increased to match PageTransitionOverlay duration (500ms desktop, 450ms mobile)
+      let minimumVisible = 600; // Increased for visible DEEP blur effect (matches 500ms + buffer)
       if (prefersReducedMotion) {
         minimumVisible = 0; // Instant for reduced motion
       } else if (isMobile) {
-        minimumVisible = 400; // Mobile: 400ms for visible blur
+        minimumVisible = 500; // Mobile: 500ms for visible blur (matches 450ms + buffer)
       }
 
       const remaining = elapsed >= minimumVisible ? 0 : minimumVisible - elapsed;

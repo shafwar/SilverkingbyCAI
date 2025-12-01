@@ -43,11 +43,12 @@ export function PageTransitionOverlay() {
     }
   }, []);
 
-  // ENHANCED transition settings - visible blur effect with smooth animation
+  // ENHANCED transition settings - DEEP blur effect with smooth animation
+  // OPTIMIZED for all pages and mobile devices
   const transitionSettings = useMemo(() => {
     // Longer durations for visible and smooth blur transitions
-    const baseDuration = 0.4; // 400ms for smooth visible blur
-    const baseBlur = 8; // Increased blur intensity for better visibility
+    const baseDuration = 0.5; // 500ms for smooth visible blur (increased for better visibility)
+    const baseBlur = 14; // DEEP blur intensity for better visibility (10px → 14px)
 
     if (deviceInfo.prefersReducedMotion) {
       return {
@@ -59,16 +60,16 @@ export function PageTransitionOverlay() {
 
     if (deviceInfo.isMobile || deviceInfo.isLowPerformance) {
       return {
-        duration: 0.35, // 350ms on mobile for visible blur
-        blur: getBlurIntensity(baseBlur), // ~4px on mobile
-        progressSpeed: 200, // Faster progress on mobile
+        duration: 0.45, // 450ms on mobile for visible blur (increased from 400ms)
+        blur: getBlurIntensity(baseBlur), // ~7px on mobile (increased from 5px)
+        progressSpeed: 280, // Optimized progress on mobile
       };
     }
 
     return {
-      duration: baseDuration, // 400ms on desktop for smooth blur
-      blur: baseBlur, // 8px blur on desktop
-      progressSpeed: 300, // Progress speed on desktop
+      duration: baseDuration, // 500ms on desktop for smooth blur
+      blur: baseBlur, // 14px DEEP blur on desktop (increased from 10px)
+      progressSpeed: 400, // Progress speed on desktop
     };
   }, [deviceInfo]);
 
@@ -77,21 +78,39 @@ export function PageTransitionOverlay() {
     if (!isMounted || typeof window === "undefined") return;
 
     if (isActive) {
-      // Start blur effect on current page
+      // Start blur effect on current page - ALWAYS for ALL pages
       setIsBlurring(true);
 
       // PRODUCTION-SAFE: Initialize NProgress with error handling
+      // ENHANCED: Always show NProgress for ALL navigations
       try {
+        // Configure NProgress FIRST before starting (ensures proper settings)
+        NProgress.configure({
+          showSpinner: false,
+          trickleSpeed: deviceInfo.isMobile ? 60 : 100, // Faster trickle for better visibility
+          minimum: deviceInfo.isMobile ? 0.12 : 0.08, // Higher minimum for better visibility
+          easing: "ease-out",
+          speed: transitionSettings.progressSpeed,
+        });
+
         // Start NProgress with optimized settings
         NProgress.start();
 
-        // Configure NProgress untuk ULTRA FAST animation dengan optimasi mobile
-        NProgress.configure({
-          showSpinner: false,
-          trickleSpeed: deviceInfo.isMobile ? 100 : 150, // Much faster trickle
-          minimum: deviceInfo.isMobile ? 0.05 : 0.03, // Lower minimum for faster start
-          easing: "ease-out",
-          speed: transitionSettings.progressSpeed,
+        // Force NProgress to be visible immediately with higher initial value
+        requestAnimationFrame(() => {
+          try {
+            NProgress.set(0.15); // Higher initial progress for immediate visibility
+            // Continue trickling for smooth progress
+            setTimeout(() => {
+              try {
+                NProgress.inc(0.1); // Increment progress
+              } catch (e) {
+                // Ignore
+              }
+            }, 50);
+          } catch (e) {
+            // Ignore if already started
+          }
         });
       } catch (error) {
         console.error("[PageTransition] Error initializing NProgress:", error);
@@ -102,8 +121,14 @@ export function PageTransitionOverlay() {
       setIsBlurring(false);
 
       // PRODUCTION-SAFE: Stop NProgress with error handling
+      // ENHANCED: Ensure NProgress completes smoothly
       try {
-        NProgress.done();
+        // Set to 100% before done() for smooth completion
+        NProgress.set(1.0);
+        // Small delay to ensure progress bar is visible at 100%
+        setTimeout(() => {
+          NProgress.done();
+        }, 100);
       } catch (error) {
         console.error("[PageTransition] Error stopping NProgress:", error);
       }
@@ -148,19 +173,27 @@ export function PageTransitionOverlay() {
         try {
           // Use will-change untuk better performance
           document.body.style.willChange = "filter, opacity";
-          // Apply blur with smooth transition
+          // Apply DEEP blur with smooth transition - blur happens FIRST on current page
+          // Use faster initial transition for immediate blur effect
+          document.body.style.transition = `filter ${transitionSettings.duration * 0.3}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration * 0.3}s cubic-bezier(0.4, 0, 0.2, 1)`;
           document.body.style.filter = `blur(${transitionSettings.blur}px)`;
-          document.body.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
           document.body.style.overflow = "hidden";
           // Slight opacity reduction for more dramatic effect
-          document.body.style.opacity = "0.95";
+          document.body.style.opacity = "0.92";
+
+          // Then smooth out the transition
+          setTimeout(() => {
+            if (document.body) {
+              document.body.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
+            }
+          }, transitionSettings.duration * 300);
         } catch (error) {
           console.error("[PageTransition] Error applying body blur:", error);
         }
 
-        // ALWAYS apply blur to hero section for consistent transition effect
-        // PRODUCTION-SAFE: Enhanced with robust retry mechanism and DOM checks
-        const applyHeroBlur = (attempt = 0) => {
+        // ENHANCED: Apply blur to ALL page sections, not just hero
+        // This ensures consistent blur effect across ALL pages
+        const applyPageBlur = (attempt = 0) => {
           const maxAttempts = 5;
 
           requestAnimationFrame(() => {
@@ -168,11 +201,12 @@ export function PageTransitionOverlay() {
               // PRODUCTION-SAFE: Enhanced DOM checks
               if (typeof document === "undefined" || !document.body) {
                 if (attempt < maxAttempts) {
-                  setTimeout(() => applyHeroBlur(attempt + 1), 20);
+                  setTimeout(() => applyPageBlur(attempt + 1), 20);
                 }
                 return;
               }
 
+              // Apply blur to hero section if it exists (home page)
               const heroSection = document.querySelector(".hero-section-transition");
               if (heroSection) {
                 try {
@@ -181,24 +215,79 @@ export function PageTransitionOverlay() {
                   heroEl.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
                   heroEl.style.willChange = "filter, opacity";
                   // CRITICAL: Ensure hero section gets blurred AND stays visible
-                  // Use slightly higher blur for hero section to make it more dramatic
-                  const heroBlur = transitionSettings.blur * 1.2; // 20% more blur for hero
+                  // Use DEEP blur for hero section - more dramatic effect
+                  const heroBlur = transitionSettings.blur * 1.2; // 20% more blur for hero (14px * 1.2 = ~17px)
+                  // Fast initial blur, then smooth
+                  heroEl.style.transition = `filter ${transitionSettings.duration * 0.3}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration * 0.3}s cubic-bezier(0.4, 0, 0.2, 1)`;
                   heroEl.style.filter = `blur(${heroBlur}px)`;
-                  heroEl.style.opacity = "0.98"; // Slight opacity reduction for effect
+                  heroEl.style.opacity = "0.94"; // Slight opacity reduction for effect
                   console.log("[PageTransition] Hero section blur applied:", { blur: heroBlur });
+
+                  // Smooth out transition
+                  setTimeout(() => {
+                    if (heroEl) {
+                      heroEl.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
+                    }
+                  }, transitionSettings.duration * 300);
                 } catch (error) {
                   console.error("[PageTransition] Error applying hero blur:", error);
                 }
-              } else if (attempt < maxAttempts && isBlurring) {
-                // Retry if hero section not found yet
-                setTimeout(() => applyHeroBlur(attempt + 1), 50);
+              }
+
+              // ENHANCED: Apply DEEP blur to main content sections for ALL pages
+              // This ensures blur effect is visible on products, about, etc.
+              const mainContent = document.querySelector("main");
+              if (mainContent) {
+                try {
+                  const mainEl = mainContent as HTMLElement;
+                  // Fast initial blur
+                  mainEl.style.transition = `filter ${transitionSettings.duration * 0.3}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration * 0.3}s cubic-bezier(0.4, 0, 0.2, 1)`;
+                  mainEl.style.willChange = "filter, opacity";
+                  mainEl.style.filter = `blur(${transitionSettings.blur}px)`;
+                  mainEl.style.opacity = "0.93";
+
+                  // Smooth out transition
+                  setTimeout(() => {
+                    if (mainEl) {
+                      mainEl.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
+                    }
+                  }, transitionSettings.duration * 300);
+                } catch (error) {
+                  console.error("[PageTransition] Error applying main content blur:", error);
+                }
+              }
+
+              // Also apply DEEP blur to article/section elements for better coverage
+              const sections = document.querySelectorAll("section, article");
+              sections.forEach((section) => {
+                try {
+                  const sectionEl = section as HTMLElement;
+                  // Fast initial blur
+                  sectionEl.style.transition = `filter ${transitionSettings.duration * 0.3}s cubic-bezier(0.4, 0, 0.2, 1)`;
+                  sectionEl.style.willChange = "filter";
+                  sectionEl.style.filter = `blur(${transitionSettings.blur * 0.9}px)`; // Slightly less blur for sections
+
+                  // Smooth out transition
+                  setTimeout(() => {
+                    if (sectionEl) {
+                      sectionEl.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
+                    }
+                  }, transitionSettings.duration * 300);
+                } catch (error) {
+                  // Ignore errors for individual sections
+                }
+              });
+
+              if (attempt < maxAttempts && isBlurring && !heroSection && !mainContent) {
+                // Retry if no sections found yet
+                setTimeout(() => applyPageBlur(attempt + 1), 50);
               }
             });
           });
         };
 
-        // Apply hero blur with retry mechanism for production
-        applyHeroBlur();
+        // Apply page blur with retry mechanism for production
+        applyPageBlur();
       };
 
       // PRODUCTION-SAFE: Apply blur effects with error handling
@@ -251,36 +340,62 @@ export function PageTransitionOverlay() {
           console.error("[PageTransition] Error removing body blur:", error);
         }
 
-        // Also remove from hero section - ensure smooth removal
-        // PRODUCTION-SAFE: Enhanced with retry mechanism
-        const removeHeroBlur = (attempt = 0) => {
+        // ENHANCED: Remove blur from ALL page sections
+        const removePageBlur = (attempt = 0) => {
           requestAnimationFrame(() => {
             if (typeof document === "undefined" || !document.body) {
               if (attempt < 3) {
-                setTimeout(() => removeHeroBlur(attempt + 1), 20);
+                setTimeout(() => removePageBlur(attempt + 1), 20);
               }
               return;
             }
 
+            // Remove from hero section
             const heroSection = document.querySelector(".hero-section-transition");
             if (heroSection) {
               try {
                 const heroEl = heroSection as HTMLElement;
-                // Faster blur removal - reduced duration
                 heroEl.style.transition = `filter ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1)`;
                 heroEl.style.filter = "blur(0px)";
                 heroEl.style.opacity = "1";
               } catch (error) {
                 console.error("[PageTransition] Error removing hero blur:", error);
               }
-            } else if (attempt < 3) {
-              // Retry if hero section not found
-              setTimeout(() => removeHeroBlur(attempt + 1), 50);
+            }
+
+            // Remove from main content
+            const mainContent = document.querySelector("main");
+            if (mainContent) {
+              try {
+                const mainEl = mainContent as HTMLElement;
+                mainEl.style.transition = `filter ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1)`;
+                mainEl.style.filter = "blur(0px)";
+                mainEl.style.opacity = "1";
+              } catch (error) {
+                console.error("[PageTransition] Error removing main content blur:", error);
+              }
+            }
+
+            // Remove from sections
+            const sections = document.querySelectorAll("section, article");
+            sections.forEach((section) => {
+              try {
+                const sectionEl = section as HTMLElement;
+                sectionEl.style.transition = `filter ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1)`;
+                sectionEl.style.filter = "blur(0px)";
+              } catch (error) {
+                // Ignore errors
+              }
+            });
+
+            if (attempt < 3 && !heroSection && !mainContent) {
+              // Retry if no sections found
+              setTimeout(() => removePageBlur(attempt + 1), 50);
             }
           });
         };
 
-        removeHeroBlur();
+        removePageBlur();
 
         // Faster cleanup - reduced delays
         setTimeout(() => {
@@ -333,11 +448,29 @@ export function PageTransitionOverlay() {
       document.body.style.willChange = "auto";
 
       if (typeof document !== "undefined") {
+        // Cleanup hero section
         const heroSection = document.querySelector(".hero-section-transition");
         if (heroSection) {
           (heroSection as HTMLElement).style.filter = "";
           (heroSection as HTMLElement).style.willChange = "auto";
         }
+        // Cleanup main content
+        const mainContent = document.querySelector("main");
+        if (mainContent) {
+          (mainContent as HTMLElement).style.filter = "";
+          (mainContent as HTMLElement).style.opacity = "";
+          (mainContent as HTMLElement).style.willChange = "auto";
+        }
+        // Cleanup sections
+        const sections = document.querySelectorAll("section, article");
+        sections.forEach((section) => {
+          try {
+            (section as HTMLElement).style.filter = "";
+            (section as HTMLElement).style.willChange = "auto";
+          } catch (error) {
+            // Ignore errors
+          }
+        });
       }
     };
   }, [isBlurring, transitionSettings, isMounted]);

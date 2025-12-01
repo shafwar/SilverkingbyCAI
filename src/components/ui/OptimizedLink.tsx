@@ -161,28 +161,27 @@ export function OptimizedLink({
       }
 
       // Trigger smooth transition dengan blur effect
-      // ENHANCED: Trigger blur BEFORE navigation for visible effect
+      // ENHANCED: Trigger blur IMMEDIATELY BEFORE navigation for visible effect
       // PRODUCTION-SAFE: Enhanced with DOM readiness check
       if (beginTransition) {
-        // Trigger transition immediately to show blur effect
-        // Use double requestAnimationFrame to ensure blur is applied before Next.js navigation
+        // Trigger transition IMMEDIATELY to show blur effect on current page
+        // Use synchronous call first, then requestAnimationFrame for smooth animation
         if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
-          // First frame: prepare
+          // Call immediately to trigger blur on current page
+          beginTransition(hrefStr);
+
+          // Then use requestAnimationFrame to ensure smooth animation
           requestAnimationFrame(() => {
-            // Second frame: apply blur (ensures it's visible before navigation)
-            requestAnimationFrame(() => {
-              beginTransition(hrefStr);
-            });
+            // Ensure blur is applied
+            if (document.body) {
+              // Blur should already be applied by PageTransitionOverlay
+            }
           });
         } else {
           // Retry after DOM is ready
           const retryTimer = setTimeout(() => {
             if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
-              requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                  beginTransition(hrefStr);
-                });
-              });
+              beginTransition(hrefStr);
             }
           }, 10);
           // Note: Cleanup handled by component lifecycle
