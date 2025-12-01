@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigationTransition } from "./NavigationTransitionProvider";
 import NProgress from "nprogress";
@@ -73,12 +73,15 @@ export function PageTransitionOverlay() {
     };
   }, [deviceInfo]);
 
+  // Store progress interval ref for cleanup
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     // PRODUCTION-SAFE: Only run when mounted and window is available
     if (!isMounted || typeof window === "undefined") return;
 
     if (isActive) {
-      // Start blur effect on current page - ALWAYS for ALL pages
+      // Start blur effect on CURRENT page - ALWAYS for ALL pages
       setIsBlurring(true);
 
       // PRODUCTION-SAFE: Initialize NProgress with error handling
@@ -97,17 +100,40 @@ export function PageTransitionOverlay() {
         NProgress.start();
 
         // Force NProgress to be visible immediately with higher initial value
+        // CRITICAL: NProgress shows during fetching of new page while CURRENT page is blurred
         requestAnimationFrame(() => {
           try {
             NProgress.set(0.15); // Higher initial progress for immediate visibility
-            // Continue trickling for smooth progress
-            setTimeout(() => {
+            console.log(
+              "[PageTransition] NProgress started - fetching new page while CURRENT page is blurred"
+            );
+
+            // Clear any existing interval
+            if (progressIntervalRef.current) {
+              clearInterval(progressIntervalRef.current);
+            }
+
+            // Continue trickling for smooth progress during fetching
+            // This ensures progress bar continues while Next.js fetches the new page
+            progressIntervalRef.current = setInterval(() => {
               try {
-                NProgress.inc(0.1); // Increment progress
+                const currentProgress = (NProgress as any).status || 0;
+                if (currentProgress < 0.9) {
+                  // Increment progress slowly during fetching
+                  NProgress.inc(0.05);
+                } else {
+                  if (progressIntervalRef.current) {
+                    clearInterval(progressIntervalRef.current);
+                    progressIntervalRef.current = null;
+                  }
+                }
               } catch (e) {
-                // Ignore
+                if (progressIntervalRef.current) {
+                  clearInterval(progressIntervalRef.current);
+                  progressIntervalRef.current = null;
+                }
               }
-            }, 50);
+            }, 100); // Update every 100ms during fetching
           } catch (e) {
             // Ignore if already started
           }
@@ -117,14 +143,23 @@ export function PageTransitionOverlay() {
         // Continue without NProgress if it fails
       }
     } else {
-      // Remove blur when transition completes
+      // Remove blur when transition completes - NEW page is now loaded
       setIsBlurring(false);
 
+      // Cleanup progress interval
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+
       // PRODUCTION-SAFE: Stop NProgress with error handling
-      // ENHANCED: Ensure NProgress completes smoothly
+      // ENHANCED: Ensure NProgress completes smoothly when NEW page is ready
       try {
         // Set to 100% before done() for smooth completion
         NProgress.set(1.0);
+        console.log(
+          "[PageTransition] Navigation complete - NEW page loaded, removing blur from OLD page"
+        );
         // Small delay to ensure progress bar is visible at 100%
         setTimeout(() => {
           NProgress.done();
@@ -133,6 +168,14 @@ export function PageTransitionOverlay() {
         console.error("[PageTransition] Error stopping NProgress:", error);
       }
     }
+
+    // Cleanup on unmount
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+    };
   }, [isActive, deviceInfo.isMobile, transitionSettings.progressSpeed, isMounted]);
 
   // Apply blur to body when transitioning dengan optimasi mobile
@@ -171,22 +214,29 @@ export function PageTransitionOverlay() {
         }
 
         try {
+          // CRITICAL: Apply blur IMMEDIATELY to CURRENT page (source page)
+          // This ensures blur happens on the page user is currently viewing
           // Use will-change untuk better performance
           document.body.style.willChange = "filter, opacity";
-          // Apply DEEP blur with smooth transition - blur happens FIRST on current page
-          // Use faster initial transition for immediate blur effect
-          document.body.style.transition = `filter ${transitionSettings.duration * 0.3}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration * 0.3}s cubic-bezier(0.4, 0, 0.2, 1)`;
-          document.body.style.filter = `blur(${transitionSettings.blur}px)`;
-          document.body.style.overflow = "hidden";
-          // Slight opacity reduction for more dramatic effect
-          document.body.style.opacity = "0.92";
 
-          // Then smooth out the transition
-          setTimeout(() => {
+          // Apply blur SYNCHRONOUSLY - no transition delay for immediate effect
+          // This ensures blur is visible on CURRENT page before Next.js navigation
+          document.body.style.filter = `blur(${transitionSettings.blur}px)`;
+          document.body.style.opacity = "0.92";
+          document.body.style.overflow = "hidden";
+
+          console.log("[PageTransition] Blur applied to CURRENT page (source):", {
+            blur: transitionSettings.blur,
+            page: window.location.pathname,
+          });
+
+          // Then add smooth transition for visual polish
+          // Use requestAnimationFrame to ensure blur is applied first
+          requestAnimationFrame(() => {
             if (document.body) {
               document.body.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
             }
-          }, transitionSettings.duration * 300);
+          });
         } catch (error) {
           console.error("[PageTransition] Error applying body blur:", error);
         }
@@ -207,72 +257,78 @@ export function PageTransitionOverlay() {
               }
 
               // Apply blur to hero section if it exists (home page)
+              // CRITICAL: Blur CURRENT page's hero section
               const heroSection = document.querySelector(".hero-section-transition");
               if (heroSection) {
                 try {
                   const heroEl = heroSection as HTMLElement;
-                  // Apply blur transition to hero section with enhanced visibility
-                  heroEl.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
                   heroEl.style.willChange = "filter, opacity";
-                  // CRITICAL: Ensure hero section gets blurred AND stays visible
+                  // CRITICAL: Apply blur IMMEDIATELY to CURRENT page's hero section
                   // Use DEEP blur for hero section - more dramatic effect
                   const heroBlur = transitionSettings.blur * 1.2; // 20% more blur for hero (14px * 1.2 = ~17px)
-                  // Fast initial blur, then smooth
-                  heroEl.style.transition = `filter ${transitionSettings.duration * 0.3}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration * 0.3}s cubic-bezier(0.4, 0, 0.2, 1)`;
+                  // Apply blur SYNCHRONOUSLY - no delay
                   heroEl.style.filter = `blur(${heroBlur}px)`;
                   heroEl.style.opacity = "0.94"; // Slight opacity reduction for effect
-                  console.log("[PageTransition] Hero section blur applied:", { blur: heroBlur });
+                  console.log("[PageTransition] Hero section blur applied to CURRENT page:", {
+                    blur: heroBlur,
+                    page: window.location.pathname,
+                  });
 
-                  // Smooth out transition
-                  setTimeout(() => {
+                  // Then add smooth transition
+                  requestAnimationFrame(() => {
                     if (heroEl) {
                       heroEl.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
                     }
-                  }, transitionSettings.duration * 300);
+                  });
                 } catch (error) {
                   console.error("[PageTransition] Error applying hero blur:", error);
                 }
               }
 
               // ENHANCED: Apply DEEP blur to main content sections for ALL pages
-              // This ensures blur effect is visible on products, about, etc.
+              // CRITICAL: Blur CURRENT page's main content (products, about, etc.)
               const mainContent = document.querySelector("main");
               if (mainContent) {
                 try {
                   const mainEl = mainContent as HTMLElement;
-                  // Fast initial blur
-                  mainEl.style.transition = `filter ${transitionSettings.duration * 0.3}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration * 0.3}s cubic-bezier(0.4, 0, 0.2, 1)`;
                   mainEl.style.willChange = "filter, opacity";
+                  // CRITICAL: Apply blur IMMEDIATELY to CURRENT page's main content
+                  // No transition delay - immediate blur on source page
                   mainEl.style.filter = `blur(${transitionSettings.blur}px)`;
                   mainEl.style.opacity = "0.93";
+                  console.log("[PageTransition] Main content blur applied to CURRENT page:", {
+                    blur: transitionSettings.blur,
+                    page: window.location.pathname,
+                  });
 
-                  // Smooth out transition
-                  setTimeout(() => {
+                  // Then add smooth transition
+                  requestAnimationFrame(() => {
                     if (mainEl) {
                       mainEl.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
                     }
-                  }, transitionSettings.duration * 300);
+                  });
                 } catch (error) {
                   console.error("[PageTransition] Error applying main content blur:", error);
                 }
               }
 
               // Also apply DEEP blur to article/section elements for better coverage
+              // CRITICAL: Blur CURRENT page's sections
               const sections = document.querySelectorAll("section, article");
               sections.forEach((section) => {
                 try {
                   const sectionEl = section as HTMLElement;
-                  // Fast initial blur
-                  sectionEl.style.transition = `filter ${transitionSettings.duration * 0.3}s cubic-bezier(0.4, 0, 0.2, 1)`;
                   sectionEl.style.willChange = "filter";
+                  // CRITICAL: Apply blur IMMEDIATELY to CURRENT page's sections
+                  // No transition delay - immediate blur
                   sectionEl.style.filter = `blur(${transitionSettings.blur * 0.9}px)`; // Slightly less blur for sections
 
-                  // Smooth out transition
-                  setTimeout(() => {
+                  // Then add smooth transition
+                  requestAnimationFrame(() => {
                     if (sectionEl) {
                       sectionEl.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
                     }
-                  }, transitionSettings.duration * 300);
+                  });
                 } catch (error) {
                   // Ignore errors for individual sections
                 }

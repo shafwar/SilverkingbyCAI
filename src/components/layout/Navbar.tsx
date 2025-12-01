@@ -214,24 +214,24 @@ export default function Navbar() {
     }
 
     // Start smooth transition dengan blur effect
-    // ENHANCED: Trigger blur BEFORE navigation for visible effect
+    // ENHANCED: Trigger blur IMMEDIATELY BEFORE navigation for visible effect
     // PRODUCTION-SAFE: Enhanced with DOM readiness check
     if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
-      // Use double requestAnimationFrame to ensure blur is applied before Next.js navigation
+      // Call immediately to trigger blur on current page (same as OptimizedLink)
+      beginTransition(href);
+
+      // Then use requestAnimationFrame to ensure smooth animation
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          beginTransition(href);
-        });
+        // Ensure blur is applied
+        if (document.body) {
+          // Blur should already be applied by PageTransitionOverlay
+        }
       });
     } else {
       // Retry after DOM is ready
       const retryTimer = setTimeout(() => {
         if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              beginTransition(href);
-            });
-          });
+          beginTransition(href);
         }
       }, 10);
       // Note: Cleanup handled by component unmount
@@ -269,14 +269,13 @@ export default function Navbar() {
               const href = locale === routing.defaultLocale ? "/" : `/${locale}`;
               if (pathname !== href) {
                 // PRODUCTION-SAFE: Enhanced with DOM readiness check
+                // Call immediately for immediate blur effect
                 if (
                   typeof window !== "undefined" &&
                   typeof document !== "undefined" &&
                   document.body
                 ) {
-                  requestAnimationFrame(() => {
-                    beginTransition(href);
-                  });
+                  beginTransition(href);
                 } else {
                   // Retry after DOM is ready
                   setTimeout(() => {
@@ -285,9 +284,7 @@ export default function Navbar() {
                       typeof document !== "undefined" &&
                       document.body
                     ) {
-                      requestAnimationFrame(() => {
-                        beginTransition(href);
-                      });
+                      beginTransition(href);
                     }
                   }, 10);
                 }
@@ -459,14 +456,13 @@ export default function Navbar() {
                         const href = locale === routing.defaultLocale ? "/" : `/${locale}`;
                         if (pathname !== href) {
                           // PRODUCTION-SAFE: Enhanced with DOM readiness check
+                          // Call immediately for immediate blur effect
                           if (
                             typeof window !== "undefined" &&
                             typeof document !== "undefined" &&
                             document.body
                           ) {
-                            requestAnimationFrame(() => {
-                              beginTransition(href);
-                            });
+                            beginTransition(href);
                           } else {
                             // Retry after DOM is ready
                             setTimeout(() => {
@@ -475,9 +471,7 @@ export default function Navbar() {
                                 typeof document !== "undefined" &&
                                 document.body
                               ) {
-                                requestAnimationFrame(() => {
-                                  beginTransition(href);
-                                });
+                                beginTransition(href);
                               }
                             }, 10);
                           }
@@ -579,7 +573,10 @@ export default function Navbar() {
                     <Link
                       href="/authenticity"
                       prefetch={true}
-                      onClick={() => setIsMobileMenuOpen(false)}
+                      onClick={(event) => {
+                        handleNavClick(event, "/authenticity");
+                        setIsMobileMenuOpen(false);
+                      }}
                       className="group block relative overflow-hidden rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all duration-300 hover:border-white/20"
                       style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
                     >
