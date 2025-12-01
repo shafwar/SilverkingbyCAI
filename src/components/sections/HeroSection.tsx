@@ -8,7 +8,6 @@ import ScrollingFeatures from "./ScrollingFeatures";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
-import { useNavigationTransitionSafe } from "@/components/layout/NavigationTransitionProvider";
 import { OptimizedLink } from "@/components/ui/OptimizedLink";
 
 interface HeroSectionProps {
@@ -113,8 +112,6 @@ const bubbleOrbs = [
 export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) {
   const t = useTranslations("home.hero");
   const pathname = usePathname();
-  const transitionContext = useNavigationTransitionSafe();
-  const isTransitionActive = transitionContext?.isActive ?? false;
   const containerRef = useRef<HTMLDivElement>(null);
   const headlineRef = useRef<HTMLHeadingElement>(null);
   const subtitleRef = useRef<HTMLParagraphElement>(null);
@@ -154,7 +151,6 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         console.log("[HeroSection] Navigating to home, triggering fade-in", {
           prevPath: prevPathnameRef.current,
           currentPath: pathname,
-          isTransitionActive,
         });
 
         setIsPageTransitioning(true);
@@ -173,8 +169,8 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
           });
         }
 
-        // Wait for page transition blur to be applied and visible
-        const fadeInDelay = isTransitionActive ? 350 : 250; // Wait for blur to be fully visible
+        // Wait for fade-in
+        const fadeInDelay = 250;
 
         fadeInTimeoutRef.current = setTimeout(() => {
           if (containerRef.current) {
@@ -221,18 +217,9 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
       console.log("[HeroSection] Navigating from home to another page", {
         prevPath: prevPathnameRef.current,
         currentPath: pathname,
-        isTransitionActive,
       });
 
-      // Hero section will be blurred by PageTransitionOverlay
-      // Just ensure it's ready for transition with DEEP blur
-      if (containerRef.current && isTransitionActive) {
-        // Apply DEEP blur immediately to match global blur
-        gsap.set(containerRef.current, {
-          opacity: 0.94,
-          filter: "blur(17px)", // DEEP blur matching PageTransitionOverlay
-        });
-      }
+      // No transition blur - removed
     }
 
     // Always update prevPathnameRef
@@ -244,7 +231,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         clearTimeout(fadeInTimeoutRef.current);
       }
     };
-  }, [pathname, isTransitionActive]);
+  }, [pathname]);
 
   // Features data from translations - simple and stable
   const featuresData = [
@@ -604,7 +591,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
       style={{
         pointerEvents: "auto",
         // ALWAYS ensure HeroSection participates in page transition blur
-        willChange: isPageTransitioning || isTransitionActive ? "opacity, filter" : "auto",
+        willChange: isPageTransitioning ? "opacity, filter" : "auto",
         // Ensure initial state is correct for transitions
         // Don't set opacity to 0 if not transitioning to prevent flash
       }}

@@ -6,8 +6,6 @@ import { GeistSans } from "geist/font/sans";
 import { Playfair_Display } from "next/font/google";
 import "@/styles/globals.css";
 import { Providers } from "../providers";
-import { NavigationTransitionProvider } from "@/components/layout/NavigationTransitionProvider";
-import { PageTransitionOverlay } from "@/components/layout/PageTransitionOverlay";
 import Navbar from "@/components/layout/Navbar";
 import { PagePrefetchClient } from "@/components/layout/PagePrefetchClient";
 
@@ -52,14 +50,11 @@ export default async function LocaleLayout({
     <html lang={locale} className={`${GeistSans.variable} ${playfair.variable}`}>
       <body className={`${GeistSans.className} antialiased`}>
         <NextIntlClientProvider messages={messages}>
-          <NavigationTransitionProvider>
-            <Providers>
-              <PagePrefetchClient />
-              <Navbar />
-              {children}
-            </Providers>
-            <PageTransitionOverlay />
-          </NavigationTransitionProvider>
+          <Providers>
+            <PagePrefetchClient />
+            <Navbar />
+            {children}
+          </Providers>
         </NextIntlClientProvider>
       </body>
     </html>

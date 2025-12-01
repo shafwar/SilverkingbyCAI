@@ -5,7 +5,6 @@ import { useRouter } from "@/i18n/routing";
 import { useLocale } from "next-intl";
 import { routing } from "@/i18n/routing";
 import { useCallback, useRef, useEffect, type ComponentProps, type ReactNode } from "react";
-import { useNavigationTransitionSafe } from "@/components/layout/NavigationTransitionProvider";
 
 interface OptimizedLinkProps extends Omit<ComponentProps<typeof Link>, "prefetch"> {
   children: ReactNode;
@@ -34,11 +33,6 @@ export function OptimizedLink({
   const locale = useLocale();
   const prefetchedRef = useRef<Set<string>>(new Set());
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Get transition hook safely - returns null if not in provider context
-  // This allows OptimizedLink to work even outside NavigationTransitionProvider
-  const transitionContext = useNavigationTransitionSafe();
-  const beginTransition = transitionContext?.beginTransition || null;
 
   // Build full path with locale
   const getFullPath = useCallback(
@@ -160,35 +154,9 @@ export function OptimizedLink({
         return;
       }
 
-      // Trigger smooth transition dengan blur effect
-      // ENHANCED: Trigger blur IMMEDIATELY BEFORE navigation for visible effect
-      // PRODUCTION-SAFE: Enhanced with DOM readiness check
-      if (beginTransition) {
-        // Trigger transition IMMEDIATELY to show blur effect on current page
-        // Use synchronous call first, then requestAnimationFrame for smooth animation
-        if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
-          // Call immediately to trigger blur on current page
-          beginTransition(hrefStr);
-
-          // Then use requestAnimationFrame to ensure smooth animation
-          requestAnimationFrame(() => {
-            // Ensure blur is applied
-            if (document.body) {
-              // Blur should already be applied by PageTransitionOverlay
-            }
-          });
-        } else {
-          // Retry after DOM is ready
-          const retryTimer = setTimeout(() => {
-            if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
-              beginTransition(hrefStr);
-            }
-          }, 10);
-          // Note: Cleanup handled by component lifecycle
-        }
-      }
+      // No transition - direct navigation
     },
-    [onClick, beginTransition, href]
+    [onClick, href]
   );
 
   return (
