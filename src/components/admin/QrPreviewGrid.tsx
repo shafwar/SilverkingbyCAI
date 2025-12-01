@@ -295,11 +295,11 @@ export function QrPreviewGrid() {
       // Draw QR code on front template
       frontCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
 
-      // === MATCH SKN350 LAYOUT: Hanya 2 text elements, TIDAK ADA DUPLIKASI ===
-      // CRITICAL: Hanya draw text SEKALI untuk setiap element (nama produk & serial code)
-      // Pastikan tidak ada duplikasi dengan memastikan hanya 2 fillText calls total
+      // === MATCH handleDownloadAll LAYOUT: Hanya product name di ATAS QR, TIDAK ADA TEXT DI BAWAH QR ===
+      // CRITICAL: Sama seperti handleDownloadAll yang berhasil - hanya product name di atas QR
+      // TIDAK ada text di bawah QR (no serial code, no duplicate product name)
 
-      // 1. Nama produk di ATAS QR (sekali saja, sesuai SKN350 - "Silver King 250gr")
+      // 1. Nama produk di ATAS QR saja (sama seperti handleDownloadAll)
       // Position: Di atas QR code, dengan spacing yang tepat
       if (product.name && product.name.trim().length > 0) {
         const nameFontSize = Math.floor(frontTemplateImg.width * 0.027);
@@ -308,30 +308,14 @@ export function QrPreviewGrid() {
         frontCtx.textAlign = "center";
         frontCtx.textBaseline = "bottom";
         frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
-        // Gunakan product.name as-is (tidak extract, sesuai SKN350 yang menampilkan "Silver King 250gr" lengkap)
+        // Gunakan product.name as-is (tidak extract, sesuai handleDownloadAll)
         frontCtx.fillText(product.name.trim(), frontTemplateImg.width / 2, nameY);
         console.log(`[Download] Product name drawn: "${product.name.trim()}" at Y=${nameY}`);
       }
 
-      // 2. Serial code di BAWAH QR (sekali saja, sesuai SKN350 - "SKA000300")
-      // Position: Di bawah QR code, dengan spacing yang tepat
-      if (product.serialCode && product.serialCode.trim().length > 0) {
-        const serialFontSize = Math.floor(frontTemplateImg.width * 0.031);
-        const serialY = qrY + qrSize + 40; // Fixed spacing below QR
-        frontCtx.fillStyle = "#222222";
-        frontCtx.textAlign = "center";
-        frontCtx.textBaseline = "top";
-        frontCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
-        frontCtx.fillText(
-          product.serialCode.trim().toUpperCase(),
-          frontTemplateImg.width / 2,
-          serialY
-        );
-        console.log(
-          `[Download] Serial code drawn: "${product.serialCode.trim().toUpperCase()}" at Y=${serialY}`
-        );
-      }
-      // === END: Hanya 2 fillText calls total, tidak ada duplikasi ===
+      // CRITICAL: TIDAK ada text di bawah QR (sama seperti handleDownloadAll)
+      // Serial code dan duplicate product name di bawah QR telah dihapus
+      // === END: Hanya 1 fillText call (product name di atas QR), tidak ada text di bawah QR ===
 
       // Create canvas for BACK template (no QR, just the template)
       const backCanvas = document.createElement("canvas");
@@ -395,10 +379,10 @@ export function QrPreviewGrid() {
           );
           fallbackCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
           // === MATCH SKN350 LAYOUT: Hanya 2 text elements, TIDAK ADA DUPLIKASI ===
-          // CRITICAL: Hanya draw text SEKALI untuk setiap element (nama produk & serial code)
-          // SAMA dengan logic utama di atas - pastikan tidak ada duplikasi
+          // CRITICAL: Sama seperti logic utama - hanya product name di ATAS QR, TIDAK ADA TEXT DI BAWAH QR
+          // SAMA dengan handleDownloadAll yang berhasil
 
-          // 1. Nama produk di ATAS QR (sekali saja, sesuai SKN350)
+          // 1. Nama produk di ATAS QR saja (sama seperti handleDownloadAll)
           if (product.name && product.name.trim().length > 0) {
             const nameFontSize = Math.floor(localFrontImg.width * 0.027);
             const nameY = qrY - 40; // Fixed spacing above QR (same as main path)
@@ -406,24 +390,12 @@ export function QrPreviewGrid() {
             fallbackCtx.textAlign = "center";
             fallbackCtx.textBaseline = "bottom";
             fallbackCtx.font = `${nameFontSize}px Arial, sans-serif`;
-            // Gunakan product.name as-is (tidak extract, sesuai SKN350)
+            // Gunakan product.name as-is (tidak extract, sesuai handleDownloadAll)
             fallbackCtx.fillText(product.name.trim(), localFrontImg.width / 2, nameY);
           }
-          // 2. Serial code di BAWAH QR (sekali saja)
-          if (product.serialCode && product.serialCode.trim().length > 0) {
-            const serialFontSize = Math.floor(localFrontImg.width * 0.031);
-            const serialY = qrY + qrSize + 40; // Fixed spacing below QR (same as main path)
-            fallbackCtx.fillStyle = "#222222";
-            fallbackCtx.textAlign = "center";
-            fallbackCtx.textBaseline = "top";
-            fallbackCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
-            fallbackCtx.fillText(
-              product.serialCode.trim().toUpperCase(),
-              localFrontImg.width / 2,
-              serialY
-            );
-          }
-          // === END: Hanya 2 fillText calls total, tidak ada duplikasi ===
+          // CRITICAL: TIDAK ada text di bawah QR (sama seperti handleDownloadAll)
+          // Serial code di bawah QR telah dihapus
+          // === END: Hanya 1 fillText call (product name di atas QR), tidak ada text di bawah QR ===
           frontImageData = fallbackCanvas.toDataURL("image/png", 1.0);
         } else {
           throw toDataError;
@@ -609,7 +581,8 @@ export function QrPreviewGrid() {
           }))
           .filter((p) => {
             // CRITICAL: Filter out products with missing data BEFORE sending to backend
-            const isValid = p.name && p.serialCode && p.name.trim().length > 0 && p.serialCode.trim().length > 0;
+            const isValid =
+              p.name && p.serialCode && p.name.trim().length > 0 && p.serialCode.trim().length > 0;
             if (!isValid) {
               console.warn(`[DownloadAll] Skipping invalid product:`, {
                 id: p.id,
@@ -621,14 +594,19 @@ export function QrPreviewGrid() {
           });
 
         // CRITICAL: Log products being sent to backend
-        console.log(`[DownloadAll] Batch ${batchNumber}: Sending ${products.length} products to backend`);
-        console.log(`[DownloadAll] Sample products (first 3):`, products.slice(0, 3).map((p) => ({
-          id: p.id,
-          name: p.name,
-          serialCode: p.serialCode,
-          nameLength: p.name?.length || 0,
-          serialCodeLength: p.serialCode?.length || 0,
-        })));
+        console.log(
+          `[DownloadAll] Batch ${batchNumber}: Sending ${products.length} products to backend`
+        );
+        console.log(
+          `[DownloadAll] Sample products (first 3):`,
+          products.slice(0, 3).map((p) => ({
+            id: p.id,
+            name: p.name,
+            serialCode: p.serialCode,
+            nameLength: p.name?.length || 0,
+            serialCodeLength: p.serialCode?.length || 0,
+          }))
+        );
 
         if (products.length === 0) {
           console.error(`[DownloadAll] Batch ${batchNumber}: No valid products to send!`);
@@ -646,9 +624,13 @@ export function QrPreviewGrid() {
           // CRITICAL: Send products (full objects) instead of serialCodes
           // Backend will use these products directly, same as handleDownload (single)
           const requestBody = { products, batchNumber };
-          console.log(`[DownloadAll] Request body size:`, JSON.stringify(requestBody).length, "bytes");
+          console.log(
+            `[DownloadAll] Request body size:`,
+            JSON.stringify(requestBody).length,
+            "bytes"
+          );
           console.log(`[DownloadAll] First product in request:`, requestBody.products[0]);
-          
+
           const response = await fetch("/api/qr/download-multiple-pdf", {
             method: "POST",
             headers: {
