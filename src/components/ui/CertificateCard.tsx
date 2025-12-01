@@ -109,41 +109,41 @@ const CertificateCard: React.FC = () => {
               {/* Subtle glow effect */}
               <div className="absolute -inset-1 bg-gradient-to-r from-luxury-gold/10 via-luxury-lightGold/10 to-luxury-gold/10 blur-xl opacity-50 transition-opacity duration-500 rounded-2xl" />
 
-              {/* Badge - Positioned over image */}
+            {/* Badge - Positioned over image */}
               <div className="absolute top-4 left-4 md:top-6 md:left-6 z-10">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.4, duration: 0.5 }}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.4, duration: 0.5 }}
                   className="bg-gradient-to-r from-luxury-gold/95 to-luxury-lightGold/95 text-luxury-black text-xs uppercase px-3 py-1.5 rounded-full shadow-lg font-bold tracking-wide backdrop-blur-sm"
-                >
-                  {t("badge")}
-                </motion.div>
-              </div>
+              >
+                {t("badge")}
+              </motion.div>
+            </div>
 
               {/* Certificate Image - Responsive aspect ratio */}
               <div className="relative aspect-[4/3] md:aspect-[3/2] lg:aspect-[4/3] overflow-hidden rounded-lg bg-white/5">
-                <img
-                  ref={imageRef}
-                  src="/images/sertificate.jpeg"
-                  alt={t("certificateName")}
+              <img
+                ref={imageRef}
+                src="/images/sertificate.jpeg"
+                alt={t("certificateName")}
                   className={`w-full h-full object-contain ${
-                    isImageLoaded ? "opacity-100" : "opacity-0"
-                  }`}
-                  onLoad={() => setIsImageLoaded(true)}
-                  loading="lazy"
-                  draggable={false}
-                />
-                {!isImageLoaded && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/5 via-white/10 to-white/5 animate-shimmer" />
-                )}
-              </div>
+                  isImageLoaded ? "opacity-100" : "opacity-0"
+                }`}
+                onLoad={() => setIsImageLoaded(true)}
+                loading="lazy"
+                draggable={false}
+              />
+              {!isImageLoaded && (
+                <div className="absolute inset-0 bg-gradient-to-r from-white/5 via-white/10 to-white/5 animate-shimmer" />
+              )}
+            </div>
 
               {/* Bottom Label - Certificate name only */}
               <div className="mt-4 text-center">
                 <p className="text-white font-medium text-sm md:text-base">
-                  {t("certificateName")}
-                </p>
+                {t("certificateName")}
+              </p>
               </div>
             </div>
           </motion.div>

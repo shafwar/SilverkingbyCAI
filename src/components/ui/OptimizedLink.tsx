@@ -114,10 +114,10 @@ export function OptimizedLink({
   useEffect(() => {
     if (prefetch && typeof window !== "undefined" && typeof document !== "undefined") {
       const timer = setTimeout(() => {
-      prefetchRoute(href.toString());
-    }, prefetchDelay);
+        prefetchRoute(href.toString());
+      }, prefetchDelay);
       return () => clearTimeout(timer);
-  }
+    }
   }, [prefetch, prefetchDelay, href, prefetchRoute]);
 
   // Handle hover prefetching

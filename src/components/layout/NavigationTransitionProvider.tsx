@@ -24,7 +24,7 @@ const NavigationTransitionContext = createContext<NavigationTransitionContextVal
 function normalizeHref(href: string): string | null {
   if (!href) return null;
   if (href.startsWith("#")) return null;
-  
+
   // PRODUCTION-SAFE: Enhanced URL normalization with better error handling
   try {
     // Handle absolute URLs
@@ -37,7 +37,7 @@ function normalizeHref(href: string): string | null {
       }
       return pathname + url.search;
     }
-    
+
     // Handle relative URLs - PRODUCTION-SAFE: Use window.location.origin with fallback
     if (typeof window !== "undefined" && window.location) {
       try {
@@ -57,7 +57,7 @@ function normalizeHref(href: string): string | null {
         return pathname;
       }
     }
-    
+
     // Fallback: normalize home paths manually
     const pathname = href.split("?")[0].split("#")[0];
     if (pathname === "/" || pathname === "/en" || pathname === "/id") {
@@ -95,7 +95,7 @@ export function NavigationTransitionProvider({ children }: { children: ReactNode
         let retryCount = 0;
         const maxRetries = 5;
         const retryDelay = 10;
-        
+
         const retryTimer = setInterval(() => {
           retryCount++;
           if (typeof document !== "undefined" && document.body) {
@@ -109,7 +109,7 @@ export function NavigationTransitionProvider({ children }: { children: ReactNode
             console.warn("[NavigationTransition] DOM not ready after retries, skipping transition");
           }
         }, retryDelay);
-        
+
         return () => clearInterval(retryTimer);
       }
 
@@ -130,7 +130,8 @@ export function NavigationTransitionProvider({ children }: { children: ReactNode
       }
 
       // Normalize current pathname for comparison
-      const normalizedPathname = pathname === "/" || pathname === "/en" || pathname === "/id" ? "/" : pathname;
+      const normalizedPathname =
+        pathname === "/" || pathname === "/en" || pathname === "/id" ? "/" : pathname;
       if (normalized === normalizedPathname) {
         // Already on target page, no transition needed
         return;
@@ -147,7 +148,10 @@ export function NavigationTransitionProvider({ children }: { children: ReactNode
         targetPathRef.current = normalized;
         startTimeRef.current = Date.now();
         setIsActive(true);
-        console.log("[NavigationTransition] Transition started:", { from: pathname, to: normalized });
+        console.log("[NavigationTransition] Transition started:", {
+          from: pathname,
+          to: normalized,
+        });
       });
     },
     [pathname]

@@ -547,20 +547,21 @@ export async function POST(request: NextRequest) {
         // Template may have placeholder text "0000000000000000" that needs to be completely covered
         // Use larger padding to ensure complete coverage of placeholder area
         const textOverwritePadding = 20; // Increased padding to cover full placeholder width
-        
+
         // 1. Nama produk di ATAS QR (persis seperti handleDownload)
         // CRITICAL: productName is already validated and trimmed above
         const nameFontSize = Math.floor(frontTemplateImage.width * 0.027); // SAMA dengan handleDownload
         const nameY = qrY - 40; // SAMA dengan handleDownload (bukan -35)
-        
+
         // CRITICAL: Measure text width to create proper white background
         // Also measure placeholder width to ensure complete coverage
         frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
         const nameTextWidth = frontCtx.measureText(productName).width;
         const placeholderNameWidth = frontCtx.measureText("0000000000000000").width; // Template placeholder width
         const nameTextHeight = nameFontSize;
-        const overwriteWidth = Math.max(nameTextWidth, placeholderNameWidth) + textOverwritePadding * 2;
-        
+        const overwriteWidth =
+          Math.max(nameTextWidth, placeholderNameWidth) + textOverwritePadding * 2;
+
         // Overwrite placeholder area with white background (cover full placeholder width)
         frontCtx.fillStyle = "#ffffff";
         frontCtx.fillRect(
@@ -585,15 +586,16 @@ export async function POST(request: NextRequest) {
         // CRITICAL: productSerialCode is already validated, trimmed, and uppercased above
         const serialFontSize = Math.floor(frontTemplateImage.width * 0.031); // SAMA dengan handleDownload
         const serialY = qrY + qrSize + 40; // SAMA dengan handleDownload (bukan +35)
-        
+
         // CRITICAL: Measure text width to create proper white background
         // Also measure placeholder width to ensure complete coverage
         frontCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
         const serialTextWidth = frontCtx.measureText(productSerialCode).width;
         const placeholderSerialWidth = frontCtx.measureText("00000000").width; // Template placeholder width
         const serialTextHeight = serialFontSize;
-        const overwriteSerialWidth = Math.max(serialTextWidth, placeholderSerialWidth) + textOverwritePadding * 2;
-        
+        const overwriteSerialWidth =
+          Math.max(serialTextWidth, placeholderSerialWidth) + textOverwritePadding * 2;
+
         // Overwrite placeholder area with white background (cover full placeholder width)
         frontCtx.fillStyle = "#ffffff";
         frontCtx.fillRect(

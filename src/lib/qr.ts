@@ -376,30 +376,8 @@ export async function generateAndStoreQR(
         })
       );
 
-      // CRITICAL: Normalize R2_PUBLIC_URL to remove bucket name if present
-      // R2_PUBLIC_URL should be just the base URL (e.g., https://assets.cahayasilverking.id)
-      // NOT include bucket name (e.g., NOT https://assets.cahayasilverking.id/silverking-assets)
-      let base = R2_PUBLIC_URL!.endsWith("/") ? R2_PUBLIC_URL!.slice(0, -1) : R2_PUBLIC_URL!;
-      
-      // Remove bucket name from path if present (e.g., /silverking-assets)
-      // This prevents duplicate paths like silverking-assets/silverking-assets/qr/
-      const bucketName = R2_BUCKET || "silverking-assets";
-      if (base.includes(`/${bucketName}`)) {
-        base = base.replace(`/${bucketName}`, "");
-        console.log(`[QR] Normalized R2_PUBLIC_URL (removed bucket name): ${base}`);
-      }
-      
-      // CRITICAL: objectKey is already just "qr/{serialCode}.png" (no bucket name)
-      // So final URL should be: {base}/qr/{serialCode}.png
-      // NOT: {base}/silverking-assets/qr/{serialCode}.png
+      const base = R2_PUBLIC_URL!.endsWith("/") ? R2_PUBLIC_URL!.slice(0, -1) : R2_PUBLIC_URL!;
       const finalUrl = `${base}/${objectKey}`;
-      
-      console.log(`[QR] R2 URL construction:`, {
-        originalR2PublicUrl: R2_PUBLIC_URL,
-        normalizedBase: base,
-        objectKey,
-        finalUrl,
-      });
 
       console.log(">>> R2 Upload successful:", finalUrl);
       console.log(">>> Object key includes serial:", objectKey.includes(serialCode));

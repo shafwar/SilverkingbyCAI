@@ -264,14 +264,22 @@ export default function Navbar() {
               const href = locale === routing.defaultLocale ? "/" : `/${locale}`;
               if (pathname !== href) {
                 // PRODUCTION-SAFE: Enhanced with DOM readiness check
-                if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
+                if (
+                  typeof window !== "undefined" &&
+                  typeof document !== "undefined" &&
+                  document.body
+                ) {
                   requestAnimationFrame(() => {
                     beginTransition(href);
                   });
                 } else {
                   // Retry after DOM is ready
                   setTimeout(() => {
-                    if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
+                    if (
+                      typeof window !== "undefined" &&
+                      typeof document !== "undefined" &&
+                      document.body
+                    ) {
                       requestAnimationFrame(() => {
                         beginTransition(href);
                       });
@@ -446,14 +454,22 @@ export default function Navbar() {
                         const href = locale === routing.defaultLocale ? "/" : `/${locale}`;
                         if (pathname !== href) {
                           // PRODUCTION-SAFE: Enhanced with DOM readiness check
-                          if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
+                          if (
+                            typeof window !== "undefined" &&
+                            typeof document !== "undefined" &&
+                            document.body
+                          ) {
                             requestAnimationFrame(() => {
                               beginTransition(href);
                             });
                           } else {
                             // Retry after DOM is ready
                             setTimeout(() => {
-                              if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
+                              if (
+                                typeof window !== "undefined" &&
+                                typeof document !== "undefined" &&
+                                document.body
+                              ) {
                                 requestAnimationFrame(() => {
                                   beginTransition(href);
                                 });

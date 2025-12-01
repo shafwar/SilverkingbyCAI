@@ -154,9 +154,9 @@ export function QrPreviewGrid() {
       // All images now come from same-origin proxy endpoints with CORS headers
       // Set crossOrigin for proxy endpoints and qr-only endpoints to allow canvas export
       const isProxyEndpoint =
-        src.includes("/api/admin/template-proxy") || 
+        src.includes("/api/admin/template-proxy") ||
         src.includes("/api/admin/qr-proxy") ||
-        src.includes("/api/qr/") && src.includes("/qr-only");
+        (src.includes("/api/qr/") && src.includes("/qr-only"));
 
       if (isProxyEndpoint) {
         img.crossOrigin = "anonymous";

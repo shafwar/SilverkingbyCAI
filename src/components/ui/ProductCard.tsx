@@ -92,26 +92,26 @@ export default function ProductCard({ product, onProductSelect, index = 0 }: Pro
             className="product-title block group-hover:text-[#8b7355] transition-colors"
           >
             {rangeName && (
-              <span className="product-title__range-name block text-xs font-extralight text-[#8b7355]/60 mb-2 tracking-wide uppercase">
-                {rangeName}
-              </span>
+            <span className="product-title__range-name block text-xs font-extralight text-[#8b7355]/60 mb-2 tracking-wide uppercase">
+              {rangeName}
+            </span>
             )}
             <span className="product-title__name block text-sm font-extralight text-[#5a4a3a] leading-relaxed">
               {productName}
             </span>
             {product.weight && (
-              <span className="product-title__weight block text-xs font-extralight text-[#8b7355]/50 mt-1">
-                {product.weight}
-              </span>
+            <span className="product-title__weight block text-xs font-extralight text-[#8b7355]/50 mt-1">
+              {product.weight}
+            </span>
             )}
           </Link>
 
           {/* Single Price - Always show, display "-" if no price */}
-          <div className="product-card__price pt-2">
-            <span className="text-xs font-extralight text-[#8b7355]/70 tracking-wide">
+            <div className="product-card__price pt-2">
+              <span className="text-xs font-extralight text-[#8b7355]/70 tracking-wide">
               {displayPrice ? formatPrice(displayPrice) : "-"}
-            </span>
-          </div>
+              </span>
+            </div>
         </div>
       </div>
 
