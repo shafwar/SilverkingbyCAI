@@ -152,9 +152,11 @@ export function QrPreviewGrid() {
       const img = new Image();
 
       // All images now come from same-origin proxy endpoints with CORS headers
-      // Set crossOrigin for proxy endpoints to allow canvas export
+      // Set crossOrigin for proxy endpoints and qr-only endpoints to allow canvas export
       const isProxyEndpoint =
-        src.includes("/api/admin/template-proxy") || src.includes("/api/admin/qr-proxy");
+        src.includes("/api/admin/template-proxy") || 
+        src.includes("/api/admin/qr-proxy") ||
+        src.includes("/api/qr/") && src.includes("/qr-only");
 
       if (isProxyEndpoint) {
         img.crossOrigin = "anonymous";
@@ -200,10 +202,11 @@ export function QrPreviewGrid() {
         back: absoluteBackUrl,
       });
 
-      // Get QR code from R2 via proxy endpoint (prioritizes R2, fallback to API)
-      // This ensures QR code comes from R2 if available, with proper CORS headers
-      const qrImageUrl = `${window.location.origin}/api/admin/qr-proxy?serialCode=${encodeURIComponent(product.serialCode)}`;
-      console.log("[Download] QR URL (via proxy, from R2):", qrImageUrl);
+      // CRITICAL: Get QR code WITHOUT text (qr-only) to avoid text inside white box
+      // Use qr-only endpoint directly to ensure QR image has NO text inside
+      // Text will be drawn separately on template canvas, OUTSIDE the white QR box
+      const qrImageUrl = `${window.location.origin}/api/qr/${encodeURIComponent(product.serialCode)}/qr-only`;
+      console.log("[Download] QR URL (qr-only, no text inside):", qrImageUrl);
 
       // Load all images: front template, back template, and QR code
       // If R2 template fails, fallback to local paths
@@ -321,8 +324,14 @@ export function QrPreviewGrid() {
         frontCtx.textAlign = "center";
         frontCtx.textBaseline = "top";
         frontCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
-        frontCtx.fillText(product.serialCode.trim().toUpperCase(), frontTemplateImg.width / 2, serialY);
-        console.log(`[Download] Serial code drawn: "${product.serialCode.trim().toUpperCase()}" at Y=${serialY}`);
+        frontCtx.fillText(
+          product.serialCode.trim().toUpperCase(),
+          frontTemplateImg.width / 2,
+          serialY
+        );
+        console.log(
+          `[Download] Serial code drawn: "${product.serialCode.trim().toUpperCase()}" at Y=${serialY}`
+        );
       }
       // === END: 2 fillText calls - product name di atas QR, serial code di bawah QR ===
 
@@ -387,11 +396,11 @@ export function QrPreviewGrid() {
             qrSize + padding * 2
           );
           fallbackCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-          // === MATCH SKN350 LAYOUT: Hanya 2 text elements, TIDAK ADA DUPLIKASI ===
-          // CRITICAL: Sama seperti logic utama - hanya product name di ATAS QR, TIDAK ADA TEXT DI BAWAH QR
-          // SAMA dengan handleDownloadAll yang berhasil
+          // === LAYOUT: Nama produk di ATAS QR, Serial code di BAWAH QR (diluar box QR) ===
+          // CRITICAL: Sama seperti gambar ska299 - product name di atas, serial code di bawah (tanpa duplikasi nama)
+          // SAMA dengan logic utama
 
-          // 1. Nama produk di ATAS QR saja (sama seperti handleDownloadAll)
+          // 1. Nama produk di ATAS QR
           if (product.name && product.name.trim().length > 0) {
             const nameFontSize = Math.floor(localFrontImg.width * 0.027);
             const nameY = qrY - 40; // Fixed spacing above QR (same as main path)
@@ -399,12 +408,25 @@ export function QrPreviewGrid() {
             fallbackCtx.textAlign = "center";
             fallbackCtx.textBaseline = "bottom";
             fallbackCtx.font = `${nameFontSize}px Arial, sans-serif`;
-            // Gunakan product.name as-is (tidak extract, sesuai handleDownloadAll)
+            // Gunakan product.name as-is
             fallbackCtx.fillText(product.name.trim(), localFrontImg.width / 2, nameY);
           }
-          // CRITICAL: TIDAK ada text di bawah QR (sama seperti handleDownloadAll)
-          // Serial code di bawah QR telah dihapus
-          // === END: Hanya 1 fillText call (product name di atas QR), tidak ada text di bawah QR ===
+
+          // 2. Serial code di BAWAH QR (diluar dari box QR nya)
+          if (product.serialCode && product.serialCode.trim().length > 0) {
+            const serialFontSize = Math.floor(localFrontImg.width * 0.031);
+            const serialY = qrY + qrSize + 40; // Fixed spacing below QR (diluar box QR)
+            fallbackCtx.fillStyle = "#222222";
+            fallbackCtx.textAlign = "center";
+            fallbackCtx.textBaseline = "top";
+            fallbackCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
+            fallbackCtx.fillText(
+              product.serialCode.trim().toUpperCase(),
+              localFrontImg.width / 2,
+              serialY
+            );
+          }
+          // === END: 2 fillText calls - product name di atas QR, serial code di bawah QR ===
           frontImageData = fallbackCanvas.toDataURL("image/png", 1.0);
         } else {
           throw toDataError;
