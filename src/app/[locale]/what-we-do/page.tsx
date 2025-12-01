@@ -683,7 +683,7 @@ export default function WhatWeDoPage() {
             preload="auto"
             className="absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 will-change-transform z-10"
             style={{
-              transform: "scale(1.05)",
+              transform: "scale(1.0)",
               transformOrigin: "center center",
             }}
             disablePictureInPicture
@@ -708,7 +708,7 @@ export default function WhatWeDoPage() {
         ref={(element) => {
           sectionsRef.current[0] = element as HTMLDivElement | null;
         }}
-        className="relative px-4 sm:px-6 md:px-8 lg:px-12 pt-[calc(env(safe-area-inset-top)+4rem)] sm:pt-32 md:pt-40 lg:pt-48 pb-16 sm:pb-24 md:pb-32 lg:pb-40 min-h-[85vh] sm:min-h-[80vh] md:min-h-[90vh] lg:min-h-screen flex items-center"
+        className="relative px-4 sm:px-6 md:px-8 lg:px-12 pt-[calc(env(safe-area-inset-top)+4rem)] sm:pt-28 md:pt-36 lg:pt-44 pb-12 sm:pb-20 md:pb-28 lg:pb-36 min-h-[75vh] sm:min-h-[70vh] md:min-h-[80vh] lg:min-h-[85vh] flex items-center"
       >
         <div className="relative z-10 w-full max-w-[1400px] mx-auto">
           <motion.div
