@@ -214,18 +214,23 @@ export default function Navbar() {
     }
 
     // Start smooth transition dengan blur effect
+    // ENHANCED: Trigger blur BEFORE navigation for visible effect
     // PRODUCTION-SAFE: Enhanced with DOM readiness check
-    // Use requestAnimationFrame untuk ensure smooth start
     if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
+      // Use double requestAnimationFrame to ensure blur is applied before Next.js navigation
       requestAnimationFrame(() => {
-        beginTransition(href);
+        requestAnimationFrame(() => {
+          beginTransition(href);
+        });
       });
     } else {
       // Retry after DOM is ready
       const retryTimer = setTimeout(() => {
         if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
           requestAnimationFrame(() => {
-            beginTransition(href);
+            requestAnimationFrame(() => {
+              beginTransition(href);
+            });
           });
         }
       }, 10);

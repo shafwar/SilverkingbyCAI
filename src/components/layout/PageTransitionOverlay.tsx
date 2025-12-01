@@ -43,11 +43,11 @@ export function PageTransitionOverlay() {
     }
   }, []);
 
-  // Optimized transition settings based on device - ULTRA FAST
+  // ENHANCED transition settings - visible blur effect with smooth animation
   const transitionSettings = useMemo(() => {
-    // Significantly reduced durations for faster transitions
-    const baseDuration = 0.2; // Reduced from 0.4s to 0.2s (50% faster)
-    const baseBlur = 6; // Slightly reduced blur for better performance
+    // Longer durations for visible and smooth blur transitions
+    const baseDuration = 0.4; // 400ms for smooth visible blur
+    const baseBlur = 8; // Increased blur intensity for better visibility
 
     if (deviceInfo.prefersReducedMotion) {
       return {
@@ -59,16 +59,16 @@ export function PageTransitionOverlay() {
 
     if (deviceInfo.isMobile || deviceInfo.isLowPerformance) {
       return {
-        duration: 0.15, // Ultra fast on mobile (150ms)
-        blur: getBlurIntensity(baseBlur),
-        progressSpeed: 200, // Much faster progress on mobile
+        duration: 0.35, // 350ms on mobile for visible blur
+        blur: getBlurIntensity(baseBlur), // ~4px on mobile
+        progressSpeed: 200, // Faster progress on mobile
       };
     }
 
     return {
-      duration: baseDuration, // 200ms on desktop
-      blur: baseBlur,
-      progressSpeed: 300, // Faster progress on desktop
+      duration: baseDuration, // 400ms on desktop for smooth blur
+      blur: baseBlur, // 8px blur on desktop
+      progressSpeed: 300, // Progress speed on desktop
     };
   }, [deviceInfo]);
 
@@ -147,10 +147,13 @@ export function PageTransitionOverlay() {
 
         try {
           // Use will-change untuk better performance
-          document.body.style.willChange = "filter";
+          document.body.style.willChange = "filter, opacity";
+          // Apply blur with smooth transition
           document.body.style.filter = `blur(${transitionSettings.blur}px)`;
-          document.body.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
+          document.body.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
           document.body.style.overflow = "hidden";
+          // Slight opacity reduction for more dramatic effect
+          document.body.style.opacity = "0.95";
         } catch (error) {
           console.error("[PageTransition] Error applying body blur:", error);
         }
@@ -174,13 +177,15 @@ export function PageTransitionOverlay() {
               if (heroSection) {
                 try {
                   const heroEl = heroSection as HTMLElement;
-                  // Apply blur transition to hero section
+                  // Apply blur transition to hero section with enhanced visibility
                   heroEl.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
                   heroEl.style.willChange = "filter, opacity";
-                  // CRITICAL: Ensure hero section gets blurred AND stays visible (opacity 1)
-                  heroEl.style.filter = `blur(${transitionSettings.blur}px)`;
-                  heroEl.style.opacity = "1"; // FORCE opacity to 1 to keep it visible with blur
-                  console.log("[PageTransition] Hero section blur applied");
+                  // CRITICAL: Ensure hero section gets blurred AND stays visible
+                  // Use slightly higher blur for hero section to make it more dramatic
+                  const heroBlur = transitionSettings.blur * 1.2; // 20% more blur for hero
+                  heroEl.style.filter = `blur(${heroBlur}px)`;
+                  heroEl.style.opacity = "0.98"; // Slight opacity reduction for effect
+                  console.log("[PageTransition] Hero section blur applied:", { blur: heroBlur });
                 } catch (error) {
                   console.error("[PageTransition] Error applying hero blur:", error);
                 }
@@ -240,6 +245,7 @@ export function PageTransitionOverlay() {
 
         try {
           document.body.style.filter = "blur(0px)";
+          document.body.style.opacity = "1";
           document.body.style.overflow = "";
         } catch (error) {
           console.error("[PageTransition] Error removing body blur:", error);
@@ -263,6 +269,7 @@ export function PageTransitionOverlay() {
                 // Faster blur removal - reduced duration
                 heroEl.style.transition = `filter ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1)`;
                 heroEl.style.filter = "blur(0px)";
+                heroEl.style.opacity = "1";
               } catch (error) {
                 console.error("[PageTransition] Error removing hero blur:", error);
               }
@@ -321,6 +328,7 @@ export function PageTransitionOverlay() {
       if (typeof window === "undefined" || !document.body) return;
 
       document.body.style.filter = "";
+      document.body.style.opacity = "";
       document.body.style.overflow = "";
       document.body.style.willChange = "auto";
 

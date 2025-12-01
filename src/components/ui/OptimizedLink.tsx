@@ -161,19 +161,27 @@ export function OptimizedLink({
       }
 
       // Trigger smooth transition dengan blur effect
+      // ENHANCED: Trigger blur BEFORE navigation for visible effect
       // PRODUCTION-SAFE: Enhanced with DOM readiness check
-      // Use requestAnimationFrame untuk ensure smooth start
       if (beginTransition) {
+        // Trigger transition immediately to show blur effect
+        // Use double requestAnimationFrame to ensure blur is applied before Next.js navigation
         if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
+          // First frame: prepare
           requestAnimationFrame(() => {
-            beginTransition(hrefStr);
+            // Second frame: apply blur (ensures it's visible before navigation)
+            requestAnimationFrame(() => {
+              beginTransition(hrefStr);
+            });
           });
         } else {
           // Retry after DOM is ready
           const retryTimer = setTimeout(() => {
             if (typeof window !== "undefined" && typeof document !== "undefined" && document.body) {
               requestAnimationFrame(() => {
-                beginTransition(hrefStr);
+                requestAnimationFrame(() => {
+                  beginTransition(hrefStr);
+                });
               });
             }
           }, 10);

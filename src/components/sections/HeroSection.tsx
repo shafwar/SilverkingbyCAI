@@ -158,31 +158,32 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         // IMPORTANT: Don't set opacity to 0 immediately - keep it visible with blur
         // This ensures blur effect is visible like other pages
         if (containerRef.current) {
-          // Keep opacity at 1 but apply blur - same as other pages
+          // Keep opacity at 1 but apply blur - enhanced blur for better visibility
+          // Match the enhanced blur from PageTransitionOverlay (8px * 1.2 = ~10px)
           gsap.set(containerRef.current, {
-            opacity: 1,
-            filter: "blur(6px)", // Start with blur matching transition blur - KEEP VISIBLE
+            opacity: 0.98,
+            filter: "blur(10px)", // Enhanced blur matching PageTransitionOverlay hero blur
           });
         }
 
         // Wait for page transition blur to be applied and visible
-        // Then start fade-in animation
-        const fadeInDelay = isTransitionActive ? 250 : 150; // Wait for blur to be visible
+        // Then start fade-in animation with longer delay for better effect
+        const fadeInDelay = isTransitionActive ? 300 : 200; // Wait for blur to be fully visible
 
         fadeInTimeoutRef.current = setTimeout(() => {
           if (containerRef.current) {
             // Smooth fade-in animation dengan GSAP
-            // Start from blurred state (opacity 1, blur 6px) to clear (opacity 1, blur 0px)
+            // Start from blurred state (opacity 0.98, blur 10px) to clear (opacity 1, blur 0px)
             gsap.fromTo(
               containerRef.current,
               {
-                opacity: 1,
-                filter: "blur(6px)", // Start blurred but visible
+                opacity: 0.98,
+                filter: "blur(10px)", // Start blurred but visible
               },
               {
                 opacity: 1,
                 filter: "blur(0px)", // Fade blur to clear
-                duration: 0.5, // Smooth blur removal
+                duration: 0.6, // Longer duration for smoother blur removal
                 ease: "power2.out",
                 onComplete: () => {
                   setIsPageTransitioning(false);

@@ -143,15 +143,24 @@ export function NavigationTransitionProvider({ children }: { children: ReactNode
         transitionTimeoutRef.current = null;
       }
 
-      // PRODUCTION-SAFE: Use requestAnimationFrame to ensure smooth transition start
+      // ENHANCED: Apply blur immediately for visible effect
+      // Use synchronous state update to ensure blur is applied before Next.js navigation
+      targetPathRef.current = normalized;
+      startTimeRef.current = Date.now();
+      setIsActive(true);
+      console.log("[NavigationTransition] Transition started:", {
+        from: pathname,
+        to: normalized,
+      });
+
+      // Force a re-render to ensure blur is applied immediately
+      // Use requestAnimationFrame as fallback for smooth animation
       requestAnimationFrame(() => {
-        targetPathRef.current = normalized;
-        startTimeRef.current = Date.now();
-        setIsActive(true);
-        console.log("[NavigationTransition] Transition started:", {
-          from: pathname,
-          to: normalized,
-        });
+        // Ensure blur is visible
+        if (typeof document !== "undefined" && document.body) {
+          // Blur should already be applied by PageTransitionOverlay
+          // This is just to ensure it's visible
+        }
       });
     },
     [pathname]
@@ -176,8 +185,8 @@ export function NavigationTransitionProvider({ children }: { children: ReactNode
     if (normalizedPathname === normalizedTarget) {
       const elapsed = Date.now() - startTimeRef.current;
 
-      // ULTRA FAST transition timing based on device
-      // Mobile: ultra fast (100ms), Desktop: fast (150ms)
+      // ENHANCED transition timing - longer duration for visible blur effect
+      // Mobile: 400ms, Desktop: 500ms - ensures blur is clearly visible
       // PRODUCTION-SAFE: Enhanced window checks
       const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
       const prefersReducedMotion =
@@ -185,15 +194,15 @@ export function NavigationTransitionProvider({ children }: { children: ReactNode
         typeof window.matchMedia !== "undefined" &&
         window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-      // Significantly reduced timing for faster transitions
-      let minimumVisible = 150; // Reduced from 350ms to 150ms (57% faster)
+      // Longer timing to ensure blur effect is visible and smooth
+      let minimumVisible = 500; // Increased for visible blur effect
       if (prefersReducedMotion) {
         minimumVisible = 0; // Instant for reduced motion
       } else if (isMobile) {
-        minimumVisible = 100; // Reduced from 200ms to 100ms (50% faster)
+        minimumVisible = 400; // Mobile: 400ms for visible blur
       }
 
-      const remaining = elapsed >= minimumVisible ? 0 : minimumVisible - elapsed; // Changed from 50ms to 0ms
+      const remaining = elapsed >= minimumVisible ? 0 : minimumVisible - elapsed;
 
       transitionTimeoutRef.current = setTimeout(() => {
         setIsActive(false);
