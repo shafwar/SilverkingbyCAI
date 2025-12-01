@@ -23,6 +23,7 @@ export function PageTransitionOverlay() {
   const { isActive } = useNavigationTransition();
   const [isBlurring, setIsBlurring] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [isSplashComplete, setIsSplashComplete] = useState(false);
   const [deviceInfo, setDeviceInfo] = useState({
     isMobile: false,
     prefersReducedMotion: false,
@@ -40,6 +41,52 @@ export function PageTransitionOverlay() {
         prefersReducedMotion: prefersReducedMotion(),
         isLowPerformance: isLowPerformanceDevice(),
       });
+
+      // Check if splash screen is already complete
+      const checkSplashComplete = () => {
+        try {
+          const splashShown = sessionStorage.getItem("splashShown");
+          const bodyHasClass = document.body.classList.contains("splash-complete");
+          const splashScreenExists = document.querySelector("[data-splash-screen]");
+
+          // Splash is complete if:
+          // 1. sessionStorage says it's shown, OR
+          // 2. body has splash-complete class, OR
+          // 3. No splash screen element exists (already removed)
+          const isComplete = splashShown === "true" || bodyHasClass || !splashScreenExists;
+
+          if (isComplete !== isSplashComplete) {
+            setIsSplashComplete(isComplete);
+          }
+        } catch (error) {
+          // If sessionStorage fails, assume splash is complete
+          setIsSplashComplete(true);
+        }
+      };
+
+      // Initial check
+      checkSplashComplete();
+
+      // Watch for splash completion via body class change
+      const observer = new MutationObserver(() => {
+        checkSplashComplete();
+      });
+
+      observer.observe(document.body, {
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+
+      // Also check periodically (fallback)
+      const checkInterval = setInterval(() => {
+        checkSplashComplete();
+      }, 100);
+
+      // Cleanup
+      return () => {
+        observer.disconnect();
+        clearInterval(checkInterval);
+      };
     }
   }, []);
 
@@ -81,6 +128,17 @@ export function PageTransitionOverlay() {
   useEffect(() => {
     // PRODUCTION-SAFE: Only run when mounted and window is available
     if (!isMounted || typeof window === "undefined") return;
+
+    // CRITICAL: Don't show NProgress or blur during splash screen
+    if (!isSplashComplete) {
+      // Ensure NProgress is not visible during splash
+      try {
+        NProgress.done();
+      } catch (error) {
+        // Ignore
+      }
+      return;
+    }
 
     if (isActive) {
       // Start blur effect on CURRENT page - ALWAYS for ALL pages
@@ -225,8 +283,7 @@ export function PageTransitionOverlay() {
         });
       }, 3000); // 3 second safety timeout
     } else {
-      // CRITICAL: When isActive becomes false, immediately ensure blur is removed
-      // This is a safety check to prevent stuck blur
+      // CLEAN: When isActive becomes false, ensure blur is removed smoothly
       setIsBlurring(false);
 
       // Clear safety timeout when not active
@@ -235,10 +292,10 @@ export function PageTransitionOverlay() {
         blurRemovalTimeoutRef.current = null;
       }
 
-      // Force remove blur immediately as fallback
+      // Smooth blur removal as fallback
       requestAnimationFrame(() => {
         if (document.body && document.body.style.filter.includes("blur")) {
-          console.log("[PageTransition] Force removing blur when isActive becomes false");
+          document.body.style.transition = `filter ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1)`;
           document.body.style.filter = "blur(0px)";
           document.body.style.opacity = "1";
           document.body.style.overflow = "";
@@ -456,190 +513,80 @@ export function PageTransitionOverlay() {
         transitionSettings.duration * 1000 + 50 // Reduced from 100ms to 50ms
       );
     } else if (!isBlurring) {
-      // CRITICAL: Remove blur IMMEDIATELY when transition completes
-      // This ensures blur is always removed, even if pathname detection has issues
+      // CLEAN: Remove blur smoothly when transition completes
       const removeBlur = () => {
         if (typeof window === "undefined" || !document.body) {
-          console.warn("[PageTransition] Window or document.body not available for blur removal");
           return;
         }
 
-        console.log("[PageTransition] Removing blur from NEW page:", {
-          page: window.location.pathname,
-          isActive,
-        });
-
-        try {
-          // CRITICAL: Remove blur from body IMMEDIATELY
-          document.body.style.filter = "blur(0px)";
-          document.body.style.opacity = "1";
-          document.body.style.overflow = "";
-          document.body.style.willChange = "auto";
-          console.log("[PageTransition] Body blur removed");
-        } catch (error) {
-          console.error("[PageTransition] Error removing body blur:", error);
-        }
-
-        // ENHANCED: Remove blur from ALL page sections - AGGRESSIVE cleanup
-        const removePageBlur = (attempt = 0) => {
-          const maxAttempts = 5; // Increased retry attempts
-
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              // Double requestAnimationFrame to ensure DOM is ready
-              if (typeof document === "undefined" || !document.body) {
-                if (attempt < maxAttempts) {
-                  setTimeout(() => removePageBlur(attempt + 1), 50);
-                }
-                return;
-              }
-
-              // Remove from hero section
-              const heroSection = document.querySelector(".hero-section-transition");
-              if (heroSection) {
-                try {
-                  const heroEl = heroSection as HTMLElement;
-                  heroEl.style.transition = `filter ${transitionSettings.duration * 0.5}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration * 0.5}s cubic-bezier(0.4, 0, 0.2, 1)`;
-                  heroEl.style.filter = "blur(0px)";
-                  heroEl.style.opacity = "1";
-                  heroEl.style.willChange = "auto";
-                  console.log("[PageTransition] Hero section blur removed");
-                } catch (error) {
-                  console.error("[PageTransition] Error removing hero blur:", error);
-                }
-              }
-
-              // Remove from main content
-              const mainContent = document.querySelector("main");
-              if (mainContent) {
-                try {
-                  const mainEl = mainContent as HTMLElement;
-                  mainEl.style.transition = `filter ${transitionSettings.duration * 0.5}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration * 0.5}s cubic-bezier(0.4, 0, 0.2, 1)`;
-                  mainEl.style.filter = "blur(0px)";
-                  mainEl.style.opacity = "1";
-                  mainEl.style.willChange = "auto";
-                  console.log("[PageTransition] Main content blur removed");
-                } catch (error) {
-                  console.error("[PageTransition] Error removing main content blur:", error);
-                }
-              }
-
-              // Remove from ALL sections - more aggressive
-              const sections = document.querySelectorAll("section, article");
-              sections.forEach((section) => {
-                try {
-                  const sectionEl = section as HTMLElement;
-                  sectionEl.style.transition = `filter ${transitionSettings.duration * 0.5}s cubic-bezier(0.4, 0, 0.2, 1)`;
-                  sectionEl.style.filter = "blur(0px)";
-                  sectionEl.style.willChange = "auto";
-                } catch (error) {
-                  // Ignore errors for individual sections
-                }
-              });
-
-              // Also remove from any divs that might have blur
-              const blurredDivs = document.querySelectorAll("div[style*='blur']");
-              blurredDivs.forEach((div) => {
-                try {
-                  const divEl = div as HTMLElement;
-                  if (divEl.style.filter.includes("blur")) {
-                    divEl.style.filter = divEl.style.filter.replace(/blur\([^)]+\)/g, "blur(0px)");
-                  }
-                } catch (error) {
-                  // Ignore errors
-                }
-              });
-
-              if (attempt < maxAttempts && !heroSection && !mainContent && sections.length === 0) {
-                // Retry if no sections found
-                setTimeout(() => removePageBlur(attempt + 1), 100);
-              } else {
-                console.log("[PageTransition] All blur removed successfully");
-              }
-            });
-          });
-        };
-
-        // Start removal immediately
-        removePageBlur();
-
-        // Additional cleanup after a short delay to ensure everything is removed
-        setTimeout(
-          () => {
-            // Force remove any remaining blur
-            if (document.body && document.body.style.filter.includes("blur")) {
+        // Smooth transition for blur removal
+        const smoothRemove = () => {
+          try {
+            // Remove blur from body with smooth transition
+            if (document.body.style.filter.includes("blur")) {
+              document.body.style.transition = `filter ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1)`;
               document.body.style.filter = "blur(0px)";
               document.body.style.opacity = "1";
+              document.body.style.overflow = "";
             }
 
-            // Final cleanup of will-change
-            requestAnimationFrame(() => {
-              if (typeof document !== "undefined") {
-                const heroSection = document.querySelector(".hero-section-transition");
-                if (heroSection) {
-                  try {
-                    (heroSection as HTMLElement).style.willChange = "auto";
-                  } catch (error) {
-                    // Ignore
-                  }
-                }
-                const mainContent = document.querySelector("main");
-                if (mainContent) {
-                  try {
-                    (mainContent as HTMLElement).style.willChange = "auto";
-                  } catch (error) {
-                    // Ignore
-                  }
-                }
+            // Remove from hero section
+            const heroSection = document.querySelector(".hero-section-transition");
+            if (heroSection) {
+              const heroEl = heroSection as HTMLElement;
+              if (heroEl.style.filter.includes("blur")) {
+                heroEl.style.transition = `filter ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1)`;
+                heroEl.style.filter = "blur(0px)";
+                heroEl.style.opacity = "1";
+              }
+            }
+
+            // Remove from main content
+            const mainContent = document.querySelector("main");
+            if (mainContent) {
+              const mainEl = mainContent as HTMLElement;
+              if (mainEl.style.filter.includes("blur")) {
+                mainEl.style.transition = `filter ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1)`;
+                mainEl.style.filter = "blur(0px)";
+                mainEl.style.opacity = "1";
+              }
+            }
+
+            // Remove from sections - clean and simple
+            const sections = document.querySelectorAll("section, article");
+            sections.forEach((section) => {
+              const sectionEl = section as HTMLElement;
+              if (sectionEl.style.filter && sectionEl.style.filter.includes("blur")) {
+                sectionEl.style.transition = `filter ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1)`;
+                sectionEl.style.filter = "blur(0px)";
               }
             });
-          },
-          transitionSettings.duration * 1000 + 200
-        ); // Extra buffer for safety
+
+            // Cleanup will-change after transition completes
+            setTimeout(() => {
+              if (document.body) {
+                document.body.style.willChange = "auto";
+              }
+              if (heroSection) {
+                (heroSection as HTMLElement).style.willChange = "auto";
+              }
+              if (mainContent) {
+                (mainContent as HTMLElement).style.willChange = "auto";
+              }
+            }, transitionSettings.duration * 600);
+          } catch (error) {
+            // Silent fail - don't spam console
+          }
+        };
+
+        // Use requestAnimationFrame for smooth removal
+        requestAnimationFrame(() => {
+          smoothRemove();
+        });
       };
 
-      // CRITICAL: Remove blur IMMEDIATELY when isActive becomes false
-      // Don't wait - remove immediately to prevent stuck blur
+      // Remove blur smoothly
       removeBlur();
-
-      // CRITICAL: Add aggressive interval check to ensure blur is ALWAYS removed
-      // This prevents stuck blur even if pathname detection fails
-      const blurCheckInterval = setInterval(() => {
-        if (!isActive && !isBlurring) {
-          // Double-check all elements don't have blur
-          if (document.body && document.body.style.filter.includes("blur")) {
-            console.warn("[PageTransition] Blur still detected on body, forcing removal");
-            document.body.style.filter = "blur(0px)";
-            document.body.style.opacity = "1";
-          }
-
-          const allElements = document.querySelectorAll("*");
-          let blurFound = false;
-          allElements.forEach((el) => {
-            const htmlEl = el as HTMLElement;
-            if (htmlEl.style.filter && htmlEl.style.filter.includes("blur")) {
-              const blurValue = htmlEl.style.filter.match(/blur\(([^)]+)\)/);
-              if (blurValue && blurValue[1] !== "0px") {
-                blurFound = true;
-                htmlEl.style.filter = htmlEl.style.filter.replace(/blur\([^)]+\)/g, "blur(0px)");
-              }
-            }
-          });
-
-          if (!blurFound) {
-            // No blur found, clear interval
-            clearInterval(blurCheckInterval);
-          }
-        } else {
-          // isActive is true or isBlurring is true, clear interval
-          clearInterval(blurCheckInterval);
-        }
-      }, 100); // Check every 100ms
-
-      // Clear interval after 5 seconds maximum
-      setTimeout(() => {
-        clearInterval(blurCheckInterval);
-      }, 5000);
     }
 
     return () => {

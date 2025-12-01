@@ -801,10 +801,10 @@ export default function ProductsPage() {
       ref={pageRef}
       className="min-h-screen bg-luxury-black text-white selection:bg-luxury-gold/20 selection:text-white"
     >
-      {/* ENHANCED: Video Background with Better Proportional Scaling */}
+      {/* Video Background - Matching Authenticity page style */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <div className="absolute inset-0 overflow-hidden">
-          {/* Fallback gradient background - always visible */}
+          {/* Fallback gradient background */}
           <div className="absolute inset-0 bg-gradient-to-br from-luxury-black via-luxury-black/95 to-luxury-black z-0" />
 
           <video
@@ -816,32 +816,22 @@ export default function ProductsPage() {
             preload="auto"
             disablePictureInPicture
             disableRemotePlayback
-            className={`absolute inset-0 w-full h-full transition-opacity duration-1000 will-change-transform z-10 ${
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 will-change-transform z-10 ${
               isVideoLoaded ? "opacity-100" : "opacity-0"
             }`}
             style={{
-              // ENHANCED: Better proportional scaling - NO zoom, proper fit
-              objectFit: "cover",
-              objectPosition: "center center",
-              // Ensure video fills container properly without distortion or zoom
-              width: "100%",
-              height: "100%",
-              // NO min/max constraints that cause zoom - let it fit naturally
-              transform: "scale(1)", // Explicitly set scale to 1 (no zoom)
+              transform: "scale(1.05)",
               transformOrigin: "center center",
             }}
           >
             <source src={getR2UrlClient("/videos/hero/gold-stone.mp4")} type="video/mp4" />
           </video>
 
-          {/* ENHANCED: Dark overlay for better text readability */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/45 to-black/65 z-20" />
-
-          {/* ENHANCED: Vignette Effect - more subtle and refined */}
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(10,10,10,0.7)_100%)] z-20" />
-
-          {/* ENHANCED: Soft Fading at Bottom - better proportional fade */}
-          <div className="absolute inset-x-0 bottom-0 h-48 sm:h-56 md:h-64 lg:h-72 bg-gradient-to-t from-luxury-black via-luxury-black/70 to-transparent pointer-events-none z-20" />
+          {/* Dark overlays - matching Authenticity style */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70 z-20" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(10,10,10,0.6)_100%)] z-20" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.8)_100%)] z-20" />
+          <div className="absolute inset-x-0 bottom-0 h-40 md:h-52 lg:h-64 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-transparent pointer-events-none z-20" />
 
           {/* Fade to Black Overlay - Controlled by ScrollTrigger */}
           <div

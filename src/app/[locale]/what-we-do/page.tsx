@@ -681,16 +681,9 @@ export default function WhatWeDoPage() {
             muted
             playsInline
             preload="auto"
-            className="absolute inset-0 w-full h-full transition-opacity duration-1000 will-change-transform z-10"
+            className="absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 will-change-transform z-10"
             style={{
-              // ENHANCED: Better proportional scaling - NO zoom, proper fit
-              objectFit: "cover",
-              objectPosition: "center center",
-              // Ensure video fills container properly without distortion or zoom
-              width: "100%",
-              height: "100%",
-              // NO min/max constraints that cause zoom - let it fit naturally
-              transform: "scale(1)", // Explicitly set scale to 1 (no zoom)
+              transform: "scale(1.05)",
               transformOrigin: "center center",
             }}
             disablePictureInPicture
@@ -702,11 +695,11 @@ export default function WhatWeDoPage() {
             />
           </video>
 
-          {/* ENHANCED: Dark overlays for better readability - properly contained */}
+          {/* Dark overlays - matching Authenticity style */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70 z-20" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(10,10,10,0.7)_100%)] z-20" />
-          {/* Enhanced bottom fade for better text readability */}
-          <div className="absolute inset-x-0 bottom-0 left-0 right-0 h-48 sm:h-56 md:h-64 lg:h-72 bg-gradient-to-t from-luxury-black via-luxury-black/70 to-transparent pointer-events-none z-20" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(10,10,10,0.6)_100%)] z-20" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.8)_100%)] z-20" />
+          <div className="absolute inset-x-0 bottom-0 h-40 md:h-52 lg:h-64 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-transparent pointer-events-none z-20" />
         </div>
       </div>
 

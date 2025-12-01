@@ -99,6 +99,19 @@ export function NavigationTransitionProvider({ children }: { children: ReactNode
         return;
       }
 
+      // CRITICAL: Don't start transition during splash screen
+      if (typeof document !== "undefined") {
+        const splashShown = sessionStorage.getItem("splashShown");
+        const bodyHasClass = document.body.classList.contains("splash-complete");
+        const splashScreenExists = document.querySelector("[data-splash-screen]");
+
+        // If splash is not complete, don't start transition
+        if (splashShown !== "true" && !bodyHasClass && splashScreenExists) {
+          console.log("[NavigationTransition] Splash screen active, skipping transition");
+          return;
+        }
+      }
+
       // PRODUCTION-SAFE: Enhanced DOM readiness check with multiple retry attempts
       if (typeof document === "undefined" || !document.body) {
         // Retry with exponential backoff for production environments
