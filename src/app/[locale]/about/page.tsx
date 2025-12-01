@@ -24,7 +24,6 @@ import {
   Instagram,
   Linkedin,
   Youtube,
-  Github,
   Twitter,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -564,15 +563,6 @@ export default function AboutPage() {
 
           {/* Right: Social Media Icons */}
           <div className="flex items-center gap-4 md:gap-5 fade-in">
-            <a
-              href="https://github.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-white/80 hover:text-white transition-colors duration-300"
-              aria-label="GitHub"
-            >
-              <Github className="h-5 w-5 md:h-6 md:w-6" />
-            </a>
             <a
               href="https://instagram.com"
               target="_blank"

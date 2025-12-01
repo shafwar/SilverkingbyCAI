@@ -8,7 +8,6 @@ import {
   Phone,
   MapPin,
   Send,
-  Github,
   Instagram,
   Twitter,
   Linkedin,
@@ -229,14 +228,6 @@ export default function ContactPage() {
               <div className="pt-6 border-t border-white/10">
                 <h3 className="mb-4 text-sm font-semibold text-white">{t("socialTitle")}</h3>
                 <div className="flex gap-4">
-                  <a
-                    href="https://github.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-lg border border-white/10 bg-white/5 p-3 text-white/60 hover:border-luxury-gold/40 hover:bg-white/10 hover:text-luxury-gold transition-all"
-                  >
-                    <Github className="h-5 w-5" />
-                  </a>
                   <a
                     href="https://instagram.com"
                     target="_blank"

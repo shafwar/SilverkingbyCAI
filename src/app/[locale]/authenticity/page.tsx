@@ -15,7 +15,6 @@ import {
   Camera,
   Shield,
   CheckCircle2,
-  Github,
   Instagram,
   Twitter,
   Linkedin,
@@ -913,15 +912,6 @@ export default function AuthenticityPage() {
               transition={{ duration: 0.6, delay: 0.3 }}
               className="flex items-center gap-4 md:gap-5"
             >
-              <a
-                href="https://github.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-white/80 hover:text-white transition-colors duration-300"
-                aria-label="GitHub"
-              >
-                <Github className="h-5 w-5 md:h-6 md:w-6" />
-              </a>
               <a
                 href="https://instagram.com"
                 target="_blank"
