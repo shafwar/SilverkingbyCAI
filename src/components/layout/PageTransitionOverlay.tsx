@@ -100,7 +100,7 @@ export function PageTransitionOverlay() {
     } else {
       // Remove blur when transition completes
       setIsBlurring(false);
-      
+
       // PRODUCTION-SAFE: Stop NProgress with error handling
       try {
         NProgress.done();
@@ -159,7 +159,7 @@ export function PageTransitionOverlay() {
         // PRODUCTION-SAFE: Enhanced with robust retry mechanism and DOM checks
         const applyHeroBlur = (attempt = 0) => {
           const maxAttempts = 5;
-          
+
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
               // PRODUCTION-SAFE: Enhanced DOM checks
@@ -335,21 +335,19 @@ export function PageTransitionOverlay() {
   }, [isBlurring, transitionSettings, isMounted]);
 
   // CRITICAL: Don't render until mounted (prevents hydration mismatch)
+  // NOTE: NProgress and blur effects run in useEffect above, so they work even if we return null here
   if (!isMounted) {
-    return null;
-  }
-
-  // Skip overlay animation if reduced motion
-  if (deviceInfo.prefersReducedMotion) {
     return null;
   }
 
   // Optimized easing function untuk smoother animation
   const easingFunction = "easeInOut";
 
+  // Render overlay (blur and NProgress already running via useEffect above)
+  // Only skip visual overlay if reduced motion, but keep blur and NProgress active
   return (
     <AnimatePresence mode="wait">
-      {isActive && (
+      {isActive && !deviceInfo.prefersReducedMotion && (
         <motion.div
           key="transition-overlay"
           initial={{ opacity: 0 }}
