@@ -727,7 +727,7 @@ export default function WhatWeDoPage() {
             </motion.h1>
             <motion.p
               data-hero
-              className="mt-4 sm:mt-6 max-w-xl text-sm sm:text-[0.9375rem] md:text-base font-sans font-light leading-relaxed text-luxury-silver/80"
+              className="mt-4 sm:mt-6 max-w-xl mx-auto text-sm sm:text-[0.9375rem] md:text-base font-sans font-light leading-relaxed text-luxury-silver/80"
             >
               {t("hero.subtitle")}
             </motion.p>
