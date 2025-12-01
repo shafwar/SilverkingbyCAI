@@ -558,6 +558,7 @@ export default function WhatWeDoPage() {
       <Navbar />
 
       {/* Hero Background – metal crafting hands video, matching products hero style */}
+      {/* ENHANCED: Better container for proportional video */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden isolate">
         <div className="absolute inset-0 overflow-hidden">
           {/* Fallback dark gradient */}
@@ -680,8 +681,18 @@ export default function WhatWeDoPage() {
             muted
             playsInline
             preload="auto"
-            className="absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 will-change-transform z-10"
-            style={{ transform: "scale(1.05)", transformOrigin: "center center" }}
+            className="absolute inset-0 w-full h-full transition-opacity duration-1000 will-change-transform z-10"
+            style={{
+              // ENHANCED: Better proportional scaling - NO zoom, proper fit
+              objectFit: "cover",
+              objectPosition: "center center",
+              // Ensure video fills container properly without distortion or zoom
+              width: "100%",
+              height: "100%",
+              // NO min/max constraints that cause zoom - let it fit naturally
+              transform: "scale(1)", // Explicitly set scale to 1 (no zoom)
+              transformOrigin: "center center",
+            }}
             disablePictureInPicture
             disableRemotePlayback
           >
@@ -691,14 +702,15 @@ export default function WhatWeDoPage() {
             />
           </video>
 
-          {/* Dark overlays for readability - properly contained */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/45 to-black/65 z-20" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(10,10,10,0.6)_100%)] z-20" />
-          <div className="absolute inset-x-0 bottom-0 left-0 right-0 h-40 md:h-52 lg:h-64 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-transparent pointer-events-none z-20" />
+          {/* ENHANCED: Dark overlays for better readability - properly contained */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70 z-20" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(10,10,10,0.7)_100%)] z-20" />
+          {/* Enhanced bottom fade for better text readability */}
+          <div className="absolute inset-x-0 bottom-0 left-0 right-0 h-48 sm:h-56 md:h-64 lg:h-72 bg-gradient-to-t from-luxury-black via-luxury-black/70 to-transparent pointer-events-none z-20" />
         </div>
       </div>
 
-      {/* Hero Section – typography & layout aligned with products hero - Mobile optimized */}
+      {/* ENHANCED: Hero Section – typography & layout with better proportions - Mobile optimized */}
       <section
         ref={(element) => {
           sectionsRef.current[0] = element as HTMLDivElement | null;
@@ -969,7 +981,16 @@ export default function WhatWeDoPage() {
             muted
             playsInline
             preload="auto"
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full transition-opacity duration-1000 z-10"
+            style={{
+              // ENHANCED: Better proportional scaling for footer video - NO zoom
+              objectFit: "cover",
+              objectPosition: "center center",
+              width: "100%",
+              height: "100%",
+              transform: "scale(1)", // Explicitly set scale to 1 (no zoom)
+              transformOrigin: "center center",
+            }}
             disablePictureInPicture
             disableRemotePlayback
           >
@@ -978,7 +999,7 @@ export default function WhatWeDoPage() {
               type="video/mp4"
             />
           </video>
-          {/* Dark overlay for text readability - properly contained */}
+          {/* ENHANCED: Dark overlay for text readability - properly contained */}
           <div className="absolute inset-0 bg-gradient-to-b from-luxury-black/85 via-luxury-black/75 to-luxury-black/85 z-10" />
         </div>
 

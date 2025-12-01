@@ -540,19 +540,14 @@ export default function ProductsPage() {
       // CRITICAL: Use requestIdleCallback to defer heavy animations
       const initAnimations = () => {
         const ctx = gsap.context(() => {
-          // Video zoom in animation - deferred
+          // REMOVED: Video zoom animation - causes too much zoom
+          // Video should stay at scale(1) for proper proportions
           if (videoRef.current && isVideoLoaded) {
-            gsap.fromTo(
-              videoRef.current,
-              { scale: 1 },
-              {
-                scale: 1.1,
-                duration: 20,
-                ease: "none",
-                repeat: -1,
-                yoyo: true,
-              }
-            );
+            // Ensure video stays at scale 1 (no zoom)
+            gsap.set(videoRef.current, {
+              scale: 1,
+              transformOrigin: "center center",
+            });
           }
 
           // Hero animation with stagger
@@ -806,9 +801,9 @@ export default function ProductsPage() {
       ref={pageRef}
       className="min-h-screen bg-luxury-black text-white selection:bg-luxury-gold/20 selection:text-white"
     >
-      {/* Video Background with Zoom In Effect */}
+      {/* ENHANCED: Video Background with Better Proportional Scaling */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 overflow-hidden">
           {/* Fallback gradient background - always visible */}
           <div className="absolute inset-0 bg-gradient-to-br from-luxury-black via-luxury-black/95 to-luxury-black z-0" />
 
@@ -821,26 +816,32 @@ export default function ProductsPage() {
             preload="auto"
             disablePictureInPicture
             disableRemotePlayback
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 will-change-transform z-10 ${
+            className={`absolute inset-0 w-full h-full transition-opacity duration-1000 will-change-transform z-10 ${
               isVideoLoaded ? "opacity-100" : "opacity-0"
             }`}
             style={{
-              transform: "scale(1.05)",
+              // ENHANCED: Better proportional scaling - NO zoom, proper fit
+              objectFit: "cover",
+              objectPosition: "center center",
+              // Ensure video fills container properly without distortion or zoom
+              width: "100%",
+              height: "100%",
+              // NO min/max constraints that cause zoom - let it fit naturally
+              transform: "scale(1)", // Explicitly set scale to 1 (no zoom)
               transformOrigin: "center center",
             }}
           >
             <source src={getR2UrlClient("/videos/hero/gold-stone.mp4")} type="video/mp4" />
           </video>
 
-          {/* Dark overlay for better text readability */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/60 z-20" />
+          {/* ENHANCED: Dark overlay for better text readability */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/45 to-black/65 z-20" />
 
-          {/* Vignette Effect */}
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(10,10,10,0.6)_100%)] z-20" />
+          {/* ENHANCED: Vignette Effect - more subtle and refined */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(10,10,10,0.7)_100%)] z-20" />
 
-          {/* Soft Fading at Bottom - Enhanced for better transition */}
-          <div className="absolute inset-x-0 bottom-0 h-[40vh] bg-gradient-to-t from-luxury-black via-luxury-black/60 to-transparent pointer-events-none z-20" />
-          <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-luxury-black/90 to-transparent pointer-events-none z-20" />
+          {/* ENHANCED: Soft Fading at Bottom - better proportional fade */}
+          <div className="absolute inset-x-0 bottom-0 h-48 sm:h-56 md:h-64 lg:h-72 bg-gradient-to-t from-luxury-black via-luxury-black/70 to-transparent pointer-events-none z-20" />
 
           {/* Fade to Black Overlay - Controlled by ScrollTrigger */}
           <div
@@ -853,12 +854,12 @@ export default function ProductsPage() {
 
       <Navbar />
 
-      {/* Hero Section - Minimalist Design like pixelmatters */}
+      {/* ENHANCED: Hero Section - Minimalist Design with better proportions */}
       <section
         ref={(element) => {
           sectionsRef.current[0] = element;
         }}
-        className="relative px-6 md:px-8 lg:px-12 pt-32 pb-24 md:pt-40 md:pb-32 lg:pt-48 lg:pb-40 min-h-[60vh] md:min-h-[70vh] lg:min-h-[80vh] flex items-center"
+        className="relative px-4 sm:px-6 md:px-8 lg:px-12 pt-[calc(env(safe-area-inset-top)+4rem)] sm:pt-32 md:pt-40 lg:pt-48 pb-16 sm:pb-24 md:pb-32 lg:pb-40 min-h-[85vh] sm:min-h-[80vh] md:min-h-[90vh] lg:min-h-screen flex items-center"
       >
         <div className="relative z-10 w-full max-w-[1400px] mx-auto">
           <motion.div
@@ -868,9 +869,9 @@ export default function ProductsPage() {
             animate="animate"
             className="text-left max-w-4xl"
           >
-            {/* Main Heading - Minimalist Typography like pixelmatters */}
+            {/* ENHANCED: Main Heading - Better typography proportions */}
             <motion.h1
-              className="text-[1.5rem] md:text-[3.5rem] lg:text-[2.5rem] xl:text-[3.5rem] 2xl:text-[4rem] font-sans font-light leading-[1.15] tracking-[-0.02em] md:tracking-[-0.03em] text-white"
+              className="text-[1.75rem] sm:text-[2rem] md:text-[3.5rem] lg:text-[2.5rem] xl:text-[3.5rem] 2xl:text-[4rem] font-sans font-light leading-tight sm:leading-[1.15] tracking-tight md:tracking-[-0.02em] lg:tracking-[-0.03em] text-white"
               data-hero
             >
               {t("hero.title")}

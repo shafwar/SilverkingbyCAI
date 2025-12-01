@@ -30,7 +30,9 @@ function normalizeHref(href: string): string | null {
     // Handle absolute URLs
     if (href.startsWith("http://") || href.startsWith("https://")) {
       const url = new URL(href);
-      const pathname = url.pathname;
+      let pathname = url.pathname;
+      // ENHANCED: Remove locale prefix for consistent comparison
+      pathname = pathname.replace(/^\/[a-z]{2}\//, "/").replace(/^\/[a-z]{2}$/, "/");
       // Normalize home path - ensure "/", "/en", "/id" all map to "/"
       if (pathname === "/" || pathname === "/en" || pathname === "/id") {
         return "/";
@@ -42,7 +44,9 @@ function normalizeHref(href: string): string | null {
     if (typeof window !== "undefined" && window.location) {
       try {
         const url = new URL(href, window.location.origin);
-        const pathname = url.pathname;
+        let pathname = url.pathname;
+        // ENHANCED: Remove locale prefix for consistent comparison
+        pathname = pathname.replace(/^\/[a-z]{2}\//, "/").replace(/^\/[a-z]{2}$/, "/");
         // Normalize home path
         if (pathname === "/" || pathname === "/en" || pathname === "/id") {
           return "/";
@@ -50,7 +54,9 @@ function normalizeHref(href: string): string | null {
         return pathname + url.search;
       } catch (urlError) {
         // Fallback: manual pathname extraction
-        const pathname = href.split("?")[0].split("#")[0];
+        let pathname = href.split("?")[0].split("#")[0];
+        // ENHANCED: Remove locale prefix
+        pathname = pathname.replace(/^\/[a-z]{2}\//, "/").replace(/^\/[a-z]{2}$/, "/");
         if (pathname === "/" || pathname === "/en" || pathname === "/id") {
           return "/";
         }
@@ -59,14 +65,18 @@ function normalizeHref(href: string): string | null {
     }
 
     // Fallback: normalize home paths manually
-    const pathname = href.split("?")[0].split("#")[0];
+    let pathname = href.split("?")[0].split("#")[0];
+    // ENHANCED: Remove locale prefix
+    pathname = pathname.replace(/^\/[a-z]{2}\//, "/").replace(/^\/[a-z]{2}$/, "/");
     if (pathname === "/" || pathname === "/en" || pathname === "/id") {
       return "/";
     }
     return pathname;
   } catch (error) {
     // Final fallback: return href as-is if it's a simple path
-    const pathname = href.split("?")[0].split("#")[0];
+    let pathname = href.split("?")[0].split("#")[0];
+    // ENHANCED: Remove locale prefix
+    pathname = pathname.replace(/^\/[a-z]{2}\//, "/").replace(/^\/[a-z]{2}$/, "/");
     if (pathname === "/" || pathname === "/en" || pathname === "/id") {
       return "/";
     }
@@ -130,10 +140,23 @@ export function NavigationTransitionProvider({ children }: { children: ReactNode
       }
 
       // Normalize current pathname for comparison
+      // ENHANCED: Better normalization to handle locale prefixes
       const normalizedPathname =
-        pathname === "/" || pathname === "/en" || pathname === "/id" ? "/" : pathname;
-      if (normalized === normalizedPathname) {
+        pathname === "/" || pathname === "/en" || pathname === "/id"
+          ? "/"
+          : pathname.replace(/^\/[a-z]{2}\//, "/").replace(/^\/[a-z]{2}$/, "/");
+
+      // Also normalize the target href
+      const normalizedTargetHref = normalized
+        ?.replace(/^\/[a-z]{2}\//, "/")
+        .replace(/^\/[a-z]{2}$/, "/");
+
+      if (normalizedTargetHref === normalizedPathname) {
         // Already on target page, no transition needed
+        console.log("[NavigationTransition] Already on target page, skipping:", {
+          current: normalizedPathname,
+          target: normalizedTargetHref,
+        });
         return;
       }
 
@@ -172,15 +195,19 @@ export function NavigationTransitionProvider({ children }: { children: ReactNode
 
     if (!isActive || !targetPathRef.current) return;
 
-    // Normalize pathname for comparison (home paths: "/", "/en", "/id" → "/")
+    // ENHANCED: Normalize pathname for comparison (home paths: "/", "/en", "/id" → "/")
+    // Also handle locale prefixes in pathnames
     const normalizedPathname =
-      pathname === "/" || pathname === "/en" || pathname === "/id" ? "/" : pathname;
+      pathname === "/" || pathname === "/en" || pathname === "/id"
+        ? "/"
+        : pathname.replace(/^\/[a-z]{2}\//, "/").replace(/^\/[a-z]{2}$/, "/");
+
     const normalizedTarget =
       targetPathRef.current === "/" ||
       targetPathRef.current === "/en" ||
       targetPathRef.current === "/id"
         ? "/"
-        : targetPathRef.current;
+        : targetPathRef.current.replace(/^\/[a-z]{2}\//, "/").replace(/^\/[a-z]{2}$/, "/");
 
     if (normalizedPathname === normalizedTarget) {
       const elapsed = Date.now() - startTimeRef.current;
@@ -205,10 +232,30 @@ export function NavigationTransitionProvider({ children }: { children: ReactNode
 
       const remaining = elapsed >= minimumVisible ? 0 : minimumVisible - elapsed;
 
+      console.log("[NavigationTransition] Pathname matched, removing blur in:", {
+        remaining,
+        elapsed,
+        from: targetPathRef.current,
+        to: normalizedPathname,
+      });
+
       transitionTimeoutRef.current = setTimeout(() => {
+        console.log("[NavigationTransition] Setting isActive to false - blur should be removed");
         setIsActive(false);
         targetPathRef.current = null;
         startTimeRef.current = 0;
+
+        // CRITICAL: Force remove blur as fallback if PageTransitionOverlay doesn't catch it
+        setTimeout(() => {
+          if (typeof document !== "undefined" && document.body) {
+            // Double-check blur is removed
+            if (document.body.style.filter.includes("blur")) {
+              console.warn("[NavigationTransition] Blur still present, forcing removal");
+              document.body.style.filter = "blur(0px)";
+              document.body.style.opacity = "1";
+            }
+          }
+        }, 100);
       }, remaining);
 
       return () => {
@@ -216,6 +263,19 @@ export function NavigationTransitionProvider({ children }: { children: ReactNode
           clearTimeout(transitionTimeoutRef.current);
         }
       };
+    } else {
+      // CRITICAL: If pathname doesn't match but isActive is true, check if we should timeout
+      // This handles cases where pathname detection might fail
+      if (isActive && targetPathRef.current) {
+        const elapsed = Date.now() - startTimeRef.current;
+        // Safety timeout: if transition is active for more than 3 seconds, force remove blur
+        if (elapsed > 3000) {
+          console.warn("[NavigationTransition] Safety timeout - forcing blur removal after 3s");
+          setIsActive(false);
+          targetPathRef.current = null;
+          startTimeRef.current = 0;
+        }
+      }
     }
   }, [pathname, isActive]);
 
