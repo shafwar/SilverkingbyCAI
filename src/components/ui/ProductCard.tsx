@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { Product } from "./ProductModal";
 
 export type ProductWithPricing = Product & {
@@ -20,17 +21,18 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, onProductSelect, index = 0 }: ProductCardProps) {
+  const t = useTranslations("products");
   const images = product.images || (product.image ? [product.image] : []);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const hasMultipleImages = images.length > 1;
 
-  // Auto-slide for products with multiple images
+  // Auto-slide for products with multiple images - Slower transition
   useEffect(() => {
     if (hasMultipleImages && !isHovered) {
       const interval = setInterval(() => {
         setCurrentImageIndex((prev) => (prev + 1) % images.length);
-      }, 4000); // Change image every 4 seconds
+      }, 7000); // Change image every 7 seconds (slower)
       return () => clearInterval(interval);
     }
   }, [hasMultipleImages, isHovered, images.length]);
@@ -84,10 +86,15 @@ export default function ProductCard({ product, onProductSelect, index = 0 }: Pro
                   src={img}
                   alt={`${product.name} - Image ${idx + 1}`}
                   className="absolute inset-0 w-full h-full object-cover"
-                  initial={{ opacity: 0, scale: 1.05 }}
+                  initial={{ opacity: 0, scale: 1.02 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.5, ease: "easeInOut" }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{
+                    duration: 1.2,
+                    ease: [0.25, 0.1, 0.25, 1],
+                    opacity: { duration: 1.0 },
+                    scale: { duration: 1.2 },
+                  }}
                 />
               )
           )}
@@ -155,10 +162,10 @@ export default function ProductCard({ product, onProductSelect, index = 0 }: Pro
             )}
           </div>
 
-          {/* Single Price - Always show, display "-" if no price */}
+          {/* Single Price - Always show, display "Coming Soon" if no price */}
           <div className="product-card__price pt-2">
             <span className="text-xs font-extralight text-white/60 tracking-wide">
-              {displayPrice ? formatPrice(displayPrice) : "-"}
+              {displayPrice ? formatPrice(displayPrice) : `Rp. ${t("comingSoon")}`}
             </span>
           </div>
         </div>

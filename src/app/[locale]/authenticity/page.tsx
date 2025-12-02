@@ -74,7 +74,7 @@ function CTASection({ t }: { t: (key: string) => string }) {
             }}
           >
             <span className="text-sm md:text-base font-light tracking-wide">
-              {t('learnProcess')}
+              {t("learnProcess")}
             </span>
             <ArrowDown className="h-4 w-4 md:h-5 md:w-5 transition-transform duration-300 group-hover:translate-y-1" />
           </motion.button>
@@ -85,7 +85,11 @@ function CTASection({ t }: { t: (key: string) => string }) {
 }
 
 // WorkflowTimeline - NO BLOCKING ANIMATIONS
-function WorkflowTimeline({ steps }: { steps: Array<{ id: number; title: string; description: string; icon: any }> }) {
+function WorkflowTimeline({
+  steps,
+}: {
+  steps: Array<{ id: number; title: string; description: string; icon: any }>;
+}) {
   const timelineRef = useRef<HTMLDivElement>(null);
   const pathRef = useRef<SVGPathElement>(null);
   const pathMobileRef = useRef<SVGPathElement>(null);
@@ -276,35 +280,35 @@ function WorkflowTimeline({ steps }: { steps: Array<{ id: number; title: string;
 }
 
 export default function AuthenticityPage() {
-  const t = useTranslations('authenticity');
-  
+  const t = useTranslations("authenticity");
+
   const workflowSteps = [
     {
       id: 1,
-      title: t('workflow.steps.step1.title'),
-      description: t('workflow.steps.step1.description'),
+      title: t("workflow.steps.step1.title"),
+      description: t("workflow.steps.step1.description"),
       icon: QrCode,
     },
     {
       id: 2,
-      title: t('workflow.steps.step2.title'),
-      description: t('workflow.steps.step2.description'),
+      title: t("workflow.steps.step2.title"),
+      description: t("workflow.steps.step2.description"),
       icon: Camera,
     },
     {
       id: 3,
-      title: t('workflow.steps.step3.title'),
-      description: t('workflow.steps.step3.description'),
+      title: t("workflow.steps.step3.title"),
+      description: t("workflow.steps.step3.description"),
       icon: Shield,
     },
     {
       id: 4,
-      title: t('workflow.steps.step4.title'),
-      description: t('workflow.steps.step4.description'),
+      title: t("workflow.steps.step4.title"),
+      description: t("workflow.steps.step4.description"),
       icon: CheckCircle2,
     },
   ];
-  const tNav = useTranslations('nav');
+  const tNav = useTranslations("nav");
   const locale = useLocale();
   const [showScanner, setShowScanner] = useState(false);
   const [showManualInput, setShowManualInput] = useState(false);
@@ -587,10 +591,13 @@ export default function AuthenticityPage() {
             <source src={getR2UrlClient("/videos/hero/mobile scanning qr.mp4")} type="video/mp4" />
           </video>
 
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70 z-20" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(10,10,10,0.6)_100%)] z-20" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.8)_100%)] z-20" />
-          <div className="absolute inset-x-0 bottom-0 h-40 md:h-52 lg:h-64 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-transparent pointer-events-none z-20" />
+          {/* Optimized Vignette Layer - Stable, optimal, and consistent */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80 z-20" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.5)_60%,rgba(0,0,0,0.85)_100%)] z-20" />
+          <div className="absolute inset-x-0 top-0 h-32 md:h-40 lg:h-48 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none z-20" />
+          <div className="absolute inset-x-0 bottom-0 h-48 md:h-56 lg:h-64 bg-gradient-to-t from-black/90 via-black/60 to-transparent pointer-events-none z-20" />
+          <div className="absolute inset-y-0 left-0 w-32 md:w-40 lg:w-48 bg-gradient-to-r from-black/70 via-black/30 to-transparent pointer-events-none z-20" />
+          <div className="absolute inset-y-0 right-0 w-32 md:w-40 lg:w-48 bg-gradient-to-l from-black/70 via-black/30 to-transparent pointer-events-none z-20" />
         </div>
 
         {/* Minimal Particles */}
@@ -620,9 +627,9 @@ export default function AuthenticityPage() {
             data-hero
             className="mb-4 text-4xl font-sans font-light leading-tight text-white sm:text-5xl md:text-6xl"
           >
-            {t('authenticateYour')}
+            {t("authenticateYour")}
             <span className="block bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text font-sans font-semibold text-transparent">
-              {t('silverKingBar')}
+              {t("silverKingBar")}
             </span>
           </motion.h1>
 
@@ -630,7 +637,7 @@ export default function AuthenticityPage() {
             data-hero
             className="mx-auto mb-8 max-w-xl text-base leading-relaxed text-luxury-silver/70 sm:text-lg"
           >
-            {t('heroDescription')}
+            {t("heroDescription")}
           </motion.p>
 
           <motion.div
@@ -645,10 +652,10 @@ export default function AuthenticityPage() {
               className="group relative z-20 inline-flex w-full items-center justify-center gap-2 rounded-full bg-luxury-gold px-8 py-3.5 text-sm font-semibold text-black transition-all hover:bg-luxury-lightGold sm:w-auto cursor-pointer active:scale-95"
             >
               <QrCode className="h-4 w-4" />
-              {t('scanQR')}
+              {t("scanQR")}
             </motion.button>
 
-            <span className="relative z-20 text-sm text-white/40 font-light">{t('or')}</span>
+            <span className="relative z-20 text-sm text-white/40 font-light">{t("or")}</span>
 
             <motion.button
               type="button"
@@ -658,7 +665,7 @@ export default function AuthenticityPage() {
               className="relative z-20 inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-8 py-3.5 text-sm font-semibold text-white transition-all hover:border-white/30 hover:bg-white/10 sm:w-auto cursor-pointer active:scale-95"
             >
               <Search className="h-4 w-4" />
-              {t('enterSerial')}
+              {t("enterSerial")}
             </motion.button>
           </motion.div>
         </div>
@@ -685,13 +692,13 @@ export default function AuthenticityPage() {
             transition={{ duration: 0.8 }}
           >
             <h2 className="mb-4 text-4xl font-light text-white md:text-5xl">
-              {t('workflow.title')}{" "}
+              {t("workflow.title")}{" "}
               <span className="bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text font-semibold text-transparent">
-                {t('workflow.titleBold')}
+                {t("workflow.titleBold")}
               </span>
             </h2>
             <p className="mx-auto max-w-2xl text-base text-luxury-silver/70 md:text-lg">
-              {t('workflow.subtitle')}
+              {t("workflow.subtitle")}
             </p>
           </motion.div>
 
@@ -759,14 +766,14 @@ export default function AuthenticityPage() {
                   <X className="h-5 w-5" />
                 </button>
 
-                <h2 className="mb-6 text-2xl font-semibold text-white">{t('enterSerialNumber')}</h2>
+                <h2 className="mb-6 text-2xl font-semibold text-white">{t("enterSerialNumber")}</h2>
                 <div className="mb-6 flex gap-3">
                   <input
                     type="text"
                     value={serialNumber}
                     onChange={(e) => setSerialNumber(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleManualVerify()}
-                    placeholder={t('enterSerialPlaceholder')}
+                    placeholder={t("enterSerialPlaceholder")}
                     className="flex-1 rounded-lg border border-white/20 bg-white/5 px-4 py-3 font-mono text-sm text-white placeholder:text-white/40 focus:border-luxury-gold focus:outline-none focus:ring-2 focus:ring-luxury-gold/30"
                     autoFocus
                   />
@@ -777,12 +784,10 @@ export default function AuthenticityPage() {
                     disabled={!serialNumber.trim()}
                     className="rounded-lg bg-gradient-to-r from-luxury-gold to-luxury-lightGold px-6 py-3 text-sm font-semibold text-black transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {t('verify')}
+                    {t("verify")}
                   </motion.button>
                 </div>
-                <p className="text-xs text-white/50 text-center">
-                  {t('enterSerialHint')}
-                </p>
+                <p className="text-xs text-white/50 text-center">{t("enterSerialHint")}</p>
               </div>
             </motion.div>
           </motion.div>
@@ -799,14 +804,12 @@ export default function AuthenticityPage() {
         <div className="relative z-10 mx-auto max-w-5xl">
           <div className="mb-12 text-center">
             <h2 className="mb-3 text-3xl font-light text-white md:text-4xl">
-              {t('benefits.title')}{" "}
+              {t("benefits.title")}{" "}
               <span className="bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text font-semibold text-transparent">
-                {t('benefits.titleBold')}
+                {t("benefits.titleBold")}
               </span>
             </h2>
-            <p className="text-sm text-luxury-silver/60 md:text-base">
-              {t('benefits.subtitle')}
-            </p>
+            <p className="text-sm text-luxury-silver/60 md:text-base">{t("benefits.subtitle")}</p>
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -820,9 +823,11 @@ export default function AuthenticityPage() {
               <div className="mb-4 inline-flex rounded-xl bg-luxury-gold/10 p-3">
                 <Sparkles className="h-5 w-5 text-luxury-gold" />
               </div>
-              <h3 className="mb-2 text-lg font-semibold text-white">{t('benefits.authenticity.title')}</h3>
+              <h3 className="mb-2 text-lg font-semibold text-white">
+                {t("benefits.authenticity.title")}
+              </h3>
               <p className="text-sm text-luxury-silver/70 leading-relaxed">
-                {t('benefits.authenticity.description')}
+                {t("benefits.authenticity.description")}
               </p>
             </motion.div>
 
@@ -836,9 +841,11 @@ export default function AuthenticityPage() {
               <div className="mb-4 inline-flex rounded-xl bg-luxury-silver/10 p-3">
                 <QrCode className="h-5 w-5 text-luxury-silver" />
               </div>
-              <h3 className="mb-2 text-lg font-semibold text-white">{t('benefits.traceability.title')}</h3>
+              <h3 className="mb-2 text-lg font-semibold text-white">
+                {t("benefits.traceability.title")}
+              </h3>
               <p className="text-sm text-luxury-silver/70 leading-relaxed">
-                {t('benefits.traceability.description')}
+                {t("benefits.traceability.description")}
               </p>
             </motion.div>
 
@@ -852,9 +859,11 @@ export default function AuthenticityPage() {
               <div className="mb-4 inline-flex rounded-xl bg-luxury-gold/10 p-3">
                 <Shield className="h-5 w-5 text-luxury-gold" />
               </div>
-              <h3 className="mb-2 text-lg font-semibold text-white">{t('benefits.security.title')}</h3>
+              <h3 className="mb-2 text-lg font-semibold text-white">
+                {t("benefits.security.title")}
+              </h3>
               <p className="text-sm text-luxury-silver/70 leading-relaxed">
-                {t('benefits.security.description')}
+                {t("benefits.security.description")}
               </p>
             </motion.div>
           </div>
@@ -883,25 +892,25 @@ export default function AuthenticityPage() {
                 href={`/${locale}/what-we-do`}
                 className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
               >
-                {tNav('whatWeDo')}
+                {tNav("whatWeDo")}
               </Link>
               <Link
                 href={`/${locale}/authenticity`}
                 className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
               >
-                {tNav('authenticity')}
+                {tNav("authenticity")}
               </Link>
               <Link
                 href={`/${locale}/products`}
                 className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
               >
-                {tNav('products')}
+                {tNav("products")}
               </Link>
               <Link
                 href={`/${locale}/about`}
                 className="text-sm md:text-base font-medium text-white/80 hover:text-white transition-colors duration-300"
               >
-                {tNav('aboutUs')}
+                {tNav("aboutUs")}
               </Link>
             </motion.div>
 

@@ -30,9 +30,9 @@ export default async function RootPage() {
 
   return (
     <NextIntlClientProvider messages={messages}>
-      <Providers>
-        <RootPageContent />
-      </Providers>
+        <Providers>
+          <RootPageContent />
+        </Providers>
     </NextIntlClientProvider>
   );
 }

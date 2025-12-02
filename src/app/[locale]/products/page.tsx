@@ -378,13 +378,13 @@ export default function ProductsPage() {
       },
       {
         id: "5",
-        name: "silverking-gold",
+        name: "100gr",
         rangeName: t("product.rangeName"),
         image: "/images/silverking-gold.jpeg",
         purity: t("product.purity"),
-        weight: "",
+        weight: "100gr",
         description: `${t("product.description")}`,
-        category: "",
+        category: t("categories.100gram.title"),
       },
     ],
     [t]
@@ -825,11 +825,13 @@ export default function ProductsPage() {
           <source src={getR2UrlClient("/videos/hero/gold-stone.mp4")} type="video/mp4" />
         </video>
 
-        {/* Dark overlays - matching Authenticity style */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70 z-20" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(10,10,10,0.6)_100%)] z-20" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.8)_100%)] z-20" />
-        <div className="absolute inset-x-0 bottom-0 h-40 md:h-52 lg:h-64 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-transparent pointer-events-none z-20" />
+        {/* Optimized Vignette Layer - Stable, optimal, and consistent */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80 z-20" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.5)_60%,rgba(0,0,0,0.85)_100%)] z-20" />
+        <div className="absolute inset-x-0 top-0 h-32 md:h-40 lg:h-48 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none z-20" />
+        <div className="absolute inset-x-0 bottom-0 h-48 md:h-56 lg:h-64 bg-gradient-to-t from-black/90 via-black/60 to-transparent pointer-events-none z-20" />
+        <div className="absolute inset-y-0 left-0 w-32 md:w-40 lg:w-48 bg-gradient-to-r from-black/70 via-black/30 to-transparent pointer-events-none z-20" />
+        <div className="absolute inset-y-0 right-0 w-32 md:w-40 lg:w-48 bg-gradient-to-l from-black/70 via-black/30 to-transparent pointer-events-none z-20" />
 
         {/* Fade to Black Overlay - Controlled by ScrollTrigger */}
         <div
@@ -1078,14 +1080,14 @@ export default function ProductsPage() {
                         },
                       },
                     }}
-                    className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 md:gap-10 lg:gap-12"
+                    className="flex flex-wrap justify-center gap-8 md:gap-10 lg:gap-12"
                   >
                     {filteredProducts.map((product, index) => (
                       <motion.div
                         key={product.id}
                         variants={cardVariants}
                         custom={index}
-                        className="relative"
+                        className="relative w-full sm:w-[calc(50%-1rem)] md:w-[calc(50%-1.5rem)] lg:w-[calc(33.333%-2rem)] xl:w-[280px]"
                       >
                         <ProductCard
                           product={product}
@@ -1168,36 +1170,29 @@ export default function ProductsPage() {
         </div>
       </section>
 
-      {/* Bottom Section - Fixed Background with Clip-Inset & Reading Text Reveal */}
+      {/* Bottom Section - Background Image with Reading Text */}
       <section
         ref={(element) => {
           sectionsRef.current[2] = element;
           bottomSectionRef.current = element as HTMLDivElement | null;
         }}
-        className="clip-inset relative min-h-[100vh] overflow-hidden"
+        className="relative min-h-[100vh] overflow-hidden"
+        style={{
+          backgroundImage: "url('/images/gold-ingot.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          backgroundAttachment: "fixed",
+        }}
       >
-        {/* Fixed Background Image Container - Stays fixed while scrolling */}
-        <div className="image-background-fixed">
-          <img
-            src={getR2UrlClient("/images/gold-ingot.jpg")}
-            alt=""
-            className="h-full w-full object-cover"
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              objectPosition: "center",
-            }}
-            loading="lazy"
-          />
-          {/* Subtle overlay for better text readability */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/80" />
-        </div>
+        {/* Overlay for better text readability */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/70 z-0" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_20%,rgba(0,0,0,0.5)_80%)] z-0" />
 
         {/* Reading Text Container - Scrolls normally */}
         <div
           ref={readingTextRef}
-          className="relative z-10 flex min-h-[100vh] flex-col items-center justify-between px-8 md:px-12 lg:px-16"
+          className="relative z-20 flex min-h-[100vh] flex-col items-center justify-between px-8 md:px-12 lg:px-16"
           style={{
             paddingTop: "20vh",
             paddingBottom: "10vh",

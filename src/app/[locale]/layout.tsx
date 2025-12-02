@@ -50,11 +50,11 @@ export default async function LocaleLayout({
     <html lang={locale} className={`${GeistSans.variable} ${playfair.variable}`}>
       <body className={`${GeistSans.className} antialiased`}>
         <NextIntlClientProvider messages={messages}>
-          <Providers>
-            <PagePrefetchClient />
-            <Navbar />
-            {children}
-          </Providers>
+            <Providers>
+              <PagePrefetchClient />
+              <Navbar />
+              {children}
+            </Providers>
         </NextIntlClientProvider>
       </body>
     </html>
