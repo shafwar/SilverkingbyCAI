@@ -349,7 +349,7 @@ export default function ProductsPage() {
     [t]
   );
 
-  // All products with translations - Hanya 5 produk dengan gambar yang diminta
+  // All products with translations - Grouped products with multiple images
   const allProducts = useMemo<ProductWithPricing[]>(
     () => [
       {
@@ -361,16 +361,8 @@ export default function ProductsPage() {
         weight: "50gr",
         description: `${t("product.description")}`,
         category: t("categories.50gram.title"),
-      },
-      {
-        id: "2",
-        name: "50gr (2)",
-        rangeName: t("product.rangeName"),
-        image: "/images/50gr(2).jpeg",
-        purity: t("product.purity"),
-        weight: "50gr",
-        description: `${t("product.descriptionShort")}`,
-        category: t("categories.50gram.title"),
+        // Additional images for slider
+        images: ["/images/50gr.jpeg", "/images/50gr(2).jpeg"],
       },
       {
         id: "3",
@@ -381,16 +373,8 @@ export default function ProductsPage() {
         weight: "100gr",
         description: `${t("product.description")}`,
         category: t("categories.100gram.title"),
-      },
-      {
-        id: "4",
-        name: "100gr (2)",
-        rangeName: t("product.rangeName"),
-        image: "/images/100gr(2).jpeg",
-        purity: t("product.purity"),
-        weight: "100gr",
-        description: `${t("product.descriptionShort")}`,
-        category: t("categories.100gram.title"),
+        // Additional images for slider
+        images: ["/images/100gr.jpeg", "/images/100gr(2).jpeg"],
       },
       {
         id: "5",
@@ -416,122 +400,8 @@ export default function ProductsPage() {
     setTimeout(() => setSelectedProduct(null), 300);
   };
 
-  // Optimal video autoplay handling - ensure video never pauses or breaks
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    // Force play function with error handling and retry mechanism
-    const forcePlay = async () => {
-      try {
-        if (video.paused && !video.ended) {
-          await video.play();
-        }
-      } catch (error) {
-        console.warn("[ProductsPage] Video autoplay prevented, retrying:", error);
-        // Retry after a short delay with exponential backoff
-        setTimeout(() => {
-          video.play().catch(() => {
-            // Second retry after longer delay
-            setTimeout(() => {
-              video.play().catch(() => {
-                console.warn("[ProductsPage] Video autoplay failed after multiple retries");
-              });
-            }, 500);
-          });
-        }, 100);
-      }
-    };
-
-    const handleCanPlay = () => {
-      setIsVideoLoaded(true);
-      forcePlay();
-    };
-
-    const handleLoadedData = () => {
-      setIsVideoLoaded(true);
-      forcePlay();
-    };
-
-    const handleError = () => {
-      setIsVideoLoaded(false);
-    };
-
-    // Resume video if it pauses (prevent breaks)
-    const handlePause = () => {
-      if (!video.ended) {
-        // Small delay to avoid infinite loop
-        setTimeout(() => {
-          if (video.paused && !video.ended) {
-            forcePlay();
-          }
-        }, 50);
-      }
-    };
-
-    // Handle video waiting/buffering - resume when ready
-    const handleWaiting = () => {
-      // Video is buffering, will resume automatically when ready
-      // But we can also try to play if it's paused
-      if (video.paused && !video.ended) {
-        setTimeout(() => {
-          forcePlay();
-        }, 100);
-      }
-    };
-
-    // Handle visibility change - resume video when page becomes visible
-    const handleVisibilityChange = () => {
-      if (!document.hidden && video.paused && !video.ended) {
-        forcePlay();
-      }
-    };
-
-    // Handle video end - restart immediately for seamless loop
-    const handleEnded = () => {
-      video.currentTime = 0;
-      forcePlay();
-    };
-
-    // Check if video is already loaded
-    if (video.readyState >= 2) {
-      setIsVideoLoaded(true);
-    }
-
-    // Initial play attempt
-    forcePlay();
-
-    // Event listeners
-    video.addEventListener("canplay", handleCanPlay);
-    video.addEventListener("loadeddata", handleLoadedData);
-    video.addEventListener("error", handleError);
-    video.addEventListener("pause", handlePause);
-    video.addEventListener("ended", handleEnded);
-    video.addEventListener("waiting", handleWaiting);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    // Force load video to ensure it starts loading immediately
-    video.load();
-
-    // Periodic check to ensure video is playing (fallback mechanism)
-    const playCheckInterval = setInterval(() => {
-      if (video.paused && !video.ended && !document.hidden) {
-        forcePlay();
-      }
-    }, 2000); // Check every 2 seconds
-
-    // Cleanup
-    return () => {
-      video.removeEventListener("canplay", handleCanPlay);
-      video.removeEventListener("loadeddata", handleLoadedData);
-      video.removeEventListener("error", handleError);
-      video.removeEventListener("pause", handlePause);
-      video.removeEventListener("ended", handleEnded);
-      video.removeEventListener("waiting", handleWaiting);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      clearInterval(playCheckInterval);
-    };
-  }, []);
+  // Video autoplay is now handled in the video ref callback
+  // This useEffect is kept for cleanup if needed, but video handling is in ref
 
   useGSAP(
     () => {
@@ -540,15 +410,8 @@ export default function ProductsPage() {
       // CRITICAL: Use requestIdleCallback to defer heavy animations
       const initAnimations = () => {
         const ctx = gsap.context(() => {
-          // REMOVED: Video zoom animation - causes too much zoom
-          // Video should stay at scale(1) for proper proportions
-          if (videoRef.current && isVideoLoaded) {
-            // Ensure video stays at scale 1 (no zoom)
-            gsap.set(videoRef.current, {
-              scale: 1,
-              transformOrigin: "center center",
-            });
-          }
+          // Video is now full screen with no zoom - no GSAP animation needed
+          // Video styling is handled via CSS (transform: none, width: 100vw, height: 100vh)
 
           // Hero animation with stagger
           if (heroRef.current) {
@@ -801,105 +664,214 @@ export default function ProductsPage() {
       ref={pageRef}
       className="min-h-screen bg-luxury-black text-white selection:bg-luxury-gold/20 selection:text-white"
     >
-      {/* Video Background - Matching Authenticity page style */}
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden">
-          {/* Fallback gradient background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-luxury-black via-luxury-black/95 to-luxury-black z-0" />
+      {/* Full Screen Video Background - No Zoom, High Quality */}
+      <div
+        className="fixed inset-0 z-0 w-screen h-screen overflow-hidden"
+        style={{
+          willChange: "transform",
+          backfaceVisibility: "hidden",
+          WebkitBackfaceVisibility: "hidden",
+          transform: "translateZ(0)",
+          WebkitTransform: "translateZ(0)",
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-luxury-black via-luxury-black/95 to-luxury-black z-0" />
 
-          <video
-            ref={videoRef}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            disablePictureInPicture
-            disableRemotePlayback
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 will-change-transform z-10 ${
-              isVideoLoaded ? "opacity-100" : "opacity-0"
-            }`}
-            style={{
-              transform: "scale(1.0)",
-              transformOrigin: "center center",
-            }}
-          >
-            <source src={getR2UrlClient("/videos/hero/gold-stone.mp4")} type="video/mp4" />
-          </video>
+        <video
+          ref={(video) => {
+            // Store ref for GSAP ScrollTrigger
+            videoRef.current = video;
 
-          {/* Dark overlays - matching Authenticity style */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70 z-20" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(10,10,10,0.6)_100%)] z-20" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.8)_100%)] z-20" />
-          <div className="absolute inset-x-0 bottom-0 h-40 md:h-52 lg:h-64 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-transparent pointer-events-none z-20" />
+            if (video) {
+              // Optimal video autoplay handling - ensure video never pauses or breaks
+              const forcePlay = async () => {
+                try {
+                  if (video.paused && !video.ended) {
+                    await video.play();
+                  }
+                } catch (error) {
+                  console.warn("[ProductsPage] Video autoplay prevented, retrying:", error);
+                  setTimeout(() => {
+                    video.play().catch(() => {
+                      setTimeout(() => {
+                        video.play().catch(() => {
+                          console.warn(
+                            "[ProductsPage] Video autoplay failed after multiple retries"
+                          );
+                        });
+                      }, 500);
+                    });
+                  }, 100);
+                }
+              };
 
-          {/* Fade to Black Overlay - Controlled by ScrollTrigger */}
-          <div
-            ref={fadeOverlayRef}
-            className="absolute inset-0 bg-luxury-black pointer-events-none z-30"
-            style={{ opacity: 0 }}
-          />
-        </div>
+              const handleCanPlay = () => {
+                setIsVideoLoaded(true);
+                forcePlay();
+              };
+              const handleLoadedData = () => {
+                setIsVideoLoaded(true);
+                forcePlay();
+              };
+              const handleError = () => {
+                setIsVideoLoaded(false);
+                console.warn("[ProductsPage] Video error occurred");
+              };
+              const handlePause = () => {
+                if (!video.ended) {
+                  setTimeout(() => {
+                    if (video.paused && !video.ended) {
+                      forcePlay();
+                    }
+                  }, 50);
+                }
+              };
+              const handleVisibilityChange = () => {
+                if (!document.hidden && video.paused && !video.ended) {
+                  forcePlay();
+                }
+              };
+              const handleEnded = () => {
+                video.currentTime = 0;
+                forcePlay();
+              };
+              const handleWaiting = () => {
+                if (video.paused && !video.ended) {
+                  setTimeout(() => forcePlay(), 100);
+                }
+              };
+
+              // Optimize video quality settings
+              video.setAttribute("playsinline", "true");
+              video.setAttribute("webkit-playsinline", "true");
+
+              // Ensure high quality rendering
+              if ("requestVideoFrameCallback" in video) {
+                // Use modern API for better quality
+                (video as any).requestVideoFrameCallback(() => {
+                  // Force high quality rendering
+                });
+              }
+
+              // Check if video is already loaded
+              if (video.readyState >= 2) {
+                setIsVideoLoaded(true);
+              }
+
+              forcePlay();
+              video.addEventListener("canplay", handleCanPlay);
+              video.addEventListener("loadeddata", handleLoadedData);
+              video.addEventListener("error", handleError);
+              video.addEventListener("pause", handlePause);
+              video.addEventListener("ended", handleEnded);
+              video.addEventListener("waiting", handleWaiting);
+              document.addEventListener("visibilitychange", handleVisibilityChange);
+
+              // Preload with high quality
+              video.load();
+
+              // Force hardware acceleration for crisp rendering
+              video.style.transform = "translateZ(0)";
+              video.style.webkitTransform = "translateZ(0)";
+
+              const playCheckInterval = setInterval(() => {
+                if (video.paused && !video.ended && !document.hidden) {
+                  forcePlay();
+                }
+              }, 2000);
+
+              (video as any).__cleanup = () => {
+                video.removeEventListener("canplay", handleCanPlay);
+                video.removeEventListener("loadeddata", handleLoadedData);
+                video.removeEventListener("error", handleError);
+                video.removeEventListener("pause", handlePause);
+                video.removeEventListener("ended", handleEnded);
+                video.removeEventListener("waiting", handleWaiting);
+                document.removeEventListener("visibilitychange", handleVisibilityChange);
+                clearInterval(playCheckInterval);
+              };
+            } else {
+              // Cleanup when video is unmounted
+              if (videoRef.current && (videoRef.current as any).__cleanup) {
+                (videoRef.current as any).__cleanup();
+              }
+              videoRef.current = null;
+            }
+          }}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          className={`absolute inset-0 w-screen h-screen object-cover transition-opacity duration-1000 z-10 ${
+            isVideoLoaded ? "opacity-100" : "opacity-0"
+          }`}
+          style={{
+            objectFit: "cover",
+            objectPosition: "center center",
+            width: "100vw",
+            height: "100vh",
+            transform: "translateZ(0)",
+            WebkitTransform: "translateZ(0)",
+            willChange: "opacity, transform",
+            backfaceVisibility: "hidden",
+            WebkitBackfaceVisibility: "hidden",
+            filter: "none",
+            WebkitFilter: "none",
+          }}
+          disablePictureInPicture
+          disableRemotePlayback
+        >
+          <source src={getR2UrlClient("/videos/hero/gold-stone.mp4")} type="video/mp4" />
+        </video>
+
+        {/* Dark overlays - matching Authenticity style */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70 z-20" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(10,10,10,0.6)_100%)] z-20" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.8)_100%)] z-20" />
+        <div className="absolute inset-x-0 bottom-0 h-40 md:h-52 lg:h-64 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-transparent pointer-events-none z-20" />
+
+        {/* Fade to Black Overlay - Controlled by ScrollTrigger */}
+        <div
+          ref={fadeOverlayRef}
+          className="absolute inset-0 bg-luxury-black pointer-events-none z-30"
+          style={{ opacity: 0 }}
+        />
       </div>
 
       <Navbar />
 
-      {/* ENHANCED: Hero Section - Minimalist Design with better proportions */}
+      {/* ENHANCED: Hero Section - Full Screen, matching What We Do exactly */}
       <section
         ref={(element) => {
           sectionsRef.current[0] = element;
         }}
-        className="relative px-4 sm:px-6 md:px-8 lg:px-12 pt-[calc(env(safe-area-inset-top)+4rem)] sm:pt-28 md:pt-36 lg:pt-44 pb-12 sm:pb-20 md:pb-28 lg:pb-36 min-h-[75vh] sm:min-h-[70vh] md:min-h-[80vh] lg:min-h-[85vh] flex items-center"
+        className="relative flex min-h-screen items-center justify-start overflow-hidden"
       >
-        <div className="relative z-10 w-full max-w-[1400px] mx-auto">
+        {/* Hero Content - Full left alignment, flush to left edge - Matching What We Do */}
+        <div className="relative z-20 w-full text-left pl-4 sm:pl-6 md:pl-8 lg:pl-12 xl:pl-16 2xl:pl-20 pr-4 sm:pr-6 md:pr-8 lg:pr-12">
           <motion.div
             ref={heroRef}
             variants={revealVariants}
             initial="initial"
             animate="animate"
-            className="text-left max-w-4xl"
+            className="space-y-6 sm:space-y-8 max-w-4xl"
           >
-            {/* ENHANCED: Main Heading - Better typography proportions */}
             <motion.h1
-              className="text-[1.75rem] sm:text-[2rem] md:text-[3.5rem] lg:text-[2.5rem] xl:text-[3.5rem] 2xl:text-[4rem] font-sans font-light leading-tight sm:leading-[1.15] tracking-tight md:tracking-[-0.02em] lg:tracking-[-0.03em] text-white"
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-light leading-[1.1] tracking-tight text-white"
               data-hero
             >
               {t("hero.title")}
               <br />
               <span className="font-sans font-normal">{t("hero.titleBold")}</span>
             </motion.h1>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* CTA Section - Scroll to Browse */}
-      <section className="relative px-6 md:px-8 lg:px-12 py-16 md:py-20">
-        <div className="relative z-10 mx-auto max-w-[1400px]">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="text-center"
-          >
-            <motion.button
-              onClick={() => {
-                const productsSection = document.getElementById("products-section");
-                productsSection?.scrollIntoView({ behavior: "smooth", block: "start" });
-              }}
-              className="group inline-flex flex-col items-center gap-2 text-white/60 hover:text-white transition-all duration-300"
-              animate={{
-                y: [0, -8, 0],
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
+            <motion.p
+              data-hero
+              className="text-base sm:text-lg md:text-xl font-sans font-light leading-relaxed text-luxury-silver/90 max-w-2xl"
             >
-              <span className="text-sm md:text-base font-light tracking-wide">{t("explore")}</span>
-              <ArrowDown className="h-4 w-4 md:h-5 md:w-5 transition-transform duration-300 group-hover:translate-y-1" />
-            </motion.button>
+              {t("hero.subtitle") ||
+                "Discover our premium collection of certified precious metals, each bar crafted with precision and verified authenticity."}
+            </motion.p>
           </motion.div>
         </div>
       </section>
@@ -912,8 +884,8 @@ export default function ProductsPage() {
         }}
         className="relative overflow-hidden pt-16 pb-0"
       >
-        {/* Products Catalog Section - Beige Background */}
-        <div className="bg-[#f5f0e8] px-0 md:px-0 lg:px-0 py-8 md:py-12">
+        {/* Products Catalog Section - Dark Background */}
+        <div className="bg-gradient-to-b from-luxury-black via-[#1a1a1a] to-[#0f0f0f] px-0 md:px-0 lg:px-0 py-8 md:py-12">
           <div className="relative z-10 mx-auto max-w-[1400px] px-6 md:px-8 lg:px-12">
             {/* Filter Bar - Product Count and Navigation */}
             <motion.div
@@ -921,14 +893,14 @@ export default function ProductsPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, ease: "easeOut" }}
-              className="mb-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-6 border-b border-[#e8ddd0]/50"
+              className="mb-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-6 border-b border-white/10"
             >
               <motion.div
                 key={`count-${selectedFilter}-${selectedCategory}`}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.4, ease: "easeOut" }}
-                className="text-xl md:text-sm text-[#8b7355]/90 font-extralight tracking-wide uppercase"
+                className="text-xl md:text-sm text-white/70 font-extralight tracking-wide uppercase"
               >
                 {(() => {
                   const filteredProducts = (() => {
@@ -981,8 +953,8 @@ export default function ProductsPage() {
                   }}
                   className={`text-md md:text-sm font-extralight tracking-wide uppercase transition-colors pb-1 border-b ${
                     selectedFilter === "all" && !selectedCategory
-                      ? "text-[#8b7355] border-[#8b7355]"
-                      : "text-[#8b7355]/70 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
+                      ? "text-luxury-gold border-luxury-gold"
+                      : "text-white/50 border-transparent hover:text-white/70 hover:border-white/30"
                   }`}
                 >
                   {t("filters.all")}
@@ -994,8 +966,8 @@ export default function ProductsPage() {
                   }}
                   className={`text-md md:text-sm font-extralight tracking-wide uppercase transition-colors pb-1 border-b ${
                     selectedFilter === "award-winning"
-                      ? "text-[#8b7355] border-[#8b7355]"
-                      : "text-[#8b7355]/50 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
+                      ? "text-luxury-gold border-luxury-gold"
+                      : "text-white/50 border-transparent hover:text-white/70 hover:border-white/30"
                   }`}
                 >
                   {t("filters.awardWinning")}
@@ -1007,8 +979,8 @@ export default function ProductsPage() {
                   }}
                   className={`text-md md:text-sm font-extralight tracking-wide uppercase transition-colors pb-1 border-b ${
                     selectedFilter === "exclusives"
-                      ? "text-[#8b7355] border-[#8b7355]"
-                      : "text-[#8b7355]/50 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
+                      ? "text-luxury-gold border-luxury-gold"
+                      : "text-white/50 border-transparent hover:text-white/70 hover:border-white/30"
                   }`}
                 >
                   {t("filters.exclusives")}
@@ -1020,8 +992,8 @@ export default function ProductsPage() {
                   }}
                   className={`text-md md:text-sm font-extralight tracking-wide uppercase transition-colors pb-1 border-b ${
                     selectedFilter === "large"
-                      ? "text-[#8b7355] border-[#8b7355]"
-                      : "text-[#8b7355]/50 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
+                      ? "text-luxury-gold border-luxury-gold"
+                      : "text-white/50 border-transparent hover:text-white/70 hover:border-white/30"
                   }`}
                 >
                   {t("filters.large")}
@@ -1033,8 +1005,8 @@ export default function ProductsPage() {
                   }}
                   className={`text-md md:text-sm font-extralight tracking-wide uppercase transition-colors pb-1 border-b ${
                     selectedFilter === "small"
-                      ? "text-[#8b7355] border-[#8b7355]"
-                      : "text-[#8b7355]/50 border-transparent hover:text-[#8b7355]/70 hover:border-[#8b7355]/30"
+                      ? "text-luxury-gold border-luxury-gold"
+                      : "text-white/50 border-transparent hover:text-white/70 hover:border-white/30"
                   }`}
                 >
                   {t("filters.small")}
@@ -1077,7 +1049,7 @@ export default function ProductsPage() {
               if (filteredProducts.length === 0) {
                 return (
                   <div className="text-center py-20">
-                    <p className="text-[#8b7355]/60">{t("filters.noProducts")}</p>
+                    <p className="text-white/50">{t("filters.noProducts")}</p>
                   </div>
                 );
               }
@@ -1106,14 +1078,14 @@ export default function ProductsPage() {
                         },
                       },
                     }}
-                    className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-0 border-t border-l border-[#e8ddd0]/30"
+                    className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 md:gap-10 lg:gap-12"
                   >
                     {filteredProducts.map((product, index) => (
                       <motion.div
                         key={product.id}
                         variants={cardVariants}
                         custom={index}
-                        className="border-r border-b border-[#e8ddd0]/30"
+                        className="relative"
                       >
                         <ProductCard
                           product={product}

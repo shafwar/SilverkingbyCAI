@@ -556,15 +556,15 @@ export default function WhatWeDoPage() {
       {/* Shared Navbar */}
       <Navbar />
 
-      {/* Hero Section with Video Background - matching Authenticity style */}
+      {/* Hero Section with Full Screen Video Background */}
       <section
         ref={(element) => {
           sectionsRef.current[0] = element as HTMLDivElement | null;
         }}
-        className="relative flex min-h-[80vh] md:min-h-[85vh] lg:min-h-[90vh] items-center justify-center overflow-hidden px-6 pt-24 pb-12"
+        className="relative flex min-h-screen items-center justify-start overflow-hidden"
       >
-        {/* Video Background */}
-        <div className="absolute inset-0 z-0 overflow-hidden">
+        {/* Full Screen Video Background - No Zoom */}
+        <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-luxury-black via-luxury-black/95 to-luxury-black z-0" />
 
           <video
@@ -578,10 +578,8 @@ export default function WhatWeDoPage() {
                     }
                   } catch (error) {
                     console.warn("[WhatWeDoPage] Video autoplay prevented, retrying:", error);
-                    // Retry after a short delay with exponential backoff
                     setTimeout(() => {
                       video.play().catch(() => {
-                        // Second retry after longer delay
                         setTimeout(() => {
                           video.play().catch(() => {
                             console.warn(
@@ -594,24 +592,11 @@ export default function WhatWeDoPage() {
                   }
                 };
 
-                // Handle video ready states
-                const handleCanPlay = () => {
-                  forcePlay();
-                };
-
-                const handleLoadedData = () => {
-                  forcePlay();
-                };
-
-                // Handle video errors
-                const handleError = () => {
-                  console.warn("[WhatWeDoPage] Video error occurred");
-                };
-
-                // Resume video if it pauses (prevent breaks)
+                const handleCanPlay = () => forcePlay();
+                const handleLoadedData = () => forcePlay();
+                const handleError = () => console.warn("[WhatWeDoPage] Video error occurred");
                 const handlePause = () => {
                   if (!video.ended) {
-                    // Small delay to avoid infinite loop
                     setTimeout(() => {
                       if (video.paused && !video.ended) {
                         forcePlay();
@@ -619,35 +604,22 @@ export default function WhatWeDoPage() {
                     }, 50);
                   }
                 };
-
-                // Handle visibility change - resume video when page becomes visible
                 const handleVisibilityChange = () => {
                   if (!document.hidden && video.paused && !video.ended) {
                     forcePlay();
                   }
                 };
-
-                // Handle video end - restart immediately for seamless loop
                 const handleEnded = () => {
                   video.currentTime = 0;
                   forcePlay();
                 };
-
-                // Handle video waiting/buffering - resume when ready
                 const handleWaiting = () => {
-                  // Video is buffering, will resume automatically when ready
-                  // But we can also try to play if it's paused
                   if (video.paused && !video.ended) {
-                    setTimeout(() => {
-                      forcePlay();
-                    }, 100);
+                    setTimeout(() => forcePlay(), 100);
                   }
                 };
 
-                // Initial play attempt
                 forcePlay();
-
-                // Event listeners
                 video.addEventListener("canplay", handleCanPlay);
                 video.addEventListener("loadeddata", handleLoadedData);
                 video.addEventListener("error", handleError);
@@ -655,18 +627,14 @@ export default function WhatWeDoPage() {
                 video.addEventListener("ended", handleEnded);
                 video.addEventListener("waiting", handleWaiting);
                 document.addEventListener("visibilitychange", handleVisibilityChange);
-
-                // Force load video to ensure it starts loading immediately
                 video.load();
 
-                // Periodic check to ensure video is playing (fallback mechanism)
                 const playCheckInterval = setInterval(() => {
                   if (video.paused && !video.ended && !document.hidden) {
                     forcePlay();
                   }
-                }, 2000); // Check every 2 seconds
+                }, 2000);
 
-                // Cleanup stored on video element
                 (video as any).__cleanup = () => {
                   video.removeEventListener("canplay", handleCanPlay);
                   video.removeEventListener("loadeddata", handleLoadedData);
@@ -684,12 +652,13 @@ export default function WhatWeDoPage() {
             muted
             playsInline
             preload="auto"
-            className="absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 will-change-transform z-10"
+            className="absolute inset-0 w-screen h-screen object-cover transition-opacity duration-1000 z-10"
             style={{
               objectFit: "cover",
               objectPosition: "center center",
-              transform: "scale(0.85)",
-              transformOrigin: "center center",
+              width: "100vw",
+              height: "100vh",
+              transform: "none",
             }}
             disablePictureInPicture
             disableRemotePlayback
@@ -707,17 +676,17 @@ export default function WhatWeDoPage() {
           <div className="absolute inset-x-0 bottom-0 h-40 md:h-52 lg:h-64 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-transparent pointer-events-none z-20" />
         </div>
 
-        {/* Hero Content - matching Authenticity layout */}
-        <div className="relative z-10 w-full max-w-[1400px] mx-auto text-center">
+        {/* Hero Content - Full left alignment, flush to left edge */}
+        <div className="relative z-20 w-full text-left pl-4 sm:pl-6 md:pl-8 lg:pl-12 xl:pl-16 2xl:pl-20 pr-4 sm:pr-6 md:pr-8 lg:pr-12">
           <motion.div
             ref={heroRef}
             variants={revealVariants}
             initial="initial"
             animate="animate"
-            className="max-w-4xl mx-auto"
+            className="space-y-6 sm:space-y-8 max-w-4xl"
           >
             <motion.h1
-              className="text-[1.75rem] sm:text-[2rem] md:text-[3.5rem] lg:text-[2.5rem] xl:text-[3.5rem] 2xl:text-[4rem] font-sans font-light leading-tight sm:leading-[1.15] tracking-tight md:tracking-[-0.02em] lg:tracking-[-0.03em] text-white"
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-light leading-[1.1] tracking-tight text-white"
               data-hero
             >
               {t("hero.title")}
@@ -726,7 +695,7 @@ export default function WhatWeDoPage() {
             </motion.h1>
             <motion.p
               data-hero
-              className="mt-4 sm:mt-6 max-w-xl mx-auto text-sm sm:text-[0.9375rem] md:text-base font-sans font-light leading-relaxed text-luxury-silver/80"
+              className="text-base sm:text-lg md:text-xl font-sans font-light leading-relaxed text-luxury-silver/90 max-w-2xl"
             >
               {t("hero.subtitle")}
             </motion.p>
