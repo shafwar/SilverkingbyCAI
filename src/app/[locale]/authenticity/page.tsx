@@ -558,10 +558,10 @@ export default function AuthenticityPage() {
           <div className="absolute inset-x-0 top-0 h-24 md:h-32 lg:h-40 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none z-20" />
 
           {/* Bottom gradient - thinner and smoother */}
-          <div className="absolute inset-x-0 bottom-0 h-32 md:h-40 lg:h-48 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none z-20" />
+          <div className="absolute inset-x-0 bottom-0 h-32 md:h-40 lg:h-40 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none z-20" />
 
           {/* Left side gradient - subtle */}
-          <div className="absolute inset-y-0 left-0 w-24 md:w-32 lg:w-40 bg-gradient-to-r from-black/60 via-black/20 to-transparent pointer-events-none z-20" />
+          <div className="absolute inset-y-0 left-0 w-24 md:w-28 lg:w-40 bg-gradient-to-r from-black/60 via-black/20 to-transparent pointer-events-none z-20" />
 
           {/* Right side gradient - subtle */}
           <div className="absolute inset-y-0 right-0 w-24 md:w-32 lg:w-40 bg-gradient-to-l from-black/60 via-black/20 to-transparent pointer-events-none z-20" />
