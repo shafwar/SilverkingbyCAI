@@ -39,51 +39,6 @@ if (typeof window !== "undefined") {
 
 // workflowSteps will be created inside AuthenticityPage component using translations
 
-function CTASection({ t }: { t: (key: string) => string }) {
-  const scrollToVerification = () => {
-    try {
-      const verificationSection = document.querySelector("[data-verification-section]");
-      if (verificationSection) {
-        verificationSection.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    } catch (error) {
-      console.error("Error scrolling to verification section:", error);
-    }
-  };
-
-  return (
-    <section className="relative px-6 md:px-8 lg:px-12 py-16 md:py-20">
-      <div className="relative z-10 mx-auto max-w-[1400px]">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="text-center"
-        >
-          <motion.button
-            onClick={scrollToVerification}
-            className="group inline-flex flex-col items-center gap-2 text-white/60 hover:text-white transition-all duration-300"
-            animate={{
-              y: [0, -8, 0],
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          >
-            <span className="text-sm md:text-base font-light tracking-wide">
-              {t("learnProcess")}
-            </span>
-            <ArrowDown className="h-4 w-4 md:h-5 md:w-5 transition-transform duration-300 group-hover:translate-y-1" />
-          </motion.button>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
 // WorkflowTimeline - NO BLOCKING ANIMATIONS
 function WorkflowTimeline({
   steps,
@@ -558,17 +513,17 @@ export default function AuthenticityPage() {
 
       <Navbar />
 
-      {/* Hero Section with Video Background */}
+      {/* Hero Section with Video Background - Full Page */}
       <section
         ref={(element) => {
           const divElement = element as HTMLDivElement | null;
           sectionsRef.current[0] = divElement;
           heroRef.current = divElement;
         }}
-        className="relative flex min-h-[80vh] md:min-h-[85vh] lg:min-h-[90vh] items-center justify-center overflow-hidden px-6 pt-24 pb-12"
+        className="relative flex flex-col min-h-screen items-center justify-center overflow-hidden px-6 pt-24 pb-0"
       >
-        {/* Video Background */}
-        <div className="absolute inset-0 z-0 overflow-hidden">
+        {/* Video Background - Full Page Coverage */}
+        <div className="absolute inset-0 z-0 overflow-hidden h-full w-full">
           <div className="absolute inset-0 bg-gradient-to-br from-luxury-black via-luxury-black/95 to-luxury-black z-0" />
 
           <video
@@ -586,18 +541,30 @@ export default function AuthenticityPage() {
             style={{
               transform: "scale(1.05)",
               transformOrigin: "center center",
+              minHeight: "100%",
             }}
           >
             <source src={getR2UrlClient("/videos/hero/mobile scanning qr.mp4")} type="video/mp4" />
           </video>
 
-          {/* Optimized Vignette Layer - Stable, optimal, and consistent */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80 z-20" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.5)_60%,rgba(0,0,0,0.85)_100%)] z-20" />
-          <div className="absolute inset-x-0 top-0 h-32 md:h-40 lg:h-48 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none z-20" />
-          <div className="absolute inset-x-0 bottom-0 h-48 md:h-56 lg:h-64 bg-gradient-to-t from-black/90 via-black/60 to-transparent pointer-events-none z-20" />
-          <div className="absolute inset-y-0 left-0 w-32 md:w-40 lg:w-48 bg-gradient-to-r from-black/70 via-black/30 to-transparent pointer-events-none z-20" />
-          <div className="absolute inset-y-0 right-0 w-32 md:w-40 lg:w-48 bg-gradient-to-l from-black/70 via-black/30 to-transparent pointer-events-none z-20" />
+          {/* Optimized Vignette Layer - Fixed and refined */}
+          {/* Main overlay gradient */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70 z-20" />
+
+          {/* Radial gradient for center focus */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.4)_50%,rgba(0,0,0,0.8)_100%)] z-20" />
+
+          {/* Top gradient - subtle */}
+          <div className="absolute inset-x-0 top-0 h-24 md:h-32 lg:h-40 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none z-20" />
+
+          {/* Bottom gradient - thinner and smoother */}
+          <div className="absolute inset-x-0 bottom-0 h-32 md:h-40 lg:h-48 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none z-20" />
+
+          {/* Left side gradient - subtle */}
+          <div className="absolute inset-y-0 left-0 w-24 md:w-32 lg:w-40 bg-gradient-to-r from-black/60 via-black/20 to-transparent pointer-events-none z-20" />
+
+          {/* Right side gradient - subtle */}
+          <div className="absolute inset-y-0 right-0 w-24 md:w-32 lg:w-40 bg-gradient-to-l from-black/60 via-black/20 to-transparent pointer-events-none z-20" />
         </div>
 
         {/* Minimal Particles */}
@@ -615,8 +582,8 @@ export default function AuthenticityPage() {
           ))}
         </div>
 
-        {/* Content */}
-        <div className="relative z-20 mx-auto w-full max-w-3xl text-center">
+        {/* Main Content */}
+        <div className="relative z-20 mx-auto w-full max-w-3xl text-center flex-1 flex flex-col items-center justify-center">
           <motion.div data-hero className="mb-4">
             <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-luxury-gold/30 bg-luxury-gold/5">
               <QrCode className="h-10 w-10 text-luxury-gold" />
@@ -669,9 +636,49 @@ export default function AuthenticityPage() {
             </motion.button>
           </motion.div>
         </div>
-      </section>
 
-      <CTASection t={t} />
+        {/* CTA Section - Minimalist scroll button with video background */}
+        <div className="relative z-30 w-full px-6 md:px-8 lg:px-12 py-12 md:py-16 mt-auto">
+          <div className="relative z-10 mx-auto max-w-[1400px]">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              className="text-center"
+            >
+              <motion.button
+                onClick={() => {
+                  try {
+                    const verificationSection = document.querySelector(
+                      "[data-verification-section]"
+                    );
+                    if (verificationSection) {
+                      verificationSection.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }
+                  } catch (error) {
+                    console.error("Error scrolling to verification section:", error);
+                  }
+                }}
+                className="group inline-flex flex-col items-center gap-2 text-white/70 hover:text-white transition-all duration-300 cursor-pointer"
+                animate={{
+                  y: [0, -8, 0],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              >
+                <span className="text-xs md:text-sm font-light tracking-wider uppercase">
+                  {t("learnProcess")}
+                </span>
+                <ArrowDown className="h-4 w-4 md:h-5 md:w-5 transition-transform duration-300 group-hover:translate-y-1" />
+              </motion.button>
+            </motion.div>
+          </div>
+        </div>
+      </section>
 
       {/* Verification Workflow Section - ALWAYS VISIBLE */}
       <section
@@ -679,7 +686,7 @@ export default function AuthenticityPage() {
         ref={(element) => {
           sectionsRef.current[1] = element as HTMLDivElement | null;
         }}
-        className="relative overflow-hidden border-t border-white/10 bg-gradient-to-b from-luxury-black/50 via-luxury-black to-luxury-black/50 py-24 px-6 md:py-32"
+        className="relative overflow-hidden border-t border-white/10 bg-gradient-to-b from-luxury-black via-luxury-black to-luxury-black py-24 px-6 md:py-32 z-10"
       >
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(212,175,55,0.03)_0%,transparent_70%)]" />
 
