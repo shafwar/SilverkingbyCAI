@@ -254,6 +254,7 @@ export default function ProductsPage() {
   const locale = useLocale();
   const pageRef = useRef<HTMLDivElement | null>(null);
   const heroRef = useRef<HTMLDivElement | null>(null);
+  const scrollIndicatorRef = useRef<HTMLDivElement | null>(null);
   const sectionsRef = useRef<(HTMLElement | null)[]>([]);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const fadeOverlayRef = useRef<HTMLDivElement | null>(null);
@@ -269,6 +270,19 @@ export default function ProductsPage() {
   // CRITICAL: Delay heavy animations until after initial render
   useEffect(() => {
     setIsMounted(true);
+  }, []);
+
+  // Enable smooth scroll behavior for fluid scrolling
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // Apply smooth scroll to html element
+      document.documentElement.style.scrollBehavior = "smooth";
+
+      return () => {
+        // Cleanup on unmount
+        document.documentElement.style.scrollBehavior = "auto";
+      };
+    }
   }, []);
 
   // CRITICAL: Prefetch other pages when this page loads
@@ -438,6 +452,88 @@ export default function ProductsPage() {
                 );
               }
             }
+          }
+
+          // Scroll Indicator Animation - Fluid scroll effect with GSAP
+          if (scrollIndicatorRef.current && sectionsRef.current[0] && sectionsRef.current[1]) {
+            const heroSection = sectionsRef.current[0];
+            const productSection = sectionsRef.current[1];
+            const indicator = scrollIndicatorRef.current;
+            const mouseIcon = indicator.querySelector("[data-mouse-icon]");
+            const scrollWheel = indicator.querySelector("[data-scroll-wheel]");
+            const scrollDot = indicator.querySelector("[data-scroll-dot]");
+
+            // Fluid floating animation for mouse icon
+            if (mouseIcon) {
+              gsap.to(mouseIcon, {
+                y: 6,
+                duration: 2,
+                repeat: -1,
+                yoyo: true,
+                ease: "sine.inOut",
+              });
+            }
+
+            // Fluid scroll wheel animation - subtle bounce
+            if (scrollWheel) {
+              gsap.to(scrollWheel, {
+                y: 3,
+                duration: 1.8,
+                repeat: -1,
+                yoyo: true,
+                ease: "power1.inOut",
+              });
+            }
+
+            // Fluid scroll dot animation - continuous smooth flow
+            if (scrollDot) {
+              const scrollDotAnimation = gsap.to(scrollDot, {
+                y: 48,
+                duration: 2,
+                repeat: -1,
+                ease: "none",
+              });
+
+              // Reset position on repeat for seamless loop
+              scrollDotAnimation.eventCallback("onRepeat", () => {
+                gsap.set(scrollDot, { y: 0 });
+              });
+            }
+
+            // Smooth fade out scroll indicator when scrolling - fluid transition
+            ScrollTrigger.create({
+              trigger: heroSection,
+              start: "bottom 85%",
+              end: "bottom 15%",
+              scrub: 0.5,
+              onUpdate: (self) => {
+                const progress = self.progress;
+                gsap.to(indicator, {
+                  opacity: 1 - progress,
+                  scale: 1 - progress * 0.2,
+                  y: progress * 20,
+                  duration: 0.1,
+                  ease: "power1.out",
+                });
+              },
+            });
+
+            // Hide completely when product section is in view - smooth fade
+            ScrollTrigger.create({
+              trigger: productSection,
+              start: "top 95%",
+              end: "top 60%",
+              scrub: 0.5,
+              onUpdate: (self) => {
+                const progress = self.progress;
+                gsap.to(indicator, {
+                  opacity: Math.max(0, 1 - progress * 1.5),
+                  scale: Math.max(0.7, 1 - progress * 0.3),
+                  duration: 0.1,
+                  ease: "power1.out",
+                });
+              },
+            });
           }
 
           // Fade to black effect when scrolling from hero to product section
@@ -875,6 +971,21 @@ export default function ProductsPage() {
                 "Discover our premium collection of certified precious metals, each bar crafted with precision and verified authenticity."}
             </motion.p>
           </motion.div>
+        </div>
+
+        {/* Scroll Indicator - Minimalist with GSAP Fluid Scroll Animation */}
+        <div
+          ref={scrollIndicatorRef}
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-3 pointer-events-none"
+        >
+          {/* Minimalist Mouse Icon */}
+          <div
+            data-mouse-icon
+            className="relative w-5 h-8 border border-white/50 rounded-full flex items-start justify-center pt-2.5"
+          >
+            {/* Scroll wheel indicator - animated */}
+            <div data-scroll-wheel className="w-1 h-1.5 bg-white/70 rounded-full" />
+          </div>
         </div>
       </section>
 
