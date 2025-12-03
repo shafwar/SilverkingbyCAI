@@ -12,7 +12,6 @@ import { routing } from "@/i18n/routing";
 import LanguageSwitcher from "./LanguageSwitcher";
 
 export default function Navbar() {
-  const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
@@ -30,9 +29,6 @@ export default function Navbar() {
       const currentScrollY = window.scrollY;
       const scrollThreshold = 10; // Lower threshold for mobile responsiveness
       const scrollDelta = 5; // Minimum scroll delta to trigger hide/show
-
-      // Update isScrolled for background styling
-      setIsScrolled(currentScrollY > scrollThreshold);
 
       // Always show navbar at top of page (below threshold)
       if (currentScrollY < scrollThreshold) {
@@ -227,11 +223,7 @@ export default function Navbar() {
         opacity: { duration: 0.3, ease: "easeOut" },
         y: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] },
       }}
-      className={`fixed top-0 left-0 right-0 z-[100] will-change-transform ${
-        isScrolled
-          ? "bg-black/90 backdrop-blur-2xl border-b border-white/[0.08] shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
-          : "bg-transparent"
-      } ${isModalOpen ? "pointer-events-none" : "pointer-events-auto"}`}
+      className={`fixed top-0 left-0 right-0 z-[100] will-change-transform bg-transparent ${isModalOpen ? "pointer-events-none" : "pointer-events-auto"}`}
     >
       <nav className="mx-auto max-w-[1440px] px-4 sm:px-6 md:px-10 lg:px-16 xl:px-20">
         <div className="flex items-center justify-between h-[4.5rem] sm:h-[5rem] md:h-[5.5rem]">

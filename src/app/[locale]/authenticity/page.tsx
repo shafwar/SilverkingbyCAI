@@ -804,14 +804,14 @@ export default function AuthenticityPage() {
                 </button>
 
                 <h2 className="mb-6 text-2xl font-semibold text-white">{t('enterSerialNumber')}</h2>
-                <div className="mb-6 flex gap-3">
+                <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:gap-3">
                   <input
                     type="text"
                     value={serialNumber}
                     onChange={(e) => setSerialNumber(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleManualVerify()}
                     placeholder={t('enterSerialPlaceholder')}
-                    className="flex-1 rounded-lg border border-white/20 bg-white/5 px-4 py-3 font-mono text-sm text-white placeholder:text-white/40 focus:border-luxury-gold focus:outline-none focus:ring-2 focus:ring-luxury-gold/30"
+                    className="w-full flex-1 rounded-xl border border-white/20 bg-white/5 px-4 py-3.5 font-mono text-sm text-white placeholder:text-white/40 focus:border-luxury-gold focus:outline-none focus:ring-2 focus:ring-luxury-gold/30 transition-all"
                     autoFocus
                   />
                   <motion.button
@@ -819,7 +819,7 @@ export default function AuthenticityPage() {
                     whileTap={{ scale: 0.98 }}
                     onClick={handleManualVerify}
                     disabled={!serialNumber.trim()}
-                    className="rounded-lg bg-gradient-to-r from-luxury-gold to-luxury-lightGold px-6 py-3 text-sm font-semibold text-black transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full sm:w-auto sm:min-w-[120px] rounded-xl bg-gradient-to-r from-luxury-gold to-luxury-lightGold px-6 py-3.5 text-sm font-semibold text-black transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 hover:shadow-lg hover:shadow-luxury-gold/30 active:scale-95"
                   >
                     {t('verify')}
                   </motion.button>
