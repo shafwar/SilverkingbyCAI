@@ -135,8 +135,8 @@ const NarrativeImageSection = forwardRef<
     description?: string;
   }
 >(({ columns, cards, title, description }, ref) => {
+  // Track which images have finished loading so we can fade them in smoothly
   const [imageLoaded, setImageLoaded] = useState<{ [key: string]: boolean }>({});
-  const [imageError, setImageError] = useState<{ [key: string]: boolean }>({});
 
   // Detect mobile for quality optimization
   const [isMobile, setIsMobile] = useState(false);
@@ -149,100 +149,20 @@ const NarrativeImageSection = forwardRef<
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // AGGRESSIVE preload strategy - preload ALL 3 main images IMMEDIATELY (useLayoutEffect for instant)
-  useLayoutEffect(() => {
-    // Preload all 3 first images with HIGHEST priority - they're all critical
-    cards.forEach((card, idx) => {
-      if (card.images[0]) {
-        const imageUrl = card.images[0];
-
-        // Use link preload with fetchpriority="high" for ALL 3 critical images
-        const link = document.createElement("link");
-        link.rel = "preload";
-        link.as = "image";
-        link.href = imageUrl;
-        link.setAttribute("fetchpriority", "high");
-        link.setAttribute("as", "image");
-        document.head.appendChild(link);
-
-        // INSTANT preload with Image object for immediate decode and rendering
-        const img = new window.Image();
-        img.src = imageUrl;
-        img.loading = "eager";
-        img.decoding = "async";
-        // Only set crossOrigin if it's a remote URL
-        if (imageUrl.startsWith("http") && !imageUrl.includes("localhost")) {
-          img.crossOrigin = "anonymous";
-        }
-
-        // Decode ALL 3 first images IMMEDIATELY - they're all above the fold and critical
-        const preloadImage = () => {
-          img
-            .decode()
-            .then(() => {
-              // Image decoded successfully, mark as loaded IMMEDIATELY
-              setImageLoaded((prev) => ({
-                ...prev,
-                [`${idx}-0`]: true,
-              }));
-            })
-            .catch(() => {
-              // Silent fail - will be handled by Image component
-            });
-        };
-
-        // Decode ALL 3 images immediately - no delay for critical images
-        if (idx < 3) {
-          // All 3 main images: decode IMMEDIATELY
-          preloadImage();
-        } else if (typeof window !== "undefined" && window.requestIdleCallback) {
-          // Other images: decode when browser is idle
-          window.requestIdleCallback(preloadImage, { timeout: 500 });
-        } else {
-          // Fallback for browsers without requestIdleCallback
-          setTimeout(preloadImage, 100 * idx);
-        }
-      }
-    });
-
-    return () => {
-      // Cleanup preload links
-      document.querySelectorAll('link[rel="preload"][as="image"]').forEach((link) => {
-        if (link.getAttribute("href")?.includes("/images/")) {
-          link.remove();
-        }
-      });
-    };
-  }, [cards, isMobile]);
-
-  // Simplified timeout - only set for images that haven't loaded after 5 seconds
-  useEffect(() => {
-    const timeouts: NodeJS.Timeout[] = [];
-
-    cards.forEach((_, idx) => {
-      const imageKey = `${idx}-0`;
-      // Only set timeout if image hasn't loaded yet
-      if (!imageLoaded[imageKey] && !imageError[imageKey]) {
-        const timeout = setTimeout(() => {
-          setImageError((prev) => {
-            // Double check to avoid race conditions
-            if (!prev[imageKey]) {
-              return {
-                ...prev,
-                [imageKey]: true,
-              };
-            }
-            return prev;
-          });
-        }, 5000);
-        timeouts.push(timeout);
-      }
-    });
-
-    return () => {
-      timeouts.forEach((timeout) => clearTimeout(timeout));
-    };
-  }, [cards, imageLoaded, imageError]); // Include all dependencies
+  /**
+   * Image loading strategy
+   *
+   * We let Next/Image handle caching and decoding, and only use a very small
+   * bit of state (`imageLoaded`) to fade images in once they've finished
+   * loading. No aggressive preloading or timeouts – this avoids race
+   * conditions where images might be marked as failed even though they are
+   * still loading, which could cause blank cards.
+   *
+   * Caching is handled by:
+   * - Stable R2 URLs via `getR2UrlClient`
+   * - Next/Image's internal cache
+   * - `priority` + `fetchPriority="high"` for the 3 main cards
+   */
 
   return (
     <section
@@ -270,7 +190,6 @@ const NarrativeImageSection = forwardRef<
             const currentImage = card.images[0];
             const imageKey = `${idx}-0`;
             const isImageLoaded = imageLoaded[imageKey];
-            const hasImageError = imageError[imageKey];
 
             return (
               <div
@@ -300,80 +219,41 @@ const NarrativeImageSection = forwardRef<
                   {/* Image container - large image at top */}
                   <div className="relative w-full flex-[0_0_65%] overflow-hidden bg-black/40">
                     {/* Loading placeholder */}
-                    {!isImageLoaded && !hasImageError && (
+                    {!isImageLoaded && (
                       <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-black/60 to-black/40 z-10">
                         <div className="h-6 w-6 sm:h-8 sm:w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
                       </div>
                     )}
 
                     {/* Image */}
-                    {!hasImageError && (
-                      <div
-                        className={`absolute inset-0 transition-opacity duration-300 ease-out ${
-                          isImageLoaded ? "opacity-100" : "opacity-0"
-                        }`}
-                        style={{
-                          willChange: isImageLoaded ? "auto" : "opacity",
+                    <div
+                      className={`absolute inset-0 transition-opacity duration-300 ease-out ${
+                        isImageLoaded ? "opacity-100" : "opacity-0"
+                      }`}
+                      style={{
+                        willChange: isImageLoaded ? "auto" : "opacity",
+                      }}
+                    >
+                      <Image
+                        src={currentImage}
+                        alt={card.label}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 440px"
+                        priority
+                        loading="eager"
+                        quality={isMobile ? 75 : 92}
+                        fetchPriority="high"
+                        placeholder="blur"
+                        blurDataURL="data:image/svg+xml,%3Csvg width='16' height='12' xmlns='http://www.w3.org/2000/svg'%3E%3ClinearGradient id='g'%3E%3Cstop stop-color='%23090'/%3E%3Cstop offset='1' stop-color='%23000'/%3E%3C/linearGradient%3E%3Crect width='16' height='12' fill='url(%23g)'/%3E%3C/svg%3E"
+                        onLoadingComplete={() => {
+                          setImageLoaded((prev) => ({
+                            ...prev,
+                            [imageKey]: true,
+                          }));
                         }}
-                      >
-                        <Image
-                          src={currentImage}
-                          alt={card.label}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 440px"
-                          priority={idx < 3}
-                          loading={idx < 3 ? "eager" : "lazy"}
-                          quality={isMobile ? 75 : 92}
-                          unoptimized={false}
-                          fetchPriority={idx < 3 ? "high" : "auto"}
-                          placeholder="blur"
-                          blurDataURL="data:image/svg+xml,%3Csvg width='16' height='12' xmlns='http://www.w3.org/2000/svg'%3E%3ClinearGradient id='g'%3E%3Cstop stop-color='%23090'/%3E%3Cstop offset='1' stop-color='%23000'/%3E%3C/linearGradient%3E%3Crect width='16' height='12' fill='url(%23g)'/%3E%3C/svg%3E"
-                          onLoad={() => {
-                            // Mark as loaded immediately
-                            setImageLoaded((prev) => ({
-                              ...prev,
-                              [imageKey]: true,
-                            }));
-                          }}
-                          onError={() => {
-                            setImageError((prev) => ({
-                              ...prev,
-                              [imageKey]: true,
-                            }));
-                          }}
-                        />
-                      </div>
-                    )}
-
-                    {/* Error fallback */}
-                    {hasImageError && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-black/80 to-black/60 z-10">
-                        {/* Minimalist Gold SVG fallback icon instead of text fallback */}
-                        <svg
-                          width="46"
-                          height="32"
-                          viewBox="0 0 46 32"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <rect width="46" height="32" rx="8" fill="url(#gold)" />
-                          <defs>
-                            <linearGradient
-                              id="gold"
-                              x1="0"
-                              y1="0"
-                              x2="46"
-                              y2="32"
-                              gradientUnits="userSpaceOnUse"
-                            >
-                              <stop stop-color="#B8960E" />
-                              <stop offset="1" stop-color="#FFD700" />
-                            </linearGradient>
-                          </defs>
-                        </svg>
-                      </div>
-                    )}
+                      />
+                    </div>
                   </div>
 
                   {/* Content section - Logo and text below image */}

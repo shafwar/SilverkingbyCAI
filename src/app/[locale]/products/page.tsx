@@ -1815,7 +1815,7 @@ export default function ProductsPage() {
                     onChange={handleFileSelect}
                     className="block w-full text-xs text-white/80 file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-xs file:font-medium file:text-white hover:file:bg-white/20"
                   />
-                  
+
                   {/* Selected Files List */}
                   {cmsImageFiles && cmsImageFiles.length > 0 && (
                     <div className="space-y-2 rounded-lg border border-luxury-gold/30 bg-luxury-gold/5 p-3">
@@ -1848,7 +1848,7 @@ export default function ProductsPage() {
                       </div>
                     </div>
                   )}
-                  
+
                   <p className="text-[11px] text-white/40">{t("cmsForm.imagesHint")}</p>
                   {editingCms.images && editingCms.images.length > 0 && (
                     <div className="rounded-lg border border-luxury-gold/20 bg-luxury-gold/5 p-3">
