@@ -38,6 +38,7 @@ export async function POST(request: Request) {
       purity,
       category,
       description,
+      overridesDefault,
     } = body || {};
 
     if (!name || !weight) {
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
         purity: purity ?? null,
         category: category ?? null,
         description: description ?? null,
+        overridesDefault: overridesDefault || null,
       },
     });
 

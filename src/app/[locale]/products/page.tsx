@@ -376,6 +376,8 @@ export default function ProductsPage() {
     images: string[];
     // Filter category untuk assign produk ke filter (all, award-winning, exclusives, dll)
     filterCategory?: string;
+    // If editing a default product, store which default it overrides
+    overridesDefault?: string;
     // Auto-filled fields (tidak ada di form UI)
     rangeName?: string;
     purity?: string;
@@ -420,7 +422,9 @@ export default function ProductsPage() {
         if (!data?.products || !Array.isArray(data.products)) return;
 
         const mapped: ProductWithPricing[] = (data.products as any[]).map((p) => ({
-          id: `cms-${p.id}`,
+          // If CMS product overrides a default, use the default ID (e.g., "default-1")
+          // Otherwise use "cms-{id}" format
+          id: p.overridesDefault ? p.overridesDefault : `cms-${p.id}`,
           name: p.name,
           rangeName: p.rangeName ?? t("product.rangeName"),
           image: (p.images && p.images[0]) || undefined,
@@ -429,10 +433,11 @@ export default function ProductsPage() {
           description: p.description ?? t("product.description"),
           category: p.category ?? p.weight,
           images: Array.isArray(p.images) ? p.images : undefined,
-          memberPrice: typeof p.price === "number" ? p.price : undefined,
+          // FIXED: Only set memberPrice if it's a valid number (null/undefined → Coming Soon)
+          memberPrice: p.price !== null && typeof p.price === "number" ? p.price : undefined,
           cmsId: p.id,
           filterCategory: p.filterCategory ?? "all",
-        }));
+        } as any));
 
         if (!cancelled) {
           setCmsProducts(mapped);
@@ -490,19 +495,28 @@ export default function ProductsPage() {
   );
 
   const allProducts = useMemo<ProductWithPricing[]>(() => {
-    // Gabungkan CMS products dengan default products
-    // CMS products akan muncul di depan, default products di belakang
-    // Tidak ada override - semua produk ditampilkan
+    // Combine CMS and default products, but filter out defaults that have CMS overrides
     const combined: ProductWithPricing[] = [];
-
-    // Tambahkan CMS products terlebih dahulu
-    if (cmsProducts && cmsProducts.length > 0) {
-      combined.push(...cmsProducts);
+    
+    // Collect IDs that CMS products are overriding
+    const overriddenIds = new Set<string>();
+    if (cmsProducts) {
+      cmsProducts.forEach((p) => {
+        if (p.id.startsWith("default-")) {
+          // This CMS product overrides a default
+          overriddenIds.add(p.id);
+        }
+        combined.push(p);
+      });
     }
-
-    // Tambahkan default products
-    combined.push(...defaultProducts);
-
+    
+    // Add default products only if they're not overridden by CMS
+    defaultProducts.forEach((defaultProd) => {
+      if (!overriddenIds.has(defaultProd.id)) {
+        combined.push(defaultProd);
+      }
+    });
+    
     return combined;
   }, [cmsProducts, defaultProducts]);
 
@@ -525,14 +539,7 @@ export default function ProductsPage() {
 
   const openEditCmsProduct = (product: ProductWithPricing) => {
     if (!isAdmin) return;
-
-    // If editing a default product (no cmsId), confirm with admin
-    // This will CREATE a new CMS product, not edit the default
-    if (!product.cmsId) {
-      const confirmed = confirm(t("cmsForm.validation.confirmEditDefault"));
-      if (!confirmed) return;
-    }
-
+    
     setCmsImageFiles(null);
     setEditingCms({
       id: product.cmsId,
@@ -541,6 +548,9 @@ export default function ProductsPage() {
       price: product.memberPrice ?? product.regularPrice,
       images: product.images ?? (product.image ? [product.image] : []),
       filterCategory: (product as any).filterCategory ?? "all",
+      // If editing default product (no cmsId), mark which default it overrides
+      // This creates a "silent override" - CMS product will replace default in display
+      overridesDefault: !product.cmsId ? product.id : (product as any).overridesDefault,
       // Auto-filled, preserve existing values
       rangeName: product.rangeName,
       purity: product.purity,
@@ -606,6 +616,7 @@ export default function ProductsPage() {
         body: JSON.stringify({
           ...payload,
           images,
+          overridesDefault: payload.overridesDefault || null,
         }),
       });
       if (!res.ok) {
@@ -616,7 +627,7 @@ export default function ProductsPage() {
       const saved = data.product as any;
 
       const mapped: ProductWithPricing = {
-        id: String(saved.id),
+        id: saved.overridesDefault ? saved.overridesDefault : `cms-${saved.id}`,
         name: saved.name,
         rangeName: saved.rangeName ?? t("product.rangeName"),
         image: (saved.images && saved.images[0]) || undefined,
@@ -625,10 +636,11 @@ export default function ProductsPage() {
         description: saved.description ?? t("product.description"),
         category: saved.category ?? saved.weight,
         images: Array.isArray(saved.images) ? saved.images : undefined,
-        memberPrice: typeof saved.price === "number" ? saved.price : undefined,
+        // FIXED: Only set memberPrice if it's a valid number (null/undefined → Coming Soon)
+        memberPrice: saved.price !== null && typeof saved.price === "number" ? saved.price : undefined,
         cmsId: saved.id,
         filterCategory: saved.filterCategory ?? "all",
-      };
+      } as any;
 
       setCmsProducts((prev) => {
         if (!prev || prev.length === 0) {
@@ -1499,10 +1511,13 @@ export default function ProductsPage() {
                             <button
                               type="button"
                               onClick={() => {
-                                if (product.cmsId) {
-                                  deleteCmsProduct(product.cmsId);
-                                } else {
+                                // Check if this is a default product or CMS override of default
+                                const isDefaultOrOverride = !product.cmsId || product.id.startsWith("default-");
+                                
+                                if (isDefaultOrOverride) {
                                   alert(t("cmsForm.validation.cannotDeleteDefault"));
+                                } else if (product.cmsId) {
+                                  deleteCmsProduct(product.cmsId);
                                 }
                               }}
                               className="rounded-full bg-black/60 px-2 py-1 text-[10px] text-red-300 border border-red-400/60 hover:bg-black/80"
@@ -1585,13 +1600,26 @@ export default function ProductsPage() {
                     id: editingCms.id,
                     name,
                     weight,
+                    // FIXED: Empty price field → undefined → backend saves null → display "Coming Soon"
                     price: (() => {
-                      if (!priceRaw) return undefined;
-                      const num = Number(priceRaw.replace(/[^\d.]/g, ""));
+                      // If field is empty or whitespace, return undefined (will be saved as null)
+                      if (!priceRaw || priceRaw.trim() === "") return undefined;
+                      
+                      // Clean the input (remove non-digits except decimal point)
+                      const cleaned = priceRaw.replace(/[^\d.]/g, "");
+                      if (!cleaned) return undefined;
+                      
+                      // Parse to number
+                      const num = Number(cleaned);
+                      
+                      // If NaN, return undefined
+                      // Note: We allow 0 as a valid price (free product)
                       return Number.isNaN(num) ? undefined : num;
                     })(),
                     images: editingCms.images ?? [],
                     filterCategory,
+                    // Pass overridesDefault if editing a default product
+                    overridesDefault: editingCms.overridesDefault,
                     // Auto-fill berdasarkan weight untuk konsistensi
                     rangeName: t("product.rangeName"),
                     purity: t("product.purity"),

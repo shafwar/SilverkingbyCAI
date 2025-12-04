@@ -48,6 +48,10 @@ model CmsProduct {
   purity         String?
   category       String?
   description    String?
+  /// If this CMS product overrides a default product, store the default ID
+  /// This allows "editing" default products by creating CMS overrides
+  /// Format: "default-1", "default-2", "default-3"
+  overridesDefault String? @unique
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

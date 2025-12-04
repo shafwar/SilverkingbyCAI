@@ -29,6 +29,7 @@ export async function PATCH(
       purity,
       category,
       description,
+      overridesDefault,
     } = body || {};
 
     const db = prisma as any;
@@ -43,18 +44,22 @@ export async function PATCH(
       data: {
         name: name ?? existing.name,
         weight: weight ?? existing.weight,
+        // FIXED: Allow clearing price by sending undefined/null
+        // If price is explicitly in payload (even as undefined), use it
+        // This allows admin to clear price field → Coming Soon
         price:
-          typeof price === "number"
-            ? price
-            : price
-              ? Number(price) || existing.price
-              : existing.price,
+          price === undefined || price === null
+            ? null
+            : typeof price === "number"
+              ? price
+              : Number(price) || null,
         images: Array.isArray(images) ? images : existing.images,
         filterCategory: filterCategory ?? existing.filterCategory,
         rangeName: rangeName ?? existing.rangeName,
         purity: purity ?? existing.purity,
         category: category ?? existing.category,
         description: description ?? existing.description,
+        overridesDefault: overridesDefault !== undefined ? overridesDefault : existing.overridesDefault,
       },
     });
 
