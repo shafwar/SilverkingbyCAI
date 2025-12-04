@@ -493,15 +493,15 @@ export default function ProductsPage() {
     // CMS products akan muncul di depan, default products di belakang
     // Tidak ada override - semua produk ditampilkan
     const combined: ProductWithPricing[] = [];
-    
+
     // Tambahkan CMS products terlebih dahulu
     if (cmsProducts && cmsProducts.length > 0) {
       combined.push(...cmsProducts);
     }
-    
+
     // Tambahkan default products
     combined.push(...defaultProducts);
-    
+
     return combined;
   }, [cmsProducts, defaultProducts]);
 
