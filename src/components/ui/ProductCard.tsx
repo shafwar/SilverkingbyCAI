@@ -12,6 +12,7 @@ export type ProductWithPricing = Product & {
   regularPrice?: number;
   awards?: string[]; // Array of award types: 'gold', 'silver', 'bronze', 'trophy'
   images?: string[]; // Array of images for slider
+  cmsId?: number; // Optional link to CmsProduct id for inline editing
 };
 
 interface ProductCardProps {

@@ -3,7 +3,7 @@
 import { MouseEvent, useEffect, useState, useMemo } from "react";
 import { Link } from "@/i18n/routing";
 import Image from "next/image";
-import { ArrowRight, X, QrCode } from "lucide-react";
+import { ArrowRight, X, QrCode, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useTranslations, useLocale } from "next-intl";
@@ -16,6 +16,7 @@ export default function Navbar() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const t = useTranslations("nav");
   const locale = useLocale();
   const pathname = usePathname();
@@ -89,6 +90,46 @@ export default function Navbar() {
     });
 
     return () => observer.disconnect();
+  }, []);
+
+  // Check if user is admin - ultra-optimized with instant cache + deferred background refresh
+  useEffect(() => {
+    // IMMEDIATE: Check cache first (synchronous, instant, 0ms delay)
+    const cached = sessionStorage.getItem("isAdmin");
+    if (cached !== null) {
+      setIsAdmin(cached === "true");
+    }
+
+    // DEFERRED: Refresh admin status in idle time (non-blocking, low priority)
+    const checkAdmin = async () => {
+      try {
+        const res = await fetch("/api/admin/me", {
+          cache: "no-store",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const adminStatus = data?.isAdmin === true;
+          
+          // Always update state and cache
+          setIsAdmin(adminStatus);
+          sessionStorage.setItem("isAdmin", String(adminStatus));
+        } else {
+          setIsAdmin(false);
+          sessionStorage.setItem("isAdmin", "false");
+        }
+      } catch (error) {
+        // Silently fail - user is not admin
+        setIsAdmin(false);
+        sessionStorage.setItem("isAdmin", "false");
+      }
+    };
+    
+    // Defer check to idle time using requestIdleCallback or setTimeout fallback
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      requestIdleCallback(() => checkAdmin(), { timeout: 2000 });
+    } else {
+      setTimeout(checkAdmin, 100);
+    }
   }, []);
 
   // Lock body scroll when mobile menu is open - PRODUCTION-SAFE
@@ -302,8 +343,48 @@ export default function Navbar() {
           </div>
 
           {/* CTA Button & Language Switcher */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-4" style={{ contain: "layout style" }}>
             <LanguageSwitcher />
+            
+            {/* Admin Dashboard Button - Only visible when logged in as admin */}
+            {/* Fixed width container to completely prevent layout shift */}
+            <div 
+              className="relative flex items-center justify-center"
+              style={{ 
+                width: isAdmin === true ? "auto" : "0px",
+                transition: "width 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
+                contain: "layout style",
+              }}
+            >
+              <motion.a
+                href="/admin"
+                initial={false}
+                animate={{
+                  opacity: isAdmin === true ? 1 : 0,
+                  scale: isAdmin === true ? 1 : 0.92,
+                }}
+                whileHover={{ scale: isAdmin === true ? 1.03 : 1 }}
+                transition={{ 
+                  duration: 0.4, 
+                  ease: [0.22, 1, 0.36, 1],
+                  opacity: { duration: 0.3 }
+                }}
+                className="group relative flex items-center gap-2 rounded-full border border-luxury-gold/30 bg-luxury-gold/10 px-4 py-2.5 backdrop-blur-xl hover:border-luxury-gold/50 hover:bg-luxury-gold/20 hover:shadow-[0_0_20px_rgba(212,175,55,0.3)] will-change-[transform,opacity]"
+                style={{ 
+                  fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c",
+                  pointerEvents: isAdmin === true ? "auto" : "none",
+                  transform: "translateZ(0)", // Force GPU acceleration
+                  backfaceVisibility: "hidden", // Prevent flicker
+                }}
+                title="Admin Dashboard"
+                tabIndex={isAdmin === true ? 0 : -1}
+              >
+                <ShieldCheck className="h-4 w-4 text-luxury-gold flex-shrink-0" />
+                <span className="text-xs font-semibold text-luxury-gold whitespace-nowrap" style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}>ADMIN</span>
+                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-luxury-gold/20 to-luxury-lightGold/20 opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-100" />
+              </motion.a>
+            </div>
+            
             <Link
               href="/contact"
               prefetch={true}
@@ -503,9 +584,37 @@ export default function Navbar() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3, duration: 0.4 }}
-                    className="mb-8 sm:mb-10 flex justify-center"
+                    className="mb-8 sm:mb-10 flex justify-center gap-3"
                   >
                     <LanguageSwitcher />
+                    
+                    {/* Admin Dashboard Button - Mobile */}
+                    <motion.a
+                      href="/admin"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      initial={false}
+                      animate={{
+                        opacity: isAdmin === true ? 1 : 0,
+                        scale: isAdmin === true ? 1 : 0.92,
+                      }}
+                      whileTap={{ scale: isAdmin === true ? 0.95 : 1 }}
+                      transition={{ 
+                        duration: 0.4, 
+                        ease: [0.22, 1, 0.36, 1],
+                        opacity: { duration: 0.3 }
+                      }}
+                      className="group relative flex items-center gap-2 rounded-full border border-luxury-gold/30 bg-luxury-gold/10 px-4 py-2.5 backdrop-blur-xl hover:border-luxury-gold/50 hover:bg-luxury-gold/20 will-change-[transform,opacity]"
+                      style={{ 
+                        fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c",
+                        pointerEvents: isAdmin === true ? "auto" : "none",
+                        transform: "translateZ(0)",
+                        backfaceVisibility: "hidden",
+                      }}
+                      tabIndex={isAdmin === true ? 0 : -1}
+                    >
+                      <ShieldCheck className="h-4 w-4 text-luxury-gold" />
+                      <span className="text-xs font-semibold text-luxury-gold" style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}>ADMIN</span>
+                    </motion.a>
                   </motion.div>
 
                   {/* Featured Card - Scan & Verify (Like Pixelmatters Case Study - Compact) */}

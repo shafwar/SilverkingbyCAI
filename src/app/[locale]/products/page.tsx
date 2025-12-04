@@ -3,7 +3,7 @@
 import Navbar from "@/components/layout/Navbar";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import Link from "next/link";
-import { Sparkles, Gem, ArrowRight, Shield, ArrowDown, QrCode } from "lucide-react";
+import { Sparkles, Gem, ArrowRight, Shield, ArrowDown, QrCode, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { APP_NAME } from "@/utils/constants";
 import { useRef, useState, useEffect, useMemo } from "react";
@@ -364,7 +364,90 @@ export default function ProductsPage() {
   );
 
   // All products with translations - Grouped products with multiple images
-  const allProducts = useMemo<ProductWithPricing[]>(
+  const [cmsProducts, setCmsProducts] = useState<ProductWithPricing[] | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  type CmsEditingProduct = {
+    id?: number;
+    name: string;
+    rangeName?: string;
+    purity?: string;
+    weight: string;
+    // Deskripsi tidak perlu di-custom lewat form, tapi kita simpan di state
+    // supaya bisa dikirim ke backend. Untuk create akan diisi default
+    // dari translation t("product.description").
+    description?: string;
+    category: string;
+    price?: number;
+    images: string[];
+  };
+
+  const [editingCms, setEditingCms] = useState<CmsEditingProduct | null>(null);
+  const [isSavingCms, setIsSavingCms] = useState(false);
+  const [cmsImageFiles, setCmsImageFiles] = useState<FileList | null>(null);
+
+  // Load admin flag
+  useEffect(() => {
+    let cancelled = false;
+    const loadAdmin = async () => {
+      try {
+        const res = await fetch("/api/admin/me");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && data?.isAdmin) {
+          setIsAdmin(true);
+        }
+      } catch {
+        // silent
+      }
+    };
+    void loadAdmin();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Load CMS products (if any) from server - this will override default static list
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCmsProducts = async () => {
+      try {
+        const res = await fetch("/api/cms/products");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data?.products || !Array.isArray(data.products)) return;
+
+        const mapped: ProductWithPricing[] = (data.products as any[]).map((p) => ({
+          id: String(p.id),
+          name: p.name,
+          rangeName: p.rangeName ?? t("product.rangeName"),
+          image: (p.images && p.images[0]) || undefined,
+          purity: p.purity ?? t("product.purity"),
+          weight: p.weight,
+          description: p.description,
+          category: p.category,
+          images: Array.isArray(p.images) ? p.images : undefined,
+          memberPrice: typeof p.price === "number" ? p.price : undefined,
+          cmsId: p.id,
+        }));
+
+        if (!cancelled) {
+          setCmsProducts(mapped);
+        }
+      } catch (error) {
+        console.error("[CMS_PRODUCTS_FETCH]", error);
+      }
+    };
+
+    void loadCmsProducts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [t]);
+
+  const defaultProducts = useMemo<ProductWithPricing[]>(
     () => [
       {
         id: "1",
@@ -403,6 +486,171 @@ export default function ProductsPage() {
     ],
     [t]
   );
+
+  const allProducts = useMemo<ProductWithPricing[]>(() => {
+    if (!cmsProducts || cmsProducts.length === 0) return defaultProducts;
+
+    // Gabungkan CMS products dengan default, tapi jika ada CMS
+    // dengan kombinasi (name + weight) yang sama, CMS akan
+    // menggantikan default tersebut.
+    const merged: ProductWithPricing[] = [...cmsProducts];
+
+    defaultProducts.forEach((d) => {
+      const existsInCms = cmsProducts.some(
+        (c) => c.name === d.name && String(c.weight) === String(d.weight)
+      );
+      if (!existsInCms) {
+        merged.push(d);
+      }
+    });
+
+    return merged;
+  }, [cmsProducts, defaultProducts]);
+
+  const openNewCmsProduct = () => {
+    if (!isAdmin) return;
+    setCmsImageFiles(null);
+    setEditingCms({
+      name: "",
+      rangeName: "",
+      purity: "",
+      weight: "",
+      description: t("product.description"),
+      category: "",
+      images: [],
+    });
+  };
+
+  const openEditCmsProduct = (product: ProductWithPricing) => {
+    if (!isAdmin) return;
+    setCmsImageFiles(null);
+    setEditingCms({
+      id: product.cmsId,
+      name: product.name,
+      rangeName: product.rangeName,
+      purity: product.purity,
+      weight: typeof product.weight === "string" ? product.weight : String(product.weight),
+      description: product.description,
+      category: product.category,
+      price: product.memberPrice ?? product.regularPrice,
+      images: product.images ?? (product.image ? [product.image] : []),
+    });
+  };
+
+  const saveCmsProduct = async (payload: CmsEditingProduct) => {
+    if (!isAdmin) return;
+    setIsSavingCms(true);
+    try {
+      // IMPORTANT: Preserve gambar lama jika admin tidak upload gambar baru
+      // Default ke gambar lama dari payload (yang sudah di-set dari editingCms.images)
+      let images = payload.images ?? [];
+
+      // Jika admin memilih file baru, upload ke R2 dan REPLACE daftar images
+      if (cmsImageFiles && cmsImageFiles.length > 0) {
+        const uploaded: string[] = [];
+
+        for (const file of Array.from(cmsImageFiles)) {
+          if (file.type !== "image/jpeg") {
+            alert("Hanya file JPG/JPEG yang diizinkan.");
+            continue;
+          }
+
+          const formData = new FormData();
+          formData.append("file", file);
+
+          const uploadRes = await fetch("/api/cms/products/upload-image", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!uploadRes.ok) {
+            const data = await uploadRes.json().catch(() => ({}));
+            console.error("[CMS_PRODUCTS_UPLOAD_IMAGE]", data);
+            alert(data?.error || "Gagal mengunggah gambar ke storage. Silakan coba lagi.");
+            continue;
+          }
+
+          const uploadedData = await uploadRes.json();
+          if (uploadedData?.url) {
+            uploaded.push(uploadedData.url);
+          }
+        }
+
+        // Hanya ganti gambar jika ada yang berhasil diupload
+        if (uploaded.length > 0) {
+          images = uploaded;
+        }
+        // Jika upload gagal semua, gambar tetap pakai yang lama (dari payload.images)
+      }
+      // Jika tidak ada file baru dipilih, gambar tetap pakai yang lama (dari payload.images)
+
+      const isEdit = !!payload.id;
+      const endpoint = isEdit ? `/api/cms/products/${payload.id}` : "/api/cms/products";
+      const method = isEdit ? "PATCH" : "POST";
+
+      const res = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...payload,
+          images,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to save product");
+      }
+      const data = await res.json();
+      const saved = data.product as any;
+
+      const mapped: ProductWithPricing = {
+        id: String(saved.id),
+        name: saved.name,
+        rangeName: saved.rangeName ?? t("product.rangeName"),
+        image: (saved.images && saved.images[0]) || undefined,
+        purity: saved.purity ?? t("product.purity"),
+        weight: saved.weight,
+        description: saved.description,
+        category: saved.category,
+        images: Array.isArray(saved.images) ? saved.images : undefined,
+        memberPrice: typeof saved.price === "number" ? saved.price : undefined,
+        cmsId: saved.id,
+      };
+
+      setCmsProducts((prev) => {
+        if (!prev || prev.length === 0) {
+          return [mapped];
+        }
+        if (isEdit) {
+          return prev.map((p) => (p.cmsId === mapped.cmsId ? mapped : p));
+        }
+        return [mapped, ...prev];
+      });
+      setEditingCms(null);
+      setCmsImageFiles(null); // Reset file input setelah berhasil save
+    } catch (error) {
+      console.error("[CMS_PRODUCTS_SAVE_INLINE]", error);
+      alert(error instanceof Error ? error.message : "Failed to save product. Please try again.");
+    } finally {
+      setIsSavingCms(false);
+    }
+  };
+
+  const deleteCmsProduct = async (cmsId?: number) => {
+    if (!isAdmin || !cmsId) return;
+    if (!confirm("Delete this CMS product from Products page?")) return;
+    try {
+      const res = await fetch(`/api/cms/products/${cmsId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to delete product");
+      }
+      setCmsProducts((prev) => (prev ? prev.filter((p) => p.cmsId !== cmsId) : prev));
+    } catch (error) {
+      console.error("[CMS_PRODUCTS_DELETE_INLINE]", error);
+      alert(error instanceof Error ? error.message : "Failed to delete product. Please try again.");
+    }
+  };
 
   const handleProductSelect = (product: Product) => {
     setSelectedProduct(product);
@@ -1193,6 +1441,31 @@ export default function ProductsPage() {
                     }}
                     className="flex flex-wrap justify-center gap-8 md:gap-10 lg:gap-12"
                   >
+                    {isAdmin && (
+                      <motion.div
+                        key="cms-plus-card"
+                        variants={cardVariants}
+                        custom={-1}
+                        className="relative w-full sm:w-[calc(50%-1rem)] md:w-[calc(50%-1.5rem)] lg:w-[calc(33.333%-2rem)] xl:w-[280px]"
+                      >
+                        <button
+                          type="button"
+                          onClick={openNewCmsProduct}
+                          className="flex h-full min-h-[260px] w-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/20 bg-white/5 text-white/60 hover:border-luxury-gold/70 hover:bg-white/10 hover:text-white transition"
+                        >
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-xl">
+                            +
+                          </div>
+                          <div className="px-4 text-center text-sm">
+                            <p className="font-medium">Tambah Produk</p>
+                            <p className="mt-1 text-xs text-white/50">
+                              Tambahkan kartu produk baru yang akan tampil di halaman ini.
+                            </p>
+                          </div>
+                        </button>
+                      </motion.div>
+                    )}
+
                     {filteredProducts.map((product, index) => (
                       <motion.div
                         key={product.id}
@@ -1200,6 +1473,27 @@ export default function ProductsPage() {
                         custom={index}
                         className="relative w-full sm:w-[calc(50%-1rem)] md:w-[calc(50%-1.5rem)] lg:w-[calc(33.333%-2rem)] xl:w-[280px]"
                       >
+                        {isAdmin && (
+                          <div className="absolute right-3 top-3 z-20 flex gap-1">
+                            <button
+                              type="button"
+                              onClick={() => openEditCmsProduct(product)}
+                              className="rounded-full bg-black/60 px-2 py-1 text-[10px] text-white/80 border border-white/30 hover:bg-black/80"
+                            >
+                              Edit
+                            </button>
+                            {product.cmsId && (
+                              <button
+                                type="button"
+                                onClick={() => deleteCmsProduct(product.cmsId)}
+                                className="rounded-full bg-black/60 px-2 py-1 text-[10px] text-red-300 border border-red-400/60 hover:bg-black/80"
+                              >
+                                Hapus
+                              </button>
+                            )}
+                          </div>
+                        )}
+
                         <ProductCard
                           product={product}
                           onProductSelect={handleProductSelect}
@@ -1214,6 +1508,213 @@ export default function ProductsPage() {
           </div>
         </div>
       </section>
+
+      {/* Inline CMS Modal for Admin (create / edit product) */}
+      <AnimatePresence>
+        {isAdmin && editingCms && (
+          <motion.div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => {
+              setEditingCms(null);
+              setCmsImageFiles(null);
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.96 }}
+              className="w-full max-w-xl rounded-2xl border border-white/15 bg-gradient-to-b from-[#111] via-[#050505] to-black p-6 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-white">
+                  {editingCms.id ? "Edit Produk" : "Tambah Produk"}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingCms(null);
+                    setCmsImageFiles(null);
+                  }}
+                  className="rounded-full bg-black/50 p-2 text-white/80 hover:text-white hover:bg-black/70 transition-all"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <form
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!editingCms) return;
+                  const formData = new FormData(e.currentTarget as HTMLFormElement);
+                  const payload: CmsEditingProduct = {
+                    id: editingCms.id,
+                    name: String(formData.get("name") || "").trim(),
+                    rangeName: String(formData.get("rangeName") || "").trim() || undefined,
+                    purity: String(formData.get("purity") || "").trim() || undefined,
+                    weight: String(formData.get("weight") || "").trim(),
+                    // Description tidak diambil dari form, gunakan nilai lama
+                    // atau fallback ke default translation.
+                    description: editingCms.description || t("product.description"),
+                    category: String(formData.get("category") || "").trim(),
+                    price: (() => {
+                      const raw = String(formData.get("price") || "").trim();
+                      if (!raw) return undefined;
+                      const num = Number(raw.replace(/[^\d]/g, ""));
+                      return Number.isNaN(num) ? undefined : num;
+                    })(),
+                    // IMPORTANT: Gunakan gambar lama dari editingCms
+                    // Gambar hanya berubah jika admin upload file baru (via cmsImageFiles)
+                    images: editingCms.images ?? [],
+                  };
+
+                  if (!payload.name || !payload.weight || !payload.category) {
+                    alert("Name, weight, dan category wajib diisi.");
+                    return;
+                  }
+
+                  void saveCmsProduct(payload);
+                }}
+              >
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-white/70">Nama Produk</label>
+                    <input
+                      name="name"
+                      defaultValue={editingCms.name}
+                      className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold focus:ring-1 focus:ring-luxury-gold/40"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-white/70">
+                      Range Name (opsional)
+                    </label>
+                    <input
+                      name="rangeName"
+                      defaultValue={editingCms.rangeName ?? ""}
+                      className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold focus:ring-1 focus:ring-luxury-gold/40"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-white/70">
+                      Purity (mis. 99.99%)
+                    </label>
+                    <input
+                      name="purity"
+                      defaultValue={editingCms.purity ?? ""}
+                      className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold focus:ring-1 focus:ring-luxury-gold/40"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-white/70">
+                      Berat (mis. 50gr, 100gr)
+                    </label>
+                    <input
+                      name="weight"
+                      defaultValue={editingCms.weight}
+                      className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold focus:ring-1 focus:ring-luxury-gold/40"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-white/70">
+                      Kategori (mis. 50 Gram, 100 Gram)
+                    </label>
+                    <input
+                      name="category"
+                      defaultValue={editingCms.category}
+                      className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold focus:ring-1 focus:ring-luxury-gold/40"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-white/70">Harga (IDR)</label>
+                    <input
+                      name="price"
+                      defaultValue={editingCms.price != null ? String(editingCms.price) : ""}
+                      className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold focus:ring-1 focus:ring-luxury-gold/40"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-white/70">
+                    Gambar Produk (JPG/JPEG, bisa lebih dari satu)
+                  </label>
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg,image/jpeg"
+                    multiple
+                    onChange={(e) => setCmsImageFiles(e.target.files)}
+                    className="block w-full text-xs text-white/80 file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-xs file:font-medium file:text-white hover:file:bg-white/20"
+                  />
+                  <p className="text-[11px] text-white/40">
+                    Pilih file gambar (.jpg / .jpeg) dari komputer Anda. Saat disimpan, gambar akan
+                    otomatis diunggah ke R2 dan halaman ini akan menggunakan URL dari R2.
+                  </p>
+                  {editingCms.images && editingCms.images.length > 0 && (
+                    <div className="rounded-lg border border-luxury-gold/20 bg-luxury-gold/5 p-3">
+                      <p className="text-[11px] text-luxury-gold/80 font-medium mb-2">
+                        ✓ Gambar saat ini: {editingCms.images.length} file
+                      </p>
+                      <div className="flex gap-2 flex-wrap">
+                        {editingCms.images.slice(0, 3).map((img, idx) => (
+                          <div
+                            key={idx}
+                            className="w-12 h-12 rounded border border-white/10 overflow-hidden bg-white/5"
+                          >
+                            <img
+                              src={img}
+                              alt={`Preview ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                          </div>
+                        ))}
+                        {editingCms.images.length > 3 && (
+                          <div className="w-12 h-12 rounded border border-white/10 bg-white/5 flex items-center justify-center text-[10px] text-white/50">
+                            +{editingCms.images.length - 3}
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-luxury-gold/60 mt-2">
+                        Gambar ini TIDAK akan berubah jika Anda tidak memilih gambar baru.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-6 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingCms(null);
+                      setCmsImageFiles(null);
+                    }}
+                    className="rounded-full border border-white/20 px-4 py-2 text-xs font-medium text-white/70 hover:border-white/50 hover:text-white transition"
+                    disabled={isSavingCms}
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingCms}
+                    className={`rounded-full bg-gradient-to-r from-luxury-gold to-luxury-lightGold px-5 py-2 text-xs font-semibold text-black shadow-lg shadow-luxury-gold/30 transition ${
+                      isSavingCms ? "opacity-70 cursor-not-allowed" : ""
+                    }`}
+                  >
+                    {isSavingCms ? "Menyimpan..." : "Simpan"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Running Text Promotional Section */}
       <section className="relative bg-black py-3 md:py-6 overflow-hidden">
