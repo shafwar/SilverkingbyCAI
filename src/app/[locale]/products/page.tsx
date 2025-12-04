@@ -387,7 +387,7 @@ export default function ProductsPage() {
 
   const [editingCms, setEditingCms] = useState<CmsEditingProduct | null>(null);
   const [isSavingCms, setIsSavingCms] = useState(false);
-  const [cmsImageFiles, setCmsImageFiles] = useState<FileList | null>(null);
+  const [cmsImageFiles, setCmsImageFiles] = useState<File[]>([]);
   const [formattedPrice, setFormattedPrice] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -415,6 +415,33 @@ export default function ProductsPage() {
       setFormattedPrice("");
     }
   }, [editingCms]);
+
+  // Handle file selection - accumulate files instead of replacing
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newFiles = e.target.files;
+    if (!newFiles || newFiles.length === 0) return;
+
+    // Convert FileList to Array and append to existing files
+    const newFilesArray = Array.from(newFiles);
+    setCmsImageFiles((prev) => [...prev, ...newFilesArray]);
+
+    // Reset input so same file can be selected again if needed
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // Remove individual file from selection
+  const removeFile = (indexToRemove: number) => {
+    setCmsImageFiles((prev) => prev.filter((_, index) => index !== indexToRemove));
+  };
+
+  // Format file size for display
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  };
 
   // Load admin flag
   useEffect(() => {
@@ -552,7 +579,7 @@ export default function ProductsPage() {
 
   const openNewCmsProduct = () => {
     if (!isAdmin) return;
-    setCmsImageFiles(null);
+    setCmsImageFiles([]);
     // Reset file input element
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -574,7 +601,7 @@ export default function ProductsPage() {
   const openEditCmsProduct = (product: ProductWithPricing) => {
     if (!isAdmin) return;
 
-    setCmsImageFiles(null);
+    setCmsImageFiles([]);
     // Reset file input element
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -612,7 +639,7 @@ export default function ProductsPage() {
 
         console.log(`[CMS_PRODUCTS_SAVE] Uploading ${totalFiles} file(s)...`);
 
-        for (const file of Array.from(cmsImageFiles)) {
+        for (const file of cmsImageFiles) {
           if (file.type !== "image/jpeg") {
             alert(`File "${file.name}" bukan JPG/JPEG. Hanya file JPG/JPEG yang diizinkan.`);
             continue;
@@ -642,13 +669,17 @@ export default function ProductsPage() {
           }
         }
 
-        console.log(`[CMS_PRODUCTS_SAVE] Upload complete: ${uploaded.length}/${totalFiles} files uploaded successfully`);
+        console.log(
+          `[CMS_PRODUCTS_SAVE] Upload complete: ${uploaded.length}/${totalFiles} files uploaded successfully`
+        );
 
         // Hanya ganti gambar jika ada yang berhasil diupload
         if (uploaded.length > 0) {
           images = uploaded;
         } else {
-          alert(`Gagal mengunggah semua gambar (0/${totalFiles}). Produk akan menggunakan gambar lama atau tanpa gambar.`);
+          alert(
+            `Gagal mengunggah semua gambar (0/${totalFiles}). Produk akan menggunakan gambar lama atau tanpa gambar.`
+          );
         }
         // Jika upload gagal semua, gambar tetap pakai yang lama (dari payload.images)
       }
@@ -701,7 +732,7 @@ export default function ProductsPage() {
         return [mapped, ...prev];
       });
       setEditingCms(null);
-      setCmsImageFiles(null);
+      setCmsImageFiles([]);
       // Reset file input element
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -1638,7 +1669,7 @@ export default function ProductsPage() {
             exit={{ opacity: 0 }}
             onClick={() => {
               setEditingCms(null);
-              setCmsImageFiles(null);
+              setCmsImageFiles([]);
             }}
           >
             <motion.div
@@ -1656,7 +1687,7 @@ export default function ProductsPage() {
                   type="button"
                   onClick={() => {
                     setEditingCms(null);
-                    setCmsImageFiles(null);
+                    setCmsImageFiles([]);
                   }}
                   className="rounded-full bg-black/50 p-2 text-white/80 hover:text-white hover:bg-black/70 transition-all"
                 >
@@ -1781,14 +1812,43 @@ export default function ProductsPage() {
                     type="file"
                     accept=".jpg,.jpeg,image/jpeg"
                     multiple
-                    onChange={(e) => setCmsImageFiles(e.target.files)}
+                    onChange={handleFileSelect}
                     className="block w-full text-xs text-white/80 file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-xs file:font-medium file:text-white hover:file:bg-white/20"
                   />
+                  
+                  {/* Selected Files List */}
                   {cmsImageFiles && cmsImageFiles.length > 0 && (
-                    <p className="text-[11px] text-luxury-gold font-medium">
-                      ✓ {cmsImageFiles.length} file(s) dipilih: {Array.from(cmsImageFiles).map(f => f.name).join(", ")}
-                    </p>
+                    <div className="space-y-2 rounded-lg border border-luxury-gold/30 bg-luxury-gold/5 p-3">
+                      <p className="text-[11px] text-luxury-gold font-medium">
+                        ✓ {cmsImageFiles.length} file(s) dipilih
+                      </p>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {cmsImageFiles.map((file, index) => (
+                          <div
+                            key={`${file.name}-${index}`}
+                            className="flex items-center justify-between gap-2 rounded bg-white/5 px-2 py-1.5 text-[11px] group hover:bg-white/10 transition-colors"
+                          >
+                            <div className="flex-1 flex items-center gap-2 min-w-0">
+                              <span className="text-luxury-gold">📎</span>
+                              <span className="text-white/80 truncate">{file.name}</span>
+                              <span className="text-white/40 text-[10px] flex-shrink-0">
+                                ({formatFileSize(file.size)})
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeFile(index)}
+                              className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-red-500/20 text-red-300 hover:bg-red-500/40 hover:text-red-200 transition-colors"
+                              title="Hapus file ini"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
+                  
                   <p className="text-[11px] text-white/40">{t("cmsForm.imagesHint")}</p>
                   {editingCms.images && editingCms.images.length > 0 && (
                     <div className="rounded-lg border border-luxury-gold/20 bg-luxury-gold/5 p-3">
@@ -1829,7 +1889,7 @@ export default function ProductsPage() {
                     type="button"
                     onClick={() => {
                       setEditingCms(null);
-                      setCmsImageFiles(null);
+                      setCmsImageFiles([]);
                     }}
                     className="rounded-full border border-white/20 px-4 py-2 text-xs font-medium text-white/70 hover:border-white/50 hover:text-white transition"
                     disabled={isSavingCms}
