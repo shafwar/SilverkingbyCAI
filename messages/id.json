@@ -271,7 +271,7 @@
       "filter": "Kategori Filter",
       "filterPlaceholder": "Pilih kategori filter",
       "images": "Gambar Produk (JPG/JPEG)",
-      "imagesHint": "Pilih file gambar (.jpg / .jpeg) dari komputer Anda. Saat disimpan, gambar akan otomatis diunggah ke R2 dan halaman ini akan menggunakan URL dari R2.",
+      "imagesHint": "Pilih file gambar (.jpg / .jpeg) dari komputer Anda. Anda bisa pilih MULTIPLE files sekaligus. Saat disimpan, semua gambar akan otomatis diunggah ke R2.",
       "currentImages": "Gambar saat ini",
       "currentImagesNote": "Gambar ini TIDAK akan berubah jika Anda tidak memilih gambar baru.",
       "addProduct": "Tambah Produk",

@@ -389,6 +389,7 @@ export default function ProductsPage() {
   const [isSavingCms, setIsSavingCms] = useState(false);
   const [cmsImageFiles, setCmsImageFiles] = useState<FileList | null>(null);
   const [formattedPrice, setFormattedPrice] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Format number with thousand separator (dot)
   const formatPrice = (value: number | string): string => {
@@ -552,6 +553,10 @@ export default function ProductsPage() {
   const openNewCmsProduct = () => {
     if (!isAdmin) return;
     setCmsImageFiles(null);
+    // Reset file input element
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
     setEditingCms({
       name: "",
       weight: "",
@@ -570,6 +575,10 @@ export default function ProductsPage() {
     if (!isAdmin) return;
 
     setCmsImageFiles(null);
+    // Reset file input element
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
     setEditingCms({
       id: product.cmsId,
       name: product.name,
@@ -599,12 +608,17 @@ export default function ProductsPage() {
       // Jika admin memilih file baru, upload ke R2 dan REPLACE daftar images
       if (cmsImageFiles && cmsImageFiles.length > 0) {
         const uploaded: string[] = [];
+        const totalFiles = cmsImageFiles.length;
+
+        console.log(`[CMS_PRODUCTS_SAVE] Uploading ${totalFiles} file(s)...`);
 
         for (const file of Array.from(cmsImageFiles)) {
           if (file.type !== "image/jpeg") {
-            alert("Hanya file JPG/JPEG yang diizinkan.");
+            alert(`File "${file.name}" bukan JPG/JPEG. Hanya file JPG/JPEG yang diizinkan.`);
             continue;
           }
+
+          console.log(`[CMS_PRODUCTS_SAVE] Uploading file: ${file.name} (${file.size} bytes)`);
 
           const formData = new FormData();
           formData.append("file", file);
@@ -617,19 +631,24 @@ export default function ProductsPage() {
           if (!uploadRes.ok) {
             const data = await uploadRes.json().catch(() => ({}));
             console.error("[CMS_PRODUCTS_UPLOAD_IMAGE]", data);
-            alert(data?.error || "Gagal mengunggah gambar ke storage. Silakan coba lagi.");
+            alert(data?.error || `Gagal mengunggah gambar "${file.name}". Silakan coba lagi.`);
             continue;
           }
 
           const uploadedData = await uploadRes.json();
           if (uploadedData?.url) {
             uploaded.push(uploadedData.url);
+            console.log(`[CMS_PRODUCTS_SAVE] Successfully uploaded: ${uploadedData.url}`);
           }
         }
+
+        console.log(`[CMS_PRODUCTS_SAVE] Upload complete: ${uploaded.length}/${totalFiles} files uploaded successfully`);
 
         // Hanya ganti gambar jika ada yang berhasil diupload
         if (uploaded.length > 0) {
           images = uploaded;
+        } else {
+          alert(`Gagal mengunggah semua gambar (0/${totalFiles}). Produk akan menggunakan gambar lama atau tanpa gambar.`);
         }
         // Jika upload gagal semua, gambar tetap pakai yang lama (dari payload.images)
       }
@@ -682,7 +701,11 @@ export default function ProductsPage() {
         return [mapped, ...prev];
       });
       setEditingCms(null);
-      setCmsImageFiles(null); // Reset file input setelah berhasil save
+      setCmsImageFiles(null);
+      // Reset file input element
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     } catch (error) {
       console.error("[CMS_PRODUCTS_SAVE_INLINE]", error);
       alert(error instanceof Error ? error.message : "Failed to save product. Please try again.");
@@ -1754,12 +1777,18 @@ export default function ProductsPage() {
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-white/70">{t("cmsForm.images")}</label>
                   <input
+                    ref={fileInputRef}
                     type="file"
                     accept=".jpg,.jpeg,image/jpeg"
                     multiple
                     onChange={(e) => setCmsImageFiles(e.target.files)}
                     className="block w-full text-xs text-white/80 file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-xs file:font-medium file:text-white hover:file:bg-white/20"
                   />
+                  {cmsImageFiles && cmsImageFiles.length > 0 && (
+                    <p className="text-[11px] text-luxury-gold font-medium">
+                      ✓ {cmsImageFiles.length} file(s) dipilih: {Array.from(cmsImageFiles).map(f => f.name).join(", ")}
+                    </p>
+                  )}
                   <p className="text-[11px] text-white/40">{t("cmsForm.imagesHint")}</p>
                   {editingCms.images && editingCms.images.length > 0 && (
                     <div className="rounded-lg border border-luxury-gold/20 bg-luxury-gold/5 p-3">

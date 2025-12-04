@@ -271,7 +271,7 @@
       "filter": "Filter Category",
       "filterPlaceholder": "Select filter category",
       "images": "Product Images (JPG/JPEG)",
-      "imagesHint": "Choose image files (.jpg / .jpeg) from your computer. When saved, images will be automatically uploaded to R2 and this page will use the URL from R2.",
+      "imagesHint": "Choose image files (.jpg / .jpeg) from your computer. You can select MULTIPLE files at once. When saved, all images will be automatically uploaded to R2.",
       "currentImages": "Current images",
       "currentImagesNote": "This image will NOT change if you do not choose a new image.",
       "addProduct": "Add Product",
