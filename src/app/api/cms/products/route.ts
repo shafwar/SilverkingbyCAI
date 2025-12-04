@@ -30,18 +30,19 @@ export async function POST(request: Request) {
 
     const {
       name,
-      rangeName,
-      purity,
       weight,
-      description,
-      category,
       price,
       images,
+      filterCategory,
+      rangeName,
+      purity,
+      category,
+      description,
     } = body || {};
 
-    if (!name || !description || !category || !weight) {
+    if (!name || !weight) {
       return NextResponse.json(
-        { error: "name, description, category, and weight are required" },
+        { error: "name and weight are required" },
         { status: 400 },
       );
     }
@@ -50,13 +51,14 @@ export async function POST(request: Request) {
     const created = await db.cmsProduct.create({
       data: {
         name,
-        rangeName: rangeName ?? null,
-        purity: purity ?? null,
         weight,
-        description,
-        category,
         price: typeof price === "number" ? price : price ? Number(price) || null : null,
         images: Array.isArray(images) ? images : undefined,
+        filterCategory: filterCategory || "all",
+        rangeName: rangeName ?? null,
+        purity: purity ?? null,
+        category: category ?? null,
+        description: description ?? null,
       },
     });
 

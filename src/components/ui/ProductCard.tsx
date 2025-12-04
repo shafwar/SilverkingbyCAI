@@ -13,6 +13,7 @@ export type ProductWithPricing = Product & {
   awards?: string[]; // Array of award types: 'gold', 'silver', 'bronze', 'trophy'
   images?: string[]; // Array of images for slider
   cmsId?: number; // Optional link to CmsProduct id for inline editing
+  filterCategory?: string; // Filter category: all, award-winning, exclusives, large-bars, small-bars
 };
 
 interface ProductCardProps {

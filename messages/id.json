@@ -242,8 +242,8 @@
       "all": "Semua",
       "awardWinning": "Pemenang Penghargaan",
       "exclusives": "Eksklusif",
-      "large": "Batangan Besar",
-      "small": "Batangan Kecil",
+      "largeBars": "Batangan Besar",
+      "smallBars": "Batangan Kecil",
       "noProducts": "Tidak ada produk yang ditemukan."
     },
     "runningText": {
@@ -260,6 +260,29 @@
       "scanVerify": "Pindai & Verifikasi",
       "tapToLaunch": "Ketuk untuk meluncurkan pemindai QR Silver King",
       "captureQR": "Tangkap segel QR untuk melihat kemurnian & asal usul"
+    },
+    "cmsForm": {
+      "name": "Nama Produk",
+      "namePlaceholder": "cth: 50gr, 100gr, 250gr",
+      "weight": "Berat",
+      "weightPlaceholder": "cth: 50gr, 100gr, 250gr",
+      "price": "Harga (IDR)",
+      "pricePlaceholder": "cth: 3000000",
+      "filter": "Kategori Filter",
+      "filterPlaceholder": "Pilih kategori filter",
+      "images": "Gambar Produk (JPG/JPEG)",
+      "imagesHint": "Pilih file gambar (.jpg / .jpeg) dari komputer Anda. Saat disimpan, gambar akan otomatis diunggah ke R2 dan halaman ini akan menggunakan URL dari R2.",
+      "currentImages": "Gambar saat ini",
+      "currentImagesNote": "Gambar ini TIDAK akan berubah jika Anda tidak memilih gambar baru.",
+      "addProduct": "Tambah Produk",
+      "addProductHint": "Tambahkan kartu produk baru yang akan tampil di halaman ini.",
+      "editProduct": "Edit Produk",
+      "save": "Simpan",
+      "saving": "Menyimpan...",
+      "cancel": "Batal",
+      "validation": {
+        "required": "Nama produk dan berat wajib diisi."
+      }
     }
   },
   "about": {

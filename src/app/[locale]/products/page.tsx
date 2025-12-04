@@ -370,16 +370,16 @@ export default function ProductsPage() {
   type CmsEditingProduct = {
     id?: number;
     name: string;
-    rangeName?: string;
-    purity?: string;
     weight: string;
-    // Deskripsi tidak perlu di-custom lewat form, tapi kita simpan di state
-    // supaya bisa dikirim ke backend. Untuk create akan diisi default
-    // dari translation t("product.description").
-    description?: string;
-    category: string;
     price?: number;
     images: string[];
+    // Filter category untuk assign produk ke filter (all, award-winning, exclusives, dll)
+    filterCategory?: string;
+    // Auto-filled fields (tidak ada di form UI)
+    rangeName?: string;
+    purity?: string;
+    category?: string;
+    description?: string;
   };
 
   const [editingCms, setEditingCms] = useState<CmsEditingProduct | null>(null);
@@ -425,11 +425,12 @@ export default function ProductsPage() {
           image: (p.images && p.images[0]) || undefined,
           purity: p.purity ?? t("product.purity"),
           weight: p.weight,
-          description: p.description,
-          category: p.category,
+          description: p.description ?? t("product.description"),
+          category: p.category ?? p.weight,
           images: Array.isArray(p.images) ? p.images : undefined,
           memberPrice: typeof p.price === "number" ? p.price : undefined,
           cmsId: p.id,
+          filterCategory: p.filterCategory ?? "all",
         }));
 
         if (!cancelled) {
@@ -488,23 +489,14 @@ export default function ProductsPage() {
   );
 
   const allProducts = useMemo<ProductWithPricing[]>(() => {
-    if (!cmsProducts || cmsProducts.length === 0) return defaultProducts;
-
-    // Gabungkan CMS products dengan default, tapi jika ada CMS
-    // dengan kombinasi (name + weight) yang sama, CMS akan
-    // menggantikan default tersebut.
-    const merged: ProductWithPricing[] = [...cmsProducts];
-
-    defaultProducts.forEach((d) => {
-      const existsInCms = cmsProducts.some(
-        (c) => c.name === d.name && String(c.weight) === String(d.weight)
-      );
-      if (!existsInCms) {
-        merged.push(d);
-      }
-    });
-
-    return merged;
+    // FIXED: Jika ada CMS products, HANYA tampilkan CMS products (tidak merge dengan default)
+    // Ini memastikan user dan admin melihat jumlah produk yang sama
+    if (cmsProducts && cmsProducts.length > 0) {
+      return cmsProducts;
+    }
+    
+    // Jika CMS kosong, tampilkan 3 default products
+    return defaultProducts;
   }, [cmsProducts, defaultProducts]);
 
   const openNewCmsProduct = () => {
@@ -512,12 +504,15 @@ export default function ProductsPage() {
     setCmsImageFiles(null);
     setEditingCms({
       name: "",
-      rangeName: "",
-      purity: "",
       weight: "",
-      description: t("product.description"),
-      category: "",
+      price: undefined,
       images: [],
+      filterCategory: "all",
+      // Auto-filled dengan default values
+      rangeName: t("product.rangeName"),
+      purity: t("product.purity"),
+      category: "",
+      description: t("product.description"),
     });
   };
 
@@ -527,13 +522,15 @@ export default function ProductsPage() {
     setEditingCms({
       id: product.cmsId,
       name: product.name,
-      rangeName: product.rangeName,
-      purity: product.purity,
       weight: typeof product.weight === "string" ? product.weight : String(product.weight),
-      description: product.description,
-      category: product.category,
       price: product.memberPrice ?? product.regularPrice,
       images: product.images ?? (product.image ? [product.image] : []),
+      filterCategory: (product as any).filterCategory ?? "all",
+      // Auto-filled, preserve existing values
+      rangeName: product.rangeName,
+      purity: product.purity,
+      category: product.category,
+      description: product.description,
     });
   };
 
@@ -610,11 +607,12 @@ export default function ProductsPage() {
         image: (saved.images && saved.images[0]) || undefined,
         purity: saved.purity ?? t("product.purity"),
         weight: saved.weight,
-        description: saved.description,
-        category: saved.category,
+        description: saved.description ?? t("product.description"),
+        category: saved.category ?? saved.weight,
         images: Array.isArray(saved.images) ? saved.images : undefined,
         memberPrice: typeof saved.price === "number" ? saved.price : undefined,
         cmsId: saved.id,
+        filterCategory: saved.filterCategory ?? "all",
       };
 
       setCmsProducts((prev) => {
@@ -1457,9 +1455,9 @@ export default function ProductsPage() {
                             +
                           </div>
                           <div className="px-4 text-center text-sm">
-                            <p className="font-medium">Tambah Produk</p>
+                            <p className="font-medium">{t("cmsForm.addProduct")}</p>
                             <p className="mt-1 text-xs text-white/50">
-                              Tambahkan kartu produk baru yang akan tampil di halaman ini.
+                              {t("cmsForm.addProductHint")}
                             </p>
                           </div>
                         </button>
@@ -1531,7 +1529,7 @@ export default function ProductsPage() {
             >
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-white">
-                  {editingCms.id ? "Edit Produk" : "Tambah Produk"}
+                  {editingCms.id ? t("cmsForm.editProduct") : t("cmsForm.addProduct")}
                 </h2>
                 <button
                   type="button"
@@ -1551,97 +1549,104 @@ export default function ProductsPage() {
                   e.preventDefault();
                   if (!editingCms) return;
                   const formData = new FormData(e.currentTarget as HTMLFormElement);
-                  const payload: CmsEditingProduct = {
-                    id: editingCms.id,
-                    name: String(formData.get("name") || "").trim(),
-                    rangeName: String(formData.get("rangeName") || "").trim() || undefined,
-                    purity: String(formData.get("purity") || "").trim() || undefined,
-                    weight: String(formData.get("weight") || "").trim(),
-                    // Description tidak diambil dari form, gunakan nilai lama
-                    // atau fallback ke default translation.
-                    description: editingCms.description || t("product.description"),
-                    category: String(formData.get("category") || "").trim(),
-                    price: (() => {
-                      const raw = String(formData.get("price") || "").trim();
-                      if (!raw) return undefined;
-                      const num = Number(raw.replace(/[^\d]/g, ""));
-                      return Number.isNaN(num) ? undefined : num;
-                    })(),
-                    // IMPORTANT: Gunakan gambar lama dari editingCms
-                    // Gambar hanya berubah jika admin upload file baru (via cmsImageFiles)
-                    images: editingCms.images ?? [],
-                  };
-
-                  if (!payload.name || !payload.weight || !payload.category) {
-                    alert("Name, weight, dan category wajib diisi.");
+                  
+                  const name = String(formData.get("name") || "").trim();
+                  const weight = String(formData.get("weight") || "").trim();
+                  const filterCategory = String(formData.get("filterCategory") || "all");
+                  const priceRaw = String(formData.get("price") || "").trim();
+                  
+                  // Validation
+                  if (!name || !weight) {
+                    alert(t("cmsForm.validation.required"));
                     return;
                   }
+
+                  const payload: CmsEditingProduct = {
+                    id: editingCms.id,
+                    name,
+                    weight,
+                    price: (() => {
+                      if (!priceRaw) return undefined;
+                      const num = Number(priceRaw.replace(/[^\d]/g, ""));
+                      return Number.isNaN(num) ? undefined : num;
+                    })(),
+                    images: editingCms.images ?? [],
+                    filterCategory,
+                    // Auto-fill berdasarkan weight untuk konsistensi
+                    rangeName: t("product.rangeName"),
+                    purity: t("product.purity"),
+                    category: weight, // Use weight as category
+                    description: t("product.description"),
+                  };
 
                   void saveCmsProduct(payload);
                 }}
               >
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {/* Nama Produk */}
                   <div className="space-y-2">
-                    <label className="text-xs font-medium text-white/70">Nama Produk</label>
+                    <label className="text-xs font-medium text-white/70">
+                      {t("cmsForm.name")}
+                    </label>
                     <input
                       name="name"
                       defaultValue={editingCms.name}
+                      placeholder={t("cmsForm.namePlaceholder")}
                       className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold focus:ring-1 focus:ring-luxury-gold/40"
+                      required
                     />
                   </div>
+
+                  {/* Berat */}
                   <div className="space-y-2">
                     <label className="text-xs font-medium text-white/70">
-                      Range Name (opsional)
-                    </label>
-                    <input
-                      name="rangeName"
-                      defaultValue={editingCms.rangeName ?? ""}
-                      className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold focus:ring-1 focus:ring-luxury-gold/40"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-white/70">
-                      Purity (mis. 99.99%)
-                    </label>
-                    <input
-                      name="purity"
-                      defaultValue={editingCms.purity ?? ""}
-                      className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold focus:ring-1 focus:ring-luxury-gold/40"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-white/70">
-                      Berat (mis. 50gr, 100gr)
+                      {t("cmsForm.weight")}
                     </label>
                     <input
                       name="weight"
                       defaultValue={editingCms.weight}
+                      placeholder={t("cmsForm.weightPlaceholder")}
                       className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold focus:ring-1 focus:ring-luxury-gold/40"
+                      required
                     />
                   </div>
+
+                  {/* Harga */}
                   <div className="space-y-2">
                     <label className="text-xs font-medium text-white/70">
-                      Kategori (mis. 50 Gram, 100 Gram)
+                      {t("cmsForm.price")}
                     </label>
                     <input
-                      name="category"
-                      defaultValue={editingCms.category}
+                      name="price"
+                      type="number"
+                      defaultValue={editingCms.price != null ? String(editingCms.price) : ""}
+                      placeholder={t("cmsForm.pricePlaceholder")}
                       className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold focus:ring-1 focus:ring-luxury-gold/40"
                     />
                   </div>
+
+                  {/* Filter Category */}
                   <div className="space-y-2">
-                    <label className="text-xs font-medium text-white/70">Harga (IDR)</label>
-                    <input
-                      name="price"
-                      defaultValue={editingCms.price != null ? String(editingCms.price) : ""}
+                    <label className="text-xs font-medium text-white/70">
+                      {t("cmsForm.filter")}
+                    </label>
+                    <select
+                      name="filterCategory"
+                      defaultValue={editingCms.filterCategory ?? "all"}
                       className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold focus:ring-1 focus:ring-luxury-gold/40"
-                    />
+                    >
+                      <option value="all">{t("filters.all")}</option>
+                      <option value="award-winning">{t("filters.awardWinning")}</option>
+                      <option value="exclusives">{t("filters.exclusives")}</option>
+                      <option value="large-bars">{t("filters.largeBars")}</option>
+                      <option value="small-bars">{t("filters.smallBars")}</option>
+                    </select>
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-white/70">
-                    Gambar Produk (JPG/JPEG, bisa lebih dari satu)
+                    {t("cmsForm.images")}
                   </label>
                   <input
                     type="file"
@@ -1651,13 +1656,12 @@ export default function ProductsPage() {
                     className="block w-full text-xs text-white/80 file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-xs file:font-medium file:text-white hover:file:bg-white/20"
                   />
                   <p className="text-[11px] text-white/40">
-                    Pilih file gambar (.jpg / .jpeg) dari komputer Anda. Saat disimpan, gambar akan
-                    otomatis diunggah ke R2 dan halaman ini akan menggunakan URL dari R2.
+                    {t("cmsForm.imagesHint")}
                   </p>
                   {editingCms.images && editingCms.images.length > 0 && (
                     <div className="rounded-lg border border-luxury-gold/20 bg-luxury-gold/5 p-3">
                       <p className="text-[11px] text-luxury-gold/80 font-medium mb-2">
-                        ✓ Gambar saat ini: {editingCms.images.length} file
+                        ✓ {t("cmsForm.currentImages")}: {editingCms.images.length} file
                       </p>
                       <div className="flex gap-2 flex-wrap">
                         {editingCms.images.slice(0, 3).map((img, idx) => (
@@ -1682,7 +1686,7 @@ export default function ProductsPage() {
                         )}
                       </div>
                       <p className="text-[10px] text-luxury-gold/60 mt-2">
-                        Gambar ini TIDAK akan berubah jika Anda tidak memilih gambar baru.
+                        {t("cmsForm.currentImagesNote")}
                       </p>
                     </div>
                   )}
@@ -1698,7 +1702,7 @@ export default function ProductsPage() {
                     className="rounded-full border border-white/20 px-4 py-2 text-xs font-medium text-white/70 hover:border-white/50 hover:text-white transition"
                     disabled={isSavingCms}
                   >
-                    Batal
+                    {t("cmsForm.cancel")}
                   </button>
                   <button
                     type="submit"
@@ -1707,7 +1711,7 @@ export default function ProductsPage() {
                       isSavingCms ? "opacity-70 cursor-not-allowed" : ""
                     }`}
                   >
-                    {isSavingCms ? "Menyimpan..." : "Simpan"}
+                    {isSavingCms ? t("cmsForm.saving") : t("cmsForm.save")}
                   </button>
                 </div>
               </form>

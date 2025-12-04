@@ -21,13 +21,14 @@ export async function PATCH(
     const body = await request.json();
     const {
       name,
-      rangeName,
-      purity,
       weight,
-      description,
-      category,
       price,
       images,
+      filterCategory,
+      rangeName,
+      purity,
+      category,
+      description,
     } = body || {};
 
     const db = prisma as any;
@@ -41,11 +42,7 @@ export async function PATCH(
       where: { id },
       data: {
         name: name ?? existing.name,
-        rangeName: rangeName ?? existing.rangeName,
-        purity: purity ?? existing.purity,
         weight: weight ?? existing.weight,
-        description: description ?? existing.description,
-        category: category ?? existing.category,
         price:
           typeof price === "number"
             ? price
@@ -53,6 +50,11 @@ export async function PATCH(
               ? Number(price) || existing.price
               : existing.price,
         images: Array.isArray(images) ? images : existing.images,
+        filterCategory: filterCategory ?? existing.filterCategory,
+        rangeName: rangeName ?? existing.rangeName,
+        purity: purity ?? existing.purity,
+        category: category ?? existing.category,
+        description: description ?? existing.description,
       },
     });
 

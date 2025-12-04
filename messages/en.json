@@ -242,8 +242,8 @@
       "all": "All",
       "awardWinning": "Award-winning",
       "exclusives": "Exclusives",
-      "large": "Large Bars",
-      "small": "Small Bars",
+      "largeBars": "Large Bars",
+      "smallBars": "Small Bars",
       "noProducts": "No products found."
     },
     "runningText": {
@@ -260,6 +260,29 @@
       "scanVerify": "Scan & Verify",
       "tapToLaunch": "Tap to launch Silver King QR scanner",
       "captureQR": "Capture the QR seal to view purity & provenance"
+    },
+    "cmsForm": {
+      "name": "Product Name",
+      "namePlaceholder": "e.g., 50gr, 100gr, 250gr",
+      "weight": "Weight",
+      "weightPlaceholder": "e.g., 50gr, 100gr, 250gr",
+      "price": "Price (IDR)",
+      "pricePlaceholder": "e.g., 3000000",
+      "filter": "Filter Category",
+      "filterPlaceholder": "Select filter category",
+      "images": "Product Images (JPG/JPEG)",
+      "imagesHint": "Choose image files (.jpg / .jpeg) from your computer. When saved, images will be automatically uploaded to R2 and this page will use the URL from R2.",
+      "currentImages": "Current images",
+      "currentImagesNote": "This image will NOT change if you do not choose a new image.",
+      "addProduct": "Add Product",
+      "addProductHint": "Add a new product card that will appear on this page.",
+      "editProduct": "Edit Product",
+      "save": "Save",
+      "saving": "Saving...",
+      "cancel": "Cancel",
+      "validation": {
+        "required": "Product name and weight are required."
+      }
     }
   },
   "about": {
