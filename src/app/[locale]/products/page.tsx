@@ -251,6 +251,7 @@ const CategoryGridItem = ({
 export default function ProductsPage() {
   const t = useTranslations("products");
   const tNav = useTranslations("nav");
+  const tCommon = useTranslations("common");
   const locale = useLocale();
   const pageRef = useRef<HTMLDivElement | null>(null);
   const heroRef = useRef<HTMLDivElement | null>(null);
@@ -524,14 +525,14 @@ export default function ProductsPage() {
 
   const openEditCmsProduct = (product: ProductWithPricing) => {
     if (!isAdmin) return;
-    
+
     // If editing a default product (no cmsId), confirm with admin
     // This will CREATE a new CMS product, not edit the default
     if (!product.cmsId) {
       const confirmed = confirm(t("cmsForm.validation.confirmEditDefault"));
       if (!confirmed) return;
     }
-    
+
     setCmsImageFiles(null);
     setEditingCms({
       id: product.cmsId,
@@ -1370,7 +1371,7 @@ export default function ProductsPage() {
                       : "text-white/50 border-transparent hover:text-white/70 hover:border-white/30"
                   }`}
                 >
-                  {t("filters.large")}
+                  {t("filters.largeBars")}
                 </button>
                 <button
                   onClick={() => {
@@ -1383,7 +1384,7 @@ export default function ProductsPage() {
                       : "text-white/50 border-transparent hover:text-white/70 hover:border-white/30"
                   }`}
                 >
-                  {t("filters.small")}
+                  {t("filters.smallBars")}
                 </button>
               </motion.div>
             </motion.div>
@@ -1493,7 +1494,7 @@ export default function ProductsPage() {
                               onClick={() => openEditCmsProduct(product)}
                               className="rounded-full bg-black/60 px-2 py-1 text-[10px] text-white/80 border border-white/30 hover:bg-black/80"
                             >
-                              {t("common.edit")}
+                              {tCommon("edit")}
                             </button>
                             <button
                               type="button"
@@ -1506,7 +1507,7 @@ export default function ProductsPage() {
                               }}
                               className="rounded-full bg-black/60 px-2 py-1 text-[10px] text-red-300 border border-red-400/60 hover:bg-black/80"
                             >
-                              {t("common.delete")}
+                              {tCommon("delete")}
                             </button>
                           </div>
                         )}
