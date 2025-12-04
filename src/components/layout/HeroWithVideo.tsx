@@ -27,6 +27,7 @@ export default function HeroWithVideo({
   const r2FallbackImage = getR2UrlClient(fallbackImage);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
+  const [videoError, setVideoError] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -73,18 +74,28 @@ export default function HeroWithVideo({
     // Handle video ready states
     const handleCanPlay = () => {
       setIsVideoLoaded(true);
+      setVideoError(false); // Reset error state on successful load
       forcePlay();
     };
 
     const handleLoadedData = () => {
-    setIsVideoLoaded(true);
+      setIsVideoLoaded(true);
+      setVideoError(false); // Reset error state on successful load
       forcePlay();
-  };
+    };
 
-    // Handle video errors
-    const handleError = () => {
+    // Handle video errors with proper error recovery
+    const handleError = (e?: Event) => {
       setIsVideoLoaded(false);
-      console.warn("[HeroWithVideo] Video error occurred");
+      setVideoError(true);
+      console.warn("[HeroWithVideo] Video error occurred", e);
+      // Try to reload video after a delay
+      setTimeout(() => {
+        if (video && video.error) {
+          console.log("[HeroWithVideo] Attempting video reload...");
+          video.load();
+        }
+      }, 2000);
     };
 
     // Resume video if it pauses (prevent breaks)
@@ -138,6 +149,14 @@ export default function HeroWithVideo({
     video.addEventListener("pause", handlePause);
     video.addEventListener("ended", handleEnded);
     video.addEventListener("waiting", handleWaiting);
+    video.addEventListener("stalled", () => {
+      console.warn("[HeroWithVideo] Video stalled, attempting recovery...");
+      setTimeout(() => {
+        if (video.paused && !video.ended) {
+          forcePlay();
+        }
+      }, 1000);
+    });
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     // Force load video to ensure it starts loading immediately
@@ -158,6 +177,7 @@ export default function HeroWithVideo({
       video.removeEventListener("pause", handlePause);
       video.removeEventListener("ended", handleEnded);
       video.removeEventListener("waiting", handleWaiting);
+      video.removeEventListener("stalled", () => {});
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       clearInterval(playCheckInterval);
     };
@@ -178,11 +198,16 @@ export default function HeroWithVideo({
             muted
             playsInline
             preload="auto"
+            crossOrigin="anonymous"
             disablePictureInPicture
             disableRemotePlayback
             className={`w-full h-full object-cover transition-opacity duration-1000 ${
               isVideoLoaded ? "opacity-100" : "opacity-0"
             }`}
+            onError={(e) => {
+              console.error("[HeroWithVideo] Video load error:", e);
+              setVideoError(true);
+            }}
           >
             <source src={currentVideoSrc} type="video/mp4" />
             Your browser does not support video.
@@ -190,7 +215,7 @@ export default function HeroWithVideo({
         )}
 
         {/* Fallback Image (shown on mobile or if video fails) */}
-        {(isMobile || !isVideoLoaded) && (
+        {(isMobile || !isVideoLoaded || videoError) && (
           <div
             className="w-full h-full bg-cover bg-center"
             style={{ backgroundImage: `url(${r2FallbackImage})` }}

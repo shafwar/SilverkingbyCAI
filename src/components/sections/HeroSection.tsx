@@ -118,6 +118,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
   const statsRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [videoError, setVideoError] = useState(false);
   const [isPageTransitioning, setIsPageTransitioning] = useState(false);
   const prevPathnameRef = useRef<string | null>(null);
   const fadeInTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -292,16 +293,26 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
 
     // Handle video ready states
     const handleCanPlay = () => {
+      setVideoError(false); // Reset error state on successful load
       forcePlay();
     };
 
     const handleLoadedData = () => {
+      setVideoError(false); // Reset error state on successful load
       forcePlay();
     };
 
-    // Handle video errors
-    const handleError = () => {
-      console.warn("[HeroSection] Video error occurred");
+    // Handle video errors with proper error recovery
+    const handleError = (e?: Event) => {
+      console.warn("[HeroSection] Video error occurred", e);
+      setVideoError(true);
+      // Try to reload video after a delay
+      setTimeout(() => {
+        if (video && video.error) {
+          console.log("[HeroSection] Attempting video reload...");
+          video.load();
+        }
+      }, 2000);
     };
 
     // Resume video if it pauses (prevent breaks)
@@ -350,6 +361,14 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
     video.addEventListener("pause", handlePause);
     video.addEventListener("ended", handleEnded);
     video.addEventListener("waiting", handleWaiting);
+    video.addEventListener("stalled", () => {
+      console.warn("[HeroSection] Video stalled, attempting recovery...");
+      setTimeout(() => {
+        if (video.paused && !video.ended) {
+          forcePlay();
+        }
+      }, 1000);
+    });
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     // Force load video to ensure it starts loading immediately
@@ -370,6 +389,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
       video.removeEventListener("pause", handlePause);
       video.removeEventListener("ended", handleEnded);
       video.removeEventListener("waiting", handleWaiting);
+      video.removeEventListener("stalled", () => {});
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       clearInterval(playCheckInterval);
     };
@@ -614,12 +634,21 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             muted
             playsInline
             preload="metadata"
+            crossOrigin="anonymous"
             disablePictureInPicture
             disableRemotePlayback
             className="absolute inset-0 h-full w-full object-cover"
+            onError={(e) => {
+              console.error("[HeroSection] Video load error:", e);
+              setVideoError(true);
+            }}
           >
             <source src={getR2UrlClient("/videos/hero/hero-background.mp4")} type="video/mp4" />
           </video>
+          {/* Fallback gradient background if video fails to load */}
+          {videoError && (
+            <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black" />
+          )}
         </motion.div>
 
         <motion.div
