@@ -40,7 +40,7 @@ export default function ProductCard({ product, onProductSelect, index = 0 }: Pro
 
     const interval = window.setInterval(() => {
       setCurrentImageIndex((prev) => (prev + 1) % images.length);
-    }, 4500); // Change image every 4.5 seconds for a smoother, more noticeable rotation
+    }, 3200); // Change image every ~3.2 seconds to match hardcoded product timing
 
     return () => {
       window.clearInterval(interval);
