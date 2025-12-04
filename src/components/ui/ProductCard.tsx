@@ -29,14 +29,22 @@ export default function ProductCard({ product, onProductSelect, index = 0 }: Pro
   const [isHovered, setIsHovered] = useState(false);
   const hasMultipleImages = images.length > 1;
 
-  // Auto-slide for products with multiple images - Slower transition
+  // Reset slider index whenever image set changes (e.g. new CMS product or edited images)
   useEffect(() => {
-    if (hasMultipleImages && !isHovered) {
-      const interval = setInterval(() => {
-        setCurrentImageIndex((prev) => (prev + 1) % images.length);
-      }, 7000); // Change image every 7 seconds (slower)
-      return () => clearInterval(interval);
-    }
+    setCurrentImageIndex(0);
+  }, [images.length]);
+
+  // Auto-slide for products with multiple images
+  useEffect(() => {
+    if (!hasMultipleImages || isHovered) return;
+
+    const interval = window.setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % images.length);
+    }, 4500); // Change image every 4.5 seconds for a smoother, more noticeable rotation
+
+    return () => {
+      window.clearInterval(interval);
+    };
   }, [hasMultipleImages, isHovered, images.length]);
 
   const goToNext = (e: React.MouseEvent) => {
@@ -88,6 +96,8 @@ export default function ProductCard({ product, onProductSelect, index = 0 }: Pro
                   src={img}
                   alt={`${product.name} - Image ${idx + 1}`}
                   className="absolute inset-0 w-full h-full object-cover"
+                  loading={idx === 0 ? "eager" : "lazy"}
+                  decoding="async"
                   initial={{ opacity: 0, scale: 1.02 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.98 }}
