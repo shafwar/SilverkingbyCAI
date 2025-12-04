@@ -494,7 +494,7 @@ export default function ProductsPage() {
     if (cmsProducts && cmsProducts.length > 0) {
       return cmsProducts;
     }
-    
+
     // Jika CMS kosong, tampilkan 3 default products
     return defaultProducts;
   }, [cmsProducts, defaultProducts]);
@@ -1549,12 +1549,12 @@ export default function ProductsPage() {
                   e.preventDefault();
                   if (!editingCms) return;
                   const formData = new FormData(e.currentTarget as HTMLFormElement);
-                  
+
                   const name = String(formData.get("name") || "").trim();
                   const weight = String(formData.get("weight") || "").trim();
                   const filterCategory = String(formData.get("filterCategory") || "all");
                   const priceRaw = String(formData.get("price") || "").trim();
-                  
+
                   // Validation
                   if (!name || !weight) {
                     alert(t("cmsForm.validation.required"));
@@ -1567,7 +1567,7 @@ export default function ProductsPage() {
                     weight,
                     price: (() => {
                       if (!priceRaw) return undefined;
-                      const num = Number(priceRaw.replace(/[^\d]/g, ""));
+                      const num = Number(priceRaw.replace(/[^\d.]/g, ""));
                       return Number.isNaN(num) ? undefined : num;
                     })(),
                     images: editingCms.images ?? [],
@@ -1585,9 +1585,7 @@ export default function ProductsPage() {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {/* Nama Produk */}
                   <div className="space-y-2">
-                    <label className="text-xs font-medium text-white/70">
-                      {t("cmsForm.name")}
-                    </label>
+                    <label className="text-xs font-medium text-white/70">{t("cmsForm.name")}</label>
                     <input
                       name="name"
                       defaultValue={editingCms.name}
@@ -1645,9 +1643,7 @@ export default function ProductsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-white/70">
-                    {t("cmsForm.images")}
-                  </label>
+                  <label className="text-xs font-medium text-white/70">{t("cmsForm.images")}</label>
                   <input
                     type="file"
                     accept=".jpg,.jpeg,image/jpeg"
@@ -1655,9 +1651,7 @@ export default function ProductsPage() {
                     onChange={(e) => setCmsImageFiles(e.target.files)}
                     className="block w-full text-xs text-white/80 file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-xs file:font-medium file:text-white hover:file:bg-white/20"
                   />
-                  <p className="text-[11px] text-white/40">
-                    {t("cmsForm.imagesHint")}
-                  </p>
+                  <p className="text-[11px] text-white/40">{t("cmsForm.imagesHint")}</p>
                   {editingCms.images && editingCms.images.length > 0 && (
                     <div className="rounded-lg border border-luxury-gold/20 bg-luxury-gold/5 p-3">
                       <p className="text-[11px] text-luxury-gold/80 font-medium mb-2">
