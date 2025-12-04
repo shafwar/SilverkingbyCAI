@@ -419,7 +419,7 @@ export default function ProductsPage() {
         if (!data?.products || !Array.isArray(data.products)) return;
 
         const mapped: ProductWithPricing[] = (data.products as any[]).map((p) => ({
-          id: String(p.id),
+          id: `cms-${p.id}`,
           name: p.name,
           rangeName: p.rangeName ?? t("product.rangeName"),
           image: (p.images && p.images[0]) || undefined,
@@ -451,7 +451,7 @@ export default function ProductsPage() {
   const defaultProducts = useMemo<ProductWithPricing[]>(
     () => [
       {
-        id: "1",
+        id: "default-1",
         name: "50gr",
         rangeName: t("product.rangeName"),
         image: "/images/50gr.jpeg",
@@ -463,7 +463,7 @@ export default function ProductsPage() {
         images: ["/images/50gr.jpeg", "/images/50gr(2).jpeg"],
       },
       {
-        id: "3",
+        id: "default-2",
         name: "100gr",
         rangeName: t("product.rangeName"),
         image: "/images/100gr.jpeg",
@@ -475,7 +475,7 @@ export default function ProductsPage() {
         images: ["/images/100gr.jpeg", "/images/100gr(2).jpeg"],
       },
       {
-        id: "5",
+        id: "default-3",
         name: "100gr",
         rangeName: t("product.rangeName"),
         image: "/images/silverking-gold.jpeg",
@@ -524,6 +524,14 @@ export default function ProductsPage() {
 
   const openEditCmsProduct = (product: ProductWithPricing) => {
     if (!isAdmin) return;
+    
+    // If editing a default product (no cmsId), confirm with admin
+    // This will CREATE a new CMS product, not edit the default
+    if (!product.cmsId) {
+      const confirmed = confirm(t("cmsForm.validation.confirmEditDefault"));
+      if (!confirmed) return;
+    }
+    
     setCmsImageFiles(null);
     setEditingCms({
       id: product.cmsId,

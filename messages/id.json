@@ -285,7 +285,8 @@
         "cannotDeleteDefault": "Produk default tidak dapat dihapus. Anda hanya bisa mengedit atau menambah produk baru.",
         "confirmDelete": "Apakah Anda yakin ingin menghapus produk ini? Tindakan ini tidak dapat dibatalkan.",
         "deleteSuccess": "Produk berhasil dihapus!",
-        "deleteFailed": "Gagal menghapus produk. Silakan coba lagi."
+        "deleteFailed": "Gagal menghapus produk. Silakan coba lagi.",
+        "confirmEditDefault": "Ini adalah produk default. Mengedit akan membuat produk CMS BARU dengan nilai-nilai ini (produk default akan tetap tidak berubah). Lanjutkan?"
       }
     }
   },

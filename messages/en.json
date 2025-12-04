@@ -285,7 +285,8 @@
         "cannotDeleteDefault": "Default products cannot be deleted. You can only edit them or add new products.",
         "confirmDelete": "Are you sure you want to delete this product? This action cannot be undone.",
         "deleteSuccess": "Product deleted successfully!",
-        "deleteFailed": "Failed to delete product. Please try again."
+        "deleteFailed": "Failed to delete product. Please try again.",
+        "confirmEditDefault": "This is a default product. Editing will create a NEW CMS product with these values (the default product will remain unchanged). Continue?"
       }
     }
   },
