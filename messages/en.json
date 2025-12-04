@@ -267,7 +267,7 @@
       "weight": "Weight",
       "weightPlaceholder": "e.g., 50gr, 100gr, 250gr",
       "price": "Price (IDR)",
-      "pricePlaceholder": "e.g., 3000000",
+      "pricePlaceholder": "e.g., 3.000.000",
       "filter": "Filter Category",
       "filterPlaceholder": "Select filter category",
       "images": "Product Images (JPG/JPEG)",

@@ -388,6 +388,32 @@ export default function ProductsPage() {
   const [editingCms, setEditingCms] = useState<CmsEditingProduct | null>(null);
   const [isSavingCms, setIsSavingCms] = useState(false);
   const [cmsImageFiles, setCmsImageFiles] = useState<FileList | null>(null);
+  const [formattedPrice, setFormattedPrice] = useState<string>("");
+
+  // Format number with thousand separator (dot)
+  const formatPrice = (value: number | string): string => {
+    if (!value) return "";
+    const numStr = String(value).replace(/\D/g, ""); // Remove non-digits
+    if (!numStr) return "";
+    return numStr.replace(/\B(?=(\d{3})+(?!\d))/g, "."); // Add thousand separator
+  };
+
+  // Parse formatted price back to number
+  const parsePrice = (formatted: string): number | undefined => {
+    if (!formatted) return undefined;
+    const numStr = formatted.replace(/\./g, ""); // Remove dots
+    const num = Number(numStr);
+    return Number.isNaN(num) ? undefined : num;
+  };
+
+  // Update formatted price when editingCms changes
+  useEffect(() => {
+    if (editingCms && editingCms.price != null) {
+      setFormattedPrice(formatPrice(editingCms.price));
+    } else {
+      setFormattedPrice("");
+    }
+  }, [editingCms]);
 
   // Load admin flag
   useEffect(() => {
@@ -1530,7 +1556,7 @@ export default function ProductsPage() {
                             >
                               {tCommon("edit")}
                             </button>
-                            
+
                             {/* Revert Button - Only show for CMS overrides of default products */}
                             {product.cmsId && product.id.startsWith("default-") && (
                               <button
@@ -1625,7 +1651,6 @@ export default function ProductsPage() {
                   const name = String(formData.get("name") || "").trim();
                   const weight = String(formData.get("weight") || "").trim();
                   const filterCategory = String(formData.get("filterCategory") || "all");
-                  const priceRaw = String(formData.get("price") || "").trim();
 
                   // Validation
                   if (!name || !weight) {
@@ -1637,22 +1662,9 @@ export default function ProductsPage() {
                     id: editingCms.id,
                     name,
                     weight,
-                    // FIXED: Empty price field → undefined → backend saves null → display "Coming Soon"
-                    price: (() => {
-                      // If field is empty or whitespace, return undefined (will be saved as null)
-                      if (!priceRaw || priceRaw.trim() === "") return undefined;
-
-                      // Clean the input (remove non-digits except decimal point)
-                      const cleaned = priceRaw.replace(/[^\d.]/g, "");
-                      if (!cleaned) return undefined;
-
-                      // Parse to number
-                      const num = Number(cleaned);
-
-                      // If NaN, return undefined
-                      // Note: We allow 0 as a valid price (free product)
-                      return Number.isNaN(num) ? undefined : num;
-                    })(),
+                    // Parse price from formatted price state
+                    // Empty field → undefined → backend saves null → display "Coming Soon"
+                    price: parsePrice(formattedPrice),
                     images: editingCms.images ?? [],
                     filterCategory,
                     // Pass overridesDefault if editing a default product
@@ -1701,11 +1713,23 @@ export default function ProductsPage() {
                     </label>
                     <input
                       name="price"
-                      type="number"
-                      defaultValue={editingCms.price != null ? String(editingCms.price) : ""}
+                      type="text"
+                      value={formattedPrice}
+                      onChange={(e) => {
+                        const input = e.target.value;
+                        // Remove non-digits
+                        const digits = input.replace(/\D/g, "");
+                        // Format with thousand separator
+                        setFormattedPrice(formatPrice(digits));
+                      }}
                       placeholder={t("cmsForm.pricePlaceholder")}
                       className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold focus:ring-1 focus:ring-luxury-gold/40"
                     />
+                    <p className="text-[10px] text-white/40">
+                      {formattedPrice && parsePrice(formattedPrice) 
+                        ? `Rp ${new Intl.NumberFormat("id-ID").format(parsePrice(formattedPrice)!)}` 
+                        : t("cmsForm.pricePlaceholder")}
+                    </p>
                   </div>
 
                   {/* Filter Category */}
