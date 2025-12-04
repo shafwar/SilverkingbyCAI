@@ -19,6 +19,7 @@ import {
   BarChart3,
   Menu,
   LogOut,
+  Edit3,
 } from "lucide-react";
 import clsx from "clsx";
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
@@ -60,10 +61,11 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
   const navItems = useMemo(() => [
     { label: safeT(tDashboard, 'label', 'Dashboard'), href: "/admin", icon: LayoutDashboard },
     { label: safeT(t, 'products', 'Products'), href: "/admin/products", icon: PackageSearch },
+    { label: 'CMS Products', href: `/${locale}/products`, icon: Edit3, isExternal: true },
     { label: safeT(t, 'qrPreview', 'QR Preview'), href: "/admin/qr-preview", icon: QrCode },
     { label: safeT(t, 'logs', 'Logs'), href: "/admin/logs", icon: ActivitySquare },
     { label: safeT(t, 'analyticsLabel', 'Analytics'), href: "/admin/analytics", icon: BarChart3 },
-  ], [t, tDashboard, safeT]);
+  ], [t, tDashboard, safeT, locale]);
 
   const handleSignOut = async () => {
     await signOut({ redirect: false });
@@ -75,6 +77,26 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
     navItems.map((item) => {
       const Icon = item.icon;
       const active = pathname === item.href;
+      
+      // For external links (like CMS to public products page), use <a> instead of <Link>
+      if ((item as any).isExternal) {
+        return (
+          <a
+            key={item.href}
+            href={item.href}
+            onClick={() => setMobileOpen(false)}
+            className={clsx(
+              "flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm transition touch-manipulation",
+              orientation === "col" ? "w-full justify-start" : "justify-center",
+              active ? "bg-white/10 text-white" : "text-white/60 hover:text-white hover:bg-white/5"
+            )}
+          >
+            <Icon className={clsx("h-4 w-4", active ? "text-[#FFD700]" : "text-white/50")} />
+            {item.label}
+          </a>
+        );
+      }
+      
       return (
         <Link
           key={item.href}

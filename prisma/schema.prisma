@@ -30,6 +30,32 @@ model Product {
   qrRecord   QrRecord?
 }
 
+/// CMS-facing product data for the public products page
+/// This is intentionally separated from the QR `Product` model above so that
+/// marketing content (images, copywriting, pricing display) can evolve
+/// independently from the verification inventory.
+model CmsProduct {
+  id             Int      @id @default(autoincrement())
+  name           String
+  weight         String
+  price          Float?
+  /// Array of image URLs or paths (e.g. `/images/50gr.jpeg`)
+  images         Json?
+  /// Filter category: all, award-winning, exclusives, large-bars, small-bars
+  filterCategory String?  @default("all")
+  /// Auto-filled fields for consistency
+  rangeName      String?
+  purity         String?
+  category       String?
+  description    String?
+  /// If this CMS product overrides a default product, store the default ID
+  /// This allows "editing" default products by creating CMS overrides
+  /// Format: "default-1", "default-2", "default-3"
+  overridesDefault String? @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
 model QrRecord {
   id            Int          @id @default(autoincrement())
   productId     Int          @unique

@@ -829,7 +829,7 @@ export default function AuthenticityPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-6"
+            className="fixed inset-0 z-[100] flex items-start justify-center bg-black/80 backdrop-blur-sm p-6 pt-36 md:pt-48 lg:pt-56"
             onClick={() => {
               setShowManualInput(false);
               setSerialNumber("");

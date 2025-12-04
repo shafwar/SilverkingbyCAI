@@ -3,7 +3,7 @@
 import Navbar from "@/components/layout/Navbar";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import Link from "next/link";
-import { Sparkles, Gem, ArrowRight, Shield, ArrowDown, QrCode } from "lucide-react";
+import { Sparkles, Gem, ArrowRight, Shield, ArrowDown, QrCode, X, RotateCcw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { APP_NAME } from "@/utils/constants";
 import { useRef, useState, useEffect, useMemo } from "react";
@@ -251,6 +251,7 @@ const CategoryGridItem = ({
 export default function ProductsPage() {
   const t = useTranslations("products");
   const tNav = useTranslations("nav");
+  const tCommon = useTranslations("common");
   const locale = useLocale();
   const pageRef = useRef<HTMLDivElement | null>(null);
   const heroRef = useRef<HTMLDivElement | null>(null);
@@ -364,10 +365,156 @@ export default function ProductsPage() {
   );
 
   // All products with translations - Grouped products with multiple images
-  const allProducts = useMemo<ProductWithPricing[]>(
+  const [cmsProducts, setCmsProducts] = useState<ProductWithPricing[] | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  type CmsEditingProduct = {
+    id?: number;
+    name: string;
+    weight: string;
+    price?: number;
+    images: string[];
+    // Filter category untuk assign produk ke filter (all, award-winning, exclusives, dll)
+    filterCategory?: string;
+    // If editing a default product, store which default it overrides
+    overridesDefault?: string;
+    // Auto-filled fields (tidak ada di form UI)
+    rangeName?: string;
+    purity?: string;
+    category?: string;
+    description?: string;
+  };
+
+  const [editingCms, setEditingCms] = useState<CmsEditingProduct | null>(null);
+  const [isSavingCms, setIsSavingCms] = useState(false);
+  const [cmsImageFiles, setCmsImageFiles] = useState<File[]>([]);
+  const [formattedPrice, setFormattedPrice] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Format number with thousand separator (dot)
+  const formatPrice = (value: number | string): string => {
+    if (!value) return "";
+    const numStr = String(value).replace(/\D/g, ""); // Remove non-digits
+    if (!numStr) return "";
+    return numStr.replace(/\B(?=(\d{3})+(?!\d))/g, "."); // Add thousand separator
+  };
+
+  // Parse formatted price back to number
+  const parsePrice = (formatted: string): number | undefined => {
+    if (!formatted) return undefined;
+    const numStr = formatted.replace(/\./g, ""); // Remove dots
+    const num = Number(numStr);
+    return Number.isNaN(num) ? undefined : num;
+  };
+
+  // Update formatted price when editingCms changes
+  useEffect(() => {
+    if (editingCms && editingCms.price != null) {
+      setFormattedPrice(formatPrice(editingCms.price));
+    } else {
+      setFormattedPrice("");
+    }
+  }, [editingCms]);
+
+  // Handle file selection - accumulate files instead of replacing
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newFiles = e.target.files;
+    if (!newFiles || newFiles.length === 0) return;
+
+    // Convert FileList to Array and append to existing files
+    const newFilesArray = Array.from(newFiles);
+    setCmsImageFiles((prev) => [...prev, ...newFilesArray]);
+
+    // Reset input so same file can be selected again if needed
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // Remove individual file from selection
+  const removeFile = (indexToRemove: number) => {
+    setCmsImageFiles((prev) => prev.filter((_, index) => index !== indexToRemove));
+  };
+
+  // Format file size for display
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  };
+
+  // Load admin flag
+  useEffect(() => {
+    let cancelled = false;
+    const loadAdmin = async () => {
+      try {
+        const res = await fetch("/api/admin/me");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && data?.isAdmin) {
+          setIsAdmin(true);
+        }
+      } catch {
+        // silent
+      }
+    };
+    void loadAdmin();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Load CMS products (if any) from server - this will override default static list
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCmsProducts = async () => {
+      try {
+        const res = await fetch("/api/cms/products");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data?.products || !Array.isArray(data.products)) return;
+
+        const mapped: ProductWithPricing[] = (data.products as any[]).map(
+          (p) =>
+            ({
+              // If CMS product overrides a default, use the default ID (e.g., "default-1")
+              // Otherwise use "cms-{id}" format
+              id: p.overridesDefault ? p.overridesDefault : `cms-${p.id}`,
+              name: p.name,
+              rangeName: p.rangeName ?? t("product.rangeName"),
+              image: (p.images && p.images[0]) || undefined,
+              purity: p.purity ?? t("product.purity"),
+              weight: p.weight,
+              description: p.description ?? t("product.description"),
+              category: p.category ?? p.weight,
+              images: Array.isArray(p.images) ? p.images : undefined,
+              // FIXED: Only set memberPrice if it's a valid number (null/undefined → Coming Soon)
+              memberPrice: p.price !== null && typeof p.price === "number" ? p.price : undefined,
+              cmsId: p.id,
+              filterCategory: p.filterCategory ?? "all",
+            }) as any
+        );
+
+        if (!cancelled) {
+          setCmsProducts(mapped);
+        }
+      } catch (error) {
+        console.error("[CMS_PRODUCTS_FETCH]", error);
+      }
+    };
+
+    void loadCmsProducts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [t]);
+
+  const defaultProducts = useMemo<ProductWithPricing[]>(
     () => [
       {
-        id: "1",
+        id: "default-1",
         name: "50gr",
         rangeName: t("product.rangeName"),
         image: "/images/50gr.jpeg",
@@ -379,7 +526,7 @@ export default function ProductsPage() {
         images: ["/images/50gr.jpeg", "/images/50gr(2).jpeg"],
       },
       {
-        id: "3",
+        id: "default-2",
         name: "100gr",
         rangeName: t("product.rangeName"),
         image: "/images/100gr.jpeg",
@@ -391,7 +538,7 @@ export default function ProductsPage() {
         images: ["/images/100gr.jpeg", "/images/100gr(2).jpeg"],
       },
       {
-        id: "5",
+        id: "default-3",
         name: "100gr",
         rangeName: t("product.rangeName"),
         image: "/images/silverking-gold.jpeg",
@@ -403,6 +550,235 @@ export default function ProductsPage() {
     ],
     [t]
   );
+
+  const allProducts = useMemo<ProductWithPricing[]>(() => {
+    // Combine CMS and default products, but filter out defaults that have CMS overrides
+    const combined: ProductWithPricing[] = [];
+
+    // Collect IDs that CMS products are overriding
+    const overriddenIds = new Set<string>();
+    if (cmsProducts) {
+      cmsProducts.forEach((p) => {
+        if (p.id.startsWith("default-")) {
+          // This CMS product overrides a default
+          overriddenIds.add(p.id);
+        }
+        combined.push(p);
+      });
+    }
+
+    // Add default products only if they're not overridden by CMS
+    defaultProducts.forEach((defaultProd) => {
+      if (!overriddenIds.has(defaultProd.id)) {
+        combined.push(defaultProd);
+      }
+    });
+
+    return combined;
+  }, [cmsProducts, defaultProducts]);
+
+  const openNewCmsProduct = () => {
+    if (!isAdmin) return;
+    setCmsImageFiles([]);
+    // Reset file input element
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    setEditingCms({
+      name: "",
+      weight: "",
+      price: undefined,
+      images: [],
+      filterCategory: "all",
+      // Auto-filled dengan default values
+      rangeName: t("product.rangeName"),
+      purity: t("product.purity"),
+      category: "",
+      description: t("product.description"),
+    });
+  };
+
+  const openEditCmsProduct = (product: ProductWithPricing) => {
+    if (!isAdmin) return;
+
+    setCmsImageFiles([]);
+    // Reset file input element
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    setEditingCms({
+      id: product.cmsId,
+      name: product.name,
+      weight: typeof product.weight === "string" ? product.weight : String(product.weight),
+      price: product.memberPrice ?? product.regularPrice,
+      images: product.images ?? (product.image ? [product.image] : []),
+      filterCategory: (product as any).filterCategory ?? "all",
+      // If editing default product (no cmsId), mark which default it overrides
+      // This creates a "silent override" - CMS product will replace default in display
+      overridesDefault: !product.cmsId ? product.id : (product as any).overridesDefault,
+      // Auto-filled, preserve existing values
+      rangeName: product.rangeName,
+      purity: product.purity,
+      category: product.category,
+      description: product.description,
+    });
+  };
+
+  const saveCmsProduct = async (payload: CmsEditingProduct) => {
+    if (!isAdmin) return;
+    setIsSavingCms(true);
+    try {
+      // IMPORTANT: Preserve gambar lama jika admin tidak upload gambar baru
+      // Default ke gambar lama dari payload (yang sudah di-set dari editingCms.images)
+      let images = payload.images ?? [];
+
+      // Jika admin memilih file baru, upload ke R2 dan REPLACE daftar images
+      if (cmsImageFiles && cmsImageFiles.length > 0) {
+        const uploaded: string[] = [];
+        const totalFiles = cmsImageFiles.length;
+
+        console.log(`[CMS_PRODUCTS_SAVE] Uploading ${totalFiles} file(s)...`);
+
+        for (const file of cmsImageFiles) {
+          if (file.type !== "image/jpeg") {
+            alert(`File "${file.name}" bukan JPG/JPEG. Hanya file JPG/JPEG yang diizinkan.`);
+            continue;
+          }
+
+          console.log(`[CMS_PRODUCTS_SAVE] Uploading file: ${file.name} (${file.size} bytes)`);
+
+          const formData = new FormData();
+          formData.append("file", file);
+
+          const uploadRes = await fetch("/api/cms/products/upload-image", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!uploadRes.ok) {
+            const data = await uploadRes.json().catch(() => ({}));
+            console.error("[CMS_PRODUCTS_UPLOAD_IMAGE]", data);
+            alert(data?.error || `Gagal mengunggah gambar "${file.name}". Silakan coba lagi.`);
+            continue;
+          }
+
+          const uploadedData = await uploadRes.json();
+          if (uploadedData?.url) {
+            uploaded.push(uploadedData.url);
+            console.log(`[CMS_PRODUCTS_SAVE] Successfully uploaded: ${uploadedData.url}`);
+          }
+        }
+
+        console.log(
+          `[CMS_PRODUCTS_SAVE] Upload complete: ${uploaded.length}/${totalFiles} files uploaded successfully`
+        );
+
+        // Hanya ganti gambar jika ada yang berhasil diupload
+        if (uploaded.length > 0) {
+          images = uploaded;
+        } else {
+          alert(
+            `Gagal mengunggah semua gambar (0/${totalFiles}). Produk akan menggunakan gambar lama atau tanpa gambar.`
+          );
+        }
+        // Jika upload gagal semua, gambar tetap pakai yang lama (dari payload.images)
+      }
+      // Jika tidak ada file baru dipilih, gambar tetap pakai yang lama (dari payload.images)
+
+      const isEdit = !!payload.id;
+      const endpoint = isEdit ? `/api/cms/products/${payload.id}` : "/api/cms/products";
+      const method = isEdit ? "PATCH" : "POST";
+
+      const res = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...payload,
+          images,
+          overridesDefault: payload.overridesDefault || null,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to save product");
+      }
+      const data = await res.json();
+      const saved = data.product as any;
+
+      const mapped: ProductWithPricing = {
+        id: saved.overridesDefault ? saved.overridesDefault : `cms-${saved.id}`,
+        name: saved.name,
+        rangeName: saved.rangeName ?? t("product.rangeName"),
+        image: (saved.images && saved.images[0]) || undefined,
+        purity: saved.purity ?? t("product.purity"),
+        weight: saved.weight,
+        description: saved.description ?? t("product.description"),
+        category: saved.category ?? saved.weight,
+        images: Array.isArray(saved.images) ? saved.images : undefined,
+        // FIXED: Only set memberPrice if it's a valid number (null/undefined → Coming Soon)
+        memberPrice:
+          saved.price !== null && typeof saved.price === "number" ? saved.price : undefined,
+        cmsId: saved.id,
+        filterCategory: saved.filterCategory ?? "all",
+      } as any;
+
+      setCmsProducts((prev) => {
+        if (!prev || prev.length === 0) {
+          return [mapped];
+        }
+        if (isEdit) {
+          return prev.map((p) => (p.cmsId === mapped.cmsId ? mapped : p));
+        }
+        return [mapped, ...prev];
+      });
+      setEditingCms(null);
+      setCmsImageFiles([]);
+      // Reset file input element
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } catch (error) {
+      console.error("[CMS_PRODUCTS_SAVE_INLINE]", error);
+      alert(error instanceof Error ? error.message : "Failed to save product. Please try again.");
+    } finally {
+      setIsSavingCms(false);
+    }
+  };
+
+  const deleteCmsProduct = async (cmsId?: number) => {
+    if (!isAdmin || !cmsId) return;
+    if (!confirm(t("cmsForm.validation.confirmDelete"))) return;
+    try {
+      const res = await fetch(`/api/cms/products/${cmsId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || t("cmsForm.validation.deleteFailed"));
+      }
+      setCmsProducts((prev) => (prev ? prev.filter((p) => p.cmsId !== cmsId) : prev));
+      alert(t("cmsForm.validation.deleteSuccess"));
+    } catch (error) {
+      console.error("[CMS_PRODUCTS_DELETE_INLINE]", error);
+      alert(error instanceof Error ? error.message : t("cmsForm.validation.deleteFailed"));
+    }
+  };
+
+  const revertToDefault = async (cmsId?: number) => {
+    if (!isAdmin || !cmsId) return;
+    if (!confirm(t("cmsForm.validation.confirmRevert"))) return;
+    try {
+      const res = await fetch(`/api/cms/products/${cmsId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || t("cmsForm.validation.revertFailed"));
+      }
+      // Remove from CMS products list - default will reappear automatically
+      setCmsProducts((prev) => (prev ? prev.filter((p) => p.cmsId !== cmsId) : prev));
+      alert(t("cmsForm.validation.revertSuccess"));
+    } catch (error) {
+      console.error("[CMS_PRODUCTS_REVERT]", error);
+      alert(error instanceof Error ? error.message : t("cmsForm.validation.revertFailed"));
+    }
+  };
 
   const handleProductSelect = (product: Product) => {
     setSelectedProduct(product);
@@ -1109,7 +1485,7 @@ export default function ProductsPage() {
                       : "text-white/50 border-transparent hover:text-white/70 hover:border-white/30"
                   }`}
                 >
-                  {t("filters.large")}
+                  {t("filters.largeBars")}
                 </button>
                 <button
                   onClick={() => {
@@ -1122,7 +1498,7 @@ export default function ProductsPage() {
                       : "text-white/50 border-transparent hover:text-white/70 hover:border-white/30"
                   }`}
                 >
-                  {t("filters.small")}
+                  {t("filters.smallBars")}
                 </button>
               </motion.div>
             </motion.div>
@@ -1193,6 +1569,31 @@ export default function ProductsPage() {
                     }}
                     className="flex flex-wrap justify-center gap-8 md:gap-10 lg:gap-12"
                   >
+                    {isAdmin && (
+                      <motion.div
+                        key="cms-plus-card"
+                        variants={cardVariants}
+                        custom={-1}
+                        className="relative w-full sm:w-[calc(50%-1rem)] md:w-[calc(50%-1.5rem)] lg:w-[calc(33.333%-2rem)] xl:w-[280px]"
+                      >
+                        <button
+                          type="button"
+                          onClick={openNewCmsProduct}
+                          className="flex h-full min-h-[260px] w-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/20 bg-white/5 text-white/60 hover:border-luxury-gold/70 hover:bg-white/10 hover:text-white transition"
+                        >
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-xl">
+                            +
+                          </div>
+                          <div className="px-4 text-center text-sm">
+                            <p className="font-medium">{t("cmsForm.addProduct")}</p>
+                            <p className="mt-1 text-xs text-white/50">
+                              {t("cmsForm.addProductHint")}
+                            </p>
+                          </div>
+                        </button>
+                      </motion.div>
+                    )}
+
                     {filteredProducts.map((product, index) => (
                       <motion.div
                         key={product.id}
@@ -1200,6 +1601,49 @@ export default function ProductsPage() {
                         custom={index}
                         className="relative w-full sm:w-[calc(50%-1rem)] md:w-[calc(50%-1.5rem)] lg:w-[calc(33.333%-2rem)] xl:w-[280px]"
                       >
+                        {isAdmin && (
+                          <div className="absolute right-3 top-3 z-20 flex gap-1">
+                            <button
+                              type="button"
+                              onClick={() => openEditCmsProduct(product)}
+                              className="rounded-full bg-black/60 px-2 py-1 text-[10px] text-white/80 border border-white/30 hover:bg-black/80 transition-all"
+                            >
+                              {tCommon("edit")}
+                            </button>
+
+                            {/* Revert Button - Only show for CMS overrides of default products */}
+                            {product.cmsId && product.id.startsWith("default-") && (
+                              <button
+                                type="button"
+                                onClick={() => revertToDefault(product.cmsId)}
+                                className="rounded-full bg-black/60 px-2 py-1 text-[10px] text-luxury-gold border border-luxury-gold/60 hover:bg-black/80 transition-all flex items-center gap-1"
+                                title={t("cmsForm.revertToDefault")}
+                              >
+                                <RotateCcw size={10} />
+                                <span className="hidden sm:inline">{t("cmsForm.revert")}</span>
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                // Check if this is a default product or CMS override of default
+                                const isDefaultOrOverride =
+                                  !product.cmsId || product.id.startsWith("default-");
+
+                                if (isDefaultOrOverride) {
+                                  alert(t("cmsForm.validation.cannotDeleteDefault"));
+                                } else if (product.cmsId) {
+                                  deleteCmsProduct(product.cmsId);
+                                }
+                              }}
+                              className="rounded-full bg-black/60 px-2 py-1 text-[10px] text-red-300 border border-red-400/60 hover:bg-black/80 transition-all"
+                            >
+                              {tCommon("delete")}
+                            </button>
+                          </div>
+                        )}
+
                         <ProductCard
                           product={product}
                           onProductSelect={handleProductSelect}
@@ -1214,6 +1658,259 @@ export default function ProductsPage() {
           </div>
         </div>
       </section>
+
+      {/* Inline CMS Modal for Admin (create / edit product) */}
+      <AnimatePresence>
+        {isAdmin && editingCms && (
+          <motion.div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => {
+              setEditingCms(null);
+              setCmsImageFiles([]);
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.96 }}
+              className="w-full max-w-xl rounded-2xl border border-white/15 bg-gradient-to-b from-[#111] via-[#050505] to-black p-6 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-white">
+                  {editingCms.id ? t("cmsForm.editProduct") : t("cmsForm.addProduct")}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingCms(null);
+                    setCmsImageFiles([]);
+                  }}
+                  className="rounded-full bg-black/50 p-2 text-white/80 hover:text-white hover:bg-black/70 transition-all"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <form
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!editingCms) return;
+                  const formData = new FormData(e.currentTarget as HTMLFormElement);
+
+                  const name = String(formData.get("name") || "").trim();
+                  const weight = String(formData.get("weight") || "").trim();
+                  const filterCategory = String(formData.get("filterCategory") || "all");
+
+                  // Validation
+                  if (!name || !weight) {
+                    alert(t("cmsForm.validation.required"));
+                    return;
+                  }
+
+                  const payload: CmsEditingProduct = {
+                    id: editingCms.id,
+                    name,
+                    weight,
+                    // Parse price from formatted price state
+                    // Empty field → undefined → backend saves null → display "Coming Soon"
+                    price: parsePrice(formattedPrice),
+                    images: editingCms.images ?? [],
+                    filterCategory,
+                    // Pass overridesDefault if editing a default product
+                    overridesDefault: editingCms.overridesDefault,
+                    // Auto-fill berdasarkan weight untuk konsistensi
+                    rangeName: t("product.rangeName"),
+                    purity: t("product.purity"),
+                    category: weight, // Use weight as category
+                    description: t("product.description"),
+                  };
+
+                  void saveCmsProduct(payload);
+                }}
+              >
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {/* Nama Produk */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-white/70">{t("cmsForm.name")}</label>
+                    <input
+                      name="name"
+                      defaultValue={editingCms.name}
+                      placeholder={t("cmsForm.namePlaceholder")}
+                      className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold focus:ring-1 focus:ring-luxury-gold/40"
+                      required
+                    />
+                  </div>
+
+                  {/* Berat */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-white/70">
+                      {t("cmsForm.weight")}
+                    </label>
+                    <input
+                      name="weight"
+                      defaultValue={editingCms.weight}
+                      placeholder={t("cmsForm.weightPlaceholder")}
+                      className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold focus:ring-1 focus:ring-luxury-gold/40"
+                      required
+                    />
+                  </div>
+
+                  {/* Harga */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-white/70">
+                      {t("cmsForm.price")}
+                    </label>
+                    <input
+                      name="price"
+                      type="text"
+                      value={formattedPrice}
+                      onChange={(e) => {
+                        const input = e.target.value;
+                        // Remove non-digits
+                        const digits = input.replace(/\D/g, "");
+                        // Format with thousand separator
+                        setFormattedPrice(formatPrice(digits));
+                      }}
+                      placeholder={t("cmsForm.pricePlaceholder")}
+                      className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold focus:ring-1 focus:ring-luxury-gold/40"
+                    />
+                    <p className="text-[10px] text-white/40">
+                      {formattedPrice && parsePrice(formattedPrice)
+                        ? `Rp ${new Intl.NumberFormat("id-ID").format(parsePrice(formattedPrice)!)}`
+                        : t("cmsForm.pricePlaceholder")}
+                    </p>
+                  </div>
+
+                  {/* Filter Category */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-white/70">
+                      {t("cmsForm.filter")}
+                    </label>
+                    <select
+                      name="filterCategory"
+                      defaultValue={editingCms.filterCategory ?? "all"}
+                      className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold focus:ring-1 focus:ring-luxury-gold/40"
+                    >
+                      <option value="all">{t("filters.all")}</option>
+                      <option value="award-winning">{t("filters.awardWinning")}</option>
+                      <option value="exclusives">{t("filters.exclusives")}</option>
+                      <option value="large-bars">{t("filters.largeBars")}</option>
+                      <option value="small-bars">{t("filters.smallBars")}</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-white/70">{t("cmsForm.images")}</label>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".jpg,.jpeg,image/jpeg"
+                    multiple
+                    onChange={handleFileSelect}
+                    className="block w-full text-xs text-white/80 file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-xs file:font-medium file:text-white hover:file:bg-white/20"
+                  />
+
+                  {/* Selected Files List */}
+                  {cmsImageFiles && cmsImageFiles.length > 0 && (
+                    <div className="space-y-2 rounded-lg border border-luxury-gold/30 bg-luxury-gold/5 p-3">
+                      <p className="text-[11px] text-luxury-gold font-medium">
+                        ✓ {cmsImageFiles.length} file(s) dipilih
+                      </p>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {cmsImageFiles.map((file, index) => (
+                          <div
+                            key={`${file.name}-${index}`}
+                            className="flex items-center justify-between gap-2 rounded bg-white/5 px-2 py-1.5 text-[11px] group hover:bg-white/10 transition-colors"
+                          >
+                            <div className="flex-1 flex items-center gap-2 min-w-0">
+                              <span className="text-luxury-gold">📎</span>
+                              <span className="text-white/80 truncate">{file.name}</span>
+                              <span className="text-white/40 text-[10px] flex-shrink-0">
+                                ({formatFileSize(file.size)})
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeFile(index)}
+                              className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-red-500/20 text-red-300 hover:bg-red-500/40 hover:text-red-200 transition-colors"
+                              title="Hapus file ini"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <p className="text-[11px] text-white/40">{t("cmsForm.imagesHint")}</p>
+                  {editingCms.images && editingCms.images.length > 0 && (
+                    <div className="rounded-lg border border-luxury-gold/20 bg-luxury-gold/5 p-3">
+                      <p className="text-[11px] text-luxury-gold/80 font-medium mb-2">
+                        ✓ {t("cmsForm.currentImages")}: {editingCms.images.length} file
+                      </p>
+                      <div className="flex gap-2 flex-wrap">
+                        {editingCms.images.slice(0, 3).map((img, idx) => (
+                          <div
+                            key={idx}
+                            className="w-12 h-12 rounded border border-white/10 overflow-hidden bg-white/5"
+                          >
+                            <img
+                              src={img}
+                              alt={`Preview ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                          </div>
+                        ))}
+                        {editingCms.images.length > 3 && (
+                          <div className="w-12 h-12 rounded border border-white/10 bg-white/5 flex items-center justify-center text-[10px] text-white/50">
+                            +{editingCms.images.length - 3}
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-luxury-gold/60 mt-2">
+                        {t("cmsForm.currentImagesNote")}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-6 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingCms(null);
+                      setCmsImageFiles([]);
+                    }}
+                    className="rounded-full border border-white/20 px-4 py-2 text-xs font-medium text-white/70 hover:border-white/50 hover:text-white transition"
+                    disabled={isSavingCms}
+                  >
+                    {t("cmsForm.cancel")}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingCms}
+                    className={`rounded-full bg-gradient-to-r from-luxury-gold to-luxury-lightGold px-5 py-2 text-xs font-semibold text-black shadow-lg shadow-luxury-gold/30 transition ${
+                      isSavingCms ? "opacity-70 cursor-not-allowed" : ""
+                    }`}
+                  >
+                    {isSavingCms ? t("cmsForm.saving") : t("cmsForm.save")}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Running Text Promotional Section */}
       <section className="relative bg-black py-3 md:py-6 overflow-hidden">
