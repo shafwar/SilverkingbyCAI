@@ -489,14 +489,20 @@ export default function ProductsPage() {
   );
 
   const allProducts = useMemo<ProductWithPricing[]>(() => {
-    // FIXED: Jika ada CMS products, HANYA tampilkan CMS products (tidak merge dengan default)
-    // Ini memastikan user dan admin melihat jumlah produk yang sama
+    // Gabungkan CMS products dengan default products
+    // CMS products akan muncul di depan, default products di belakang
+    // Tidak ada override - semua produk ditampilkan
+    const combined: ProductWithPricing[] = [];
+    
+    // Tambahkan CMS products terlebih dahulu
     if (cmsProducts && cmsProducts.length > 0) {
-      return cmsProducts;
+      combined.push(...cmsProducts);
     }
-
-    // Jika CMS kosong, tampilkan 3 default products
-    return defaultProducts;
+    
+    // Tambahkan default products
+    combined.push(...defaultProducts);
+    
+    return combined;
   }, [cmsProducts, defaultProducts]);
 
   const openNewCmsProduct = () => {
@@ -636,17 +642,18 @@ export default function ProductsPage() {
 
   const deleteCmsProduct = async (cmsId?: number) => {
     if (!isAdmin || !cmsId) return;
-    if (!confirm("Delete this CMS product from Products page?")) return;
+    if (!confirm(t("cmsForm.validation.confirmDelete"))) return;
     try {
       const res = await fetch(`/api/cms/products/${cmsId}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to delete product");
+        throw new Error(data.error || t("cmsForm.validation.deleteFailed"));
       }
       setCmsProducts((prev) => (prev ? prev.filter((p) => p.cmsId !== cmsId) : prev));
+      alert(t("cmsForm.validation.deleteSuccess"));
     } catch (error) {
       console.error("[CMS_PRODUCTS_DELETE_INLINE]", error);
-      alert(error instanceof Error ? error.message : "Failed to delete product. Please try again.");
+      alert(error instanceof Error ? error.message : t("cmsForm.validation.deleteFailed"));
     }
   };
 
@@ -1478,17 +1485,21 @@ export default function ProductsPage() {
                               onClick={() => openEditCmsProduct(product)}
                               className="rounded-full bg-black/60 px-2 py-1 text-[10px] text-white/80 border border-white/30 hover:bg-black/80"
                             >
-                              Edit
+                              {t("common.edit")}
                             </button>
-                            {product.cmsId && (
-                              <button
-                                type="button"
-                                onClick={() => deleteCmsProduct(product.cmsId)}
-                                className="rounded-full bg-black/60 px-2 py-1 text-[10px] text-red-300 border border-red-400/60 hover:bg-black/80"
-                              >
-                                Hapus
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (product.cmsId) {
+                                  deleteCmsProduct(product.cmsId);
+                                } else {
+                                  alert(t("cmsForm.validation.cannotDeleteDefault"));
+                                }
+                              }}
+                              className="rounded-full bg-black/60 px-2 py-1 text-[10px] text-red-300 border border-red-400/60 hover:bg-black/80"
+                            >
+                              {t("common.delete")}
+                            </button>
                           </div>
                         )}
 

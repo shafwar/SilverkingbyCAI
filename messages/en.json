@@ -281,7 +281,11 @@
       "saving": "Saving...",
       "cancel": "Cancel",
       "validation": {
-        "required": "Product name and weight are required."
+        "required": "Product name and weight are required.",
+        "cannotDeleteDefault": "Default products cannot be deleted. You can only edit them or add new products.",
+        "confirmDelete": "Are you sure you want to delete this product? This action cannot be undone.",
+        "deleteSuccess": "Product deleted successfully!",
+        "deleteFailed": "Failed to delete product. Please try again."
       }
     }
   },

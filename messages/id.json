@@ -281,7 +281,11 @@
       "saving": "Menyimpan...",
       "cancel": "Batal",
       "validation": {
-        "required": "Nama produk dan berat wajib diisi."
+        "required": "Nama produk dan berat wajib diisi.",
+        "cannotDeleteDefault": "Produk default tidak dapat dihapus. Anda hanya bisa mengedit atau menambah produk baru.",
+        "confirmDelete": "Apakah Anda yakin ingin menghapus produk ini? Tindakan ini tidak dapat dibatalkan.",
+        "deleteSuccess": "Produk berhasil dihapus!",
+        "deleteFailed": "Gagal menghapus produk. Silakan coba lagi."
       }
     }
   },
