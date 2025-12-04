@@ -3,7 +3,7 @@
 import Navbar from "@/components/layout/Navbar";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import Link from "next/link";
-import { Sparkles, Gem, ArrowRight, Shield, ArrowDown, QrCode, X } from "lucide-react";
+import { Sparkles, Gem, ArrowRight, Shield, ArrowDown, QrCode, X, RotateCcw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { APP_NAME } from "@/utils/constants";
 import { useRef, useState, useEffect, useMemo } from "react";
@@ -421,23 +421,26 @@ export default function ProductsPage() {
         const data = await res.json();
         if (!data?.products || !Array.isArray(data.products)) return;
 
-        const mapped: ProductWithPricing[] = (data.products as any[]).map((p) => ({
-          // If CMS product overrides a default, use the default ID (e.g., "default-1")
-          // Otherwise use "cms-{id}" format
-          id: p.overridesDefault ? p.overridesDefault : `cms-${p.id}`,
-          name: p.name,
-          rangeName: p.rangeName ?? t("product.rangeName"),
-          image: (p.images && p.images[0]) || undefined,
-          purity: p.purity ?? t("product.purity"),
-          weight: p.weight,
-          description: p.description ?? t("product.description"),
-          category: p.category ?? p.weight,
-          images: Array.isArray(p.images) ? p.images : undefined,
-          // FIXED: Only set memberPrice if it's a valid number (null/undefined → Coming Soon)
-          memberPrice: p.price !== null && typeof p.price === "number" ? p.price : undefined,
-          cmsId: p.id,
-          filterCategory: p.filterCategory ?? "all",
-        } as any));
+        const mapped: ProductWithPricing[] = (data.products as any[]).map(
+          (p) =>
+            ({
+              // If CMS product overrides a default, use the default ID (e.g., "default-1")
+              // Otherwise use "cms-{id}" format
+              id: p.overridesDefault ? p.overridesDefault : `cms-${p.id}`,
+              name: p.name,
+              rangeName: p.rangeName ?? t("product.rangeName"),
+              image: (p.images && p.images[0]) || undefined,
+              purity: p.purity ?? t("product.purity"),
+              weight: p.weight,
+              description: p.description ?? t("product.description"),
+              category: p.category ?? p.weight,
+              images: Array.isArray(p.images) ? p.images : undefined,
+              // FIXED: Only set memberPrice if it's a valid number (null/undefined → Coming Soon)
+              memberPrice: p.price !== null && typeof p.price === "number" ? p.price : undefined,
+              cmsId: p.id,
+              filterCategory: p.filterCategory ?? "all",
+            }) as any
+        );
 
         if (!cancelled) {
           setCmsProducts(mapped);
@@ -497,7 +500,7 @@ export default function ProductsPage() {
   const allProducts = useMemo<ProductWithPricing[]>(() => {
     // Combine CMS and default products, but filter out defaults that have CMS overrides
     const combined: ProductWithPricing[] = [];
-    
+
     // Collect IDs that CMS products are overriding
     const overriddenIds = new Set<string>();
     if (cmsProducts) {
@@ -509,14 +512,14 @@ export default function ProductsPage() {
         combined.push(p);
       });
     }
-    
+
     // Add default products only if they're not overridden by CMS
     defaultProducts.forEach((defaultProd) => {
       if (!overriddenIds.has(defaultProd.id)) {
         combined.push(defaultProd);
       }
     });
-    
+
     return combined;
   }, [cmsProducts, defaultProducts]);
 
@@ -539,7 +542,7 @@ export default function ProductsPage() {
 
   const openEditCmsProduct = (product: ProductWithPricing) => {
     if (!isAdmin) return;
-    
+
     setCmsImageFiles(null);
     setEditingCms({
       id: product.cmsId,
@@ -637,7 +640,8 @@ export default function ProductsPage() {
         category: saved.category ?? saved.weight,
         images: Array.isArray(saved.images) ? saved.images : undefined,
         // FIXED: Only set memberPrice if it's a valid number (null/undefined → Coming Soon)
-        memberPrice: saved.price !== null && typeof saved.price === "number" ? saved.price : undefined,
+        memberPrice:
+          saved.price !== null && typeof saved.price === "number" ? saved.price : undefined,
         cmsId: saved.id,
         filterCategory: saved.filterCategory ?? "all",
       } as any;
@@ -675,6 +679,24 @@ export default function ProductsPage() {
     } catch (error) {
       console.error("[CMS_PRODUCTS_DELETE_INLINE]", error);
       alert(error instanceof Error ? error.message : t("cmsForm.validation.deleteFailed"));
+    }
+  };
+
+  const revertToDefault = async (cmsId?: number) => {
+    if (!isAdmin || !cmsId) return;
+    if (!confirm(t("cmsForm.validation.confirmRevert"))) return;
+    try {
+      const res = await fetch(`/api/cms/products/${cmsId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || t("cmsForm.validation.revertFailed"));
+      }
+      // Remove from CMS products list - default will reappear automatically
+      setCmsProducts((prev) => (prev ? prev.filter((p) => p.cmsId !== cmsId) : prev));
+      alert(t("cmsForm.validation.revertSuccess"));
+    } catch (error) {
+      console.error("[CMS_PRODUCTS_REVERT]", error);
+      alert(error instanceof Error ? error.message : t("cmsForm.validation.revertFailed"));
     }
   };
 
@@ -1504,23 +1526,38 @@ export default function ProductsPage() {
                             <button
                               type="button"
                               onClick={() => openEditCmsProduct(product)}
-                              className="rounded-full bg-black/60 px-2 py-1 text-[10px] text-white/80 border border-white/30 hover:bg-black/80"
+                              className="rounded-full bg-black/60 px-2 py-1 text-[10px] text-white/80 border border-white/30 hover:bg-black/80 transition-all"
                             >
                               {tCommon("edit")}
                             </button>
+                            
+                            {/* Revert Button - Only show for CMS overrides of default products */}
+                            {product.cmsId && product.id.startsWith("default-") && (
+                              <button
+                                type="button"
+                                onClick={() => revertToDefault(product.cmsId)}
+                                className="rounded-full bg-black/60 px-2 py-1 text-[10px] text-luxury-gold border border-luxury-gold/60 hover:bg-black/80 transition-all flex items-center gap-1"
+                                title={t("cmsForm.revertToDefault")}
+                              >
+                                <RotateCcw size={10} />
+                                <span className="hidden sm:inline">{t("cmsForm.revert")}</span>
+                              </button>
+                            )}
+
                             <button
                               type="button"
                               onClick={() => {
                                 // Check if this is a default product or CMS override of default
-                                const isDefaultOrOverride = !product.cmsId || product.id.startsWith("default-");
-                                
+                                const isDefaultOrOverride =
+                                  !product.cmsId || product.id.startsWith("default-");
+
                                 if (isDefaultOrOverride) {
                                   alert(t("cmsForm.validation.cannotDeleteDefault"));
                                 } else if (product.cmsId) {
                                   deleteCmsProduct(product.cmsId);
                                 }
                               }}
-                              className="rounded-full bg-black/60 px-2 py-1 text-[10px] text-red-300 border border-red-400/60 hover:bg-black/80"
+                              className="rounded-full bg-black/60 px-2 py-1 text-[10px] text-red-300 border border-red-400/60 hover:bg-black/80 transition-all"
                             >
                               {tCommon("delete")}
                             </button>
@@ -1604,14 +1641,14 @@ export default function ProductsPage() {
                     price: (() => {
                       // If field is empty or whitespace, return undefined (will be saved as null)
                       if (!priceRaw || priceRaw.trim() === "") return undefined;
-                      
+
                       // Clean the input (remove non-digits except decimal point)
                       const cleaned = priceRaw.replace(/[^\d.]/g, "");
                       if (!cleaned) return undefined;
-                      
+
                       // Parse to number
                       const num = Number(cleaned);
-                      
+
                       // If NaN, return undefined
                       // Note: We allow 0 as a valid price (free product)
                       return Number.isNaN(num) ? undefined : num;

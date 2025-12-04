@@ -277,6 +277,8 @@
       "addProduct": "Tambah Produk",
       "addProductHint": "Tambahkan kartu produk baru yang akan tampil di halaman ini.",
       "editProduct": "Edit Produk",
+      "revert": "Kembalikan",
+      "revertToDefault": "Kembalikan ke nilai default asli",
       "save": "Simpan",
       "saving": "Menyimpan...",
       "cancel": "Batal",
@@ -286,7 +288,10 @@
         "confirmDelete": "Apakah Anda yakin ingin menghapus produk ini? Tindakan ini tidak dapat dibatalkan.",
         "deleteSuccess": "Produk berhasil dihapus!",
         "deleteFailed": "Gagal menghapus produk. Silakan coba lagi.",
-        "confirmEditDefault": "Ini adalah produk default. Mengedit akan membuat produk CMS BARU dengan nilai-nilai ini (produk default akan tetap tidak berubah). Lanjutkan?"
+        "confirmEditDefault": "Ini adalah produk default. Mengedit akan membuat produk CMS BARU dengan nilai-nilai ini (produk default akan tetap tidak berubah). Lanjutkan?",
+        "confirmRevert": "Apakah Anda yakin ingin mengembalikan produk ini ke nilai default aslinya? Semua perubahan Anda akan hilang.",
+        "revertSuccess": "Produk berhasil dikembalikan ke default!",
+        "revertFailed": "Gagal mengembalikan produk. Silakan coba lagi."
       }
     }
   },

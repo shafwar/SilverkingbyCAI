@@ -277,6 +277,8 @@
       "addProduct": "Add Product",
       "addProductHint": "Add a new product card that will appear on this page.",
       "editProduct": "Edit Product",
+      "revert": "Revert",
+      "revertToDefault": "Revert to original default values",
       "save": "Save",
       "saving": "Saving...",
       "cancel": "Cancel",
@@ -286,7 +288,10 @@
         "confirmDelete": "Are you sure you want to delete this product? This action cannot be undone.",
         "deleteSuccess": "Product deleted successfully!",
         "deleteFailed": "Failed to delete product. Please try again.",
-        "confirmEditDefault": "This is a default product. Editing will create a NEW CMS product with these values (the default product will remain unchanged). Continue?"
+        "confirmEditDefault": "This is a default product. Editing will create a NEW CMS product with these values (the default product will remain unchanged). Continue?",
+        "confirmRevert": "Are you sure you want to revert this product to its original default values? All your changes will be lost.",
+        "revertSuccess": "Product reverted to default successfully!",
+        "revertFailed": "Failed to revert product. Please try again."
       }
     }
   },
