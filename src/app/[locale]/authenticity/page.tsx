@@ -27,6 +27,7 @@ import { Scanner } from "@/components/shared/Scanner";
 import { useRouter } from "next/navigation";
 import { APP_NAME } from "@/utils/constants";
 import { getR2UrlClient } from "@/utils/r2-url";
+import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 
 // Register GSAP plugins safely
 if (typeof window !== "undefined") {
@@ -317,6 +318,9 @@ export default function AuthenticityPage() {
   const heroRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const router = useRouter();
+
+  // Ensure authenticity hero background video always autoplays reliably
+  useReliableVideoAutoplay(videoRef);
 
   useGSAP(
     () => {

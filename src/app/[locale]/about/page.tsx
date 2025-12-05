@@ -6,6 +6,7 @@ import Navbar from "@/components/layout/Navbar";
 import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
 import { getR2UrlClient } from "@/utils/r2-url";
+import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { PageLoadingSkeleton } from "@/components/ui/PageLoadingSkeleton";
 
 // Lazy load CertificateCard to improve initial page load
@@ -186,6 +187,10 @@ export default function AboutPage() {
   const heroRef = useRef<HTMLDivElement | null>(null);
   const noiseOverlay = useRef<HTMLDivElement | null>(null);
   const gradientOverlay = useRef<HTMLDivElement | null>(null);
+  const heroVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  // Ensure about-page hero video autoplays reliably on all devices
+  useReliableVideoAutoplay(heroVideoRef);
 
   const featureItems = useMemo<FeatureItem[]>(
     () => [
@@ -321,6 +326,7 @@ export default function AboutPage() {
         {/* Fullscreen Video Background */}
         <div className="absolute inset-0 z-0 overflow-hidden">
           <video
+            ref={heroVideoRef}
             className="absolute inset-0 h-full w-full object-cover brightness-[0.85] scale-105"
             src={getR2UrlClient("/videos/hero/gold-footage.mp4")}
             autoPlay
