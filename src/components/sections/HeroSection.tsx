@@ -118,6 +118,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
   const statsRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [autoplayFailed, setAutoplayFailed] = useState(false);
   const [isPageTransitioning, setIsPageTransitioning] = useState(false);
   const prevPathnameRef = useRef<string | null>(null);
   const fadeInTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -268,7 +269,10 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
     const video = videoRef.current;
     if (!video) return;
 
-    // Force play function with error handling and retry mechanism
+    // Force play function dengan error handling & retry.
+    // Jika browser (terutama mobile Safari) terus-menerus mem-block autoplay,
+    // kita akan fallback ke background statis agar tidak muncul native play button.
+    let playAttempts = 0;
     const forcePlay = async () => {
       try {
         if (video.paused && !video.ended) {
@@ -276,6 +280,17 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         }
       } catch (error) {
         console.warn("[HeroSection] Video autoplay prevented, retrying:", error);
+        playAttempts += 1;
+
+        // Jika sudah beberapa kali gagal, hentikan percobaan dan sembunyikan video.
+        if (playAttempts >= 3) {
+          console.warn(
+            "[HeroSection] Autoplay failed repeatedly – falling back to static background"
+          );
+          setAutoplayFailed(true);
+          return;
+        }
+
         // Retry after a short delay with exponential backoff
         setTimeout(() => {
           video.play().catch(() => {
@@ -306,7 +321,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
 
     // Resume video if it pauses (prevent breaks)
     const handlePause = () => {
-      if (!video.ended) {
+      if (!video.ended && !autoplayFailed) {
         // Small delay to avoid infinite loop
         setTimeout(() => {
           if (video.paused && !video.ended) {
@@ -329,15 +344,17 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
 
     // Handle visibility change - resume video when page becomes visible
     const handleVisibilityChange = () => {
-      if (!document.hidden && video.paused && !video.ended) {
+      if (!document.hidden && video.paused && !video.ended && !autoplayFailed) {
         forcePlay();
       }
     };
 
     // Handle video end - restart immediately for seamless loop
     const handleEnded = () => {
-      video.currentTime = 0;
-      forcePlay();
+      if (!autoplayFailed) {
+        video.currentTime = 0;
+        forcePlay();
+      }
     };
 
     // Initial play attempt
@@ -357,7 +374,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
 
     // Periodic check to ensure video is playing (fallback mechanism)
     const playCheckInterval = setInterval(() => {
-      if (video.paused && !video.ended && !document.hidden) {
+      if (!autoplayFailed && video.paused && !video.ended && !document.hidden) {
         forcePlay();
       }
     }, 2000); // Check every 2 seconds
@@ -373,7 +390,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       clearInterval(playCheckInterval);
     };
-  }, []);
+  }, [autoplayFailed]);
 
   const animationState = shouldAnimate ? "visible" : "hidden";
   const [animationsReady, setAnimationsReady] = useState(false);
@@ -601,26 +618,28 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         style={{ opacity: isLoaded ? videoOpacity : 0, scale }}
         className="absolute inset-0 z-0 will-change-transform overflow-hidden"
       >
-        <motion.div
-          className="absolute inset-0"
-          variants={videoIntroVariants}
-          initial="hidden"
-          animate={animationState}
-        >
-          <video
-            ref={videoRef}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="metadata"
-            disablePictureInPicture
-            disableRemotePlayback
-            className="absolute inset-0 h-full w-full object-cover"
+        {!autoplayFailed && (
+          <motion.div
+            className="absolute inset-0"
+            variants={videoIntroVariants}
+            initial="hidden"
+            animate={animationState}
           >
-            <source src={getR2UrlClient("/videos/hero/hero-background.mp4")} type="video/mp4" />
-          </video>
-        </motion.div>
+            <video
+              ref={videoRef}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="metadata"
+              disablePictureInPicture
+              disableRemotePlayback
+              className="absolute inset-0 h-full w-full object-cover"
+            >
+              <source src={getR2UrlClient("/videos/hero/hero-background.mp4")} type="video/mp4" />
+            </video>
+          </motion.div>
+        )}
 
         <motion.div
           className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/60"
