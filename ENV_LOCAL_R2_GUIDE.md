@@ -2,15 +2,16 @@
 
 ## ✅ Format yang Benar
 
-File `.env.local` Anda seharusnya berisi:
+File `.env.local` Anda seharusnya **BERISI CREDENTIAL PRIBADI ANDA SENDIRI** dan **TIDAK BOLEH** di-commit ke Git.
+Contoh di bawah **HANYA CONTOH FORMAT** (bukan nilai asli).
 
 ```env
-# Cloudflare R2 Configuration
-R2_ACCOUNT_ID=bfa93ec5dc81d8265a89844539388b2a
-R2_ACCESS_KEY_ID=5824420d9b9f5a7d42974000a64a731e
-R2_SECRET_ACCESS_KEY=38893da6a29ff59cef1fcff756472833e37001a51a304b16e6393e4497647c5f
+# Cloudflare R2 Configuration (ISI DENGAN VALUE ANDA SENDIRI, JANGAN COMMIT)
+R2_ACCOUNT_ID=your_account_id_here
+R2_ACCESS_KEY_ID=your_access_key_id_here
+R2_SECRET_ACCESS_KEY=your_secret_access_key_here
 R2_BUCKET_NAME=silverking-assets
-R2_PUBLIC_URL=https://pub-bc00595c61914727b9f968a7f9571d27.r2.dev
+R2_PUBLIC_URL=https://your-r2-domain.example.com
 ```
 
 ## 📋 Penjelasan Setiap Variable
@@ -56,7 +57,7 @@ R2_PUBLIC_URL=https://pub-bc00595c61914727b9f968a7f9571d27.r2.dev
 - **Opsi 1 - R2.dev Subdomain (Gratis):**
 
   ```
-  R2_PUBLIC_URL=https://pub-bc00595c61914727b9f968a7f9571d27.r2.dev
+  R2_PUBLIC_URL=https://your-r2-subdomain.r2.dev
   ```
 
   - Otomatis dari Cloudflare
@@ -65,7 +66,7 @@ R2_PUBLIC_URL=https://pub-bc00595c61914727b9f968a7f9571d27.r2.dev
 
 - **Opsi 2 - Custom Domain (Jika sudah setup):**
   ```
-  R2_PUBLIC_URL=https://assets.cahayasilverking.id
+  R2_PUBLIC_URL=https://assets.your-domain.example.com
   ```
 
   - Perlu setup DNS di Cloudflare
@@ -120,18 +121,18 @@ Jika berhasil, akan muncul:
 ```env
 # Database (jika ada)
 DATABASE_URL="mysql://user:password@localhost:3306/silverking"
-NEXTAUTH_SECRET="your-secret-here"
+NEXTAUTH_SECRET="your-strong-secret-here"
 NEXTAUTH_URL="http://localhost:3000"
 
-# Cloudflare R2
-R2_ACCOUNT_ID=bfa93ec5dc81d8265a89844539388b2a
-R2_ACCESS_KEY_ID=5824420d9b9f5a7d42974000a64a731e
-R2_SECRET_ACCESS_KEY=38893da6a29ff59cef1fcff756472833e37001a51a304b16e6393e4497647c5f
+# Cloudflare R2 (ISI SENDIRI, JANGAN PASTE CREDENTIAL ASLI KE GITHUB)
+R2_ACCOUNT_ID=your_account_id_here
+R2_ACCESS_KEY_ID=your_access_key_id_here
+R2_SECRET_ACCESS_KEY=your_secret_access_key_here
 R2_BUCKET_NAME=silverking-assets
-R2_PUBLIC_URL=https://pub-bc00595c61914727b9f968a7f9571d27.r2.dev
+R2_PUBLIC_URL=https://your-r2-domain.example.com
 
 # Optional: Next.js Public Variables
-NEXT_PUBLIC_R2_URL=https://pub-bc00595c61914727b9f968a7f9571d27.r2.dev
+NEXT_PUBLIC_R2_URL=https://your-r2-domain.example.com
 NEXT_PUBLIC_USE_R2=true
 ```
 

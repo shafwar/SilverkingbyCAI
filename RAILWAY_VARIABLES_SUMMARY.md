@@ -47,15 +47,18 @@
 ---
 
 ### 4. R2 Storage Variables ✅
-| Variable | Value | Status |
-|----------|-------|--------|
-| `R2_ENDPOINT` | `https://bfa93ec5dc81d8265a89844539388b2a.r2.cloudflarestorage.com/silverking-assets` | ✅ OK (auto-normalized) |
+> ⚠️ **Keamanan:** Nilai asli TIDAK ditampilkan di sini.  
+> Lihat langsung di Railway → Variables. Di dokumen publik ini hanya ditampilkan contoh / placeholder.
+
+| Variable | Contoh Value (bukan real) | Status |
+|----------|---------------------------|--------|
+| `R2_ENDPOINT` | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com/silverking-assets` | ✅ OK (auto-normalized) |
 | `R2_BUCKET` | `silverking-assets` | ✅ OK |
-| `R2_ACCESS_KEY_ID` | `5824420d9b9f5a7d42974000a64a731e` | ✅ OK |
-| `R2_SECRET_ACCESS_KEY` | `38893da6a29ff59cef1fcff756472833e37001a51a304b16e6393e4497647c5f` | ✅ OK |
-| `R2_PUBLIC_URL` | `https://assets.cahayasilverking.id` | ✅ OK |
-| `NEXT_PUBLIC_R2_PUBLIC_URL` | `https://assets.cahayasilverking.id` | ✅ OK |
-| `R2_ACCOUNT_ID` | `bfa93ec5dc81d8265a89844539388b2a` | ✅ OK |
+| `R2_ACCESS_KEY_ID` | `******** (redacted)` | ✅ OK |
+| `R2_SECRET_ACCESS_KEY` | `******** (redacted)` | ✅ OK |
+| `R2_PUBLIC_URL` | `https://assets.your-domain.example.com` | ✅ OK |
+| `NEXT_PUBLIC_R2_PUBLIC_URL` | `https://assets.your-domain.example.com` | ✅ OK |
+| `R2_ACCOUNT_ID` | `<ACCOUNT_ID>` | ✅ OK |
 
 **Status**: ✅ Semua R2 variables sudah benar.
 
