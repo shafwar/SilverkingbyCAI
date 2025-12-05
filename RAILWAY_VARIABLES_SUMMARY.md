@@ -24,9 +24,12 @@
 ---
 
 ### 2. Authentication Variables ✅
-| Variable | Value | Status |
-|----------|-------|--------|
-| `NEXTAUTH_SECRET` | `silverking-secret-change-in-production-2024` | ✅ OK |
+> ⚠️ **Keamanan:** Jangan pernah menulis `NEXTAUTH_SECRET` asli di dokumen publik.  
+> Di bawah hanya contoh format, bukan nilai sebenarnya.
+
+| Variable | Contoh Value (bukan real) | Status |
+|----------|---------------------------|--------|
+| `NEXTAUTH_SECRET` | `your-strong-random-secret-here` | ✅ OK |
 | `NEXTAUTH_URL` | `https://www.cahayasilverking.id` | ✅ OK |
 
 **Status**: ✅ Semua authentication variables sudah benar.
