@@ -365,84 +365,22 @@ export default function AuthenticityPage() {
     { scope: heroRef }
   );
 
-  // Optimal video autoplay handling - ensure video never pauses or breaks
+  // Video loaded state - autoplay is handled by useReliableVideoAutoplay hook
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    // Force play function with error handling and retry mechanism
-    const forcePlay = async () => {
-      try {
-        if (video.paused && !video.ended) {
-          await video.play();
-        }
-      } catch (error) {
-        console.warn("[AuthenticityPage] Video autoplay prevented, retrying:", error);
-        // Retry after a short delay with exponential backoff
-        setTimeout(() => {
-          video.play().catch(() => {
-            // Second retry after longer delay
-            setTimeout(() => {
-              video.play().catch(() => {
-                console.warn("[AuthenticityPage] Video autoplay failed after multiple retries");
-              });
-            }, 500);
-          });
-        }, 100);
-      }
-    };
-
-    // Handle video ready states
     const handleCanPlay = () => {
       setIsVideoLoaded(true);
-      forcePlay();
     };
 
     const handleLoadedData = () => {
       setIsVideoLoaded(true);
-      forcePlay();
     };
 
-    // Handle video errors
     const handleError = () => {
       setIsVideoLoaded(false);
       console.warn("[AuthenticityPage] Video error occurred");
-    };
-
-    // Resume video if it pauses (prevent breaks)
-    const handlePause = () => {
-      if (!video.ended) {
-        // Small delay to avoid infinite loop
-        setTimeout(() => {
-          if (video.paused && !video.ended) {
-            forcePlay();
-          }
-        }, 50);
-      }
-    };
-
-    // Handle visibility change - resume video when page becomes visible
-    const handleVisibilityChange = () => {
-      if (!document.hidden && video.paused && !video.ended) {
-        forcePlay();
-      }
-    };
-
-    // Handle video end - restart immediately for seamless loop
-    const handleEnded = () => {
-      video.currentTime = 0;
-      forcePlay();
-    };
-
-    // Handle video waiting/buffering - resume when ready
-    const handleWaiting = () => {
-      // Video is buffering, will resume automatically when ready
-      // But we can also try to play if it's paused
-      if (video.paused && !video.ended) {
-        setTimeout(() => {
-          forcePlay();
-        }, 100);
-      }
     };
 
     // Check if video is already loaded
@@ -450,38 +388,14 @@ export default function AuthenticityPage() {
       setIsVideoLoaded(true);
     }
 
-    // Initial play attempt
-    forcePlay();
-
-    // Event listeners
     video.addEventListener("canplay", handleCanPlay);
     video.addEventListener("loadeddata", handleLoadedData);
     video.addEventListener("error", handleError);
-    video.addEventListener("pause", handlePause);
-    video.addEventListener("ended", handleEnded);
-    video.addEventListener("waiting", handleWaiting);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // Force load video to ensure it starts loading immediately
-    video.load();
-
-    // Periodic check to ensure video is playing (fallback mechanism)
-    const playCheckInterval = setInterval(() => {
-      if (video.paused && !video.ended && !document.hidden) {
-        forcePlay();
-      }
-    }, 2000); // Check every 2 seconds
-
-    // Cleanup
     return () => {
       video.removeEventListener("canplay", handleCanPlay);
       video.removeEventListener("loadeddata", handleLoadedData);
       video.removeEventListener("error", handleError);
-      video.removeEventListener("pause", handlePause);
-      video.removeEventListener("ended", handleEnded);
-      video.removeEventListener("waiting", handleWaiting);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      clearInterval(playCheckInterval);
     };
   }, []);
 
@@ -619,12 +533,24 @@ export default function AuthenticityPage() {
             preload="auto"
             disablePictureInPicture
             disableRemotePlayback
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 will-change-transform z-10 ${
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 will-change-transform z-10 pointer-events-none select-none ${
               isVideoLoaded ? "opacity-100" : "opacity-0"
             }`}
             style={{
               transform: "scale(1.05)",
               transformOrigin: "center center",
+              pointerEvents: "none",
+              outline: "none",
+              WebkitTapHighlightColor: "transparent",
+              WebkitTouchCallout: "none",
+              userSelect: "none",
+            }}
+            onContextMenu={(e) => e.preventDefault()}
+            onPlay={(e) => {
+              const video = e.currentTarget;
+              if (video.paused) {
+                video.play().catch(() => {});
+              }
             }}
           >
             <source src={getR2UrlClient("/videos/hero/mobile scanning qr.mp4")} type="video/mp4" />

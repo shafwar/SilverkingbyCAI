@@ -105,6 +105,64 @@
     font-weight: 300;
     letter-spacing: 0.01em;
   }
+
+  /* CRITICAL: Hide all native video controls and prevent interaction */
+  /* This ensures background videos never show browser play buttons */
+  video {
+    pointer-events: none !important;
+    outline: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-touch-callout: none !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+  }
+
+  /* Hide native video controls completely */
+  video::-webkit-media-controls {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  video::-webkit-media-controls-enclosure {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  video::-webkit-media-controls-panel {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  video::-webkit-media-controls-play-button {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    -webkit-appearance: none !important;
+  }
+
+  video::-webkit-media-controls-start-playback-button {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    -webkit-appearance: none !important;
+  }
+
+  /* Hide video poster/thumbnail overlay that might show play button */
+  video::before,
+  video::after {
+    display: none !important;
+    content: none !important;
+  }
+
+  /* Prevent context menu on video */
+  video {
+    -webkit-touch-callout: none !important;
+  }
 }
 
 @layer components {

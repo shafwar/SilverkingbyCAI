@@ -14,6 +14,7 @@ import { useGSAP } from "@gsap/react";
 import ProductModal, { type Product } from "@/components/ui/ProductModal";
 import ProductCard, { type ProductWithPricing } from "@/components/ui/ProductCard";
 import { getR2UrlClient } from "@/utils/r2-url";
+import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -267,6 +268,9 @@ export default function ProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
   const [isMounted, setIsMounted] = useState(false);
+
+  // Ensure products hero video autoplays reliably on all devices
+  useReliableVideoAutoplay(videoRef);
 
   // CRITICAL: Delay heavy animations until after initial render
   useEffect(() => {
@@ -1150,132 +1154,13 @@ export default function ProductsPage() {
         <div className="absolute inset-0 bg-gradient-to-br from-luxury-black via-luxury-black/95 to-luxury-black z-0" />
 
         <video
-          ref={(video) => {
-            // Store ref for GSAP ScrollTrigger
-            videoRef.current = video;
-
-            if (video) {
-              // Optimal video autoplay handling - ensure video never pauses or breaks
-              const forcePlay = async () => {
-                try {
-                  if (video.paused && !video.ended) {
-                    await video.play();
-                  }
-                } catch (error) {
-                  console.warn("[ProductsPage] Video autoplay prevented, retrying:", error);
-                  setTimeout(() => {
-                    video.play().catch(() => {
-                      setTimeout(() => {
-                        video.play().catch(() => {
-                          console.warn(
-                            "[ProductsPage] Video autoplay failed after multiple retries"
-                          );
-                        });
-                      }, 500);
-                    });
-                  }, 100);
-                }
-              };
-
-              const handleCanPlay = () => {
-                setIsVideoLoaded(true);
-                forcePlay();
-              };
-              const handleLoadedData = () => {
-                setIsVideoLoaded(true);
-                forcePlay();
-              };
-              const handleError = () => {
-                setIsVideoLoaded(false);
-                console.warn("[ProductsPage] Video error occurred");
-              };
-              const handlePause = () => {
-                if (!video.ended) {
-                  setTimeout(() => {
-                    if (video.paused && !video.ended) {
-                      forcePlay();
-                    }
-                  }, 50);
-                }
-              };
-              const handleVisibilityChange = () => {
-                if (!document.hidden && video.paused && !video.ended) {
-                  forcePlay();
-                }
-              };
-              const handleEnded = () => {
-                video.currentTime = 0;
-                forcePlay();
-              };
-              const handleWaiting = () => {
-                if (video.paused && !video.ended) {
-                  setTimeout(() => forcePlay(), 100);
-                }
-              };
-
-              // Optimize video quality settings
-              video.setAttribute("playsinline", "true");
-              video.setAttribute("webkit-playsinline", "true");
-
-              // Ensure high quality rendering
-              if ("requestVideoFrameCallback" in video) {
-                // Use modern API for better quality
-                (video as any).requestVideoFrameCallback(() => {
-                  // Force high quality rendering
-                });
-              }
-
-              // Check if video is already loaded
-              if (video.readyState >= 2) {
-                setIsVideoLoaded(true);
-              }
-
-              forcePlay();
-              video.addEventListener("canplay", handleCanPlay);
-              video.addEventListener("loadeddata", handleLoadedData);
-              video.addEventListener("error", handleError);
-              video.addEventListener("pause", handlePause);
-              video.addEventListener("ended", handleEnded);
-              video.addEventListener("waiting", handleWaiting);
-              document.addEventListener("visibilitychange", handleVisibilityChange);
-
-              // Preload with high quality
-              video.load();
-
-              // Force hardware acceleration for crisp rendering
-              video.style.transform = "translateZ(0)";
-              video.style.webkitTransform = "translateZ(0)";
-
-              const playCheckInterval = setInterval(() => {
-                if (video.paused && !video.ended && !document.hidden) {
-                  forcePlay();
-                }
-              }, 2000);
-
-              (video as any).__cleanup = () => {
-                video.removeEventListener("canplay", handleCanPlay);
-                video.removeEventListener("loadeddata", handleLoadedData);
-                video.removeEventListener("error", handleError);
-                video.removeEventListener("pause", handlePause);
-                video.removeEventListener("ended", handleEnded);
-                video.removeEventListener("waiting", handleWaiting);
-                document.removeEventListener("visibilitychange", handleVisibilityChange);
-                clearInterval(playCheckInterval);
-              };
-            } else {
-              // Cleanup when video is unmounted
-              if (videoRef.current && (videoRef.current as any).__cleanup) {
-                (videoRef.current as any).__cleanup();
-              }
-              videoRef.current = null;
-            }
-          }}
+          ref={videoRef}
           autoPlay
           loop
           muted
           playsInline
           preload="auto"
-          className={`absolute inset-0 w-screen h-screen object-cover transition-opacity duration-1000 z-10 ${
+          className={`absolute inset-0 w-screen h-screen object-cover transition-opacity duration-1000 z-10 pointer-events-none select-none ${
             isVideoLoaded ? "opacity-100" : "opacity-0"
           }`}
           style={{
@@ -1290,9 +1175,27 @@ export default function ProductsPage() {
             WebkitBackfaceVisibility: "hidden",
             filter: "none",
             WebkitFilter: "none",
+            pointerEvents: "none",
+            outline: "none",
+            WebkitTapHighlightColor: "transparent",
+            WebkitTouchCallout: "none",
+            userSelect: "none",
           }}
           disablePictureInPicture
           disableRemotePlayback
+          onContextMenu={(e) => e.preventDefault()}
+          onCanPlay={() => setIsVideoLoaded(true)}
+          onLoadedData={() => setIsVideoLoaded(true)}
+          onError={() => {
+            setIsVideoLoaded(false);
+            console.warn("[ProductsPage] Video error occurred");
+          }}
+          onPlay={(e) => {
+            const video = e.currentTarget;
+            if (video.paused) {
+              video.play().catch(() => {});
+            }
+          }}
         >
           <source src={getR2UrlClient("/videos/hero/gold-stone.mp4")} type="video/mp4" />
         </video>

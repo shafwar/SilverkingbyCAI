@@ -327,15 +327,29 @@ export default function AboutPage() {
         <div className="absolute inset-0 z-0 overflow-hidden">
           <video
             ref={heroVideoRef}
-            className="absolute inset-0 h-full w-full object-cover brightness-[0.85] scale-105"
+            className="absolute inset-0 h-full w-full object-cover brightness-[0.85] scale-105 pointer-events-none select-none"
             src={getR2UrlClient("/videos/hero/gold-footage.mp4")}
             autoPlay
             loop
             muted
             playsInline
-            preload="metadata"
+            preload="auto"
             disablePictureInPicture
             disableRemotePlayback
+            style={{
+              pointerEvents: "none",
+              outline: "none",
+              WebkitTapHighlightColor: "transparent",
+              WebkitTouchCallout: "none",
+              userSelect: "none",
+            }}
+            onContextMenu={(e) => e.preventDefault()}
+            onPlay={(e) => {
+              const video = e.currentTarget;
+              if (video.paused) {
+                video.play().catch(() => {});
+              }
+            }}
           />
           {/* Optimized Vignette Layer - Stable, optimal, and consistent */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80 z-20" />
