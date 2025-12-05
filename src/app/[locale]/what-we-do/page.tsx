@@ -7,6 +7,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { motion, useInView, AnimatePresence, type Variants } from "framer-motion";
 import { getR2UrlClient } from "@/utils/r2-url";
+import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import {
   Sparkles,
   FlaskConical,
@@ -293,6 +294,10 @@ export default function WhatWeDoPage() {
   const noiseOverlay = useRef<HTMLDivElement | null>(null);
   const gradientOverlay = useRef<HTMLDivElement | null>(null);
   const sectionsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  // Ensure what-we-do hero video autoplays reliably on all devices
+  useReliableVideoAutoplay(videoRef);
 
   const featureItems = useMemo(
     () => [
@@ -448,96 +453,23 @@ export default function WhatWeDoPage() {
           <div className="absolute inset-0 bg-gradient-to-br from-luxury-black via-luxury-black/95 to-luxury-black z-0" />
 
           <video
-            ref={(video) => {
-              if (video) {
-                // Optimal video autoplay handling - ensure video never pauses or breaks
-                const forcePlay = async () => {
-                  try {
-                    if (video.paused && !video.ended) {
-                      await video.play();
-                    }
-                  } catch (error) {
-                    console.warn("[WhatWeDoPage] Video autoplay prevented, retrying:", error);
-                    setTimeout(() => {
-                      video.play().catch(() => {
-                        setTimeout(() => {
-                          video.play().catch(() => {
-                            console.warn(
-                              "[WhatWeDoPage] Video autoplay failed after multiple retries"
-                            );
-                          });
-                        }, 500);
-                      });
-                    }, 100);
-                  }
-                };
-
-                const handleCanPlay = () => forcePlay();
-                const handleLoadedData = () => forcePlay();
-                const handleError = () => console.warn("[WhatWeDoPage] Video error occurred");
-                const handlePause = () => {
-                  if (!video.ended) {
-                    setTimeout(() => {
-                      if (video.paused && !video.ended) {
-                        forcePlay();
-                      }
-                    }, 50);
-                  }
-                };
-                const handleVisibilityChange = () => {
-                  if (!document.hidden && video.paused && !video.ended) {
-                    forcePlay();
-                  }
-                };
-                const handleEnded = () => {
-                  video.currentTime = 0;
-                  forcePlay();
-                };
-                const handleWaiting = () => {
-                  if (video.paused && !video.ended) {
-                    setTimeout(() => forcePlay(), 100);
-                  }
-                };
-
-                forcePlay();
-                video.addEventListener("canplay", handleCanPlay);
-                video.addEventListener("loadeddata", handleLoadedData);
-                video.addEventListener("error", handleError);
-                video.addEventListener("pause", handlePause);
-                video.addEventListener("ended", handleEnded);
-                video.addEventListener("waiting", handleWaiting);
-                document.addEventListener("visibilitychange", handleVisibilityChange);
-                video.load();
-
-                const playCheckInterval = setInterval(() => {
-                  if (video.paused && !video.ended && !document.hidden) {
-                    forcePlay();
-                  }
-                }, 2000);
-
-                (video as any).__cleanup = () => {
-                  video.removeEventListener("canplay", handleCanPlay);
-                  video.removeEventListener("loadeddata", handleLoadedData);
-                  video.removeEventListener("error", handleError);
-                  video.removeEventListener("pause", handlePause);
-                  video.removeEventListener("ended", handleEnded);
-                  video.removeEventListener("waiting", handleWaiting);
-                  document.removeEventListener("visibilitychange", handleVisibilityChange);
-                  clearInterval(playCheckInterval);
-                };
-              }
-            }}
+            ref={videoRef}
             autoPlay
             loop
             muted
             playsInline
             preload="auto"
-            className="absolute inset-0 w-screen h-screen object-cover transition-opacity duration-1000 z-10"
+            className="absolute inset-0 w-screen h-screen object-cover transition-opacity duration-1000 z-10 pointer-events-none select-none"
             style={{
               objectFit: "cover",
               objectPosition: "center center",
               width: "100vw",
               height: "100vh",
+              pointerEvents: "none",
+              outline: "none",
+              WebkitTapHighlightColor: "transparent",
+              WebkitTouchCallout: "none",
+              userSelect: "none",
               transform: "none",
             }}
             disablePictureInPicture
@@ -835,6 +767,13 @@ export default function WhatWeDoPage() {
             }}
             disablePictureInPicture
             disableRemotePlayback
+            onContextMenu={(e) => e.preventDefault()}
+            onPlay={(e) => {
+              const video = e.currentTarget;
+              if (video.paused) {
+                video.play().catch(() => {});
+              }
+            }}
           >
             <source
               src={getR2UrlClient("/videos/hero/molten metal slow motion.mp4")}

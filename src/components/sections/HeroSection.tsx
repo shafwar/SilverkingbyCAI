@@ -9,6 +9,7 @@ import { getR2UrlClient } from "@/utils/r2-url";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import { OptimizedLink } from "@/components/ui/OptimizedLink";
+import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 
 interface HeroSectionProps {
   shouldAnimate?: boolean;
@@ -122,6 +123,9 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
   const [isPageTransitioning, setIsPageTransitioning] = useState(false);
   const prevPathnameRef = useRef<string | null>(null);
   const fadeInTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Ensure hero background video always autoplays on both mobile & desktop
+  useReliableVideoAutoplay(videoRef);
 
   // ENHANCED: Detect page transition untuk smooth fade-in/out
   // Works for BOTH navigating TO home AND FROM home to other pages
@@ -262,136 +266,22 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
   const scale = useTransform(scrollYProgress, [0, 0.5], [1, 1.05]);
   const videoOpacity = useTransform(scrollYProgress, [0, 0.3], [1, 0.3]);
 
-  // Optimal video autoplay handling - ensure video never pauses or breaks
+  // Set video loaded state - autoplay is handled by useReliableVideoAutoplay hook
   useEffect(() => {
     setIsLoaded(true);
 
     const video = videoRef.current;
     if (!video) return;
 
-    // Force play function with error handling and retry mechanism
-    const forcePlay = async () => {
-      try {
-        if (video.paused && !video.ended) {
-          await video.play();
-        }
-      } catch (error) {
-        console.warn("[HeroSection] Video autoplay prevented, retrying:", error);
-        // Retry after a short delay with exponential backoff
-        setTimeout(() => {
-          video.play().catch(() => {
-            // Second retry after longer delay
-            setTimeout(() => {
-              video.play().catch(() => {
-                console.warn("[HeroSection] Video autoplay failed after multiple retries");
-              });
-            }, 500);
-          });
-        }, 100);
-      }
+    // Handle video errors only (autoplay is handled by hook)
+    const handleError = () => {
+      console.warn("[HeroSection] Video error occurred");
     };
 
-    // Handle video ready states
-    const handleCanPlay = () => {
-      setVideoError(false); // Reset error state on successful load
-      forcePlay();
-    };
-
-    const handleLoadedData = () => {
-      setVideoError(false); // Reset error state on successful load
-      forcePlay();
-    };
-
-    // Handle video errors with proper error recovery
-    const handleError = (e?: Event) => {
-      console.warn("[HeroSection] Video error occurred", e);
-      setVideoError(true);
-      // Try to reload video after a delay
-      setTimeout(() => {
-        if (video && video.error) {
-          console.log("[HeroSection] Attempting video reload...");
-          video.load();
-        }
-      }, 2000);
-    };
-
-    // Resume video if it pauses (prevent breaks)
-    const handlePause = () => {
-      if (!video.ended) {
-        // Small delay to avoid infinite loop
-        setTimeout(() => {
-          if (video.paused && !video.ended) {
-            forcePlay();
-          }
-        }, 50);
-      }
-    };
-
-    // Handle video waiting/buffering - resume when ready
-    const handleWaiting = () => {
-      // Video is buffering, will resume automatically when ready
-      // But we can also try to play if it's paused
-      if (video.paused && !video.ended) {
-        setTimeout(() => {
-          forcePlay();
-        }, 100);
-      }
-    };
-
-    // Handle visibility change - resume video when page becomes visible
-    const handleVisibilityChange = () => {
-      if (!document.hidden && video.paused && !video.ended) {
-        forcePlay();
-      }
-    };
-
-    // Handle video end - restart immediately for seamless loop
-    const handleEnded = () => {
-      video.currentTime = 0;
-      forcePlay();
-    };
-
-    // Initial play attempt
-    forcePlay();
-
-    // Event listeners
-    video.addEventListener("canplay", handleCanPlay);
-    video.addEventListener("loadeddata", handleLoadedData);
     video.addEventListener("error", handleError);
-    video.addEventListener("pause", handlePause);
-    video.addEventListener("ended", handleEnded);
-    video.addEventListener("waiting", handleWaiting);
-    video.addEventListener("stalled", () => {
-      console.warn("[HeroSection] Video stalled, attempting recovery...");
-      setTimeout(() => {
-        if (video.paused && !video.ended) {
-          forcePlay();
-        }
-      }, 1000);
-    });
-    document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // Force load video to ensure it starts loading immediately
-    video.load();
-
-    // Periodic check to ensure video is playing (fallback mechanism)
-    const playCheckInterval = setInterval(() => {
-      if (video.paused && !video.ended && !document.hidden) {
-        forcePlay();
-      }
-    }, 2000); // Check every 2 seconds
-
-    // Cleanup
     return () => {
-      video.removeEventListener("canplay", handleCanPlay);
-      video.removeEventListener("loadeddata", handleLoadedData);
       video.removeEventListener("error", handleError);
-      video.removeEventListener("pause", handlePause);
-      video.removeEventListener("ended", handleEnded);
-      video.removeEventListener("waiting", handleWaiting);
-      video.removeEventListener("stalled", () => {});
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      clearInterval(playCheckInterval);
     };
   }, []);
 
@@ -633,14 +523,24 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             loop
             muted
             playsInline
-            preload="metadata"
-            crossOrigin="anonymous"
+            preload="auto"
             disablePictureInPicture
             disableRemotePlayback
-            className="absolute inset-0 h-full w-full object-cover"
-            onError={(e) => {
-              console.error("[HeroSection] Video load error:", e);
-              setVideoError(true);
+            className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
+            style={{
+              pointerEvents: "none",
+              outline: "none",
+              WebkitTapHighlightColor: "transparent",
+              WebkitTouchCallout: "none",
+              userSelect: "none",
+            }}
+            onContextMenu={(e) => e.preventDefault()}
+            onPlay={(e) => {
+              // Ensure video stays playing
+              const video = e.currentTarget;
+              if (video.paused) {
+                video.play().catch(() => {});
+              }
             }}
           >
             <source src={getR2UrlClient("/videos/hero/hero-background.mp4")} type="video/mp4" />
