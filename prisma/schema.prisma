@@ -77,3 +77,55 @@ model QRScanLog {
   location   String?
   qrRecord   QrRecord  @relation(fields: [qrRecordId], references: [id])
 }
+
+/// New generation inventory - gram-based batches and per-QR uniq codes
+/// IMPORTANT:
+/// - This does NOT change or reuse the existing Product / QrRecord tables
+/// - Page 1 (current admin Products & QR Preview) continues to use Product/QrRecord
+/// - Page 2 (new gram-based flow) will use GramProductBatch / GramProductItem
+/// - Verification API will be extended to also look up GramProductItem by uniqCode
+
+model GramProductBatch {
+  id          Int               @id @default(autoincrement())
+  /// Human readable product name (e.g. "Silver King 250gr")
+  name        String
+  /// Weight in grams (e.g. 50, 100, 250, 500)
+  weight      Int
+  /// Total quantity represented by this batch input
+  quantity    Int
+  /// Mode derived from weight:
+  /// - "SINGLE_QR" for small weights (e.g. 50, 100) -> 1 QR for whole batch
+  /// - "PER_UNIT_QR" for large weights (e.g. 250, 500, 1000, ...) -> 1 QR per unit
+  qrMode      String
+  /// Optional grouping or category label (e.g. "SMALL", "LARGE")
+  weightGroup String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  /// One-to-many relation to concrete QR items / uniq codes
+  items       GramProductItem[]
+}
+
+model GramProductItem {
+  id            Int              @id @default(autoincrement())
+  batchId       Int
+  /// Stable uniq code printed on the QR and used for verification lookup
+  uniqCode      String           @unique
+  /// Optional separate serial code if business needs it later
+  serialCode    String?          @unique
+  qrImageUrl    String
+  scanCount     Int              @default(0)
+  lastScannedAt DateTime?
+  createdAt     DateTime         @default(now())
+  batch         GramProductBatch @relation(fields: [batchId], references: [id])
+  scanLogs      GramQRScanLog[]
+}
+
+model GramQRScanLog {
+  id        Int             @id @default(autoincrement())
+  qrItemId  Int
+  scannedAt DateTime        @default(now())
+  ip        String?
+  userAgent String?
+  location  String?
+  qrItem    GramProductItem @relation(fields: [qrItemId], references: [id])
+}

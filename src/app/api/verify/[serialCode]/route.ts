@@ -21,6 +21,14 @@ export async function GET(
       );
     }
 
+  // SECURITY: Sanitize and limit IP and user agent length
+  const ip = getClientIp(request);
+  const userAgent = getUserAgent(request);
+  const sanitizedUserAgent = userAgent
+    ? userAgent.substring(0, 500) // Max 500 chars
+    : undefined;
+
+  // --- PATH 1: Legacy Product / QrRecord (Page 1 inventory) ---
   // OPTIMIZATION: Use findUnique with proper error handling
   // SECURITY: Only fetch necessary data, no sensitive information
   const qrRecord = await prisma.qrRecord.findUnique({
@@ -35,7 +43,6 @@ export async function GET(
           price: true,
           stock: true,
           createdAt: true,
-          // SECURITY: Exclude sensitive fields if any
         },
       },
       scanLogs: {
@@ -48,75 +55,55 @@ export async function GET(
     },
   });
 
-  if (!qrRecord || !qrRecord.product) {
-    return NextResponse.json(
-      { verified: false, error: "Serial code not recognized" },
-      { status: 404 }
-    );
-  }
+  if (qrRecord && qrRecord.product) {
+    // OPTIMIZATION: Use transaction for atomic updates
+    await prisma.$transaction([
+      prisma.qrRecord.update({
+        where: { id: qrRecord.id },
+        data: {
+          scanCount: { increment: 1 },
+          lastScannedAt: new Date(),
+        },
+      }),
+      prisma.qRScanLog.create({
+        data: {
+          qrRecordId: qrRecord.id,
+          ip: ip ? ip.substring(0, 45) : undefined, // IPv6 max length
+          userAgent: sanitizedUserAgent,
+        },
+      }),
+    ]);
 
-  // SECURITY: Sanitize and limit IP and user agent length
-  const ip = getClientIp(request);
-  const userAgent = getUserAgent(request);
-  
-  // SECURITY: Limit user agent length to prevent DoS
-  const sanitizedUserAgent = userAgent 
-    ? userAgent.substring(0, 500) // Max 500 chars
-    : undefined;
-  
-  // OPTIMIZATION: Use transaction for atomic updates
-  // SECURITY: Increment scan count and log scan in single transaction
-  await prisma.$transaction([
-    prisma.qrRecord.update({
-      where: { id: qrRecord.id },
-      data: {
-        scanCount: { increment: 1 },
-        lastScannedAt: new Date(),
-      },
-    }),
-    prisma.qRScanLog.create({
-      data: {
-        qrRecordId: qrRecord.id,
-        ip: ip ? ip.substring(0, 45) : undefined, // IPv6 max length
-        userAgent: sanitizedUserAgent,
-      },
-    }),
-  ]);
+    const firstScanned = qrRecord.scanLogs[0]?.scannedAt || qrRecord.createdAt;
 
-  // Get first scan date
-  const firstScanned = qrRecord.scanLogs[0]?.scannedAt || qrRecord.createdAt;
+    const allScanLogs = await prisma.qRScanLog.findMany({
+      where: { qrRecordId: qrRecord.id },
+      select: { location: true },
+    });
 
-  // Get unique locations from scan logs
-  const allScanLogs = await prisma.qRScanLog.findMany({
-    where: { qrRecordId: qrRecord.id },
-    select: { location: true },
-  });
+    const locations = allScanLogs
+      .filter((log) => log.location)
+      .map((log) => {
+        const parts = log.location!.split(",").map((s) => s.trim());
+        return {
+          city: parts[0] || "Unknown",
+          country: parts[1] || "Unknown",
+        };
+      })
+      .filter(
+        (loc, index, self) =>
+          index === self.findIndex((l) => l.city === loc.city && l.country === loc.country)
+      );
 
-  const locations = allScanLogs
-    .filter((log) => log.location)
-    .map((log) => {
-      // Parse location string (format: "City, Country")
-      const parts = log.location!.split(",").map((s) => s.trim());
-      return {
-        city: parts[0] || "Unknown",
-        country: parts[1] || "Unknown",
-      };
-    })
-    .filter((loc, index, self) => 
-      index === self.findIndex((l) => l.city === loc.city && l.country === loc.country)
-    );
-
-    // SECURITY: Only return necessary product information
-    // OPTIMIZATION: Return minimal data for faster response
     return NextResponse.json(
       {
         verified: true,
-        success: true, // Backward compatibility
+        success: true,
         product: {
           id: qrRecord.product.id,
           name: qrRecord.product.name,
           weight: qrRecord.product.weight,
-          purity: "99.99%", // Default purity (not stored in Product model)
+          purity: "99.99%",
           serialCode: qrRecord.serialCode,
           price: qrRecord.product.price,
           stock: qrRecord.product.stock,
@@ -125,16 +112,91 @@ export async function GET(
         },
         scanCount: qrRecord.scanCount + 1,
         firstScanned: firstScanned.toISOString(),
-        locations: locations,
+        locations,
       },
       {
         status: 200,
         headers: {
-          "Cache-Control": "public, max-age=60, s-maxage=60", // Cache for 60 seconds
+          "Cache-Control": "public, max-age=60, s-maxage=60",
           "Content-Type": "application/json",
         },
       }
     );
+  }
+
+  // --- PATH 2: Gram-based inventory (Page 2) using uniqCode ---
+  const gramItem = await prisma.gramProductItem.findUnique({
+    where: { uniqCode: serial },
+    include: {
+      batch: true,
+      scanLogs: {
+        orderBy: { scannedAt: "asc" },
+        take: 1,
+        select: {
+          scannedAt: true,
+        },
+      },
+    },
+  });
+
+  if (!gramItem || !gramItem.batch) {
+    return NextResponse.json(
+      { verified: false, error: "Serial code not recognized" },
+      { status: 404 }
+    );
+  }
+
+  await prisma.$transaction([
+    prisma.gramProductItem.update({
+      where: { id: gramItem.id },
+      data: {
+        scanCount: { increment: 1 },
+        lastScannedAt: new Date(),
+      },
+    }),
+    prisma.gramQRScanLog.create({
+      data: {
+        qrItemId: gramItem.id,
+        ip: ip ? ip.substring(0, 45) : undefined,
+        userAgent: sanitizedUserAgent,
+      },
+    }),
+  ]);
+
+  const gramFirstScanned = gramItem.scanLogs[0]?.scannedAt || gramItem.createdAt;
+
+  // For now, we don't track geo location on gram-based logs, so return empty array
+  const gramLocations: Array<{ city: string; country: string }> = [];
+
+  return NextResponse.json(
+    {
+      verified: true,
+      success: true,
+      product: {
+        id: gramItem.id,
+        name: gramItem.batch.name,
+        weight: gramItem.batch.weight,
+        purity: "99.99%",
+        // Expose uniqCode via serialCode field to keep frontend compatible
+        serialCode: gramItem.uniqCode,
+        price: null,
+        // Stock here reflects batch quantity for reference
+        stock: gramItem.batch.quantity,
+        qrImageUrl: gramItem.qrImageUrl,
+        createdAt: gramItem.createdAt,
+      },
+      scanCount: gramItem.scanCount + 1,
+      firstScanned: gramFirstScanned.toISOString(),
+      locations: gramLocations,
+    },
+    {
+      status: 200,
+      headers: {
+        "Cache-Control": "public, max-age=60, s-maxage=60",
+        "Content-Type": "application/json",
+      },
+    }
+  );
   } catch (error: any) {
     console.error("Verification API error:", error);
     return NextResponse.json(

@@ -328,7 +328,16 @@ export async function addProductInfoToQR(
 export async function generateAndStoreQR(
   serialCode: string,
   targetUrl: string,
-  productName?: string
+  productName?: string,
+  /**
+   * Optional folder prefix inside the R2 bucket / local QR folder.
+   * Defaults to "qr" (existing behaviour for legacy inventory).
+   *
+   * Examples:
+   * - "qr" -> qr/SKA000001.png
+   * - "qr-gram" -> qr-gram/GK123ABC.png
+   */
+  folder: string = "qr"
 ): Promise<QRStorageResult> {
   console.log(">>> [generateAndStoreQR] Starting QR generation for serial:", serialCode, {
     productName,
@@ -355,7 +364,8 @@ export async function generateAndStoreQR(
 
   // STEP 3: Upload FINAL PNG (with QR + text) to R2
   if (r2Available && r2Client) {
-    const objectKey = `qr/${serialCode}.png`;
+    const safeFolder = folder.replace(/^\//, "").replace(/\/$/, "");
+    const objectKey = `${safeFolder}/${serialCode}.png`;
 
     console.log(">>> Uploading to R2:", {
       bucket: R2_BUCKET,
@@ -408,13 +418,15 @@ export async function generateAndStoreQR(
 
   // Local development: save to file system
   try {
-    await fs.mkdir(QR_FOLDER, { recursive: true });
-    const filePath = path.join(QR_FOLDER, `${serialCode}.png`);
+    const safeFolder = folder.replace(/^\//, "").replace(/\/$/, "");
+    const folderPath = path.join(QR_FOLDER, safeFolder);
+    await fs.mkdir(folderPath, { recursive: true });
+    const filePath = path.join(folderPath, `${serialCode}.png`);
     await fs.writeFile(filePath, pngBuffer);
 
     // Return local path directly (not R2 URL) since file is stored locally
     return {
-      url: `/qr/${serialCode}.png`,
+      url: `/qr/${safeFolder}/${serialCode}.png`,
       mode: "LOCAL",
     };
   } catch (error) {

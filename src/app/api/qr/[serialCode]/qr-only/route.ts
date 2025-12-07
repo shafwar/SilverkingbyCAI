@@ -20,7 +20,7 @@ export async function GET(
       return new NextResponse("Serial code is required", { status: 400 });
     }
 
-    // Get product information from database
+    // Try legacy Product table first (page 1 inventory)
     const product = await prisma.product.findUnique({
       where: { serialCode },
       select: {
@@ -28,11 +28,25 @@ export async function GET(
       },
     });
 
-    if (!product) {
-      return new NextResponse("Product not found", { status: 404 });
-    }
+    let finalSerialCode: string;
 
-    const finalSerialCode = product.serialCode;
+    if (product) {
+      finalSerialCode = product.serialCode;
+    } else {
+      // Support gram-based inventory (page 2) using GramProductItem uniqCode
+      const gramItem = await prisma.gramProductItem.findUnique({
+        where: { uniqCode: serialCode },
+        select: {
+          uniqCode: true,
+        },
+      });
+
+      if (!gramItem) {
+        return new NextResponse("Product not found", { status: 404 });
+      }
+
+      finalSerialCode = gramItem.uniqCode;
+    }
     
     if (!finalSerialCode || finalSerialCode.trim().length < 3) {
       return new NextResponse("Invalid serial code", { status: 400 });

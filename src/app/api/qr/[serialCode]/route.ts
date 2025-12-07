@@ -17,7 +17,7 @@ export async function GET(
       return new NextResponse("Serial code is required", { status: 400 });
     }
 
-    // Get product information from database to ensure correct serialCode
+    // Get product information from legacy Product table (page 1 inventory)
     const product = await prisma.product.findUnique({
       where: { serialCode },
       select: {
@@ -26,16 +26,30 @@ export async function GET(
       },
     });
 
-    // CRITICAL: Always use serialCode from database if product exists
-    // If product doesn't exist, we can't generate a valid QR code
-    if (!product) {
-      console.error("[QR Route] Product not found for serialCode:", serialCode);
-      return new NextResponse("Product not found", { status: 404 });
+    let finalSerialCode: string;
+    let productName: string;
+
+    if (product) {
+      // Legacy path: use Product + QrRecord
+      finalSerialCode = product.serialCode;
+      productName = product.name;
+    } else {
+      // New path: support gram-based inventory (page 2) using GramProductItem uniqCode
+      const gramItem = await prisma.gramProductItem.findUnique({
+        where: { uniqCode: serialCode },
+        include: {
+          batch: true,
+        },
+      });
+
+      if (!gramItem || !gramItem.batch) {
+        console.error("[QR Route] Product not found for serialCode (legacy or gram):", serialCode);
+        return new NextResponse("Product not found", { status: 404 });
+      }
+
+      finalSerialCode = gramItem.uniqCode;
+      productName = gramItem.batch.name;
     }
-    
-    // Always use product.serialCode from database
-    const finalSerialCode = product.serialCode;
-    const productName = product.name;
     
     // Validate finalSerialCode
     if (!finalSerialCode || finalSerialCode.trim().length < 3) {
@@ -47,7 +61,7 @@ export async function GET(
       return new NextResponse("Invalid serial code in database", { status: 400 });
     }
     
-    console.log("[QR Route] Using serial code from database:", {
+    console.log("[QR Route] Using serial code for QR generation:", {
       finalSerialCode,
       length: finalSerialCode.length,
       productName: productName

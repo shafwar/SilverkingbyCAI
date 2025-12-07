@@ -15,13 +15,20 @@ export function AdminNav({ email }: { email?: string | null }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const navLinks = useMemo(() => [
-    { label: tDashboard('label'), href: "/admin" },
-    { label: t('products'), href: "/admin/products" },
-    { label: t('qrPreview'), href: "/admin/qr-preview" },
-    { label: t('logs'), href: "/admin/logs" },
-    { label: tExport('label'), href: "/admin/export" },
-  ], [t, tDashboard, tExport]);
+  const navLinks = useMemo(
+    () => [
+      { label: tDashboard("label"), href: "/admin" },
+      { label: t("products"), href: "/admin/products" },
+      // Page 2 – gram-based inventory
+      { label: `${t("products")} 2`, href: "/admin/products/page2" },
+      { label: t("qrPreview"), href: "/admin/qr-preview" },
+      // Page 2 – gram-based QR preview
+      { label: `${t("qrPreview")} 2`, href: "/admin/qr-preview/page2" },
+      { label: t("logs"), href: "/admin/logs" },
+      { label: tExport("label"), href: "/admin/export" },
+    ],
+    [t, tDashboard, tExport]
+  );
 
   const handleSignOut = async () => {
     await signOut({ redirect: false });
