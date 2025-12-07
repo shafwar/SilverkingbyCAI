@@ -28,7 +28,6 @@ export default function HeroWithVideo({
   const r2FallbackImage = getR2UrlClient(fallbackImage);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
-  const [videoError, setVideoError] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -63,15 +62,7 @@ export default function HeroWithVideo({
 
     const handleError = () => {
       setIsVideoLoaded(false);
-      setVideoError(true);
-      console.warn("[HeroWithVideo] Video error occurred", e);
-      // Try to reload video after a delay
-      setTimeout(() => {
-        if (video && video.error) {
-          console.log("[HeroWithVideo] Attempting video reload...");
-          video.load();
-        }
-      }, 2000);
+      console.warn("[HeroWithVideo] Video error occurred");
     };
 
     // Check if video is already loaded
@@ -105,7 +96,6 @@ export default function HeroWithVideo({
             muted
             playsInline
             preload="auto"
-            crossOrigin="anonymous"
             disablePictureInPicture
             disableRemotePlayback
             className={`w-full h-full object-cover transition-opacity duration-1000 pointer-events-none select-none ${
@@ -132,7 +122,7 @@ export default function HeroWithVideo({
         )}
 
         {/* Fallback Image (shown on mobile or if video fails) */}
-        {(isMobile || !isVideoLoaded || videoError) && (
+        {(isMobile || !isVideoLoaded) && (
           <div
             className="w-full h-full bg-cover bg-center"
             style={{ backgroundImage: `url(${r2FallbackImage})` }}
