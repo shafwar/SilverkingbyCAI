@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
@@ -28,15 +28,6 @@ import { useRouter } from "next/navigation";
 import { APP_NAME } from "@/utils/constants";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
-
-// Register GSAP plugins safely
-if (typeof window !== "undefined") {
-  try {
-    gsap.registerPlugin(ScrollTrigger);
-  } catch (error) {
-    console.warn("GSAP ScrollTrigger registration failed:", error);
-  }
-}
 
 // workflowSteps will be created inside AuthenticityPage component using translations
 
@@ -362,6 +353,16 @@ export default function AuthenticityPage() {
   const heroRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const router = useRouter();
+
+  // Register ScrollTrigger only on the client to avoid SSR/window issues
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      gsap.registerPlugin(ScrollTrigger);
+    } catch (error) {
+      console.warn("GSAP ScrollTrigger registration failed:", error);
+    }
+  }, []);
 
   // Ensure authenticity hero background video always autoplays reliably
   useReliableVideoAutoplay(videoRef);

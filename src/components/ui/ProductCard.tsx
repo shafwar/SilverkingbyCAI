@@ -6,6 +6,39 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { Product } from "./ProductModal";
 
+const SLIDE_INTERVAL_MS = 8000; // 8s cadence (within requested 7-9s)
+let slideStartTimeoutId: ReturnType<typeof window.setTimeout> | null = null;
+let slideIntervalId: ReturnType<typeof window.setInterval> | null = null;
+const slideListeners = new Set<() => void>();
+
+const startGlobalSlider = () => {
+  if (typeof window === "undefined") return;
+  if (slideIntervalId || slideStartTimeoutId) return;
+
+  const now = Date.now();
+  const offset = SLIDE_INTERVAL_MS - (now % SLIDE_INTERVAL_MS);
+
+  slideStartTimeoutId = window.setTimeout(() => {
+    slideListeners.forEach((listener) => listener());
+    slideIntervalId = window.setInterval(() => {
+      slideListeners.forEach((listener) => listener());
+    }, SLIDE_INTERVAL_MS);
+    slideStartTimeoutId = null;
+  }, offset);
+};
+
+const stopGlobalSlider = () => {
+  if (slideListeners.size > 0) return;
+  if (slideIntervalId) {
+    window.clearInterval(slideIntervalId);
+    slideIntervalId = null;
+  }
+  if (slideStartTimeoutId) {
+    window.clearTimeout(slideStartTimeoutId);
+    slideStartTimeoutId = null;
+  }
+};
+
 export type ProductWithPricing = Product & {
   rangeName?: string;
   memberPrice?: number;
@@ -27,25 +60,70 @@ export default function ProductCard({ product, onProductSelect, index = 0 }: Pro
   const images = product.images || (product.image ? [product.image] : []);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const [imagesReady, setImagesReady] = useState(false);
   const hasMultipleImages = images.length > 1;
 
   // Reset slider index whenever image set changes (e.g. new CMS product or edited images)
   useEffect(() => {
     setCurrentImageIndex(0);
+    setImagesReady(false);
   }, [images.length]);
 
-  // Auto-slide for products with multiple images
+  // Preload images before allowing auto-slide to keep transitions smooth
   useEffect(() => {
-    if (!hasMultipleImages || isHovered) return;
+    if (!hasMultipleImages) {
+      setImagesReady(true);
+      return;
+    }
 
-    const interval = window.setInterval(() => {
-      setCurrentImageIndex((prev) => (prev + 1) % images.length);
-    }, 3200); // Change image every ~3.2 seconds to match hardcoded product timing
+    let isMounted = true;
+    let loaded = 0;
+
+    const markLoaded = () => {
+      loaded += 1;
+      if (isMounted && loaded >= images.length) {
+        setImagesReady(true);
+      }
+    };
+
+    const preloaders = images.map((src) => {
+      const img = new Image();
+      img.src = src;
+      if (img.complete) {
+        markLoaded();
+      } else {
+        img.onload = markLoaded;
+        img.onerror = markLoaded;
+      }
+      return img;
+    });
 
     return () => {
-      window.clearInterval(interval);
+      isMounted = false;
+      preloaders.forEach((img) => {
+        img.onload = null;
+        img.onerror = null;
+      });
     };
-  }, [hasMultipleImages, isHovered, images.length]);
+  }, [images, hasMultipleImages]);
+
+  // Auto-slide for products with multiple images (synced across cards, slow cadence)
+  useEffect(() => {
+    if (!hasMultipleImages || isHovered || !imagesReady) return;
+    if (typeof window === "undefined") return;
+
+    const listener = () => {
+      setCurrentImageIndex((prev) => (prev + 1) % images.length);
+    };
+
+    slideListeners.add(listener);
+    startGlobalSlider();
+
+    return () => {
+      slideListeners.delete(listener);
+      stopGlobalSlider();
+    };
+  }, [hasMultipleImages, isHovered, imagesReady, images.length]);
 
   const goToNext = (e: React.MouseEvent) => {
     e.stopPropagation();
