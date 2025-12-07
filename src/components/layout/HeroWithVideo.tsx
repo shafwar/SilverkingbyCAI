@@ -28,24 +28,41 @@ export default function HeroWithVideo({
   const r2FallbackImage = getR2UrlClient(fallbackImage);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
+  const [videoError, setVideoError] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    // Detect mobile
+    // Detect mobile with error handling
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      try {
+        setIsMobile(window.innerWidth < 768);
+      } catch (error) {
+        console.error("[HeroWithVideo] Error detecting mobile:", error);
+        // Fallback to desktop view
+        setIsMobile(false);
+      }
     };
 
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
+    try {
+      checkMobile();
+      window.addEventListener("resize", checkMobile);
+    } catch (error) {
+      console.error("[HeroWithVideo] Error setting up mobile detection:", error);
+    }
 
-    return () => window.removeEventListener("resize", checkMobile);
+    return () => {
+      try {
+        window.removeEventListener("resize", checkMobile);
+      } catch (error) {
+        console.error("[HeroWithVideo] Error cleaning up mobile detection:", error);
+      }
+    };
   }, []);
 
   // Ensure video autoplays reliably - hook handles autoplay, we only track loaded state
   useReliableVideoAutoplay(videoRef);
 
-  // Video loaded state tracking
+  // Video loaded state tracking with proper error handling
   useEffect(() => {
     if (isMobile) return; // Skip video handling on mobile
 
@@ -53,36 +70,106 @@ export default function HeroWithVideo({
     if (!video) return;
 
     const handleCanPlay = () => {
-      setIsVideoLoaded(true);
+      try {
+        setIsVideoLoaded(true);
+        setVideoError(false);
+      } catch (error) {
+        console.error("[HeroWithVideo] Error in handleCanPlay:", error);
+      }
     };
 
     const handleLoadedData = () => {
-      setIsVideoLoaded(true);
+      try {
+        setIsVideoLoaded(true);
+        setVideoError(false);
+      } catch (error) {
+        console.error("[HeroWithVideo] Error in handleLoadedData:", error);
+      }
     };
 
-    const handleError = () => {
-      setIsVideoLoaded(false);
-      console.warn("[HeroWithVideo] Video error occurred");
+    const handleError = (event: Event) => {
+      try {
+        setIsVideoLoaded(false);
+        setVideoError(true);
+
+        // Get detailed error information
+        const videoElement = event.target as HTMLVideoElement;
+        const error = videoElement.error;
+
+        if (error) {
+          let errorMessage = "[HeroWithVideo] Video error occurred";
+          switch (error.code) {
+            case error.MEDIA_ERR_ABORTED:
+              errorMessage += ": Media loading aborted";
+              break;
+            case error.MEDIA_ERR_NETWORK:
+              errorMessage += ": Network error while loading media";
+              break;
+            case error.MEDIA_ERR_DECODE:
+              errorMessage += ": Media decoding error";
+              break;
+            case error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+              errorMessage += ": Media source not supported";
+              break;
+            default:
+              errorMessage += `: Unknown error (code ${error.code})`;
+          }
+          console.warn(errorMessage, {
+            code: error.code,
+            message: error.message,
+            videoSrc: currentVideoSrc,
+          });
+        } else {
+          console.warn("[HeroWithVideo] Video error occurred (no error details available)", {
+            videoSrc: currentVideoSrc,
+          });
+        }
+      } catch (error) {
+        console.error("[HeroWithVideo] Error in handleError:", error);
+        // Ensure error state is set even if logging fails
+        setVideoError(true);
+        setIsVideoLoaded(false);
+      }
     };
 
     // Check if video is already loaded
-    if (video.readyState >= 2) {
-      setIsVideoLoaded(true);
+    try {
+      if (video.readyState >= 2) {
+        setIsVideoLoaded(true);
+        setVideoError(false);
+      }
+    } catch (error) {
+      console.error("[HeroWithVideo] Error checking video readyState:", error);
     }
 
-    video.addEventListener("canplay", handleCanPlay);
-    video.addEventListener("loadeddata", handleLoadedData);
-    video.addEventListener("error", handleError);
+    try {
+      video.addEventListener("canplay", handleCanPlay);
+      video.addEventListener("loadeddata", handleLoadedData);
+      video.addEventListener("error", handleError);
+    } catch (error) {
+      console.error("[HeroWithVideo] Error adding event listeners:", error);
+    }
 
     return () => {
-      video.removeEventListener("canplay", handleCanPlay);
-      video.removeEventListener("loadeddata", handleLoadedData);
-      video.removeEventListener("error", handleError);
+      try {
+        video.removeEventListener("canplay", handleCanPlay);
+        video.removeEventListener("loadeddata", handleLoadedData);
+        video.removeEventListener("error", handleError);
+      } catch (error) {
+        console.error("[HeroWithVideo] Error removing event listeners:", error);
+      }
     };
   }, [isMobile]);
 
-  // Determine which video source to use
-  const currentVideoSrc = isMobile && mobileSrc ? mobileSrc : videoSrc;
+  // Determine which video source to use with error handling
+  const currentVideoSrc = (() => {
+    try {
+      return isMobile && mobileSrc ? mobileSrc : videoSrc;
+    } catch (error) {
+      console.error("[HeroWithVideo] Error determining video source:", error);
+      return videoSrc; // Fallback to default video source
+    }
+  })();
 
   return (
     <section className="relative h-screen w-full overflow-hidden">
@@ -110,9 +197,18 @@ export default function HeroWithVideo({
             }}
             onContextMenu={(e) => e.preventDefault()}
             onPlay={(e) => {
-              const video = e.currentTarget;
-              if (video.paused) {
-                video.play().catch(() => {});
+              try {
+                const video = e.currentTarget;
+                if (video.paused) {
+                  video.play().catch((error) => {
+                    console.warn("[HeroWithVideo] Error playing video:", error);
+                    setVideoError(true);
+                    setIsVideoLoaded(false);
+                  });
+                }
+              } catch (error) {
+                console.error("[HeroWithVideo] Error in onPlay handler:", error);
+                setVideoError(true);
               }
             }}
           >
@@ -122,7 +218,7 @@ export default function HeroWithVideo({
         )}
 
         {/* Fallback Image (shown on mobile or if video fails) */}
-        {(isMobile || !isVideoLoaded) && (
+        {(isMobile || !isVideoLoaded || videoError) && (
           <div
             className="w-full h-full bg-cover bg-center"
             style={{ backgroundImage: `url(${r2FallbackImage})` }}
@@ -181,4 +277,3 @@ export default function HeroWithVideo({
     </section>
   );
 }
-
