@@ -37,6 +37,9 @@ export async function POST(request: NextRequest) {
     // This ensures we use data directly from frontend, not query database again
     // This matches the working handleDownload (single) approach
     const { products: productsFromFrontend, serialCodes, batchNumber } = body;
+    const isGramRequest =
+      body?.isGram === true ||
+      (Array.isArray(productsFromFrontend) && productsFromFrontend.some((p: any) => p?.isGram));
 
     // Support both formats: products (new, preferred) or serialCodes (legacy, fallback)
     let productsData: Array<{ id: number; name: string; serialCode: string; weight: number }>;
@@ -59,6 +62,7 @@ export async function POST(request: NextRequest) {
         name: p.name,
         serialCode: p.serialCode,
         weight: p.weight,
+        isGram: p.isGram === true,
       }));
 
       console.log(`[QR Multiple] Using products from frontend (no database query):`, {
@@ -70,8 +74,6 @@ export async function POST(request: NextRequest) {
       console.log(
         `[QR Multiple] Received ${serialCodes.length} serial codes (LEGACY APPROACH - querying database)`
       );
-
-      // Normalize serialCodes to match database format (uppercase, trimmed)
       const normalizedSerialCodes = serialCodes.map((sc: string) =>
         String(sc).trim().toUpperCase()
       );
@@ -82,31 +84,54 @@ export async function POST(request: NextRequest) {
         total: normalizedSerialCodes.length,
       });
 
-      // Query database to get product data
-      const products = await prisma.product.findMany({
-        where: {
-          serialCode: {
-            in: normalizedSerialCodes,
+      if (isGramRequest) {
+        const gramItems = await prisma.gramProductItem.findMany({
+          where: {
+            uniqCode: {
+              in: normalizedSerialCodes,
+            },
           },
-          qrRecord: {
-            isNot: null,
+          include: {
+            batch: true,
           },
-        },
-        include: {
-          qrRecord: true,
-        },
-        orderBy: {
-          serialCode: "asc",
-        },
-      });
+          orderBy: {
+            uniqCode: "asc",
+          },
+        });
 
-      // Extract only the fields we need
-      productsData = products.map((p) => ({
-        id: p.id,
-        name: p.name,
-        serialCode: p.serialCode,
-        weight: p.weight,
-      }));
+        productsData = gramItems.map((p) => ({
+          id: p.id,
+          name: p.batch?.name || p.uniqCode,
+          serialCode: p.uniqCode,
+          weight: p.batch?.weight || 0,
+          isGram: true,
+        }));
+      } else {
+        const products = await prisma.product.findMany({
+          where: {
+            serialCode: {
+              in: normalizedSerialCodes,
+            },
+            qrRecord: {
+              isNot: null,
+            },
+          },
+          include: {
+            qrRecord: true,
+          },
+          orderBy: {
+            serialCode: "asc",
+          },
+        });
+
+        productsData = products.map((p) => ({
+          id: p.id,
+          name: p.name,
+          serialCode: p.serialCode,
+          weight: p.weight,
+          isGram: false,
+        }));
+      }
 
       console.log(`[QR Multiple] ====== DATABASE QUERY END (LEGACY) ======`);
     } else {
@@ -508,7 +533,9 @@ export async function POST(request: NextRequest) {
 
         // 1. Get QR code from endpoint (no PDFKit)
         // CRITICAL: Use productSerialCode (validated, uppercased) for QR generation
-        const qrUrl = `${internalBaseUrl}/api/qr/${encodeURIComponent(productSerialCode)}/qr-only`;
+        const productIsGram = (product as any).isGram === true || isGramRequest;
+        const qrBase = productIsGram ? "/api/qr-gram" : "/api/qr";
+        const qrUrl = `${internalBaseUrl}${qrBase}/${encodeURIComponent(productSerialCode)}/qr-only`;
         console.log(`[QR Multiple] Fetching QR from: ${qrUrl}`);
         const qrResponse = await fetch(qrUrl);
         if (!qrResponse.ok) {

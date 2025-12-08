@@ -7,15 +7,12 @@ import { prisma } from "@/lib/prisma";
  * Generate QR code ONLY (without text) for template overlay
  * This endpoint returns just the QR code image without any labels
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { serialCode: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { serialCode: string } }) {
   try {
     // Decode serialCode from URL params
     let { serialCode } = params;
     serialCode = decodeURIComponent(serialCode).trim().toUpperCase();
-    
+
     if (!serialCode) {
       return new NextResponse("Serial code is required", { status: 400 });
     }
@@ -47,7 +44,7 @@ export async function GET(
 
       finalSerialCode = gramItem.uniqCode;
     }
-    
+
     if (!finalSerialCode || finalSerialCode.trim().length < 3) {
       return new NextResponse("Invalid serial code", { status: 400 });
     }
@@ -72,7 +69,7 @@ export async function GET(
       headers: {
         "Content-Type": "image/png",
         "Cache-Control": "public, max-age=3600, must-revalidate",
-        "ETag": `"${finalSerialCode}-qr-only"`,
+        ETag: `"${finalSerialCode}-qr-only"`,
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type",
@@ -83,4 +80,3 @@ export async function GET(
     return new NextResponse("Failed to generate QR code", { status: 500 });
   }
 }
-

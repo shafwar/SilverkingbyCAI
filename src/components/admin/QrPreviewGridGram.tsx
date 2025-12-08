@@ -87,6 +87,7 @@ export function QrPreviewGridGram({ products }: Props) {
           // IMPORTANT: For page 2 we use uniqCode as serialCode
           serialCode: product.uniqCode,
           weight: product.weight,
+          isGram: true,
         },
       };
 
@@ -143,8 +144,10 @@ export function QrPreviewGridGram({ products }: Props) {
           name: p.name,
           serialCode: p.uniqCode,
           weight: p.weight,
+          isGram: true,
         })),
         batchNumber: 1,
+        isGram: true,
       };
 
       const response = await fetch("/api/qr/download-multiple-pdf", {
@@ -209,8 +212,8 @@ export function QrPreviewGridGram({ products }: Props) {
               {t("description")}
               {filteredProducts.length > 0 && (
                 <span className="ml-1 text-[#FFD700]/80">
-                  {filteredProducts.length}{" "}
-                  {filteredProducts.length === 1 ? t("item") : t("items")}.
+                  {filteredProducts.length} {filteredProducts.length === 1 ? t("item") : t("items")}
+                  .
                 </span>
               )}
             </motion.p>
@@ -223,9 +226,7 @@ export function QrPreviewGridGram({ products }: Props) {
               transition={{ duration: 0.5, delay: 0.4 }}
               className="flex flex-col items-end gap-1 rounded-2xl border border-white/10 bg-white/5 px-6 py-4 backdrop-blur-sm"
             >
-              <p className="text-xs uppercase tracking-[0.2em] text-white/40">
-                {t("totalAssets")}
-              </p>
+              <p className="text-xs uppercase tracking-[0.2em] text-white/40">{t("totalAssets")}</p>
               <p className="text-3xl font-light tracking-tight text-white">{products.length}</p>
             </motion.div>
           )}
@@ -355,21 +356,11 @@ export function QrPreviewGridGram({ products }: Props) {
             <table className="w-full text-sm text-white/70">
               <thead>
                 <tr className="bg-white/[0.03] text-left text-xs uppercase tracking-[0.4em] text-white/40">
-                  <th className="px-4 lg:px-6 py-4">
-                    {t("productName")}
-                  </th>
-                  <th className="px-4 lg:px-6 py-4">
-                    {t("weight")}
-                  </th>
-                  <th className="px-4 lg:px-6 py-4">
-                    {t("qrPreview")}
-                  </th>
-                  <th className="px-4 lg:px-6 py-4">
-                    Uniqcode
-                  </th>
-                  <th className="px-4 lg:px-6 py-4 text-right">
-                    {t("actions")}
-                  </th>
+                  <th className="px-4 lg:px-6 py-4">{t("productName")}</th>
+                  <th className="px-4 lg:px-6 py-4">{t("weight")}</th>
+                  <th className="px-4 lg:px-6 py-4">{t("qrPreview")}</th>
+                  <th className="px-4 lg:px-6 py-4">Uniqcode</th>
+                  <th className="px-4 lg:px-6 py-4 text-right">{t("actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -393,7 +384,7 @@ export function QrPreviewGridGram({ products }: Props) {
                           <img
                             src={
                               product.qrImageUrl ||
-                              `/api/qr/${encodeURIComponent(product.uniqCode)}`
+                              `/api/qr-gram/${encodeURIComponent(product.uniqCode)}`
                             }
                             alt={`QR code for ${product.name} - ${product.uniqCode}`}
                             className="h-12 w-12 flex-shrink-0 rounded-lg border border-white/10 bg-white p-1.5 object-contain"
@@ -437,9 +428,7 @@ export function QrPreviewGridGram({ products }: Props) {
           className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
         >
           {filteredProducts.length === 0 ? (
-            <div className="col-span-full text-center text-white/40 text-sm">
-              {t("noProducts")}
-            </div>
+            <div className="col-span-full text-center text-white/40 text-sm">{t("noProducts")}</div>
           ) : (
             filteredProducts.map((product) => (
               <div
@@ -449,8 +438,7 @@ export function QrPreviewGridGram({ products }: Props) {
                 <div className="relative aspect-square w-full rounded-lg border border-white/10 bg-white p-3 mb-3">
                   <img
                     src={
-                      product.qrImageUrl ||
-                      `/api/qr/${encodeURIComponent(product.uniqCode)}`
+                      product.qrImageUrl || `/api/qr-gram/${encodeURIComponent(product.uniqCode)}`
                     }
                     alt={product.name}
                     className="h-full w-full object-contain"
@@ -479,7 +467,7 @@ export function QrPreviewGridGram({ products }: Props) {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   key={`qr-modal-${selected.uniqCode}`}
-                  src={`/api/qr/${encodeURIComponent(selected.uniqCode)}`}
+                  src={`/api/qr-gram/${encodeURIComponent(selected.uniqCode)}`}
                   alt={selected.name}
                   className="h-full w-full object-contain transition-opacity duration-300"
                   loading="eager"
@@ -501,4 +489,3 @@ export function QrPreviewGridGram({ products }: Props) {
     </div>
   );
 }
-

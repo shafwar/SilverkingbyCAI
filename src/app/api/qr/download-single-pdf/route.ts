@@ -47,14 +47,12 @@ export async function POST(request: NextRequest) {
       product.name.trim().length === 0 ||
       product.serialCode.trim().length === 0
     ) {
-      return NextResponse.json(
-        { error: "Invalid product data" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid product data" }, { status: 400 });
     }
 
     const productName = String(product.name).trim();
     const productSerialCode = String(product.serialCode).trim().toUpperCase();
+    const isGram = Boolean(product.isGram);
 
     // --- Load Serticard templates (same strategy as download-multiple-pdf) ---
     const R2_PUBLIC_URL_ENV = process.env.R2_PUBLIC_URL;
@@ -132,10 +130,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!frontTemplateImage || !backTemplateImage) {
-      return NextResponse.json(
-        { error: "Failed to load Serticard templates" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to load Serticard templates" }, { status: 500 });
     }
 
     // --- Fetch QR-only image for this serial/uniq code ---
@@ -143,9 +138,8 @@ export async function POST(request: NextRequest) {
       process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const internalBaseUrl = baseUrl.replace(/\/$/, "");
 
-    const qrUrl = `${internalBaseUrl}/api/qr/${encodeURIComponent(
-      productSerialCode
-    )}/qr-only`;
+    const qrBase = isGram ? "/api/qr-gram" : "/api/qr";
+    const qrUrl = `${internalBaseUrl}${qrBase}/${encodeURIComponent(productSerialCode)}/qr-only`;
     const qrResponse = await fetch(qrUrl);
     if (!qrResponse.ok) {
       const text = await qrResponse.text().catch(() => "");
@@ -165,11 +159,7 @@ export async function POST(request: NextRequest) {
     const frontCtx = frontCanvas.getContext("2d");
     frontCtx.drawImage(frontTemplateImage, 0, 0);
 
-    const qrSize = Math.min(
-      frontTemplateImage.width * 0.55,
-      frontTemplateImage.height * 0.55,
-      900
-    );
+    const qrSize = Math.min(frontTemplateImage.width * 0.55, frontTemplateImage.height * 0.55, 900);
     const qrX = (frontTemplateImage.width - qrSize) / 2;
     const qrY = frontTemplateImage.height * 0.38;
 
@@ -187,8 +177,7 @@ export async function POST(request: NextRequest) {
     const nameTextWidth = frontCtx.measureText(productName).width;
     const placeholderNameWidth = frontCtx.measureText("0000000000000000").width;
     const nameTextHeight = nameFontSize;
-    const overwriteWidth =
-      Math.max(nameTextWidth, placeholderNameWidth) + textOverwritePadding * 2;
+    const overwriteWidth = Math.max(nameTextWidth, placeholderNameWidth) + textOverwritePadding * 2;
 
     frontCtx.fillStyle = "#ffffff";
     frontCtx.fillRect(
@@ -284,5 +273,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-

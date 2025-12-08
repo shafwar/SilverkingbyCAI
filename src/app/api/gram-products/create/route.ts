@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { gramProductCreateSchema } from "@/lib/validators/gram-product";
 import { generateSerialCode } from "@/lib/serial";
 import { generateAndStoreQR } from "@/lib/qr";
-import { getVerifyUrl } from "@/utils/constants";
+import { getBaseUrl } from "@/utils/constants";
 
 // Folder in R2 for the new gram-based QR assets
 const GRAM_QR_FOLDER = "qr-gram";
@@ -25,13 +25,10 @@ export async function POST(request: Request) {
 
   const payload = parsed.data;
 
-  // Business rules for QR behaviour based on weight
-  const isSmallWeight = payload.weight < 100; // 50gr, 100gr, etc.
-  const qrMode = isSmallWeight ? "SINGLE_QR" : "PER_UNIT_QR";
-  const weightGroup = isSmallWeight ? "SMALL" : "LARGE";
-
-  // For small weights we only create 1 QR regardless of quantity
-  const qrCount = isSmallWeight ? 1 : payload.quantity;
+  // Business rule: ALWAYS single QR per batch (regardless of weight/quantity)
+  const qrMode = "SINGLE_QR";
+  const weightGroup = payload.weight < 100 ? "SMALL" : "LARGE";
+  const qrCount = 1;
 
   try {
     // Create batch record first
@@ -75,7 +72,7 @@ export async function POST(request: Request) {
         throw new Error("Failed to generate unique QR code");
       }
 
-      const verifyUrl = getVerifyUrl(uniqCode);
+      const verifyUrl = `${getBaseUrl()}/verify-gram/${encodeURIComponent(uniqCode)}`;
       const { url: qrImageUrl } = await generateAndStoreQR(
         uniqCode,
         verifyUrl,
