@@ -7,8 +7,9 @@ import { useTranslations } from "next-intl";
 import type { Product } from "./ProductModal";
 
 const SLIDE_INTERVAL_MS = 8000; // 8s cadence (within requested 7-9s)
-let slideStartTimeoutId: ReturnType<typeof window.setTimeout> | null = null;
-let slideIntervalId: ReturnType<typeof window.setInterval> | null = null;
+// Use browser timer IDs (numbers) to avoid Node Timeout typing conflicts
+let slideStartTimeoutId: number | null = null;
+let slideIntervalId: number | null = null;
 const slideListeners = new Set<() => void>();
 
 const startGlobalSlider = () => {

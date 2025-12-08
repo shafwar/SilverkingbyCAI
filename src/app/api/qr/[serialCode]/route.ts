@@ -4,15 +4,12 @@ import { addProductInfoToQR } from "@/lib/qr";
 import { getVerifyUrl } from "@/utils/constants";
 import { prisma } from "@/lib/prisma";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { serialCode: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { serialCode: string } }) {
   try {
     // Decode serialCode from URL params (handle URL encoding)
     let { serialCode } = params;
     serialCode = decodeURIComponent(serialCode).trim().toUpperCase();
-    
+
     if (!serialCode) {
       return new NextResponse("Serial code is required", { status: 400 });
     }
@@ -50,21 +47,21 @@ export async function GET(
       finalSerialCode = gramItem.uniqCode;
       productName = gramItem.batch.name;
     }
-    
+
     // Validate finalSerialCode
     if (!finalSerialCode || finalSerialCode.trim().length < 3) {
       console.error("[QR Route] Invalid finalSerialCode from database:", {
         finalSerialCode,
-        productSerialCode: product.serialCode,
-        paramSerialCode: serialCode
+        productSerialCode: product?.serialCode ?? null,
+        paramSerialCode: serialCode,
       });
       return new NextResponse("Invalid serial code in database", { status: 400 });
     }
-    
+
     console.log("[QR Route] Using serial code for QR generation:", {
       finalSerialCode,
       length: finalSerialCode.length,
-      productName: productName
+      productName: productName,
     });
 
     // Get verify URL using centralized function
@@ -94,7 +91,7 @@ export async function GET(
         "Content-Type": "image/png",
         "Cache-Control": "public, max-age=3600, must-revalidate",
         // Add ETag based on serial code to enable proper cache invalidation
-        "ETag": `"${finalSerialCode}"`,
+        ETag: `"${finalSerialCode}"`,
       },
     });
   } catch (error) {
@@ -102,4 +99,3 @@ export async function GET(
     return new NextResponse("Failed to generate QR code", { status: 500 });
   }
 }
-

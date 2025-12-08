@@ -50,22 +50,29 @@ export async function POST(request: Request) {
     for (let i = 0; i < qrCount; i++) {
       // Generate a uniq code for each QR (independent from legacy serials)
       // Prefix "GK" (Gram King) keeps it visually distinct from legacy SK* serials
-      let uniqCode: string;
+      let uniqCode: string | undefined;
 
       // Small retry loop in case of very rare collision on uniqCode
       for (let attempt = 0; attempt < 5; attempt++) {
-        uniqCode = generateSerialCode("GK");
+        const candidate = generateSerialCode("GK");
 
         const existing = await prisma.gramProductItem.findUnique({
-          where: { uniqCode },
+          where: { uniqCode: candidate },
           select: { id: true },
         });
 
-        if (!existing) break;
+        if (!existing) {
+          uniqCode = candidate;
+          break;
+        }
 
         if (attempt === 4) {
           throw new Error("Failed to generate unique QR code after multiple attempts");
         }
+      }
+
+      if (!uniqCode) {
+        throw new Error("Failed to generate unique QR code");
       }
 
       const verifyUrl = getVerifyUrl(uniqCode);
@@ -108,5 +115,3 @@ export async function POST(request: Request) {
     );
   }
 }
-
-
