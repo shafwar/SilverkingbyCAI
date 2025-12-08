@@ -12,18 +12,44 @@ export async function GET() {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
-    const [totalProducts, totalQrCodes, totalScansAggregate, scansToday] = await Promise.all([
+    const [
+      totalProducts,
+      totalQrCodes,
+      totalScansAggregate,
+      scansToday,
+      totalGramBatches,
+      totalGramItems,
+      totalGramScansAggregate,
+      gramScansToday,
+    ] = await Promise.all([
       prisma.product.count(),
       prisma.qrRecord.count(),
       prisma.qrRecord.aggregate({ _sum: { scanCount: true } }),
       prisma.qRScanLog.count({ where: { scannedAt: { gte: startOfDay } } }),
+      prisma.gramProductBatch.count(),
+      prisma.gramProductItem.count(),
+      prisma.gramProductItem.aggregate({ _sum: { scanCount: true } }),
+      prisma.gramQRScanLog.count({ where: { scannedAt: { gte: startOfDay } } }),
     ]);
+
+    const page1TotalScans = totalScansAggregate._sum.scanCount ?? 0;
+    const page2TotalScans = totalGramScansAggregate._sum.scanCount ?? 0;
 
     return NextResponse.json({
       totalProducts,
       totalQrCodes,
-      totalScans: totalScansAggregate._sum.scanCount ?? 0,
+      totalScans: page1TotalScans,
       scansToday,
+      // Page 2 (Gram) data
+      gramBatches: totalGramBatches,
+      gramItems: totalGramItems,
+      gramTotalScans: page2TotalScans,
+      gramScansToday,
+      // Combined totals
+      combinedTotalProducts: totalProducts + totalGramBatches,
+      combinedTotalQrCodes: totalQrCodes + totalGramItems,
+      combinedTotalScans: page1TotalScans + page2TotalScans,
+      combinedScansToday: scansToday + gramScansToday,
     });
   } catch (error) {
     console.error("Error fetching stats:", error);

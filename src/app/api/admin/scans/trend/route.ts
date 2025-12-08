@@ -78,7 +78,7 @@ export async function GET(request: Request) {
       endDate.setHours(23, 59, 59, 999);
     }
 
-    // Fetch scan logs
+    // Fetch scan logs (Page 1)
     const scanLogs = await prisma.qRScanLog.findMany({
       where: {
         scannedAt: {
@@ -89,8 +89,19 @@ export async function GET(request: Request) {
       select: { scannedAt: true },
     });
 
+    // Fetch gram scan logs (Page 2)
+    const gramScanLogs = await prisma.gramQRScanLog.findMany({
+      where: {
+        scannedAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      select: { scannedAt: true },
+    });
+
     // Create buckets for each day
-    const buckets: Array<{ key: string; label: string; count: number; date: Date }> = [];
+    const buckets: Array<{ key: string; label: string; count: number; page1Count: number; page2Count: number; date: Date }> = [];
     
     if (isMonthView) {
       // Month view: create buckets for each day from day 1 to end date
@@ -101,6 +112,8 @@ export async function GET(request: Request) {
           key: currentDate.toISOString().slice(0, 10),
           label: dayLabel,
           count: 0,
+          page1Count: 0,
+          page2Count: 0,
           date: new Date(currentDate),
         });
         currentDate.setDate(currentDate.getDate() + 1);
@@ -116,6 +129,8 @@ export async function GET(request: Request) {
           key: day.toISOString().slice(0, 10),
           label: dayLabel,
           count: 0,
+          page1Count: 0,
+          page2Count: 0,
           date: new Date(day),
         });
       }
@@ -124,10 +139,22 @@ export async function GET(request: Request) {
     // Map scan logs to buckets
     const bucketMap = new Map(buckets.map((bucket) => [bucket.key, bucket]));
 
+    // Count Page 1 scans
     scanLogs.forEach((log) => {
       const key = log.scannedAt.toISOString().slice(0, 10);
       const bucket = bucketMap.get(key);
       if (bucket) {
+        bucket.page1Count += 1;
+        bucket.count += 1;
+      }
+    });
+
+    // Count Page 2 scans
+    gramScanLogs.forEach((log) => {
+      const key = log.scannedAt.toISOString().slice(0, 10);
+      const bucket = bucketMap.get(key);
+      if (bucket) {
+        bucket.page2Count += 1;
         bucket.count += 1;
       }
     });
@@ -136,7 +163,12 @@ export async function GET(request: Request) {
       range: buckets.length,
       month: isMonthView ? (startDate.getMonth() + 1) : null,
       year: isMonthView ? startDate.getFullYear() : null,
-      data: buckets.map((bucket) => ({ date: bucket.label, count: bucket.count })),
+      data: buckets.map((bucket) => ({
+        date: bucket.label,
+        count: bucket.count,
+        page1Count: bucket.page1Count,
+        page2Count: bucket.page2Count,
+      })),
     });
   } catch (error) {
     console.error("Error fetching scan trend:", error);

@@ -13,18 +13,25 @@ import { DataTable, TableColumn } from "./DataTable";
 import { AnimatedCard } from "./AnimatedCard";
 
 type LogItem = {
-  id: number;
+  id: string | number;
   productName: string;
   serialCode: string;
   scannedAt: string;
   ip?: string | null;
   userAgent?: string | null;
   location?: string | null;
+  source?: "page1" | "page2";
 };
 
 type LogsResponse = {
   logs: LogItem[];
-  meta: { page: number; totalPages: number; total: number };
+  meta: {
+    page: number;
+    totalPages: number;
+    total: number;
+    page1Total?: number;
+    page2Total?: number;
+  };
 };
 
 export function LogsTable() {
@@ -63,7 +70,21 @@ export function LogsTable() {
 
   const columns: TableColumn<LogItem>[] = useMemo(
     () => [
-      { key: "productName", header: tLogs('product'), sortable: true },
+      {
+        key: "productName",
+        header: tLogs('product'),
+        sortable: true,
+        render: (row) => (
+          <div className="flex items-center gap-2">
+            <span>{row.productName}</span>
+            {row.source === "page2" && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                Page 2
+              </span>
+            )}
+          </div>
+        ),
+      },
       {
         key: "serialCode",
         header: tLogs('serial'),

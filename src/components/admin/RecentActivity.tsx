@@ -10,12 +10,13 @@ import { AnimatedCard } from "./AnimatedCard";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 
 type ActivityItem = {
-  id: number;
+  id: string | number;
   serialCode: string;
   productName: string;
   scannedAt: string;
   ip?: string | null;
   location?: string | null;
+  source?: "page1" | "page2";
 };
 
 type ActivityResponse = {
@@ -65,11 +66,18 @@ export function RecentActivity({ compact = false }: RecentActivityProps) {
               className={`rounded-2xl border border-white/10 bg-white/5 ${compact ? "p-3" : "p-4"}`}
             >
               <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className={`text-white/70 ${compact ? "text-xs" : "text-sm"}`}>{item.productName}</p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className={`text-white/70 ${compact ? "text-xs" : "text-sm"} truncate`}>{item.productName}</p>
+                    {item.source === "page2" && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 flex-shrink-0">
+                        Page 2
+                      </span>
+                    )}
+                  </div>
                   <p className={`font-semibold text-white ${compact ? "text-lg" : "text-xl"}`}>{item.serialCode}</p>
                 </div>
-                <div className="text-right text-xs uppercase tracking-[0.3em] text-[#FFD700]">
+                <div className="text-right text-xs uppercase tracking-[0.3em] text-[#FFD700] flex-shrink-0">
                   {t('verified')}
                 </div>
               </div>

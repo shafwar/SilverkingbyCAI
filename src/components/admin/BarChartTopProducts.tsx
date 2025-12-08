@@ -16,7 +16,7 @@ import { fetcher } from "@/lib/fetcher";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 
 type TopProductsResponse = {
-  products: { name: string; scans: number }[];
+  products: { name: string; scans: number; source?: "page1" | "page2" }[];
 };
 
 export function BarChartTopProducts() {

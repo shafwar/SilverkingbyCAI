@@ -24,7 +24,7 @@ type TrendResponse = {
   range: number;
   month?: number | null;
   year?: number | null;
-  data: { date: string; count: number }[];
+  data: { date: string; count: number; page1Count?: number; page2Count?: number }[];
 };
 
 type ViewMode = "7d" | "30d" | "month";
@@ -171,6 +171,15 @@ export function LineChartScans() {
                 }}
                 labelStyle={{ color: "#fff" }}
                 itemStyle={{ color: "#FFD700" }}
+                formatter={(value: any, name: string, props: any) => {
+                  if (props.payload.page1Count !== undefined && props.payload.page2Count !== undefined) {
+                    return [
+                      `${value} total (${props.payload.page1Count} Page 1 + ${props.payload.page2Count} Page 2)`,
+                      "Scans",
+                    ];
+                  }
+                  return [value, "Scans"];
+                }}
               />
               <Line
                 type="monotone"

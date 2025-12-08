@@ -9,7 +9,7 @@ import { LoadingSkeleton } from "./LoadingSkeleton";
 import { motion } from "framer-motion";
 
 type DistributionResponse = {
-  distribution: { label: string; value: number }[];
+  distribution: { label: string; value: number; source?: "page1" | "page2" }[];
 };
 
 // Enhanced color palette with gradients
