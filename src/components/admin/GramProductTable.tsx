@@ -59,10 +59,11 @@ export function GramProductTable({ batches, onMutate }: Props) {
   }, [batches, searchQuery, weightFilter]);
 
   const getModeLabel = (batch: GramBatchRow) => {
-    if (batch.qrMode === "SINGLE_QR" || batch.weight < 100) {
+    // Logika: < 100 gr = small weight, >= 100 gr = large weight
+    if (batch.weight < 100) {
       return "1 QR (small weight)";
     }
-    return "Per-unit QR (large weight)";
+    return "1 QR (large weight)";
   };
 
   async function handleDelete(batch: GramBatchRow) {
