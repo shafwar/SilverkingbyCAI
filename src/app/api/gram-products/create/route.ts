@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { gramProductCreateSchema } from "@/lib/validators/gram-product";
 import { generateSerialCode } from "@/lib/serial";
 import { generateAndStoreQR } from "@/lib/qr";
-import { getBaseUrl } from "@/utils/constants";
+import { getVerifyUrl } from "@/utils/constants";
 
 // Folder in R2 for the new gram-based QR assets
 const GRAM_QR_FOLDER = "qr-gram";
@@ -72,7 +72,8 @@ export async function POST(request: Request) {
         throw new Error("Failed to generate unique QR code");
       }
 
-      const verifyUrl = `${getBaseUrl()}/verify-gram/${encodeURIComponent(uniqCode)}`;
+      // Gunakan verify URL utama agar diarahkan ke halaman authenticity yang sama
+      const verifyUrl = getVerifyUrl(uniqCode);
       const { url: qrImageUrl } = await generateAndStoreQR(
         uniqCode,
         verifyUrl,

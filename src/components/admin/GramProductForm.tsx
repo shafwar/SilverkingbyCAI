@@ -79,14 +79,12 @@ export function GramProductForm({ defaultValues }: GramProductFormProps) {
           description: `Created ${qrCount} QR code${qrCount === 1 ? "" : "s"} for ${
             values.name
           } (${values.weight}gr)`,
-          duration: 4000,
+          duration: 2000,
         });
 
-        form.reset({
-          name: "",
-          weight: values.weight,
-          quantity: 1,
-        });
+        // Redirect to QR Preview Page 2
+        router.push("/admin/qr-preview/page2");
+        return;
       }
     } catch (error: any) {
       console.error(error);

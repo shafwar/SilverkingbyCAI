@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import QRCode from "qrcode";
 import { prisma } from "@/lib/prisma";
-import { getBaseUrl } from "@/utils/constants";
+import { getVerifyUrl } from "@/utils/constants";
 
 /**
  * Gram-only QR (tanpa teks) untuk Page 2.
@@ -25,7 +25,8 @@ export async function GET(request: NextRequest, { params }: { params: { uniqCode
       return new NextResponse("Gram item not found", { status: 404 });
     }
 
-    const verifyUrl = `${getBaseUrl()}/verify-gram/${encodeURIComponent(gramItem.uniqCode)}`;
+    // Gunakan verify URL utama agar halaman authenticity tetap sama seperti Page 1
+    const verifyUrl = getVerifyUrl(gramItem.uniqCode);
 
     const qrBuffer = await QRCode.toBuffer(verifyUrl, {
       width: 800,

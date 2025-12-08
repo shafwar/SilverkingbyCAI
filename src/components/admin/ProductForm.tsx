@@ -138,8 +138,8 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
         });
       }
 
-      router.push("/admin/products");
-      router.refresh();
+      // Redirect to QR Preview Page 1 after create/update
+      router.push("/admin/qr-preview");
     } catch (error: any) {
       console.error(error);
       toast.error(t('saveFailed'), {
