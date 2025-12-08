@@ -20,6 +20,7 @@ type GramBatchRow = {
 
 type Props = {
   batches: GramBatchRow[];
+  onMutate?: () => void;
 };
 
 export function GramProductTable({ batches }: Props) {

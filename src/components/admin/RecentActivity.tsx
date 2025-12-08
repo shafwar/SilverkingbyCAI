@@ -28,12 +28,10 @@ type RecentActivityProps = {
 };
 
 export function RecentActivity({ compact = false }: RecentActivityProps) {
-  const t = useTranslations('admin.activity');
-  const { data, error, isLoading } = useSWR<ActivityResponse>(
-    "/api/admin/logs?limit=6",
-    fetcher,
-    { refreshInterval: 15000 }
-  );
+  const t = useTranslations("admin.activity");
+  const { data, error, isLoading } = useSWR<ActivityResponse>("/api/admin/logs?limit=6", fetcher, {
+    refreshInterval: 15000,
+  });
 
   const logs = data?.logs ?? [];
   const loading = isLoading;
@@ -42,17 +40,19 @@ export function RecentActivity({ compact = false }: RecentActivityProps) {
   return (
     <AnimatedCard className={compact ? "max-h-[480px] overflow-hidden" : undefined}>
       <div className={compact ? "mb-4" : "mb-6"}>
-        <p className="text-xs uppercase tracking-[0.35em] text-white/50">{t('liveFeed')}</p>
-        <h3 className="mt-2 text-2xl font-semibold text-white">{t('recentScanActivity')}</h3>
+        <p className="text-xs uppercase tracking-[0.35em] text-white/50">{t("liveFeed")}</p>
+        <h3 className="mt-2 text-2xl font-semibold text-white">{t("recentScanActivity")}</h3>
       </div>
 
       {loading && <LoadingSkeleton className="h-60 w-full" />}
 
-      {hasError && <p className="text-sm text-red-400">{t('unableToLoad')}</p>}
+      {hasError && <p className="text-sm text-red-400">{t("unableToLoad")}</p>}
 
       <div
         className={`space-y-4 ${
-          compact ? "max-h-[360px] overflow-y-auto pr-2 scrollbar-thin scrollbar-track-transparent" : ""
+          compact
+            ? "max-h-[360px] overflow-y-auto pr-2 scrollbar-thin scrollbar-track-transparent"
+            : ""
         }`}
       >
         <AnimatePresence>
@@ -68,17 +68,21 @@ export function RecentActivity({ compact = false }: RecentActivityProps) {
               <div className="flex items-center justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className={`text-white/70 ${compact ? "text-xs" : "text-sm"} truncate`}>{item.productName}</p>
+                    <p className={`text-white/70 ${compact ? "text-xs" : "text-sm"} truncate`}>
+                      {item.productName}
+                    </p>
                     {item.source === "page2" && (
                       <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 flex-shrink-0">
                         Page 2
                       </span>
                     )}
                   </div>
-                  <p className={`font-semibold text-white ${compact ? "text-lg" : "text-xl"}`}>{item.serialCode}</p>
+                  <p className={`font-semibold text-white ${compact ? "text-lg" : "text-xl"}`}>
+                    {item.serialCode}
+                  </p>
                 </div>
                 <div className="text-right text-xs uppercase tracking-[0.3em] text-[#FFD700] flex-shrink-0">
-                  {t('verified')}
+                  {t("verified")}
                 </div>
               </div>
               <div
@@ -105,5 +109,3 @@ export function RecentActivity({ compact = false }: RecentActivityProps) {
     </AnimatedCard>
   );
 }
-
-

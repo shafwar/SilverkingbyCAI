@@ -25,18 +25,31 @@ const COLORS = [
 ];
 
 // Custom tooltip component - will be wrapped to receive translations
-const CustomTooltip = ({ active, payload, translate }: { active?: boolean; payload?: any[]; translate: (key: string) => string }) => {
+const CustomTooltip = ({
+  active,
+  payload,
+  translate,
+}: {
+  active?: boolean;
+  payload?: any[];
+  translate: (key: string) => string;
+}) => {
   if (active && payload && payload.length) {
     const data = payload[0];
     if (!data || data.value == null) return null;
     const total = payload.reduce((sum: number, item: any) => sum + (item.value || 0), 0);
-    const percentage = total > 0 ? ((data.value / total) * 100).toFixed(1) : '0';
+    const percentage = total > 0 ? ((data.value / total) * 100).toFixed(1) : "0";
 
     return (
       <div className="bg-black/95 backdrop-blur-xl border border-white/20 rounded-xl p-3 shadow-2xl">
-        <p className="text-white font-semibold mb-1">{data.name || ''}</p>
-        <p className="text-[#FFD700] text-lg font-bold">{data.value} {translate('scans')}</p>
-        <p className="text-white/60 text-xs mt-1">{percentage}{translate('ofTotal')}</p>
+        <p className="text-white font-semibold mb-1">{data.name || ""}</p>
+        <p className="text-[#FFD700] text-lg font-bold">
+          {data.value} {translate("scans")}
+        </p>
+        <p className="text-white/60 text-xs mt-1">
+          {percentage}
+          {translate("ofTotal")}
+        </p>
       </div>
     );
   }
@@ -44,11 +57,11 @@ const CustomTooltip = ({ active, payload, translate }: { active?: boolean; paylo
 };
 
 export function DonutChartDistribution() {
-  const t = useTranslations('admin.charts');
+  const t = useTranslations("admin.charts");
   const { data, error, isLoading } = useSWR<DistributionResponse>(
     "/api/admin/scans/top-products?view=distribution",
     fetcher,
-    { 
+    {
       refreshInterval: 30000, // Refresh every 30 seconds for real-time updates
       revalidateOnFocus: true, // Revalidate when user returns to tab
       revalidateOnReconnect: true, // Revalidate when connection is restored
@@ -63,15 +76,21 @@ export function DonutChartDistribution() {
   return (
     <AnimatedCard>
       <div className="mb-4 sm:mb-6">
-        <p className="text-[10px] sm:text-xs uppercase tracking-[0.3em] sm:tracking-[0.35em] text-white/50">{t('globalFootprint')}</p>
-        <h3 className="mt-1.5 sm:mt-2 text-lg sm:text-xl md:text-2xl font-semibold text-white">{t('scanDistribution')}</h3>
+        <p className="text-[10px] sm:text-xs uppercase tracking-[0.3em] sm:tracking-[0.35em] text-white/50">
+          {t("globalFootprint")}
+        </p>
+        <h3 className="mt-1.5 sm:mt-2 text-lg sm:text-xl md:text-2xl font-semibold text-white">
+          {t("scanDistribution")}
+        </h3>
       </div>
 
       {loading && <LoadingSkeleton className="h-48 sm:h-56 md:h-64 w-full" />}
 
       {hasError && (
         <div className="flex items-center justify-center h-48 sm:h-56 md:h-64 rounded-xl border border-red-500/20 bg-red-500/5">
-          <p className="text-xs sm:text-sm text-red-400 px-4 text-center">{t('unableToLoadDistribution')}</p>
+          <p className="text-xs sm:text-sm text-red-400 px-4 text-center">
+            {t("unableToLoadDistribution")}
+          </p>
         </div>
       )}
 
@@ -97,8 +116,8 @@ export function DonutChartDistribution() {
               />
             </svg>
           </div>
-          <p className="text-white/60 text-sm font-medium">{t('noData')}</p>
-          <p className="text-white/40 text-xs mt-1">{t('noData')}</p>
+          <p className="text-white/60 text-sm font-medium">{t("noData")}</p>
+          <p className="text-white/40 text-xs mt-1">{t("noData")}</p>
         </motion.div>
       )}
 
@@ -178,7 +197,9 @@ export function DonutChartDistribution() {
                 >
                   {totalScans}
                 </motion.p>
-                <p className="text-white/50 text-xs uppercase tracking-wider mt-1">{t('totalScans')}</p>
+                <p className="text-white/50 text-xs uppercase tracking-wider mt-1">
+                  {t("totalScans")}
+                </p>
               </div>
             </div>
           </div>
@@ -207,7 +228,7 @@ export function DonutChartDistribution() {
                   <div className="flex-1 min-w-0">
                     <p className="text-white text-sm font-medium truncate">{entry.label}</p>
                     <p className="text-white/50 text-xs">
-                      {entry.value} {t('scans')} · {percentage}%
+                      {entry.value} {t("scans")} · {percentage}%
                     </p>
                   </div>
                 </motion.div>
@@ -219,5 +240,3 @@ export function DonutChartDistribution() {
     </AnimatedCard>
   );
 }
-
-

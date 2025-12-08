@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import useSWR from "swr";
 import { GramProductTable } from "@/components/admin/GramProductTable";
+import { fetcher } from "@/lib/fetcher";
+import { LoadingSkeleton } from "@/components/admin/LoadingSkeleton";
 
 type GramBatchRow = {
   id: number;
@@ -13,10 +16,29 @@ type GramBatchRow = {
   weightGroup: string | null;
   createdAt: string;
   qrCount: number;
+  totalScanCount?: number;
 };
 
-export function GramProductsPageClient({ batches }: { batches: GramBatchRow[] }) {
+type BatchesResponse = {
+  batches: GramBatchRow[];
+};
+
+export function GramProductsPageClient({ batches: initialBatches }: { batches: GramBatchRow[] }) {
   const t = useTranslations("admin.productsDetail");
+
+  // Fetch real-time data with SWR
+  const { data, error, isLoading, mutate } = useSWR<BatchesResponse>(
+    "/api/gram-products/list",
+    fetcher,
+    {
+      refreshInterval: 30000, // Refresh every 30 seconds for real-time updates
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      fallbackData: { batches: initialBatches }, // Use initial server data as fallback
+    }
+  );
+
+  const batches = data?.batches ?? initialBatches;
 
   return (
     <div className="space-y-6 h-[calc(100vh-8rem)] flex flex-col">
@@ -54,7 +76,21 @@ export function GramProductsPageClient({ batches }: { batches: GramBatchRow[] })
         </div>
       </div>
       <div className="flex-1 overflow-y-auto pr-2 scrollbar-admin">
-        <GramProductTable batches={batches} />
+        {isLoading && !data ? (
+          <LoadingSkeleton className="h-64 w-full" />
+        ) : error ? (
+          <div className="rounded-3xl border border-red-500/20 bg-red-500/10 p-6 text-center">
+            <p className="text-sm text-red-400">Failed to load batches. Please refresh.</p>
+            <button
+              onClick={() => mutate()}
+              className="mt-4 rounded-full border border-white/20 px-4 py-2 text-sm text-white hover:bg-white/10"
+            >
+              Retry
+            </button>
+          </div>
+        ) : (
+          <GramProductTable batches={batches} onMutate={mutate} />
+        )}
       </div>
     </div>
   );

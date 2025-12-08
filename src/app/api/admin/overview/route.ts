@@ -10,29 +10,23 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const [
-      productCount,
-      totalScans,
-      recentLogs,
-      gramBatchCount,
-      gramTotalScans,
-      recentGramLogs,
-    ] = await Promise.all([
-      prisma.product.count(),
-      prisma.qrRecord.aggregate({ _sum: { scanCount: true } }),
-      prisma.qRScanLog.findMany({
-        orderBy: { scannedAt: "desc" },
-        include: { qrRecord: { include: { product: true } } },
-        take: 10,
-      }),
-      prisma.gramProductBatch.count(),
-      prisma.gramProductItem.aggregate({ _sum: { scanCount: true } }),
-      prisma.gramQRScanLog.findMany({
-        orderBy: { scannedAt: "desc" },
-        include: { qrItem: { include: { batch: true } } },
-        take: 10,
-      }),
-    ]);
+    const [productCount, totalScans, recentLogs, gramBatchCount, gramTotalScans, recentGramLogs] =
+      await Promise.all([
+        prisma.product.count(),
+        prisma.qrRecord.aggregate({ _sum: { scanCount: true } }),
+        prisma.qRScanLog.findMany({
+          orderBy: { scannedAt: "desc" },
+          include: { qrRecord: { include: { product: true } } },
+          take: 10,
+        }),
+        prisma.gramProductBatch.count(),
+        prisma.gramProductItem.aggregate({ _sum: { scanCount: true } }),
+        prisma.gramQRScanLog.findMany({
+          orderBy: { scannedAt: "desc" },
+          include: { qrItem: { include: { batch: true } } },
+          take: 10,
+        }),
+      ]);
 
     // Format gram logs to match page1 format
     const formattedGramLogs = recentGramLogs.map((log) => ({
@@ -77,10 +71,6 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Error fetching overview:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch overview" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch overview" }, { status: 500 });
   }
 }
-

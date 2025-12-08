@@ -30,7 +30,7 @@ type TrendResponse = {
 type ViewMode = "7d" | "30d" | "month";
 
 export function LineChartScans() {
-  const t = useTranslations('admin.charts');
+  const t = useTranslations("admin.charts");
   const now = new Date();
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [month, setMonth] = useState(now.getMonth() + 1); // 1-indexed
@@ -56,18 +56,14 @@ export function LineChartScans() {
     return year === currentDate.getFullYear() && month === currentDate.getMonth() + 1;
   }, [viewMode, month, year]);
 
-  const { data, error, isLoading, mutate } = useSWR<TrendResponse>(
-    apiUrl,
-    fetcher,
-    {
-      // Only refresh in real-time for current month or recent days (every 30 seconds)
-      // History months don't need real-time updates
-      refreshInterval: shouldRefresh ? 30000 : 0,
-      revalidateOnFocus: shouldRefresh, // Revalidate on focus only for current data
-      revalidateOnReconnect: true, // Always revalidate when connection is restored
-      dedupingInterval: 5000, // Dedupe requests within 5 seconds
-    }
-  );
+  const { data, error, isLoading, mutate } = useSWR<TrendResponse>(apiUrl, fetcher, {
+    // Only refresh in real-time for current month or recent days (every 30 seconds)
+    // History months don't need real-time updates
+    refreshInterval: shouldRefresh ? 30000 : 0,
+    revalidateOnFocus: shouldRefresh, // Revalidate on focus only for current data
+    revalidateOnReconnect: true, // Always revalidate when connection is restored
+    dedupingInterval: 5000, // Dedupe requests within 5 seconds
+  });
 
   const handleMonthYearChange = (newMonth: number, newYear: number) => {
     setMonth(newMonth);
@@ -90,8 +86,12 @@ export function LineChartScans() {
     <AnimatedCard>
       <div className="mb-4 sm:mb-6 flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-[10px] sm:text-xs uppercase tracking-[0.3em] sm:tracking-[0.35em] text-white/50">{t('verificationVolume')}</p>
-          <h3 className="mt-1.5 sm:mt-2 text-lg sm:text-xl md:text-2xl font-semibold text-white">{t('scanTrajectory')}</h3>
+          <p className="text-[10px] sm:text-xs uppercase tracking-[0.3em] sm:tracking-[0.35em] text-white/50">
+            {t("verificationVolume")}
+          </p>
+          <h3 className="mt-1.5 sm:mt-2 text-lg sm:text-xl md:text-2xl font-semibold text-white">
+            {t("scanTrajectory")}
+          </h3>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Quick range buttons */}
@@ -105,7 +105,7 @@ export function LineChartScans() {
                   : "text-white/60 hover:text-white hover:bg-white/10"
               )}
             >
-              {t('viewMode.7d')}
+              {t("viewMode.7d")}
             </button>
             <button
               onClick={() => handleViewModeChange("30d")}
@@ -116,7 +116,7 @@ export function LineChartScans() {
                   : "text-white/60 hover:text-white hover:bg-white/10"
               )}
             >
-              {t('viewMode.30d')}
+              {t("viewMode.30d")}
             </button>
             <button
               onClick={() => handleViewModeChange("month")}
@@ -127,7 +127,7 @@ export function LineChartScans() {
                   : "text-white/60 hover:text-white hover:bg-white/10"
               )}
             >
-              {t('viewMode.month')}
+              {t("viewMode.month")}
             </button>
           </div>
           {/* Month/Year picker - only show when in month view */}
@@ -140,9 +140,7 @@ export function LineChartScans() {
       {loading && <LoadingSkeleton className="h-48 sm:h-64 md:h-72 w-full" />}
 
       {hasError && (
-        <p className="text-sm text-red-400">
-          Failed to load scans trend. Please refresh.
-        </p>
+        <p className="text-sm text-red-400">Failed to load scans trend. Please refresh.</p>
       )}
 
       {!!chartData.length && (
@@ -172,7 +170,10 @@ export function LineChartScans() {
                 labelStyle={{ color: "#fff" }}
                 itemStyle={{ color: "#FFD700" }}
                 formatter={(value: any, name: string, props: any) => {
-                  if (props.payload.page1Count !== undefined && props.payload.page2Count !== undefined) {
+                  if (
+                    props.payload.page1Count !== undefined &&
+                    props.payload.page2Count !== undefined
+                  ) {
                     return [
                       `${value} total (${props.payload.page1Count} Page 1 + ${props.payload.page2Count} Page 2)`,
                       "Scans",
@@ -197,5 +198,3 @@ export function LineChartScans() {
     </AnimatedCard>
   );
 }
-
-

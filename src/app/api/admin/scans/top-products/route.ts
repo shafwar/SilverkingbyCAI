@@ -88,8 +88,8 @@ export async function GET(request: Request) {
         {
           headers: {
             "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-            "Pragma": "no-cache",
-            "Expires": "0",
+            Pragma: "no-cache",
+            Expires: "0",
           },
         }
       );
@@ -136,11 +136,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ products: sorted });
   } catch (error) {
     console.error("Error fetching top products:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch top products" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch top products" }, { status: 500 });
   }
 }
-
-

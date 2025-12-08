@@ -32,12 +32,10 @@ const icons = {
 };
 
 export function DashboardMetrics() {
-  const t = useTranslations('admin.metrics');
-  const { data, error, isLoading } = useSWR<StatsResponse>(
-    "/api/admin/stats",
-    fetcher,
-    { refreshInterval: 45000 }
-  );
+  const t = useTranslations("admin.metrics");
+  const { data, error, isLoading } = useSWR<StatsResponse>("/api/admin/stats", fetcher, {
+    refreshInterval: 45000,
+  });
 
   const stats = data;
   const loading = isLoading;
@@ -48,7 +46,7 @@ export function DashboardMetrics() {
   }
 
   if (hasError || !stats) {
-    return <p className="text-sm text-red-400">{t('unableToLoad')}</p>;
+    return <p className="text-sm text-red-400">{t("unableToLoad")}</p>;
   }
 
   // Use combined totals if available, otherwise fallback to page1 only
@@ -60,33 +58,49 @@ export function DashboardMetrics() {
   return (
     <div className="grid gap-3 sm:gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
       <DashboardCard
-        title={t('totalProducts')}
+        title={t("totalProducts")}
         value={displayProducts.toLocaleString()}
-        delta={stats.gramBatches ? `${stats.totalProducts} Page 1 + ${stats.gramBatches} Page 2` : t('curatedBars')}
+        delta={
+          stats.gramBatches
+            ? `${stats.totalProducts} Page 1 + ${stats.gramBatches} Page 2`
+            : t("curatedBars")
+        }
         icon={icons.products}
         accent="gold"
         delay={0.05}
       />
       <DashboardCard
-        title={t('totalQrCodes')}
+        title={t("totalQrCodes")}
         value={displayQrCodes.toLocaleString()}
-        delta={stats.gramItems ? `${stats.totalQrCodes} Page 1 + ${stats.gramItems} Page 2` : t('mirroredSecure')}
+        delta={
+          stats.gramItems
+            ? `${stats.totalQrCodes} Page 1 + ${stats.gramItems} Page 2`
+            : t("mirroredSecure")
+        }
         icon={icons.qr}
         accent="silver"
         delay={0.1}
       />
       <DashboardCard
-        title={t('totalScans')}
+        title={t("totalScans")}
         value={displayScans.toLocaleString()}
-        delta={stats.gramTotalScans ? `${stats.totalScans} Page 1 + ${stats.gramTotalScans} Page 2` : t('lifetimeVerifications')}
+        delta={
+          stats.gramTotalScans
+            ? `${stats.totalScans} Page 1 + ${stats.gramTotalScans} Page 2`
+            : t("lifetimeVerifications")
+        }
         icon={icons.scans}
         accent="emerald"
         delay={0.15}
       />
       <DashboardCard
-        title={t('scansToday')}
+        title={t("scansToday")}
         value={displayScansToday.toLocaleString()}
-        delta={stats.gramScansToday ? `${stats.scansToday} Page 1 + ${stats.gramScansToday} Page 2` : t('liveInteractions')}
+        delta={
+          stats.gramScansToday
+            ? `${stats.scansToday} Page 1 + ${stats.gramScansToday} Page 2`
+            : t("liveInteractions")
+        }
         icon={icons.today}
         accent="blue"
         delay={0.2}
@@ -94,5 +108,3 @@ export function DashboardMetrics() {
     </div>
   );
 }
-
-

@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    
+
     // Support both old range parameter (for backward compatibility) and new month/year parameters
     const rangeParam = searchParams.get("range");
     const monthParam = searchParams.get("month");
@@ -44,11 +44,11 @@ export async function GET(request: Request) {
 
       // Start from day 1 of the month
       startDate = new Date(year, month, 1, 0, 0, 0, 0);
-      
+
       // End date: last day of month, or today if current month
       const now = new Date();
       const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
-      
+
       if (isCurrentMonth) {
         endDate = new Date(now);
         endDate.setHours(23, 59, 59, 999);
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
       // Legacy range-based view (for backward compatibility)
       const range = Number(rangeParam);
       const validRange = Number.isNaN(range) ? 7 : Math.min(Math.max(range, 1), 60);
-      
+
       endDate = new Date();
       endDate.setHours(23, 59, 59, 999);
       startDate = new Date(endDate);
@@ -72,7 +72,7 @@ export async function GET(request: Request) {
       const now = new Date();
       const year = now.getFullYear();
       const month = now.getMonth();
-      
+
       startDate = new Date(year, month, 1, 0, 0, 0, 0);
       endDate = new Date(now);
       endDate.setHours(23, 59, 59, 999);
@@ -101,13 +101,23 @@ export async function GET(request: Request) {
     });
 
     // Create buckets for each day
-    const buckets: Array<{ key: string; label: string; count: number; page1Count: number; page2Count: number; date: Date }> = [];
-    
+    const buckets: Array<{
+      key: string;
+      label: string;
+      count: number;
+      page1Count: number;
+      page2Count: number;
+      date: Date;
+    }> = [];
+
     if (isMonthView) {
       // Month view: create buckets for each day from day 1 to end date
       const currentDate = new Date(startDate);
       while (currentDate <= endDate) {
-        const dayLabel = currentDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        const dayLabel = currentDate.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
         buckets.push({
           key: currentDate.toISOString().slice(0, 10),
           label: dayLabel,
@@ -120,7 +130,8 @@ export async function GET(request: Request) {
       }
     } else {
       // Legacy range view
-      const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const daysDiff =
+        Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       for (let i = 0; i < daysDiff; i++) {
         const day = new Date(startDate);
         day.setDate(startDate.getDate() + i);
@@ -161,7 +172,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       range: buckets.length,
-      month: isMonthView ? (startDate.getMonth() + 1) : null,
+      month: isMonthView ? startDate.getMonth() + 1 : null,
       year: isMonthView ? startDate.getFullYear() : null,
       data: buckets.map((bucket) => ({
         date: bucket.label,
@@ -172,9 +183,6 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("Error fetching scan trend:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch scan trend" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch scan trend" }, { status: 500 });
   }
 }
