@@ -16,6 +16,7 @@ type GramBatchRow = {
   weightGroup: string | null;
   createdAt: string;
   qrCount: number;
+  totalScanCount?: number;
 };
 
 type Props = {
@@ -23,7 +24,7 @@ type Props = {
   onMutate?: () => void;
 };
 
-export function GramProductTable({ batches }: Props) {
+export function GramProductTable({ batches, onMutate }: Props) {
   const t = useTranslations("admin.productsDetail");
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
@@ -84,9 +85,14 @@ export function GramProductTable({ batches }: Props) {
         description: `Batch "${batch.name}" telah dihapus.`,
       });
 
-      startTransition(() => {
-        router.refresh();
-      });
+      // Refresh data via SWR if available, otherwise use router refresh
+      if (onMutate) {
+        onMutate();
+      } else {
+        startTransition(() => {
+          router.refresh();
+        });
+      }
     } catch (error: any) {
       console.error("[GramProductTable] delete error:", error);
       toast.error("Gagal menghapus batch", {
@@ -128,9 +134,14 @@ export function GramProductTable({ batches }: Props) {
       });
       setShowConfirmModal(false);
       setConfirmText("");
-      startTransition(() => {
-        router.refresh();
-      });
+      // Refresh data via SWR if available, otherwise use router refresh
+      if (onMutate) {
+        onMutate();
+      } else {
+        startTransition(() => {
+          router.refresh();
+        });
+      }
     } catch (error: any) {
       console.error("[GramProductTable] delete-all error:", error);
       toast.error("Gagal menghapus semua produk", {
@@ -306,6 +317,7 @@ export function GramProductTable({ batches }: Props) {
                 <th className="px-4 lg:px-6 py-4">Weight</th>
                 <th className="px-4 lg:px-6 py-4">Quantity</th>
                 <th className="px-4 lg:px-6 py-4">QR Count</th>
+                <th className="px-4 lg:px-6 py-4">Total Scans</th>
                 <th className="px-4 lg:px-6 py-4">QR Mode</th>
                 <th className="px-4 lg:px-6 py-4">Created</th>
                 <th className="px-4 lg:px-6 py-4 text-right">{t("actions")}</th>
@@ -314,7 +326,7 @@ export function GramProductTable({ batches }: Props) {
             <tbody>
               {filteredBatches.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-white/40">
+                  <td colSpan={8} className="px-6 py-12 text-center text-white/40">
                     {t("noProducts")}
                   </td>
                 </tr>
@@ -327,7 +339,14 @@ export function GramProductTable({ batches }: Props) {
                     </td>
                     <td className="px-4 lg:px-6 py-4">{batch.weight} gr</td>
                     <td className="px-4 lg:px-6 py-4">{batch.quantity}</td>
-                    <td className="px-4 lg:px-6 py-4">{batch.qrCount}</td>
+                    <td className="px-4 lg:px-6 py-4">
+                      <span className="font-semibold text-[#FFD700]">{batch.qrCount}</span>
+                    </td>
+                    <td className="px-4 lg:px-6 py-4">
+                      <span className="font-semibold text-emerald-400">
+                        {batch.totalScanCount?.toLocaleString() ?? 0}
+                      </span>
+                    </td>
                     <td className="px-4 lg:px-6 py-4">{getModeLabel(batch)}</td>
                     <td className="px-4 lg:px-6 py-4">
                       {new Date(batch.createdAt).toLocaleDateString()}

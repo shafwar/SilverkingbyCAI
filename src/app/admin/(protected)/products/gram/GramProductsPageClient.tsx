@@ -47,9 +47,7 @@ export function GramProductsPageClient({ batches: initialBatches }: { batches: G
           <p className="text-xs uppercase tracking-[0.5em] text-white/60">
             {t("inventory")} – Page 2
           </p>
-          <h1 className="text-2xl font-semibold text-white">
-            {t("title")} (Gram-based QR)
-          </h1>
+          <h1 className="text-2xl font-semibold text-white">{t("title")} (Gram-based QR)</h1>
         </div>
         <div className="flex items-center gap-3">
           {/* Page switcher: Page 1 / Page 2 (matching QR Preview style) */}
@@ -95,5 +93,3 @@ export function GramProductsPageClient({ batches: initialBatches }: { batches: G
     </div>
   );
 }
-
-
