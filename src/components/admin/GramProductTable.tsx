@@ -115,7 +115,7 @@ export function GramProductTable({ batches, onMutate }: Props) {
 
   async function confirmDeleteAll() {
     if (confirmText !== "DELETE ALL") {
-      toast.error("Ketik \"DELETE ALL\" untuk menghapus semua produk.");
+      toast.error('Ketik "DELETE ALL" untuk menghapus semua produk.');
       return;
     }
 
@@ -380,9 +380,7 @@ export function GramProductTable({ batches, onMutate }: Props) {
         {/* Mobile cards */}
         <div className="md:hidden divide-y divide-white/5">
           {filteredBatches.length === 0 ? (
-            <div className="px-4 py-12 text-center text-white/40 text-sm">
-              {t("noProducts")}
-            </div>
+            <div className="px-4 py-12 text-center text-white/40 text-sm">{t("noProducts")}</div>
           ) : (
             filteredBatches.map((batch) => (
               <div key={batch.id} className="p-3 sm:p-4 space-y-3">
@@ -395,7 +393,7 @@ export function GramProductTable({ batches, onMutate }: Props) {
                       Batch #{batch.id}
                     </p>
                   </div>
-                    <div className="flex gap-1.5">
+                  <div className="flex gap-1.5">
                     <button
                       onClick={() => handleEdit(batch)}
                       className="rounded-full border border-white/20 px-2.5 py-1 text-[10px] text-white/80-hover:border-white/50"
@@ -428,7 +426,17 @@ export function GramProductTable({ batches, onMutate }: Props) {
                     <p className="text-white/40 text-[10px] sm:text-xs uppercase tracking-wide mb-1">
                       QR Count
                     </p>
-                    <p className="text-white/80 text-xs sm:text-sm">{batch.qrCount}</p>
+                    <p className="text-[#FFD700] font-semibold text-xs sm:text-sm">
+                      {batch.qrCount}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-white/40 text-[10px] sm:text-xs uppercase tracking-wide mb-1">
+                      Total Scans
+                    </p>
+                    <p className="text-emerald-400 font-semibold text-xs sm:text-sm">
+                      {batch.totalScanCount?.toLocaleString() ?? 0}
+                    </p>
                   </div>
                   <div>
                     <p className="text-white/40 text-[10px] sm:text-xs uppercase tracking-wide mb-1">
@@ -445,5 +453,3 @@ export function GramProductTable({ batches, onMutate }: Props) {
     </>
   );
 }
-
-
