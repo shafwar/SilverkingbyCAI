@@ -6,10 +6,7 @@ import { auth } from "@/lib/auth";
 // PATCH  /api/gram-products/batch/[id]    -> update batch metadata (currently: name only)
 // DELETE /api/gram-products/batch/[id]    -> delete batch and all related items + scan logs
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
   if (!session || (session.user as any).role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -99,10 +96,7 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
   if (!session || (session.user as any).role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -144,10 +138,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
   if (!session || (session.user as any).role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -190,5 +181,3 @@ export async function DELETE(
     );
   }
 }
-
-
