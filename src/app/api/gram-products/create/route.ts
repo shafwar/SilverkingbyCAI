@@ -156,8 +156,37 @@ export async function POST(request: Request) {
       serialCodes[serialCodes.length - 1]
     );
 
-    // Pre-generate all uniqCodes, rootKeys, and rootKeyHashes in memory for better performance
-    console.log("[GramProductCreate] Pre-generating uniqCodes and root keys...");
+    // Generate ONE uniqCode for the entire batch (for QR code)
+    // All items in the batch will share the same uniqCode
+    // Each item will have a unique rootKey for verification
+    console.log("[GramProductCreate] Generating shared uniqCode for batch...");
+    let sharedUniqCode: string | undefined;
+    
+    // Generate uniqCode with collision check
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const candidate = generateSerialCode("GK");
+      const existing = await prisma.gramProductItem.findUnique({
+        where: { uniqCode: candidate },
+        select: { id: true },
+      });
+      if (!existing) {
+        sharedUniqCode = candidate;
+        break;
+      }
+      if (attempt === 9) {
+        throw new Error("Failed to generate unique QR code after multiple attempts");
+      }
+    }
+
+    if (!sharedUniqCode) {
+      throw new Error("Failed to generate unique QR code");
+    }
+
+    console.log("[GramProductCreate] Shared uniqCode for batch:", sharedUniqCode);
+
+    // Pre-generate rootKeys and rootKeyHashes for each item
+    // Each item gets a unique rootKey, but shares the same uniqCode
+    console.log("[GramProductCreate] Pre-generating root keys for each item...");
     const itemData: Array<{
       uniqCode: string;
       serialCode: string;
@@ -166,47 +195,44 @@ export async function POST(request: Request) {
     }> = [];
 
     for (let i = 0; i < qrCount; i++) {
-      // Generate uniqCode with collision check
-      let uniqCode: string | undefined;
-      for (let attempt = 0; attempt < 5; attempt++) {
-        const candidate = generateSerialCode("GK");
-        const existing = await prisma.gramProductItem.findUnique({
-          where: { uniqCode: candidate },
-          select: { id: true },
-        });
-        if (!existing) {
-          uniqCode = candidate;
-          break;
-        }
-        if (attempt === 4) {
-          throw new Error("Failed to generate unique QR code after multiple attempts");
-        }
-      }
-
-      if (!uniqCode) {
-        throw new Error("Failed to generate unique QR code");
-      }
-
-      // Generate root key and hash
+      // Generate unique root key for each item
       const rootKey = generateRootKey();
       const rootKeyHash = await bcrypt.hash(rootKey, 10);
 
       itemData.push({
-        uniqCode,
+        uniqCode: sharedUniqCode, // Same uniqCode for all items in batch
         serialCode: serialCodes[i],
-        rootKey,
+        rootKey, // Unique rootKey per item
         rootKeyHash,
       });
 
       // Log progress for large batches
       if ((i + 1) % 1000 === 0) {
-        console.log(`[GramProductCreate] Pre-generated ${i + 1}/${qrCount} items...`);
+        console.log(`[GramProductCreate] Pre-generated ${i + 1}/${qrCount} root keys...`);
       }
     }
 
     console.log(
       "[GramProductCreate] Pre-generation complete. Starting QR generation and database insertion..."
     );
+
+    // Generate QR code ONCE for the entire batch (since all items share the same uniqCode)
+    console.log(`[GramProductCreate] Generating QR code for shared uniqCode: ${sharedUniqCode}`);
+    const verifyUrl = getVerifyUrl(sharedUniqCode);
+    let sharedQrImageUrl: string;
+    try {
+      const qrResult = await generateAndStoreQR(
+        sharedUniqCode,
+        verifyUrl,
+        payload.name,
+        GRAM_QR_FOLDER
+      );
+      sharedQrImageUrl = qrResult.url;
+      console.log(`[GramProductCreate] QR code generated successfully: ${sharedQrImageUrl}`);
+    } catch (qrError: any) {
+      console.error("[GramProductCreate] QR generation failed:", qrError);
+      throw new Error(`Failed to generate QR code: ${qrError.message || "Unknown error"}`);
+    }
 
     // Process items in batches for better performance and error recovery
     const totalBatches = Math.ceil(qrCount / BATCH_SIZE);
@@ -226,15 +252,8 @@ export async function POST(request: Request) {
       const batchPromises = currentBatch.map(async (itemData, index) => {
         const globalIndex = batchStart + index;
         try {
-          // Generate QR code
-          const verifyUrl = getVerifyUrl(itemData.uniqCode);
-          const qrResult = await generateAndStoreQR(
-            itemData.uniqCode,
-            verifyUrl,
-            payload.name,
-            GRAM_QR_FOLDER
-          );
-          const qrImageUrl = qrResult.url;
+          // All items use the same QR image URL (since they share the same uniqCode)
+          const qrImageUrl = sharedQrImageUrl;
 
           // Create database record
           const item = await prisma.gramProductItem.create({

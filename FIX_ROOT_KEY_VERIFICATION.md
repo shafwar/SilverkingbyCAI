@@ -2,12 +2,12 @@
 
 ## 🔍 Masalah yang Ditemukan:
 
-1. **Item Tidak Ditemukan**: 
+1. **Item Tidak Ditemukan**:
    - UniqCode `GKMIYRB7JG7KH3` tidak ditemukan di database
    - SerialCode `SKA000100` juga tidak ditemukan
    - Kemungkinan item belum dibuat atau ada di batch yang berbeda
 
-2. **Lookup Logic**: 
+2. **Lookup Logic**:
    - Perlu multiple lookup strategies yang lebih robust
    - Perlu fallback untuk case-insensitive dan partial match
 
@@ -93,6 +93,7 @@ railway logs --tail 100 | grep VerifyRootKey
 ### Key Log Messages:
 
 #### Successful Verification:
+
 ```
 [VerifyRootKey] Input normalization: { ... }
 [VerifyRootKey] Item found: { ... }
@@ -102,6 +103,7 @@ railway logs --tail 100 | grep VerifyRootKey
 ```
 
 #### Failed Verification:
+
 ```
 [VerifyRootKey] Plain text mismatch: { ... }
 [VerifyRootKey] Bcrypt comparison also failed
@@ -109,6 +111,7 @@ railway logs --tail 100 | grep VerifyRootKey
 ```
 
 #### Item Not Found:
+
 ```
 [VerifyRootKey] Item not found after all lookup strategies
 ```

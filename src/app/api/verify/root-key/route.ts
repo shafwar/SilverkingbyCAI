@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       .trim()
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, "");
-    
+
     console.log("[VerifyRootKey] Input normalization:", {
       originalUniqCode: uniqCode,
       normalizedUniqCode,
@@ -60,14 +60,16 @@ export async function POST(request: NextRequest) {
       normalizedRootKey,
     });
 
-    // Find gram product item by uniqCode (QR code) or fallback to serialCode
-    // Try multiple lookup strategies for robustness
+    // Find gram product item by uniqCode AND rootKey
+    // Since uniqCode can be shared within a batch, we need to match BOTH uniqCode and rootKey
+    // This ensures we get the correct serialCode for the specific item
     let gramItem = null;
     let lookupMethod = "unknown";
 
-    // Strategy 1: Direct uniqCode lookup (most common case)
+    // Strategy 1: Find by uniqCode AND rootKey (PRIMARY - most accurate)
+    // This handles the case where multiple items share the same uniqCode but have different rootKeys
     try {
-      gramItem = await prisma.gramProductItem.findUnique({
+      const itemsWithUniqCode = await prisma.gramProductItem.findMany({
         where: { uniqCode: normalizedUniqCode },
         select: {
           id: true,
@@ -77,14 +79,52 @@ export async function POST(request: NextRequest) {
           rootKey: true,
         },
       });
-      if (gramItem) {
-        lookupMethod = "uniqCode";
+
+      console.log("[VerifyRootKey] Found items with uniqCode:", itemsWithUniqCode.length);
+
+      if (itemsWithUniqCode.length > 0) {
+        // IMPORTANT: All items in a batch share the same uniqCode
+        // We MUST match by rootKey to find the correct item
+        console.log("[VerifyRootKey] Matching by rootKey among items with same uniqCode...");
+        
+        // Find the item with matching rootKey
+        for (const item of itemsWithUniqCode) {
+          if (item.rootKey) {
+            const storedRootKeyNormalized = String(item.rootKey)
+              .trim()
+              .toUpperCase()
+              .replace(/[^A-Z0-9]/g, "");
+            
+            if (storedRootKeyNormalized === normalizedRootKey) {
+              gramItem = item;
+              lookupMethod = "uniqCodeAndRootKey";
+              console.log("[VerifyRootKey] ✅ Matched item by uniqCode + rootKey:", {
+                serialCode: gramItem.serialCode,
+                rootKey: gramItem.rootKey,
+              });
+              break;
+            }
+          }
+        }
+
+        // If still not found, log all available rootKeys for debugging
+        if (!gramItem) {
+          console.warn("[VerifyRootKey] ❌ No matching rootKey found among items with same uniqCode:", {
+            uniqCode: normalizedUniqCode,
+            providedRootKey: normalizedRootKey,
+            totalItemsWithUniqCode: itemsWithUniqCode.length,
+            availableRootKeys: itemsWithUniqCode.map((item) => ({
+              serialCode: item.serialCode,
+              rootKey: item.rootKey,
+            })),
+          });
+        }
       }
     } catch (error: any) {
-      console.error("[VerifyRootKey] Error in uniqCode lookup:", error.message);
+      console.error("[VerifyRootKey] Error in uniqCode + rootKey lookup:", error.message);
     }
 
-    // Strategy 2: Fallback to serialCode lookup
+    // Strategy 2: Fallback to serialCode lookup (if uniqCode lookup failed)
     if (!gramItem) {
       try {
         console.log("[VerifyRootKey] Not found by uniqCode, trying serialCode...");
@@ -155,7 +195,7 @@ export async function POST(request: NextRequest) {
           },
           take: 5,
         });
-        
+
         if (partialMatches.length > 0) {
           console.log("[VerifyRootKey] Found partial matches:", partialMatches.length);
           // Use the first match if only one, or log all for debugging
@@ -164,7 +204,9 @@ export async function POST(request: NextRequest) {
             lookupMethod = "partialMatch";
             console.log("[VerifyRootKey] Using single partial match:", gramItem);
           } else {
-            console.log("[VerifyRootKey] Multiple partial matches found, cannot determine unique item");
+            console.log(
+              "[VerifyRootKey] Multiple partial matches found, cannot determine unique item"
+            );
           }
         }
       } catch (error: any) {
@@ -199,9 +241,15 @@ export async function POST(request: NextRequest) {
       console.error("[VerifyRootKey] Item not found after all lookup strategies:", {
         normalizedUniqCode,
         providedUniqCode: uniqCode,
-        lookupStrategiesTried: ["uniqCode", "serialCode", "caseInsensitive", "partialMatch", "exactOriginal"],
+        lookupStrategiesTried: [
+          "uniqCode",
+          "serialCode",
+          "caseInsensitive",
+          "partialMatch",
+          "exactOriginal",
+        ],
       });
-      
+
       // Provide helpful error message
       return NextResponse.json(
         {
@@ -244,7 +292,7 @@ export async function POST(request: NextRequest) {
           .trim()
           .toUpperCase()
           .replace(/[^A-Z0-9]/g, "");
-        
+
         console.log("[VerifyRootKey] Plain text comparison:", {
           storedOriginal: gramItem.rootKey,
           storedNormalized: storedRootKeyNormalized,
@@ -254,7 +302,7 @@ export async function POST(request: NextRequest) {
           storedLength: storedRootKeyNormalized.length,
           providedLength: normalizedRootKey.length,
         });
-        
+
         // Try exact match first (most common case)
         if (storedRootKeyNormalized === normalizedRootKey) {
           console.log(
