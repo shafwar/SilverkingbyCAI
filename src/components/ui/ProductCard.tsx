@@ -76,6 +76,7 @@ export default function ProductCard({ product, onProductSelect, index = 0 }: Pro
 
   // Preload images before allowing auto-slide to keep transitions smooth
   useEffect(() => {
+    if (typeof window === "undefined") return;
     if (!hasMultipleImages) {
       setImagesReady(true);
       return;
@@ -92,7 +93,7 @@ export default function ProductCard({ product, onProductSelect, index = 0 }: Pro
     };
 
     const preloaders = images.map((src) => {
-      const img = new Image();
+      const img = new window.Image();
       img.src = src;
       if (img.complete) {
         markLoaded();

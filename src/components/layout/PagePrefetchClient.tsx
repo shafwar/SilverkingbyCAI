@@ -10,20 +10,3 @@ export function PagePrefetchClient() {
   usePagePrefetch();
   return null;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

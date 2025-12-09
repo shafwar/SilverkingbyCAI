@@ -139,27 +139,3 @@ Can't reach database server at `localhost:3306`
 - ✅ No security vulnerabilities introduced
 
 The database connection errors are **infrastructure-related** and **NOT caused by bilingual changes**.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
