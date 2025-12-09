@@ -160,40 +160,65 @@ export async function POST(request: NextRequest) {
     let isRootKeyValid = false;
     let verificationMethod = "none";
 
-    // Primary verification: bcrypt hash comparison
-    try {
-      isRootKeyValid = await bcrypt.compare(normalizedRootKey, gramItem.rootKeyHash);
-      if (isRootKeyValid) {
-        verificationMethod = "bcrypt";
-        console.log("[VerifyRootKey] Root key verified via bcrypt hash");
-      }
-    } catch (bcryptError: any) {
-      console.error("[VerifyRootKey] Bcrypt comparison error:", bcryptError.message);
-    }
-
-    // Fallback 1: Plain text comparison (for items created before rootKey field was added)
-    if (!isRootKeyValid && gramItem.rootKey) {
+    // PRIMARY VERIFICATION: Plain text comparison (since we store plain text rootKey)
+    // This should be the main verification method for current implementation
+    if (gramItem.rootKey) {
       try {
+        // Normalize stored root key exactly like input
         const storedRootKeyNormalized = gramItem.rootKey
           .trim()
           .toUpperCase()
           .replace(/[^A-Z0-9]/g, "");
+        
+        // Try exact match first (most common case)
         if (storedRootKeyNormalized === normalizedRootKey) {
-          console.log("[VerifyRootKey] Root key matched via plain text comparison (fallback)");
+          console.log("[VerifyRootKey] Root key matched via plain text comparison (PRIMARY METHOD)");
           isRootKeyValid = true;
           verificationMethod = "plainText";
+        } else {
+          // Log mismatch for debugging
+          console.log("[VerifyRootKey] Plain text mismatch:", {
+            stored: gramItem.rootKey,
+            storedNormalized: storedRootKeyNormalized,
+            provided: rootKey,
+            providedNormalized: normalizedRootKey,
+            match: storedRootKeyNormalized === normalizedRootKey,
+          });
         }
       } catch (plainTextError: any) {
         console.error("[VerifyRootKey] Plain text comparison error:", plainTextError.message);
       }
     }
 
+    // Fallback: bcrypt hash comparison (for backward compatibility)
+    if (!isRootKeyValid) {
+      try {
+        isRootKeyValid = await bcrypt.compare(normalizedRootKey, gramItem.rootKeyHash);
+        if (isRootKeyValid) {
+          verificationMethod = "bcrypt";
+          console.log("[VerifyRootKey] Root key verified via bcrypt hash (fallback)");
+        } else {
+          // Log bcrypt mismatch for debugging
+          console.log("[VerifyRootKey] Bcrypt comparison also failed");
+        }
+      } catch (bcryptError: any) {
+        console.error("[VerifyRootKey] Bcrypt comparison error:", bcryptError.message);
+      }
+    }
+
     // Fallback 2: Direct string comparison (case-insensitive, for edge cases)
     if (!isRootKeyValid && gramItem.rootKey) {
       try {
+        const storedUpper = gramItem.rootKey.trim().toUpperCase();
+        const storedLower = gramItem.rootKey.trim().toLowerCase();
+        const providedUpper = normalizedRootKey.toUpperCase();
+        const providedLower = normalizedRootKey.toLowerCase();
+        
         if (
-          gramItem.rootKey.trim().toUpperCase() === normalizedRootKey ||
-          gramItem.rootKey.trim().toLowerCase() === normalizedRootKey.toLowerCase()
+          storedUpper === providedUpper ||
+          storedLower === providedLower ||
+          storedUpper === providedLower ||
+          storedLower === providedUpper
         ) {
           console.log("[VerifyRootKey] Root key matched via direct string comparison (fallback 2)");
           isRootKeyValid = true;
@@ -205,22 +230,54 @@ export async function POST(request: NextRequest) {
     }
 
     if (!isRootKeyValid) {
+      // Enhanced error logging with detailed comparison
+      const storedNormalized = gramItem.rootKey
+        ? gramItem.rootKey.trim().toUpperCase().replace(/[^A-Z0-9]/g, "")
+        : "N/A";
+      
       console.warn("[VerifyRootKey] Invalid root key - all verification methods failed", {
         uniqCode: normalizedUniqCode,
         serialCode: gramItem.serialCode,
         provided: normalizedRootKey,
+        providedOriginal: rootKey,
         providedLength: normalizedRootKey.length,
         storedPlainText: gramItem.rootKey || "N/A",
+        storedNormalized: storedNormalized,
         storedPlainTextLength: gramItem.rootKey?.length || 0,
         hashLength: gramItem.rootKeyHash.length,
         hashPrefix: gramItem.rootKeyHash.substring(0, 10),
         verificationMethod,
         lookupMethod,
+        comparison: {
+          exactMatch: storedNormalized === normalizedRootKey,
+          stored: storedNormalized,
+          provided: normalizedRootKey,
+        },
       });
+      
+      // Provide helpful error message without exposing sensitive data
+      // In production, don't expose the actual root key for security
+      const errorMessage =
+        process.env.NODE_ENV === "development" && gramItem.rootKey
+          ? `Invalid root key. Expected: ${gramItem.rootKey}, Provided: ${rootKey.trim()}. Please check the root key from the admin panel for serial code ${gramItem.serialCode}.`
+          : `Invalid root key. Please check the root key from the admin panel for serial code ${gramItem.serialCode} and try again.`;
+      
       return NextResponse.json(
         {
           verified: false,
-          error: "Invalid root key. Please check the root key and try again.",
+          error: errorMessage,
+          // Include helpful hint
+          hint: `Please verify the root key for serial code ${gramItem.serialCode} from the admin panel.`,
+          // Include hint for debugging (only in development)
+          ...(process.env.NODE_ENV === "development" && {
+            debug: {
+              serialCode: gramItem.serialCode,
+              uniqCode: gramItem.uniqCode,
+              storedRootKey: gramItem.rootKey,
+              providedRootKey: rootKey,
+              normalizedProvided: normalizedRootKey,
+            },
+          }),
         },
         { status: 401 }
       );

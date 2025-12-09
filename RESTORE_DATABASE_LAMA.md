@@ -5,11 +5,13 @@
 ### Perubahan yang Dilakukan:
 
 **Sebelumnya** (Database Baru):
+
 - Database: `railway`
 - Products: 6 (baru dibuat)
 - DATABASE_URL: `mysql://...@centerbeam.proxy.rlwy.net:18099/railway`
 
 **Sekarang** (Database Lama):
+
 - Database: `silverkingbycai`
 - Products: 900 (data lama)
 - DATABASE_URL: `mysql://...@centerbeam.proxy.rlwy.net:18099/silverkingbycai`
@@ -17,11 +19,13 @@
 ## 🎯 Konfigurasi yang Dikembalikan
 
 ### DATABASE_URL:
+
 ```
 mysql://root:OsiHyYEfihrcazRuKAtawhHIeXFWKFEM@centerbeam.proxy.rlwy.net:18099/silverkingbycai
 ```
 
 ### Database Name:
+
 - **Lama**: `silverkingbycai` ✅ (dikembalikan)
 - **Baru**: `railway` ❌ (tidak digunakan lagi)
 
@@ -42,16 +46,19 @@ railway run node -e "const {PrismaClient}=require('@prisma/client');const p=new 
 ## 🔧 Langkah Selanjutnya
 
 1. **Restart Service**:
+
    ```bash
    railway restart
    ```
 
 2. **Regenerate Prisma Client** (jika perlu):
+
    ```bash
    railway run npx prisma generate
    ```
 
 3. **Verify Migrations**:
+
    ```bash
    railway run npx prisma migrate status
    ```

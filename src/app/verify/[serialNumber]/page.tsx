@@ -337,7 +337,20 @@ export default function VerifyPage() {
                         className="w-full rounded-lg border border-luxury-silver/20 bg-luxury-black/50 px-4 py-3 text-luxury-lightSilver font-mono text-lg tracking-wider uppercase focus:border-luxury-gold focus:outline-none focus:ring-2 focus:ring-luxury-gold/20"
                         disabled={verifyingRootKey}
                       />
-                      {rootKeyError && <p className="mt-2 text-red-400 text-sm">{rootKeyError}</p>}
+                      {rootKeyError && (
+                        <div className="mt-2 space-y-1">
+                          <p className="text-red-400 text-sm">{rootKeyError}</p>
+                          {result?.product?.actualSerialCode && (
+                            <p className="text-yellow-400 text-xs">
+                              💡 Tip: Make sure you're using the root key for serial code{" "}
+                              <span className="font-mono font-semibold">
+                                {result.product.actualSerialCode}
+                              </span>{" "}
+                              from the admin panel.
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <button
                       type="submit"
