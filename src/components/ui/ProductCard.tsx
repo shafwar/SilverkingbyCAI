@@ -1,46 +1,13 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { Product } from "./ProductModal";
 import Image from "next/image";
 
-const SLIDE_INTERVAL_MS = 8000; // 8s cadence (within requested 7-9s)
-// Use browser timer IDs (numbers) to avoid Node Timeout typing conflicts
-let slideStartTimeoutId: number | null = null;
-let slideIntervalId: number | null = null;
-const slideListeners = new Set<() => void>();
 const PLACEHOLDER_BLUR = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
-
-const startGlobalSlider = () => {
-  if (typeof window === "undefined") return;
-  if (slideIntervalId || slideStartTimeoutId) return;
-
-  const now = Date.now();
-  const offset = SLIDE_INTERVAL_MS - (now % SLIDE_INTERVAL_MS);
-
-  slideStartTimeoutId = window.setTimeout(() => {
-    slideListeners.forEach((listener) => listener());
-    slideIntervalId = window.setInterval(() => {
-      slideListeners.forEach((listener) => listener());
-    }, SLIDE_INTERVAL_MS);
-    slideStartTimeoutId = null;
-  }, offset);
-};
-
-const stopGlobalSlider = () => {
-  if (slideListeners.size > 0) return;
-  if (slideIntervalId) {
-    window.clearInterval(slideIntervalId);
-    slideIntervalId = null;
-  }
-  if (slideStartTimeoutId) {
-    window.clearTimeout(slideStartTimeoutId);
-    slideStartTimeoutId = null;
-  }
-};
 
 export type ProductWithPricing = Product & {
   rangeName?: string;
@@ -60,10 +27,11 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, onProductSelect, index = 0 }: ProductCardProps) {
   const t = useTranslations("products");
-  const images = product.images || (product.image ? [product.image] : []);
+  const images = useMemo(() => product.images || (product.image ? [product.image] : []), [product]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const [imagesReady, setImagesReady] = useState(false);
+  const [loadedFlags, setLoadedFlags] = useState<Record<number, boolean>>({});
   const hasMultipleImages = images.length > 1;
   const responsiveSizes =
     "(min-width: 1280px) 320px, (min-width: 1024px) 280px, (min-width: 768px) 240px, 90vw";
@@ -72,64 +40,17 @@ export default function ProductCard({ product, onProductSelect, index = 0 }: Pro
   useEffect(() => {
     setCurrentImageIndex(0);
     setImagesReady(false);
+    setLoadedFlags({});
   }, [images.length]);
 
-  // Preload images before allowing auto-slide to keep transitions smooth
+  // Mark ready when current image has loaded
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!hasMultipleImages) {
+    if (loadedFlags[currentImageIndex]) {
       setImagesReady(true);
-      return;
+    } else {
+      setImagesReady(false);
     }
-
-    let isMounted = true;
-    let loaded = 0;
-
-    const markLoaded = () => {
-      loaded += 1;
-      if (isMounted && loaded >= images.length) {
-        setImagesReady(true);
-      }
-    };
-
-    const preloaders = images.map((src) => {
-      const img = new window.Image();
-      img.src = src;
-      if (img.complete) {
-        markLoaded();
-      } else {
-        img.onload = markLoaded;
-        img.onerror = markLoaded;
-      }
-      return img;
-    });
-
-    return () => {
-      isMounted = false;
-      preloaders.forEach((img) => {
-        img.onload = null;
-        img.onerror = null;
-      });
-    };
-  }, [images, hasMultipleImages]);
-
-  // Auto-slide for products with multiple images (synced across cards, slow cadence)
-  useEffect(() => {
-    if (!hasMultipleImages || isHovered || !imagesReady) return;
-    if (typeof window === "undefined") return;
-
-    const listener = () => {
-      setCurrentImageIndex((prev) => (prev + 1) % images.length);
-    };
-
-    slideListeners.add(listener);
-    startGlobalSlider();
-
-    return () => {
-      slideListeners.delete(listener);
-      stopGlobalSlider();
-    };
-  }, [hasMultipleImages, isHovered, imagesReady, images.length]);
+  }, [currentImageIndex, loadedFlags]);
 
   const goToNext = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -158,6 +79,10 @@ export default function ProductCard({ product, onProductSelect, index = 0 }: Pro
   const rangeName = product.rangeName || "";
   // Use product name as-is (no weight removal needed)
   const productName = product.name;
+
+  const handleImageLoaded = (idx: number) => {
+    setLoadedFlags((prev) => ({ ...prev, [idx]: true }));
+  };
 
   return (
     <motion.div
@@ -197,7 +122,12 @@ export default function ProductCard({ product, onProductSelect, index = 0 }: Pro
                     priority={idx === 0 && index < 2}
                     placeholder="blur"
                     blurDataURL={PLACEHOLDER_BLUR}
+                    onLoadingComplete={() => handleImageLoaded(idx)}
+                    loading={idx === currentImageIndex ? "eager" : "lazy"}
                   />
+                  {!loadedFlags[idx] && (
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#0f0f0f] via-[#161616] to-[#0b0b0b] animate-pulse" />
+                  )}
                 </motion.div>
               )
           )}
