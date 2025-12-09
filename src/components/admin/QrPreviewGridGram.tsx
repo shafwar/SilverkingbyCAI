@@ -367,7 +367,7 @@ export function QrPreviewGridGram({ batches }: Props) {
           </div>
         </div>
 
-        {/* Action buttons: Muat Ulang + Unduh Semua (mirip Page 1) */}
+        {/* Action buttons: Muat Ulang (Download moved into serials modal) */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <motion.button
             type="button"
@@ -388,20 +388,6 @@ export function QrPreviewGridGram({ batches }: Props) {
             </span>
           </motion.button>
 
-          <motion.button
-            type="button"
-            onClick={handleDownloadAll}
-            disabled={isDownloadingAll || filteredBatches.length === 0}
-            className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-all hover:border-[#FFD700]/40 hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
-            whileHover={{ scale: isDownloadingAll ? 1 : 1.02 }}
-            whileTap={{ scale: isDownloadingAll ? 1 : 0.98 }}
-            aria-label={t("downloadAll")}
-          >
-            <FileText className="h-4 w-4 flex-shrink-0 transition-transform group-hover:rotate-3" />
-            <span className="whitespace-nowrap">
-              {isDownloadingAll ? "Generating Excel..." : `Download Excel (${totalItems || 0})`}
-            </span>
-          </motion.button>
         </div>
       </div>
 
@@ -564,6 +550,19 @@ export function QrPreviewGridGram({ batches }: Props) {
       >
         {selectedBatch && (
           <div className="max-h-[70vh] overflow-y-auto">
+            <div className="flex items-center justify-end mb-3 px-1">
+              <motion.button
+                type="button"
+                onClick={handleDownloadAll}
+                disabled={isDownloadingAll}
+                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-xs font-semibold text-white hover:border-[#FFD700]/40 hover:bg-white/10 disabled:opacity-50"
+                whileHover={{ scale: isDownloadingAll ? 1 : 1.02 }}
+                whileTap={{ scale: isDownloadingAll ? 1 : 0.98 }}
+              >
+                <FileText className="h-4 w-4" />
+                {isDownloadingAll ? "Generating Excel..." : "Download Excel"}
+              </motion.button>
+            </div>
             {loadingBatchItems ? (
               <div className="flex items-center justify-center py-8">
                 <RefreshCw className="h-6 w-6 animate-spin text-white/40" />
