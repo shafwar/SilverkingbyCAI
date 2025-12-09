@@ -1,12 +1,14 @@
 # Railway Root Key Setup - Complete Guide
 
 ## 🎯 Tujuan
+
 Mengoptimalkan infrastruktur Page 2 agar root key verification berjalan dengan baik di production Railway.
 
 ## ✅ Perbaikan yang Sudah Dilakukan
 
 ### 1. Optimasi Endpoint `/api/verify/root-key`
-- ✅ **Multiple Lookup Strategies**: 
+
+- ✅ **Multiple Lookup Strategies**:
   - Strategy 1: Direct uniqCode lookup (primary)
   - Strategy 2: Fallback to serialCode lookup
   - Strategy 3: Case-insensitive search (edge cases)
@@ -18,11 +20,13 @@ Mengoptimalkan infrastruktur Page 2 agar root key verification berjalan dengan b
 - ✅ **Better Error Messages**: Error messages yang lebih informatif untuk user
 
 ### 2. Optimasi Frontend Verification Page
+
 - ✅ **Better Error Handling**: Improved JSON parsing dengan try-catch
 - ✅ **Enhanced Logging**: Console logs untuk tracking verification flow
 - ✅ **URL Encoding**: Proper encoding untuk redirect ke serial code
 
 ### 3. Database Migrations
+
 - ✅ **All Migrations Applied**: Semua 7 migrations sudah ter-apply di Railway MySQL
 - ✅ **Schema Verified**: `rootKeyHash` dan `rootKey` fields sudah ada di `GramProductItem` table
 
@@ -33,6 +37,7 @@ Mengoptimalkan infrastruktur Page 2 agar root key verification berjalan dengan b
 **Masalah**: Service aplikasi Next.js mungkin belum terhubung ke MySQL service dengan benar.
 
 **Solusi**:
+
 ```bash
 # 1. Link ke project (jika belum)
 railway link
@@ -48,6 +53,7 @@ railway variables set "DATABASE_URL=<MYSQL_PUBLIC_URL_VALUE>"
 ```
 
 **Atau gunakan script otomatis**:
+
 ```bash
 chmod +x scripts/setup-railway-db.sh
 ./scripts/setup-railway-db.sh
@@ -92,7 +98,7 @@ railway run npx prisma migrate status
 
 ### Step 6: Test Root Key Verification
 
-1. **Get Root Key**: 
+1. **Get Root Key**:
    - Buka `/admin/qr-preview/page2`
    - Klik kolom "Serial Code" pada batch baru
    - Copy salah satu root key (contoh: "PDRF")
@@ -109,31 +115,40 @@ railway run npx prisma migrate status
 ## 🔍 Troubleshooting
 
 ### Issue: "Product not found" (404)
+
 **Kemungkinan**:
+
 - Batch dibuat sebelum migrations diterapkan
 - DATABASE_URL tidak benar di service aplikasi
 
 **Solusi**:
+
 1. Pastikan DATABASE_URL sudah di-set dengan benar
 2. Buat batch baru setelah migrations
 3. Cek Railway logs untuk error messages
 
 ### Issue: "Invalid root key" (401)
+
 **Kemungkinan**:
+
 - Root key yang diinput salah (typo, case sensitivity)
 - Root key dari batch lama (sebelum migrations)
 
 **Solusi**:
+
 1. Gunakan root key dari batch baru (setelah migrations)
 2. Pastikan root key diinput dengan benar (case-insensitive sekarang)
 3. Cek Railway logs untuk `[VerifyRootKey]` messages
 
 ### Issue: Database Connection Error
+
 **Kemungkinan**:
+
 - DATABASE_URL tidak di-set atau salah
 - MySQL service tidak accessible
 
 **Solusi**:
+
 1. Verify DATABASE_URL: `railway variables | grep DATABASE_URL`
 2. Test connection: `railway run npx prisma migrate status`
 3. Pastikan MySQL service running di Railway dashboard
@@ -141,24 +156,27 @@ railway run npx prisma migrate status
 ## 📊 Monitoring & Logs
 
 ### Check Railway Logs
+
 ```bash
 railway logs --tail 100
 ```
 
 ### Look for These Log Messages:
+
 - `[VerifyRootKey] Looking up item with:` - Shows lookup parameters
 - `[VerifyRootKey] Item found:` - Shows found item details
 - `[VerifyRootKey] Root key verified via bcrypt hash` - Successful verification
 - `[VerifyRootKey] Invalid root key` - Failed verification (check details)
 
 ### Key Metrics to Monitor:
+
 - Verification success rate
 - Lookup method distribution (uniqCode vs serialCode vs caseInsensitive)
 - Verification method distribution (bcrypt vs plainText vs directString)
 
 ## 🎯 Expected Behavior After Setup
 
-1. **Batch Creation**: 
+1. **Batch Creation**:
    - ✅ Creates 100 items dengan uniqCode, serialCode, rootKeyHash, dan rootKey
    - ✅ All items stored in Railway MySQL database
 
