@@ -15,6 +15,7 @@ import {
   Maximize2,
   RefreshCw,
   FileText,
+  CheckCircle2,
 } from "lucide-react";
 
 type GramPreviewProduct = {
@@ -22,8 +23,10 @@ type GramPreviewProduct = {
   name: string;
   weight: number;
   uniqCode: string;
+  serialCode?: string;
   qrImageUrl: string | null;
   weightGroup: string | null;
+  hasRootKey?: boolean; // Indicates root key exists (for Page 2 two-step verification)
 };
 
 type Props = {
@@ -360,6 +363,8 @@ export function QrPreviewGridGram({ products }: Props) {
                   <th className="px-4 lg:px-6 py-4">{t("weight")}</th>
                   <th className="px-4 lg:px-6 py-4">{t("qrPreview")}</th>
                   <th className="px-4 lg:px-6 py-4">Uniqcode</th>
+                  <th className="px-4 lg:px-6 py-4">Serial Code</th>
+                  <th className="px-4 lg:px-6 py-4">Root Key</th>
                   <th className="px-4 lg:px-6 py-4 text-right">{t("actions")}</th>
                 </tr>
               </thead>
@@ -394,6 +399,19 @@ export function QrPreviewGridGram({ products }: Props) {
                       </td>
                       <td className="px-4 lg:px-6 py-4 font-mono text-xs text-white/80">
                         {product.uniqCode}
+                      </td>
+                      <td className="px-4 lg:px-6 py-4 font-mono text-xs text-white/80">
+                        {product.serialCode || "—"}
+                      </td>
+                      <td className="px-4 lg:px-6 py-4">
+                        {product.hasRootKey ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-green-500/20 px-2 py-1 text-[10px] text-green-400 border border-green-500/30">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Active
+                          </span>
+                        ) : (
+                          <span className="text-xs text-white/40">—</span>
+                        )}
                       </td>
                       <td className="px-4 lg:px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">

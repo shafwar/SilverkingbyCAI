@@ -35,47 +35,47 @@ model Product {
 /// marketing content (images, copywriting, pricing display) can evolve
 /// independently from the verification inventory.
 model CmsProduct {
-  id             Int      @id @default(autoincrement())
-  name           String
-  weight         String
-  price          Float?
+  id               Int      @id @default(autoincrement())
+  name             String
+  weight           String
+  price            Float?
   /// Array of image URLs or paths (e.g. `/images/50gr.jpeg`)
-  images         Json?
+  images           Json?
   /// Filter category: all, award-winning, exclusives, large-bars, small-bars
-  filterCategory String?  @default("all")
+  filterCategory   String?  @default("all")
   /// Auto-filled fields for consistency
-  rangeName      String?
-  purity         String?
-  category       String?
-  description    String?
+  rangeName        String?
+  purity           String?
+  category         String?
+  description      String?
   /// If this CMS product overrides a default product, store the default ID
   /// This allows "editing" default products by creating CMS overrides
   /// Format: "default-1", "default-2", "default-3"
-  overridesDefault String? @unique
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  overridesDefault String?  @unique
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model QrRecord {
-  id            Int          @id @default(autoincrement())
-  productId     Int          @unique
-  serialCode    String       @unique
+  id            Int         @id @default(autoincrement())
+  productId     Int         @unique
+  serialCode    String      @unique
   qrImageUrl    String
-  scanCount     Int          @default(0)
+  scanCount     Int         @default(0)
   lastScannedAt DateTime?
-  createdAt     DateTime     @default(now())
-  product       Product      @relation(fields: [productId], references: [id])
+  createdAt     DateTime    @default(now())
+  product       Product     @relation(fields: [productId], references: [id])
   scanLogs      QRScanLog[]
 }
 
 model QRScanLog {
-  id         Int       @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   qrRecordId Int
-  scannedAt  DateTime  @default(now())
+  scannedAt  DateTime @default(now())
   ip         String?
   userAgent  String?
   location   String?
-  qrRecord   QrRecord  @relation(fields: [qrRecordId], references: [id])
+  qrRecord   QrRecord @relation(fields: [qrRecordId], references: [id])
 }
 
 /// New generation inventory - gram-based batches and per-QR uniq codes
@@ -110,8 +110,10 @@ model GramProductItem {
   batchId       Int
   /// Stable uniq code printed on the QR and used for verification lookup
   uniqCode      String           @unique
-  /// Optional separate serial code if business needs it later
-  serialCode    String?          @unique
+  /// Serial code (SKP format) - required for Page 2
+  serialCode    String           @unique
+  /// Root key hash (bcrypt) for two-step verification - alphanumeric 3-4 chars
+  rootKeyHash   String
   qrImageUrl    String
   scanCount     Int              @default(0)
   lastScannedAt DateTime?

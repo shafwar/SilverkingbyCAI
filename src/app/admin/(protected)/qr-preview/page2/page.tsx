@@ -36,12 +36,12 @@ export default async function QrPreviewPage2() {
           name: item.batch.name,
           weight: item.batch.weight,
           uniqCode: item.uniqCode,
+          serialCode: item.serialCode,
           qrImageUrl: item.qrImageUrl,
           weightGroup: item.batch.weightGroup,
+          hasRootKey: !!item.rootKeyHash, // Indicate root key exists
         }))}
       />
     </div>
   );
 }
-
-

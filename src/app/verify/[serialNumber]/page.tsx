@@ -9,10 +9,12 @@ import { Shield, CheckCircle2, XCircle } from "lucide-react";
 
 interface VerificationResult {
   verified: boolean;
+  requiresRootKey?: boolean; // Flag for Page 2 two-step verification
   product?: {
     name: string;
     weight: number;
     serialCode: string;
+    actualSerialCode?: string; // For Page 2: actual SKP serial code
     price?: number | null;
     stock?: number | null;
     qrImageUrl?: string;
@@ -26,16 +28,23 @@ export default function VerifyPage() {
   const serialNumber = params.serialNumber as string;
   const [result, setResult] = useState<VerificationResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [rootKey, setRootKey] = useState("");
+  const [verifyingRootKey, setVerifyingRootKey] = useState(false);
+  const [rootKeyError, setRootKeyError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true; // Prevent state updates if component unmounts
-    
+
     async function verifyProduct() {
       try {
         // SECURITY: Normalize and validate serial number input
         // Remove any potentially malicious characters
-        const normalizedSerial = serialNumber?.trim().toUpperCase().replace(/[^A-Z0-9]/g, "") || "";
-        
+        const normalizedSerial =
+          serialNumber
+            ?.trim()
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, "") || "";
+
         // SECURITY: Validate serial number format and length
         if (!normalizedSerial || normalizedSerial.length < 3 || normalizedSerial.length > 50) {
           if (isMounted) {
@@ -59,7 +68,7 @@ export default function VerifyPage() {
           },
           signal: controller.signal,
         });
-        
+
         clearTimeout(timeoutId);
 
         if (!response.ok) {
@@ -75,7 +84,7 @@ export default function VerifyPage() {
         }
 
         const data = await response.json();
-        
+
         // SECURITY: Validate response structure
         if (!data || typeof data !== "object" || !("verified" in data)) {
           if (isMounted) {
@@ -119,7 +128,7 @@ export default function VerifyPage() {
           }
           return;
         }
-        
+
         console.error("Verification error:", error);
         if (isMounted) {
           setResult({
@@ -152,6 +161,50 @@ export default function VerifyPage() {
     return `${weight} gr`;
   };
 
+  const handleRootKeySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rootKey.trim() || rootKey.trim().length < 3 || rootKey.trim().length > 4) {
+      setRootKeyError("Root key must be 3-4 alphanumeric characters");
+      return;
+    }
+
+    setVerifyingRootKey(true);
+    setRootKeyError(null);
+
+    try {
+      const response = await fetch("/api/verify/root-key", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          uniqCode: result?.product?.serialCode,
+          rootKey: rootKey.trim().toUpperCase(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.verified) {
+        setRootKeyError(data.error || "Invalid root key. Please try again.");
+        setVerifyingRootKey(false);
+        return;
+      }
+
+      // Root key verified successfully, redirect to serial code verification page
+      if (data.serialCode) {
+        window.location.href = `/verify/${data.serialCode}`;
+      } else {
+        setRootKeyError("Verification successful but serial code not found.");
+        setVerifyingRootKey(false);
+      }
+    } catch (error: any) {
+      console.error("Root key verification error:", error);
+      setRootKeyError("Failed to verify root key. Please try again.");
+      setVerifyingRootKey(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-luxury-black">
       {/* Navbar */}
@@ -176,6 +229,7 @@ export default function VerifyPage() {
               transition={{ duration: 0.5 }}
               className="space-y-6"
             >
+              {/* Show product info first */}
               <div className="luxury-card text-center">
                 <CheckCircle2 className="w-20 h-20 text-green-500 mx-auto mb-4" />
                 <h1 className="text-3xl md:text-4xl font-serif font-bold text-luxury-gold mb-3">
@@ -204,16 +258,77 @@ export default function VerifyPage() {
                       {getWeightLabel(result.product?.weight)}
                     </span>
                   </div>
-                  <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                    <span className="text-luxury-silver">Serial Number</span>
-                    <span className="text-luxury-lightSilver font-mono font-semibold text-sm">
-                      {result.product?.serialCode}
-                    </span>
-                  </div>
+                  {typeof result.product?.stock === "number" && (
+                    <div className="flex justify-between py-3 border-b border-luxury-silver/10">
+                      <span className="text-luxury-silver">Quantity</span>
+                      <span className="text-luxury-lightSilver font-semibold">
+                        {result.product.stock} pcs
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between py-3 border-b border-luxury-silver/10">
                     <span className="text-luxury-silver">Manufacturing Date</span>
                     <span className="text-luxury-lightSilver font-semibold">
                       {new Date(result.product?.createdAt || "").toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Root Key Verification Section (Page 2 only) */}
+              {result.requiresRootKey && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="luxury-card"
+                >
+                  <div className="mb-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4">
+                    <p className="text-yellow-400 text-sm font-semibold mb-2">
+                      ⚠️ Two-Step Verification Required
+                    </p>
+                    <p className="text-luxury-silver text-sm">
+                      Please enter the root key (3-4 alphanumeric characters) provided by your
+                      administrator to verify the specific SKP serial number.
+                    </p>
+                  </div>
+                  <form onSubmit={handleRootKeySubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-luxury-silver text-sm font-semibold mb-2">
+                        Root Key (3-4 characters)
+                      </label>
+                      <input
+                        type="text"
+                        value={rootKey}
+                        onChange={(e) => {
+                          setRootKey(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""));
+                          setRootKeyError(null);
+                        }}
+                        maxLength={4}
+                        placeholder="e.g., A1H2"
+                        className="w-full rounded-lg border border-luxury-silver/20 bg-luxury-black/50 px-4 py-3 text-luxury-lightSilver font-mono text-lg tracking-wider uppercase focus:border-luxury-gold focus:outline-none focus:ring-2 focus:ring-luxury-gold/20"
+                        disabled={verifyingRootKey}
+                      />
+                      {rootKeyError && <p className="mt-2 text-red-400 text-sm">{rootKeyError}</p>}
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={verifyingRootKey || rootKey.trim().length < 3}
+                      className="w-full luxury-button disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {verifyingRootKey ? "Verifying..." : "Verify Root Key"}
+                    </button>
+                  </form>
+                </motion.div>
+              )}
+
+              {/* Show serial code only if root key verification is not required or completed */}
+              {!result.requiresRootKey && (
+                <div className="luxury-card">
+                  <div className="flex justify-between py-3 border-b border-luxury-silver/10">
+                    <span className="text-luxury-silver">Serial Number</span>
+                    <span className="text-luxury-lightSilver font-mono font-semibold text-sm">
+                      {result.product?.serialCode}
                     </span>
                   </div>
                   {typeof result.product?.price === "number" && (
@@ -224,16 +339,8 @@ export default function VerifyPage() {
                       </span>
                     </div>
                   )}
-                  {typeof result.product?.stock === "number" && (
-                    <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                      <span className="text-luxury-silver">Stock</span>
-                      <span className="text-luxury-lightSilver font-semibold">
-                        {result.product.stock} pcs
-                      </span>
-                    </div>
-                  )}
                 </div>
-              </div>
+              )}
 
               <div className="text-center">
                 <Link href="/" className="luxury-button inline-block">
@@ -268,4 +375,3 @@ export default function VerifyPage() {
     </div>
   );
 }
-

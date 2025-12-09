@@ -76,3 +76,21 @@ export function findHighestSerialNumber(serials: string[], prefix: string): numb
 
   return maxNumber;
 }
+
+/**
+ * Generate a random alphanumeric root key (3-4 characters)
+ * Used for two-step verification in Page 2 gram products
+ * Format: Mix of uppercase letters and numbers (e.g., "A1h2", "B3C4")
+ * @returns Root key string (3-4 alphanumeric characters)
+ */
+export function generateRootKey(): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const length = Math.random() < 0.5 ? 3 : 4; // Randomly 3 or 4 chars
+  let result = "";
+
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  return result;
+}

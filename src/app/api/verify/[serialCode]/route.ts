@@ -65,12 +65,15 @@ export async function GET(request: NextRequest, { params }: { params: { serialCo
         {
           verified: true,
           success: true,
+          requiresRootKey: true, // Flag for two-step verification (Page 2)
           product: {
             id: gramItem.id,
             name: gramItem.batch.name,
             weight: gramItem.batch.weight,
             purity: "99.99%",
             serialCode: gramItem.uniqCode,
+            // Include actual serialCode for redirect after root key verification
+            actualSerialCode: gramItem.serialCode,
             price: null,
             stock: gramItem.batch.quantity,
             qrImageUrl: gramItem.qrImageUrl,
