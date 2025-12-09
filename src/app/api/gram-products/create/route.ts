@@ -88,8 +88,7 @@ export async function POST(request: Request) {
 
     // Determine serial codes based on serialPrefix or serialCode (like Page 1)
     // Safety: ensure serialPrefix exists and is not empty
-    const hasSerialPrefix =
-      payload.serialPrefix && payload.serialPrefix.trim().length > 0;
+    const hasSerialPrefix = payload.serialPrefix && payload.serialPrefix.trim().length > 0;
     const normalizedPrefix = hasSerialPrefix
       ? normalizeSerialCode(payload.serialPrefix.trim())
       : null;
@@ -97,7 +96,7 @@ export async function POST(request: Request) {
     if (normalizedPrefix) {
       // Use serialPrefix for auto-generation (batch creation or continuation)
       console.log("[GramProductCreate] Using serialPrefix:", normalizedPrefix);
-      
+
       // Find existing serials with this prefix to determine starting number
       const existingItems = await prisma.gramProductItem.findMany({
         where: {
@@ -129,7 +128,7 @@ export async function POST(request: Request) {
       } else {
         console.log("[GramProductCreate] No existing serials found, starting from 1");
       }
-      
+
       serialCodes = generateSequentialSerials(normalizedPrefix, qrCount, startNumber);
     } else if (payload.serialCode && payload.serialCode.trim().length > 0) {
       // Use explicit serialCode (single item)
@@ -205,7 +204,9 @@ export async function POST(request: Request) {
       }
     }
 
-    console.log("[GramProductCreate] Pre-generation complete. Starting QR generation and database insertion...");
+    console.log(
+      "[GramProductCreate] Pre-generation complete. Starting QR generation and database insertion..."
+    );
 
     // Process items in batches for better performance and error recovery
     const totalBatches = Math.ceil(qrCount / BATCH_SIZE);
