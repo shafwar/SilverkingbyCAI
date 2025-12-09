@@ -180,6 +180,13 @@ export default function VerifyPage() {
         ? serialNumber // Use the original QR scan uniqCode
         : result?.product?.serialCode || serialNumber;
 
+      console.log("[VerifyPage] Sending root key verification request:", {
+        uniqCode: uniqCodeForVerification,
+        rootKey: rootKey.trim().toUpperCase(),
+        originalSerialNumber: serialNumber,
+        requiresRootKey: result?.requiresRootKey,
+      });
+
       const response = await fetch("/api/verify/root-key", {
         method: "POST",
         headers: {
@@ -189,6 +196,11 @@ export default function VerifyPage() {
           uniqCode: uniqCodeForVerification,
           rootKey: rootKey.trim().toUpperCase(),
         }),
+      });
+
+      console.log("[VerifyPage] Root key verification response:", {
+        status: response.status,
+        ok: response.ok,
       });
 
       let data;

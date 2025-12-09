@@ -24,15 +24,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Normalize inputs
-    const normalizedUniqCode = uniqCode
+    // Normalize inputs - ensure consistent normalization
+    const normalizedUniqCode = String(uniqCode || "")
       .trim()
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, "");
-    const normalizedRootKey = rootKey
+    const normalizedRootKey = String(rootKey || "")
       .trim()
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, "");
+    
+    console.log("[VerifyRootKey] Input normalization:", {
+      originalUniqCode: uniqCode,
+      normalizedUniqCode,
+      originalRootKey: rootKey,
+      normalizedRootKey,
+    });
 
     if (!normalizedUniqCode || normalizedUniqCode.length < 3) {
       return NextResponse.json(
@@ -121,9 +128,70 @@ export async function POST(request: NextRequest) {
         if (allItems.length > 0) {
           gramItem = allItems[0];
           lookupMethod = "caseInsensitive";
+          console.log("[VerifyRootKey] Found via case-insensitive search:", gramItem);
         }
       } catch (error: any) {
         console.error("[VerifyRootKey] Error in case-insensitive lookup:", error.message);
+      }
+    }
+
+    // Strategy 4: Try partial match (in case of typos or similar codes)
+    if (!gramItem) {
+      try {
+        console.log("[VerifyRootKey] Trying partial match search...");
+        const partialMatches = await prisma.gramProductItem.findMany({
+          where: {
+            OR: [
+              { uniqCode: { contains: normalizedUniqCode.substring(0, 10) } },
+              { serialCode: { contains: normalizedUniqCode.substring(0, 6) } },
+            ],
+          },
+          select: {
+            id: true,
+            uniqCode: true,
+            serialCode: true,
+            rootKeyHash: true,
+            rootKey: true,
+          },
+          take: 5,
+        });
+        
+        if (partialMatches.length > 0) {
+          console.log("[VerifyRootKey] Found partial matches:", partialMatches.length);
+          // Use the first match if only one, or log all for debugging
+          if (partialMatches.length === 1) {
+            gramItem = partialMatches[0];
+            lookupMethod = "partialMatch";
+            console.log("[VerifyRootKey] Using single partial match:", gramItem);
+          } else {
+            console.log("[VerifyRootKey] Multiple partial matches found, cannot determine unique item");
+          }
+        }
+      } catch (error: any) {
+        console.error("[VerifyRootKey] Error in partial match lookup:", error.message);
+      }
+    }
+
+    if (!gramItem) {
+      // Try one more time with exact match on original uniqCode (before normalization)
+      try {
+        const exactMatch = await prisma.gramProductItem.findUnique({
+          where: { uniqCode: uniqCode.trim() },
+          select: {
+            id: true,
+            uniqCode: true,
+            serialCode: true,
+            rootKeyHash: true,
+            rootKey: true,
+          },
+        });
+        if (exactMatch) {
+          gramItem = exactMatch;
+          lookupMethod = "exactOriginal";
+          console.log("[VerifyRootKey] Found with exact original uniqCode:", gramItem);
+        }
+      } catch (error: any) {
+        console.error("[VerifyRootKey] Error in exact original lookup:", error.message);
       }
     }
 
@@ -131,9 +199,16 @@ export async function POST(request: NextRequest) {
       console.error("[VerifyRootKey] Item not found after all lookup strategies:", {
         normalizedUniqCode,
         providedUniqCode: uniqCode,
+        lookupStrategiesTried: ["uniqCode", "serialCode", "caseInsensitive", "partialMatch", "exactOriginal"],
       });
+      
+      // Provide helpful error message
       return NextResponse.json(
-        { verified: false, error: "Product not found. Please check the QR code." },
+        {
+          verified: false,
+          error: `Product not found. Please check the QR code. UniqCode: ${uniqCode}`,
+          hint: "The QR code may be invalid or the product may not exist in the database.",
+        },
         { status: 404 }
       );
     }
@@ -164,42 +239,64 @@ export async function POST(request: NextRequest) {
     // This should be the main verification method for current implementation
     if (gramItem.rootKey) {
       try {
-        // Normalize stored root key exactly like input
-        const storedRootKeyNormalized = gramItem.rootKey
+        // Normalize stored root key exactly like input - ensure consistent normalization
+        const storedRootKeyNormalized = String(gramItem.rootKey || "")
           .trim()
           .toUpperCase()
           .replace(/[^A-Z0-9]/g, "");
         
+        console.log("[VerifyRootKey] Plain text comparison:", {
+          storedOriginal: gramItem.rootKey,
+          storedNormalized: storedRootKeyNormalized,
+          providedOriginal: rootKey,
+          providedNormalized: normalizedRootKey,
+          exactMatch: storedRootKeyNormalized === normalizedRootKey,
+          storedLength: storedRootKeyNormalized.length,
+          providedLength: normalizedRootKey.length,
+        });
+        
         // Try exact match first (most common case)
         if (storedRootKeyNormalized === normalizedRootKey) {
-          console.log("[VerifyRootKey] Root key matched via plain text comparison (PRIMARY METHOD)");
+          console.log(
+            "[VerifyRootKey] ✅ Root key matched via plain text comparison (PRIMARY METHOD)"
+          );
           isRootKeyValid = true;
           verificationMethod = "plainText";
         } else {
-          // Log mismatch for debugging
-          console.log("[VerifyRootKey] Plain text mismatch:", {
+          // Log detailed mismatch for debugging
+          console.warn("[VerifyRootKey] Plain text mismatch:", {
             stored: gramItem.rootKey,
             storedNormalized: storedRootKeyNormalized,
             provided: rootKey,
             providedNormalized: normalizedRootKey,
             match: storedRootKeyNormalized === normalizedRootKey,
+            charByChar: {
+              stored: storedRootKeyNormalized.split(""),
+              provided: normalizedRootKey.split(""),
+            },
           });
         }
       } catch (plainTextError: any) {
         console.error("[VerifyRootKey] Plain text comparison error:", plainTextError.message);
       }
+    } else {
+      console.warn("[VerifyRootKey] No plain text rootKey available, using bcrypt only");
     }
 
     // Fallback: bcrypt hash comparison (for backward compatibility)
     if (!isRootKeyValid) {
       try {
+        console.log("[VerifyRootKey] Trying bcrypt comparison as fallback...");
         isRootKeyValid = await bcrypt.compare(normalizedRootKey, gramItem.rootKeyHash);
         if (isRootKeyValid) {
           verificationMethod = "bcrypt";
-          console.log("[VerifyRootKey] Root key verified via bcrypt hash (fallback)");
+          console.log("[VerifyRootKey] ✅ Root key verified via bcrypt hash (fallback)");
         } else {
           // Log bcrypt mismatch for debugging
-          console.log("[VerifyRootKey] Bcrypt comparison also failed");
+          console.warn("[VerifyRootKey] Bcrypt comparison also failed:", {
+            normalizedRootKey,
+            hashPrefix: gramItem.rootKeyHash.substring(0, 20),
+          });
         }
       } catch (bcryptError: any) {
         console.error("[VerifyRootKey] Bcrypt comparison error:", bcryptError.message);
@@ -213,7 +310,7 @@ export async function POST(request: NextRequest) {
         const storedLower = gramItem.rootKey.trim().toLowerCase();
         const providedUpper = normalizedRootKey.toUpperCase();
         const providedLower = normalizedRootKey.toLowerCase();
-        
+
         if (
           storedUpper === providedUpper ||
           storedLower === providedLower ||
@@ -232,9 +329,12 @@ export async function POST(request: NextRequest) {
     if (!isRootKeyValid) {
       // Enhanced error logging with detailed comparison
       const storedNormalized = gramItem.rootKey
-        ? gramItem.rootKey.trim().toUpperCase().replace(/[^A-Z0-9]/g, "")
+        ? gramItem.rootKey
+            .trim()
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, "")
         : "N/A";
-      
+
       console.warn("[VerifyRootKey] Invalid root key - all verification methods failed", {
         uniqCode: normalizedUniqCode,
         serialCode: gramItem.serialCode,
@@ -254,14 +354,14 @@ export async function POST(request: NextRequest) {
           provided: normalizedRootKey,
         },
       });
-      
+
       // Provide helpful error message without exposing sensitive data
       // In production, don't expose the actual root key for security
       const errorMessage =
         process.env.NODE_ENV === "development" && gramItem.rootKey
           ? `Invalid root key. Expected: ${gramItem.rootKey}, Provided: ${rootKey.trim()}. Please check the root key from the admin panel for serial code ${gramItem.serialCode}.`
           : `Invalid root key. Please check the root key from the admin panel for serial code ${gramItem.serialCode} and try again.`;
-      
+
       return NextResponse.json(
         {
           verified: false,
