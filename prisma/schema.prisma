@@ -109,8 +109,11 @@ model GramProductItem {
   id            Int              @id @default(autoincrement())
   batchId       Int
   /// Stable uniq code printed on the QR and used for verification lookup
-  uniqCode      String           @unique
+  /// NOTE: NOT unique - multiple items in a batch can share the same uniqCode
+  /// Root key is used to differentiate items with the same uniqCode
+  uniqCode      String
   /// Serial code (SKP format) - required for Page 2
+  /// This MUST be unique per item
   serialCode    String           @unique
   /// Root key hash (bcrypt) for two-step verification - alphanumeric 3-4 chars
   rootKeyHash   String
@@ -122,6 +125,9 @@ model GramProductItem {
   createdAt     DateTime         @default(now())
   batch         GramProductBatch @relation(fields: [batchId], references: [id])
   scanLogs      GramQRScanLog[]
+  
+  /// Index for faster lookups by uniqCode (since multiple items can have same uniqCode)
+  @@index([uniqCode])
 }
 
 model GramQRScanLog {
