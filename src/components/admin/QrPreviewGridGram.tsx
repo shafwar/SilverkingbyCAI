@@ -501,7 +501,9 @@ export function QrPreviewGridGram({ batches }: Props) {
                             className="inline-flex items-center gap-1 rounded-full border border-white/20 px-3 py-1 text-[11px] text-white/80 hover:border-white/50 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <Download className="h-3 w-3" />
-                            {downloadingId === batch.firstItem.id ? t("downloading") : t("download")}
+                            {downloadingId === batch.firstItem.id
+                              ? t("downloading")
+                              : t("download")}
                           </button>
                         </div>
                       </td>

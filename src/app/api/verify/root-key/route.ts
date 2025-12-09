@@ -48,8 +48,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find gram product item by uniqCode
-    const gramItem = await prisma.gramProductItem.findUnique({
+    // Find gram product item by uniqCode (QR code) or fallback to serialCode
+    let gramItem = await prisma.gramProductItem.findUnique({
       where: { uniqCode: normalizedUniqCode },
       select: {
         id: true,
@@ -57,6 +57,17 @@ export async function POST(request: NextRequest) {
         rootKeyHash: true,
       },
     });
+
+    if (!gramItem) {
+      gramItem = await prisma.gramProductItem.findUnique({
+        where: { serialCode: normalizedUniqCode },
+        select: {
+          id: true,
+          serialCode: true,
+          rootKeyHash: true,
+        },
+      });
+    }
 
     if (!gramItem) {
       return NextResponse.json({ verified: false, error: "Product not found" }, { status: 404 });
