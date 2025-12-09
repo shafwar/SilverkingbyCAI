@@ -164,23 +164,23 @@ export async function POST(request: Request) {
 
     // Generate uniqCode with collision check
     for (let attempt = 0; attempt < 10; attempt++) {
-      const candidate = generateSerialCode("GK");
-      const existing = await prisma.gramProductItem.findUnique({
-        where: { uniqCode: candidate },
-        select: { id: true },
-      });
-      if (!existing) {
+        const candidate = generateSerialCode("GK");
+        const existing = await prisma.gramProductItem.findUnique({
+          where: { uniqCode: candidate },
+          select: { id: true },
+        });
+        if (!existing) {
         sharedUniqCode = candidate;
-        break;
-      }
+          break;
+        }
       if (attempt === 9) {
-        throw new Error("Failed to generate unique QR code after multiple attempts");
+          throw new Error("Failed to generate unique QR code after multiple attempts");
+        }
       }
-    }
 
     if (!sharedUniqCode) {
-      throw new Error("Failed to generate unique QR code");
-    }
+        throw new Error("Failed to generate unique QR code");
+      }
 
     console.log("[GramProductCreate] Shared uniqCode for batch:", sharedUniqCode);
 
@@ -213,7 +213,10 @@ export async function POST(request: Request) {
     }
 
     console.log(
-      "[GramProductCreate] Pre-generation complete. Starting QR generation and database insertion..."
+      `[GramProductCreate] Pre-generation complete. Generated ${itemData.length} items with root keys.`
+    );
+    console.log(
+      `[GramProductCreate] Sample items: First=${itemData[0]?.serialCode} (rootKey: ${itemData[0]?.rootKey}), Last=${itemData[itemData.length - 1]?.serialCode} (rootKey: ${itemData[itemData.length - 1]?.rootKey})`
     );
 
     // Generate QR code ONCE for the entire batch (since all items share the same uniqCode)
@@ -232,6 +235,16 @@ export async function POST(request: Request) {
     } catch (qrError: any) {
       console.error("[GramProductCreate] QR generation failed:", qrError);
       throw new Error(`Failed to generate QR code: ${qrError.message || "Unknown error"}`);
+    }
+
+    // CRITICAL: Verify itemData array has correct length
+    if (itemData.length !== qrCount) {
+      console.error(
+        `[GramProductCreate] CRITICAL ERROR: itemData length (${itemData.length}) does not match qrCount (${qrCount})!`
+      );
+      throw new Error(
+        `Pre-generation failed: Expected ${qrCount} items but only generated ${itemData.length}`
+      );
     }
 
     // Process items in batches with controlled concurrency
@@ -270,16 +283,16 @@ export async function POST(request: Request) {
             const qrImageUrl = sharedQrImageUrl;
 
             // Create database record
-            const item = await prisma.gramProductItem.create({
-              data: {
-                batchId: batch.id,
+      const item = await prisma.gramProductItem.create({
+        data: {
+          batchId: batch.id,
                 uniqCode: itemData.uniqCode, // Shared uniqCode for all items in batch
                 serialCode: itemData.serialCode, // Unique serialCode per item
                 rootKeyHash: itemData.rootKeyHash, // Unique rootKeyHash per item
                 rootKey: itemData.rootKey, // Unique rootKey per item (for admin display)
                 qrImageUrl, // Same QR image URL for all items (since uniqCode is shared)
-              },
-            });
+        },
+      });
 
             processedCount++;
             batchItems.push({ ...item, rootKey: itemData.rootKey });
@@ -387,14 +400,61 @@ export async function POST(request: Request) {
       );
     }
 
+    // CRITICAL: Verify all items were created
     console.log(
-      `[GramProductCreate] Batch creation complete. Successfully created ${items.length}/${qrCount} items (${((items.length / qrCount) * 100).toFixed(1)}% success rate).`
+      `[GramProductCreate] ========== BATCH CREATION SUMMARY ==========`
+    );
+    console.log(
+      `[GramProductCreate] Expected items: ${qrCount}`
+    );
+    console.log(
+      `[GramProductCreate] Successfully created: ${items.length}`
+    );
+    console.log(
+      `[GramProductCreate] Failed: ${failedItems.length}`
+    );
+    console.log(
+      `[GramProductCreate] Success rate: ${((items.length / qrCount) * 100).toFixed(1)}%`
+    );
+    
+    // Log sample of created items
+    if (items.length > 0) {
+      console.log(
+        `[GramProductCreate] Sample created items:`,
+        items.slice(0, 5).map((item: any) => ({
+          serialCode: item.serialCode,
+          rootKey: item.rootKey,
+          uniqCode: item.uniqCode,
+        }))
+      );
+    }
+    
+    // Log sample of failed items
+    if (failedItems.length > 0) {
+      console.log(
+        `[GramProductCreate] Sample failed items:`,
+        failedItems.slice(0, 5)
+      );
+    }
+    
+    console.log(
+      `[GramProductCreate] ===========================================`
     );
 
     // If no items were created at all, throw error
     if (items.length === 0) {
+      console.error(
+        `[GramProductCreate] ❌❌❌ CRITICAL: No items were created! All ${qrCount} items failed.`
+      );
       throw new Error(
         `Failed to create any items. All ${qrCount} items failed. Check error logs for details.`
+      );
+    }
+    
+    // If less than 90% success, log warning but don't throw
+    if (items.length < qrCount * 0.9) {
+      console.warn(
+        `[GramProductCreate] ⚠️ WARNING: Only ${items.length}/${qrCount} items created (${((items.length / qrCount) * 100).toFixed(1)}% success rate). This is below 90% threshold.`
       );
     }
 

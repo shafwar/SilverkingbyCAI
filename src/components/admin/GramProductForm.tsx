@@ -223,10 +223,10 @@ export function GramProductForm({ defaultValues }: GramProductFormProps) {
 
         // Show success or warning based on results
         if (failedCount === 0) {
-          toast.success("Gram-based batch created", {
+        toast.success("Gram-based batch created", {
             description: `Successfully created ${qrCount} item${qrCount === 1 ? "" : "s"} for ${
-              values.name
-            } (${values.weight}gr)`,
+            values.name
+          } (${values.weight}gr)`,
             duration: 3000,
           });
         } else {
@@ -236,7 +236,7 @@ export function GramProductForm({ defaultValues }: GramProductFormProps) {
               failedCount
             } item${failedCount === 1 ? "" : "s"} failed. Check logs for details.`,
             duration: 5000,
-          });
+        });
         }
 
         // Redirect to QR Preview Page 2
@@ -329,30 +329,30 @@ export function GramProductForm({ defaultValues }: GramProductFormProps) {
 
           {/* 2. Quantity */}
           <div>
-            <label className="mb-1.5 flex items-center gap-1.5 text-[10px] sm:text-xs uppercase tracking-[0.35em] text-purple-300/80">
-              <Boxes className="h-3 w-3 text-purple-400" />
-              {t("quantity")}
-            </label>
-            <input
-              type="number"
-              min={1}
+          <label className="mb-1.5 flex items-center gap-1.5 text-[10px] sm:text-xs uppercase tracking-[0.35em] text-purple-300/80">
+            <Boxes className="h-3 w-3 text-purple-400" />
+            {t("quantity")}
+          </label>
+          <input
+            type="number"
+            min={1}
               max={200000}
-              className="w-full rounded-lg border border-purple-500/30 bg-purple-500/10 px-3 sm:px-4 py-2.5 text-sm sm:text-base text-white transition-all placeholder:text-white/30 focus:border-purple-400/60 focus:bg-purple-500/20 focus:outline-none focus:ring-2 focus:ring-purple-400/30 disabled:opacity-60"
-              placeholder={t("quantityPlaceholder")}
+            className="w-full rounded-lg border border-purple-500/30 bg-purple-500/10 px-3 sm:px-4 py-2.5 text-sm sm:text-base text-white transition-all placeholder:text-white/30 focus:border-purple-400/60 focus:bg-purple-500/20 focus:outline-none focus:ring-2 focus:ring-purple-400/30 disabled:opacity-60"
+            placeholder={t("quantityPlaceholder")}
               disabled={isEditMode}
-              {...form.register("quantity", { valueAsNumber: true })}
-            />
+            {...form.register("quantity", { valueAsNumber: true })}
+          />
             {form.formState.errors.quantity && (
               <p className="mt-1 text-xs text-red-400">{form.formState.errors.quantity.message}</p>
             )}
-            <p className="mt-2 flex items-start gap-1.5 text-[11px] text-white/60">
-              <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-              <span>
-                {isSmallWeight
-                  ? `Small weight mode: 1 QR will represent ${quantity} units of ${weight}gr.`
-                  : `Large weight mode: this will generate ${quantity} unique QR codes (each with its own uniqcode).`}
-              </span>
-            </p>
+          <p className="mt-2 flex items-start gap-1.5 text-[11px] text-white/60">
+            <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+            <span>
+              {isSmallWeight
+                ? `Small weight mode: 1 QR will represent ${quantity} units of ${weight}gr.`
+                : `Large weight mode: this will generate ${quantity} unique QR codes (each with its own uniqcode).`}
+            </span>
+          </p>
           </div>
 
           {/* 3. Gr (Weight) */}

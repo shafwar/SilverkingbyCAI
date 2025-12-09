@@ -3,6 +3,7 @@
 ## ✅ Status: Fixed
 
 ### Masalah:
+
 - Input quantity 100, tapi hanya 1 root key yang terbuat
 - Batch creation menggunakan parallel processing yang menyebabkan race condition
 - Database connection pool exhaustion
@@ -10,30 +11,38 @@
 ### Solusi yang Diimplementasikan:
 
 #### 1. **Sequential Processing** ✅
-**Sebelumnya**: Parallel processing dengan `Promise.allSettled()` 
+
+**Sebelumnya**: Parallel processing dengan `Promise.allSettled()`
+
 - Bisa menyebabkan race condition
 - Database connection pool exhaustion
 - Beberapa items tidak terbuat
 
 **Sekarang**: Sequential processing dengan `for` loop
+
 - Setiap item dibuat satu per satu
 - Memastikan semua 100 items terbuat
 - Tidak ada race condition
 
 ```typescript
 // OLD: Parallel processing
-const batchPromises = currentBatch.map(async (itemData) => { /* ... */ });
+const batchPromises = currentBatch.map(async (itemData) => {
+  /* ... */
+});
 const batchResults = await Promise.allSettled(batchPromises);
 
 // NEW: Sequential processing
 for (let localIndex = 0; localIndex < currentBatch.length; localIndex++) {
   const itemData = currentBatch[localIndex];
   // Create item one by one
-  const item = await prisma.gramProductItem.create({ /* ... */ });
+  const item = await prisma.gramProductItem.create({
+    /* ... */
+  });
 }
 ```
 
 #### 2. **Pre-generation All Root Keys** ✅
+
 - Semua 100 root keys di-generate sebelum batch processing
 - Setiap item punya root key unik
 - Semua items share uniqCode yang sama
@@ -43,7 +52,7 @@ for (let localIndex = 0; localIndex < currentBatch.length; localIndex++) {
 for (let i = 0; i < qrCount; i++) {
   const rootKey = generateRootKey(); // Unique per item
   const rootKeyHash = await bcrypt.hash(rootKey, 10);
-  
+
   itemData.push({
     uniqCode: sharedUniqCode, // SAME for all
     serialCode: serialCodes[i], // UNIQUE per item
@@ -54,6 +63,7 @@ for (let i = 0; i < qrCount; i++) {
 ```
 
 #### 3. **Progress Logging** ✅
+
 - Log progress setiap 10 items
 - Memudahkan tracking jika ada masalah
 - Menampilkan percentage completion
@@ -61,11 +71,14 @@ for (let i = 0; i < qrCount; i++) {
 ```typescript
 if ((globalIndex + 1) % 10 === 0 || globalIndex === qrCount - 1) {
   const progressPercent = ((globalIndex + 1) / qrCount) * 100;
-  console.log(`Progress: ${globalIndex + 1}/${qrCount} items created (${progressPercent.toFixed(1)}%)`);
+  console.log(
+    `Progress: ${globalIndex + 1}/${qrCount} items created (${progressPercent.toFixed(1)}%)`
+  );
 }
 ```
 
 #### 4. **Retry Logic** ✅
+
 - Retry hingga 3 kali untuk setiap item yang gagal
 - Exponential backoff (100ms, 200ms, 300ms)
 - Skip duplicate items yang sudah ada
@@ -73,6 +86,7 @@ if ((globalIndex + 1) % 10 === 0 || globalIndex === qrCount - 1) {
 ## 📋 Flow Lengkap:
 
 ### 1. Pre-generation Phase:
+
 ```
 Input: Quantity 100, Serial Prefix "SKA"
 Output:
@@ -83,12 +97,14 @@ Output:
 ```
 
 ### 2. QR Generation:
+
 ```
 - Generate 1 QR code untuk shared uniqCode
 - Semua 100 items akan menggunakan QR image yang sama
 ```
 
 ### 3. Database Insertion (Sequential):
+
 ```
 For each item (1 to 100):
   1. Create database record
@@ -100,6 +116,7 @@ For each item (1 to 100):
 ## ✅ Expected Results:
 
 Setelah fix ini:
+
 - ✅ **100 items** akan terbuat di database
 - ✅ **100 root keys** unik (satu per item)
 - ✅ **1 uniqCode** shared untuk semua items
@@ -114,13 +131,15 @@ Setelah fix ini:
    - Expected: 100 items dengan 100 root keys
 
 2. **Verify Database**:
+
    ```sql
-   SELECT COUNT(*) as total_items, 
+   SELECT COUNT(*) as total_items,
           COUNT(DISTINCT rootKey) as unique_rootkeys,
           COUNT(DISTINCT uniqCode) as unique_uniqcodes
-   FROM GramProductItem 
+   FROM GramProductItem
    WHERE batchId = X;
    ```
+
    Expected:
    - total_items: 100
    - unique_rootkeys: 100

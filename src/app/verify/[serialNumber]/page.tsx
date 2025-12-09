@@ -34,7 +34,7 @@ export default function VerifyPage() {
 
   useEffect(() => {
     let isMounted = true; // Prevent state updates if component unmounts
-
+    
     async function verifyProduct() {
       try {
         // SECURITY: Normalize and validate serial number input
@@ -44,7 +44,7 @@ export default function VerifyPage() {
             ?.trim()
             .toUpperCase()
             .replace(/[^A-Z0-9]/g, "") || "";
-
+        
         // SECURITY: Validate serial number format and length
         if (!normalizedSerial || normalizedSerial.length < 3 || normalizedSerial.length > 50) {
           if (isMounted) {
@@ -68,7 +68,7 @@ export default function VerifyPage() {
           },
           signal: controller.signal,
         });
-
+        
         clearTimeout(timeoutId);
 
         if (!response.ok) {
@@ -84,7 +84,7 @@ export default function VerifyPage() {
         }
 
         const data = await response.json();
-
+        
         // SECURITY: Validate response structure
         if (!data || typeof data !== "object" || !("verified" in data)) {
           if (isMounted) {
@@ -128,7 +128,7 @@ export default function VerifyPage() {
           }
           return;
         }
-
+        
         console.error("Verification error:", error);
         if (isMounted) {
           setResult({
@@ -299,12 +299,12 @@ export default function VerifyPage() {
                     </span>
                   </div>
                   {typeof result.product?.stock === "number" && (
-                    <div className="flex justify-between py-3 border-b border-luxury-silver/10">
+                  <div className="flex justify-between py-3 border-b border-luxury-silver/10">
                       <span className="text-luxury-silver">Quantity</span>
                       <span className="text-luxury-lightSilver font-semibold">
                         {result.product.stock} pcs
-                      </span>
-                    </div>
+                    </span>
+                  </div>
                   )}
                   <div className="flex justify-between py-3 border-b border-luxury-silver/10">
                     <span className="text-luxury-silver">Manufacturing Date</span>
