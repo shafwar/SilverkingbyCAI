@@ -176,9 +176,9 @@ export default function VerifyPage() {
       // - When user scans QR with uniqCode (GK...), API returns product.serialCode = uniqCode
       // - We need to use the original uniqCode from the QR scan (serialNumber param)
       // - Or use product.serialCode if it's actually the uniqCode
-      const uniqCodeForVerification = result?.requiresRootKey 
+      const uniqCodeForVerification = result?.requiresRootKey
         ? serialNumber // Use the original QR scan uniqCode
-        : (result?.product?.serialCode || serialNumber);
+        : result?.product?.serialCode || serialNumber;
 
       const response = await fetch("/api/verify/root-key", {
         method: "POST",
@@ -191,19 +191,37 @@ export default function VerifyPage() {
         }),
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error("[VerifyPage] Failed to parse JSON response:", jsonError);
+        setRootKeyError("Server error. Please try again.");
+        setVerifyingRootKey(false);
+        return;
+      }
 
       if (!response.ok || !data.verified) {
-        setRootKeyError(data.error || "Invalid root key. Please try again.");
+        const errorMessage =
+          data.error || `Verification failed (${response.status}). Please try again.`;
+        console.error("[VerifyPage] Root key verification failed:", {
+          status: response.status,
+          error: errorMessage,
+          data,
+        });
+        setRootKeyError(errorMessage);
         setVerifyingRootKey(false);
         return;
       }
 
       // Root key verified successfully, redirect to serial code verification page
       if (data.serialCode) {
-        window.location.href = `/verify/${data.serialCode}`;
+        console.log("[VerifyPage] Root key verified, redirecting to:", data.serialCode);
+        // Use router.push for better Next.js navigation
+        window.location.href = `/verify/${encodeURIComponent(data.serialCode)}`;
       } else {
-        setRootKeyError("Verification successful but serial code not found.");
+        console.error("[VerifyPage] Verification successful but serialCode missing:", data);
+        setRootKeyError("Verification successful but serial code not found. Please contact support.");
         setVerifyingRootKey(false);
       }
     } catch (error: any) {

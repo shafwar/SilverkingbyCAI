@@ -54,21 +54,14 @@ export async function POST(request: NextRequest) {
     });
 
     // Find gram product item by uniqCode (QR code) or fallback to serialCode
-    let gramItem = await prisma.gramProductItem.findUnique({
-      where: { uniqCode: normalizedUniqCode },
-      select: {
-        id: true,
-        uniqCode: true,
-        serialCode: true,
-        rootKeyHash: true,
-        rootKey: true,
-      },
-    });
+    // Try multiple lookup strategies for robustness
+    let gramItem = null;
+    let lookupMethod = "unknown";
 
-    if (!gramItem) {
-      console.log("[VerifyRootKey] Not found by uniqCode, trying serialCode...");
+    // Strategy 1: Direct uniqCode lookup (most common case)
+    try {
       gramItem = await prisma.gramProductItem.findUnique({
-        where: { serialCode: normalizedUniqCode },
+        where: { uniqCode: normalizedUniqCode },
         select: {
           id: true,
           uniqCode: true,
@@ -77,11 +70,73 @@ export async function POST(request: NextRequest) {
           rootKey: true,
         },
       });
+      if (gramItem) {
+        lookupMethod = "uniqCode";
+      }
+    } catch (error: any) {
+      console.error("[VerifyRootKey] Error in uniqCode lookup:", error.message);
+    }
+
+    // Strategy 2: Fallback to serialCode lookup
+    if (!gramItem) {
+      try {
+        console.log("[VerifyRootKey] Not found by uniqCode, trying serialCode...");
+        gramItem = await prisma.gramProductItem.findUnique({
+          where: { serialCode: normalizedUniqCode },
+          select: {
+            id: true,
+            uniqCode: true,
+            serialCode: true,
+            rootKeyHash: true,
+            rootKey: true,
+          },
+        });
+        if (gramItem) {
+          lookupMethod = "serialCode";
+        }
+      } catch (error: any) {
+        console.error("[VerifyRootKey] Error in serialCode lookup:", error.message);
+      }
+    }
+
+    // Strategy 3: Try case-insensitive search if still not found
+    if (!gramItem) {
+      try {
+        console.log("[VerifyRootKey] Trying case-insensitive search...");
+        const allItems = await prisma.gramProductItem.findMany({
+          where: {
+            OR: [
+              { uniqCode: { contains: normalizedUniqCode, mode: "insensitive" } },
+              { serialCode: { contains: normalizedUniqCode, mode: "insensitive" } },
+            ],
+          },
+          select: {
+            id: true,
+            uniqCode: true,
+            serialCode: true,
+            rootKeyHash: true,
+            rootKey: true,
+          },
+          take: 1,
+        });
+        if (allItems.length > 0) {
+          gramItem = allItems[0];
+          lookupMethod = "caseInsensitive";
+        }
+      } catch (error: any) {
+        console.error("[VerifyRootKey] Error in case-insensitive lookup:", error.message);
+      }
     }
 
     if (!gramItem) {
-      console.error("[VerifyRootKey] Item not found:", normalizedUniqCode);
-      return NextResponse.json({ verified: false, error: "Product not found" }, { status: 404 });
+      console.error("[VerifyRootKey] Item not found after all lookup strategies:", {
+        normalizedUniqCode,
+        providedUniqCode: uniqCode,
+      });
+      return NextResponse.json(
+        { verified: false, error: "Product not found. Please check the QR code." },
+        { status: 404 }
+      );
     }
 
     console.log("[VerifyRootKey] Item found:", {
@@ -90,6 +145,7 @@ export async function POST(request: NextRequest) {
       serialCode: gramItem.serialCode,
       hasRootKeyHash: !!gramItem.rootKeyHash,
       hasRootKeyPlain: !!gramItem.rootKey,
+      lookupMethod,
     });
 
     // Ensure hash exists
@@ -101,36 +157,89 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify root key hash
-    let isRootKeyValid = await bcrypt.compare(normalizedRootKey, gramItem.rootKeyHash);
+    // Verify root key hash with retry logic for robustness
+    let isRootKeyValid = false;
+    let verificationMethod = "none";
 
-    // Fallback: If hash comparison fails but plain text rootKey exists, compare directly
-    // This helps with items created before rootKey field was added or migration issues
+    // Primary verification: bcrypt hash comparison
+    try {
+      isRootKeyValid = await bcrypt.compare(normalizedRootKey, gramItem.rootKeyHash);
+      if (isRootKeyValid) {
+        verificationMethod = "bcrypt";
+        console.log("[VerifyRootKey] Root key verified via bcrypt hash");
+      }
+    } catch (bcryptError: any) {
+      console.error("[VerifyRootKey] Bcrypt comparison error:", bcryptError.message);
+    }
+
+    // Fallback 1: Plain text comparison (for items created before rootKey field was added)
     if (!isRootKeyValid && gramItem.rootKey) {
-      const storedRootKeyNormalized = gramItem.rootKey.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
-      if (storedRootKeyNormalized === normalizedRootKey) {
-        console.log("[VerifyRootKey] Root key matched via plain text comparison (fallback)");
-        isRootKeyValid = true;
+      try {
+        const storedRootKeyNormalized = gramItem.rootKey
+          .trim()
+          .toUpperCase()
+          .replace(/[^A-Z0-9]/g, "");
+        if (storedRootKeyNormalized === normalizedRootKey) {
+          console.log("[VerifyRootKey] Root key matched via plain text comparison (fallback)");
+          isRootKeyValid = true;
+          verificationMethod = "plainText";
+        }
+      } catch (plainTextError: any) {
+        console.error("[VerifyRootKey] Plain text comparison error:", plainTextError.message);
+      }
+    }
+
+    // Fallback 2: Direct string comparison (case-insensitive, for edge cases)
+    if (!isRootKeyValid && gramItem.rootKey) {
+      try {
+        if (
+          gramItem.rootKey.trim().toUpperCase() === normalizedRootKey ||
+          gramItem.rootKey.trim().toLowerCase() === normalizedRootKey.toLowerCase()
+        ) {
+          console.log("[VerifyRootKey] Root key matched via direct string comparison (fallback 2)");
+          isRootKeyValid = true;
+          verificationMethod = "directString";
+        }
+      } catch (directError: any) {
+        console.error("[VerifyRootKey] Direct string comparison error:", directError.message);
       }
     }
 
     if (!isRootKeyValid) {
-      console.warn("[VerifyRootKey] Invalid root key", {
+      console.warn("[VerifyRootKey] Invalid root key - all verification methods failed", {
         uniqCode: normalizedUniqCode,
         serialCode: gramItem.serialCode,
         provided: normalizedRootKey,
+        providedLength: normalizedRootKey.length,
         storedPlainText: gramItem.rootKey || "N/A",
+        storedPlainTextLength: gramItem.rootKey?.length || 0,
         hashLength: gramItem.rootKeyHash.length,
         hashPrefix: gramItem.rootKeyHash.substring(0, 10),
+        verificationMethod,
+        lookupMethod,
       });
-      return NextResponse.json({ verified: false, error: "Invalid root key" }, { status: 401 });
+      return NextResponse.json(
+        {
+          verified: false,
+          error: "Invalid root key. Please check the root key and try again.",
+        },
+        { status: 401 }
+      );
     }
 
     // Root key is valid, return serialCode for redirect
+    console.log("[VerifyRootKey] Root key verification successful", {
+      itemId: gramItem.id,
+      serialCode: gramItem.serialCode,
+      verificationMethod,
+      lookupMethod,
+    });
+
     return NextResponse.json(
       {
         verified: true,
         serialCode: gramItem.serialCode,
+        uniqCode: gramItem.uniqCode, // Include for debugging
       },
       {
         status: 200,
