@@ -287,8 +287,9 @@ export async function POST(request: Request) {
             
             // Log every 10 items for progress tracking
             if ((globalIndex + 1) % 10 === 0 || globalIndex === qrCount - 1) {
+              const progressPercent = ((globalIndex + 1) / qrCount) * 100;
               console.log(
-                `[GramProductCreate] Progress: ${globalIndex + 1}/${qrCount} items created (${((globalIndex + 1) / qrCount) * 100).toFixed(1)}%)`
+                `[GramProductCreate] Progress: ${globalIndex + 1}/${qrCount} items created (${progressPercent.toFixed(1)}%)`
               );
             }
             
