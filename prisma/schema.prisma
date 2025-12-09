@@ -114,6 +114,8 @@ model GramProductItem {
   serialCode    String           @unique
   /// Root key hash (bcrypt) for two-step verification - alphanumeric 3-4 chars
   rootKeyHash   String
+  /// Root key plain text (for admin display only) - stored separately from hash for admin convenience
+  rootKey       String?
   qrImageUrl    String
   scanCount     Int              @default(0)
   lastScannedAt DateTime?

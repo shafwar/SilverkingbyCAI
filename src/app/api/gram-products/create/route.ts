@@ -237,6 +237,7 @@ export async function POST(request: Request) {
             uniqCode,
             serialCode,
             rootKeyHash,
+            rootKey, // Store plain text root key for admin display
             qrImageUrl,
           },
         });

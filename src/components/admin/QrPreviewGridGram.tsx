@@ -18,22 +18,33 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
-type GramPreviewProduct = {
-  id: number;
+type GramPreviewBatch = {
+  batchId: number;
   name: string;
   weight: number;
-  uniqCode: string;
-  serialCode?: string;
-  qrImageUrl: string | null;
   weightGroup: string | null;
-  hasRootKey?: boolean; // Indicates root key exists (for Page 2 two-step verification)
+  itemCount: number;
+  firstItem: {
+    id: number;
+    uniqCode: string;
+    serialCode: string;
+    qrImageUrl: string;
+    hasRootKey: boolean;
+  };
+  allItems: Array<{
+    id: number;
+    uniqCode: string;
+    serialCode: string;
+    qrImageUrl: string;
+    hasRootKey: boolean;
+  }>;
 };
 
 type Props = {
-  products: GramPreviewProduct[];
+  batches: GramPreviewBatch[];
 };
 
-export function QrPreviewGridGram({ products }: Props) {
+export function QrPreviewGridGram({ batches }: Props) {
   const t = useTranslations("admin.qrPreviewDetail");
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
@@ -41,30 +52,64 @@ export function QrPreviewGridGram({ products }: Props) {
   const [weightFilter, setWeightFilter] = useState<"ALL" | "SMALL" | "LARGE">("ALL");
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
-  const [selected, setSelected] = useState<GramPreviewProduct | null>(null);
+  const [selectedBatch, setSelectedBatch] = useState<GramPreviewBatch | null>(null);
+  const [batchItems, setBatchItems] = useState<
+    Array<{ serialCode: string; uniqCode: string; rootKey: string | null }>
+  >([]);
+  const [loadingBatchItems, setLoadingBatchItems] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const filteredProducts = useMemo(() => {
-    let result = products;
+  const filteredBatches = useMemo(() => {
+    let result = batches;
 
     if (weightFilter !== "ALL") {
       result = result.filter(
-        (p) => (p.weightGroup || "").toUpperCase() === weightFilter.toUpperCase()
+        (b) => (b.weightGroup || "").toUpperCase() === weightFilter.toUpperCase()
       );
     }
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
-      result = result.filter((p) => {
-        const nameMatch = p.name.toLowerCase().includes(q);
-        const codeMatch = p.uniqCode.toLowerCase().includes(q);
-        const weightMatch = p.weight.toString().includes(q);
+      result = result.filter((b) => {
+        const nameMatch = b.name.toLowerCase().includes(q);
+        const codeMatch = b.firstItem.uniqCode.toLowerCase().includes(q);
+        const weightMatch = b.weight.toString().includes(q);
         return nameMatch || codeMatch || weightMatch;
       });
     }
 
     return result;
-  }, [products, searchQuery, weightFilter]);
+  }, [batches, searchQuery, weightFilter]);
+
+  const totalItems = useMemo(() => {
+    return filteredBatches.reduce((sum, batch) => sum + batch.itemCount, 0);
+  }, [filteredBatches]);
+
+  const handleSerialCodeClick = async (batch: GramPreviewBatch) => {
+    setSelectedBatch(batch);
+    setLoadingBatchItems(true);
+    try {
+      const response = await fetch(`/api/gram-products/batch/${batch.batchId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setBatchItems(
+          data.items.map((item: any) => ({
+            serialCode: item.serialCode,
+            uniqCode: item.uniqCode,
+            rootKey: item.rootKey,
+          }))
+        );
+      } else {
+        console.error("Failed to fetch batch items");
+        setBatchItems([]);
+      }
+    } catch (error) {
+      console.error("Error fetching batch items:", error);
+      setBatchItems([]);
+    } finally {
+      setLoadingBatchItems(false);
+    }
+  };
 
   const downloadZipBlob = async (response: Response, filename: string) => {
     const blob = await response.blob();
@@ -78,7 +123,16 @@ export function QrPreviewGridGram({ products }: Props) {
     window.URL.revokeObjectURL(url);
   };
 
-  const handleDownloadSingle = async (product: GramPreviewProduct) => {
+  const handleDownloadSingle = async (product: {
+    id: number;
+    name: string;
+    weight: number;
+    uniqCode: string;
+    serialCode?: string;
+    qrImageUrl: string | null;
+    weightGroup: string | null;
+    hasRootKey?: boolean;
+  }) => {
     if (!product) return;
     try {
       setDownloadingId(product.id);
@@ -138,39 +192,37 @@ export function QrPreviewGridGram({ products }: Props) {
   };
 
   const handleDownloadAll = async () => {
-    if (!filteredProducts.length) return;
+    if (!filteredBatches.length) return;
     try {
       setIsDownloadingAll(true);
-      const body = {
-        products: filteredProducts.map((p) => ({
-          id: p.id,
-          name: p.name,
-          serialCode: p.uniqCode,
-          weight: p.weight,
-          isGram: true,
-        })),
-        batchNumber: 1,
-        isGram: true,
-      };
+      const batchIds = filteredBatches.map((b) => b.batchId);
 
-      const response = await fetch("/api/qr/download-multiple-pdf", {
+      const response = await fetch("/api/gram-products/export-excel", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ batchIds }),
       });
 
       if (!response.ok) {
         const text = await response.text();
-        console.error("[GramPreview] Download all failed:", text);
-        throw new Error("Failed to download QR certificates");
+        console.error("[GramPreview] Download Excel failed:", text);
+        throw new Error("Failed to download Excel file");
       }
 
-      await downloadZipBlob(response, `qr-gram-batch.zip`);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `gram-products-${new Date().toISOString().split("T")[0]}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("[GramPreview] handleDownloadAll error:", error);
-      alert("Gagal mengunduh semua serticard QR. Silakan coba lagi.");
+      alert("Gagal mengunduh file Excel. Silakan coba lagi.");
     } finally {
       setIsDownloadingAll(false);
     }
@@ -213,16 +265,15 @@ export function QrPreviewGridGram({ products }: Props) {
               className="mt-2 text-sm leading-relaxed text-white/50 md:text-base"
             >
               {t("description")}
-              {filteredProducts.length > 0 && (
+              {totalItems > 0 && (
                 <span className="ml-1 text-[#FFD700]/80">
-                  {filteredProducts.length} {filteredProducts.length === 1 ? t("item") : t("items")}
-                  .
+                  {totalItems} {totalItems === 1 ? t("item") : t("items")}.
                 </span>
               )}
             </motion.p>
           </div>
 
-          {products.length > 0 && (
+          {totalItems > 0 && (
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -230,7 +281,7 @@ export function QrPreviewGridGram({ products }: Props) {
               className="flex flex-col items-end gap-1 rounded-2xl border border-white/10 bg-white/5 px-6 py-4 backdrop-blur-sm"
             >
               <p className="text-xs uppercase tracking-[0.2em] text-white/40">{t("totalAssets")}</p>
-              <p className="text-3xl font-light tracking-tight text-white">{products.length}</p>
+              <p className="text-3xl font-light tracking-tight text-white">{totalItems}</p>
             </motion.div>
           )}
         </div>
@@ -337,7 +388,7 @@ export function QrPreviewGridGram({ products }: Props) {
           <motion.button
             type="button"
             onClick={handleDownloadAll}
-            disabled={isDownloadingAll || filteredProducts.length === 0}
+            disabled={isDownloadingAll || filteredBatches.length === 0}
             className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-all hover:border-[#FFD700]/40 hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
             whileHover={{ scale: isDownloadingAll ? 1 : 1.02 }}
             whileTap={{ scale: isDownloadingAll ? 1 : 0.98 }}
@@ -345,9 +396,7 @@ export function QrPreviewGridGram({ products }: Props) {
           >
             <FileText className="h-4 w-4 flex-shrink-0 transition-transform group-hover:rotate-3" />
             <span className="whitespace-nowrap">
-              {isDownloadingAll
-                ? t("generatingPng")
-                : `${t("downloadAll")} (${filteredProducts.length || 0})`}
+              {isDownloadingAll ? "Generating Excel..." : `Download Excel (${totalItems || 0})`}
             </span>
           </motion.button>
         </div>
@@ -369,42 +418,47 @@ export function QrPreviewGridGram({ products }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {filteredProducts.length === 0 ? (
+                {filteredBatches.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-white/40">
+                    <td colSpan={7} className="px-6 py-12 text-center text-white/40">
                       {t("noProducts")}
                     </td>
                   </tr>
                 ) : (
-                  filteredProducts.map((product) => (
-                    <tr key={product.id} className="border-t border-white/5">
+                  filteredBatches.map((batch) => (
+                    <tr key={batch.batchId} className="border-t border-white/5">
                       <td className="px-4 lg:px-6 py-4">
-                        <p className="font-semibold text-white">{product.name}</p>
-                        <p className="text-xs text-white/40">#{product.id}</p>
+                        <p className="font-semibold text-white">{batch.name}</p>
+                        <p className="text-xs text-white/40">#{batch.batchId}</p>
                       </td>
-                      <td className="px-4 lg:px-6 py-4">{product.weight} gr</td>
+                      <td className="px-4 lg:px-6 py-4">{batch.weight} gr</td>
                       <td className="px-4 lg:px-6 py-4">
                         <div className="flex items-center">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={
-                              product.qrImageUrl ||
-                              `/api/qr-gram/${encodeURIComponent(product.uniqCode)}`
+                              batch.firstItem.qrImageUrl ||
+                              `/api/qr-gram/${encodeURIComponent(batch.firstItem.uniqCode)}`
                             }
-                            alt={`QR code for ${product.name} - ${product.uniqCode}`}
+                            alt={`QR code for ${batch.name} - ${batch.firstItem.uniqCode}`}
                             className="h-12 w-12 flex-shrink-0 rounded-lg border border-white/10 bg-white p-1.5 object-contain"
                             loading="lazy"
                           />
                         </div>
                       </td>
                       <td className="px-4 lg:px-6 py-4 font-mono text-xs text-white/80">
-                        {product.uniqCode}
-                      </td>
-                      <td className="px-4 lg:px-6 py-4 font-mono text-xs text-white/80">
-                        {product.serialCode || "—"}
+                        {batch.firstItem.uniqCode}
                       </td>
                       <td className="px-4 lg:px-6 py-4">
-                        {product.hasRootKey ? (
+                        <button
+                          onClick={() => handleSerialCodeClick(batch)}
+                          className="font-mono text-xs text-white/80 hover:text-[#FFD700] cursor-pointer underline"
+                        >
+                          {batch.itemCount} items
+                        </button>
+                      </td>
+                      <td className="px-4 lg:px-6 py-4">
+                        {batch.firstItem.hasRootKey ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-green-500/20 px-2 py-1 text-[10px] text-green-400 border border-green-500/30">
                             <CheckCircle2 className="h-3 w-3" />
                             Active
@@ -416,19 +470,32 @@ export function QrPreviewGridGram({ products }: Props) {
                       <td className="px-4 lg:px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => setSelected(product)}
+                            onClick={() => setSelectedBatch(batch)}
                             className="inline-flex items-center gap-1 rounded-full border border-white/20 px-3 py-1 text-[11px] text-white/80 hover:border-white/50"
                           >
                             <Maximize2 className="h-3 w-3" />
                             {t("enlarge")}
                           </button>
                           <button
-                            onClick={() => handleDownloadSingle(product)}
-                            disabled={downloadingId === product.id}
+                            onClick={() =>
+                              handleDownloadSingle({
+                                id: batch.firstItem.id,
+                                name: batch.name,
+                                weight: batch.weight,
+                                uniqCode: batch.firstItem.uniqCode,
+                                serialCode: batch.firstItem.serialCode,
+                                qrImageUrl: batch.firstItem.qrImageUrl,
+                                weightGroup: batch.weightGroup,
+                                hasRootKey: batch.firstItem.hasRootKey,
+                              })
+                            }
+                            disabled={downloadingId === batch.firstItem.id}
                             className="inline-flex items-center gap-1 rounded-full border border-white/20 px-3 py-1 text-[11px] text-white/80 hover:border-white/50 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <Download className="h-3 w-3" />
-                            {downloadingId === product.id ? t("downloading") : t("download")}
+                            {downloadingId === batch.firstItem.id
+                              ? t("downloading")
+                              : t("download")}
                           </button>
                         </div>
                       </td>
@@ -445,30 +512,32 @@ export function QrPreviewGridGram({ products }: Props) {
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
         >
-          {filteredProducts.length === 0 ? (
+          {filteredBatches.length === 0 ? (
             <div className="col-span-full text-center text-white/40 text-sm">{t("noProducts")}</div>
           ) : (
-            filteredProducts.map((product) => (
+            filteredBatches.map((batch) => (
               <div
-                key={product.id}
+                key={batch.batchId}
                 className="group rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4 hover:border-[#FFD700]/40 transition-all"
               >
                 <div className="relative aspect-square w-full rounded-lg border border-white/10 bg-white p-3 mb-3">
                   <img
                     src={
-                      product.qrImageUrl || `/api/qr-gram/${encodeURIComponent(product.uniqCode)}`
+                      batch.firstItem.qrImageUrl ||
+                      `/api/qr-gram/${encodeURIComponent(batch.firstItem.uniqCode)}`
                     }
-                    alt={product.name}
+                    alt={batch.name}
                     className="h-full w-full object-contain"
                     loading="lazy"
                   />
                 </div>
                 <div className="space-y-1.5">
                   <p className="font-mono text-xs font-semibold text-white truncate">
-                    {product.uniqCode}
+                    {batch.firstItem.uniqCode}
                   </p>
-                  <p className="text-xs text-white/70 line-clamp-2">{product.name}</p>
-                  <p className="text-xs text-white/50">{product.weight} gr</p>
+                  <p className="text-xs text-white/70 line-clamp-2">{batch.name}</p>
+                  <p className="text-xs text-white/50">{batch.weight} gr</p>
+                  <p className="text-xs text-white/40">{batch.itemCount} items</p>
                 </div>
               </div>
             ))
@@ -476,31 +545,45 @@ export function QrPreviewGridGram({ products }: Props) {
         </motion.div>
       )}
 
-      {/* Preview Modal (same UX concept as page 1) */}
-      <Modal open={Boolean(selected)} onClose={() => setSelected(null)} title={selected?.name}>
-        {selected && (
-          <div className="flex flex-col items-center gap-4">
-            <div className="relative w-full max-w-sm">
-              <div className="relative aspect-square w-full rounded-3xl border border-white/10 bg-white p-4 sm:p-6 overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  key={`qr-modal-${selected.uniqCode}`}
-                  src={`/api/qr-gram/${encodeURIComponent(selected.uniqCode)}`}
-                  alt={selected.name}
-                  className="h-full w-full object-contain transition-opacity duration-300"
-                  loading="eager"
-                />
+      {/* Serial Codes Modal - Shows all serial codes and root keys for a batch */}
+      <Modal
+        open={Boolean(selectedBatch)}
+        onClose={() => {
+          setSelectedBatch(null);
+          setBatchItems([]);
+        }}
+        title={selectedBatch ? `${selectedBatch.name} - All Serial Codes` : ""}
+      >
+        {selectedBatch && (
+          <div className="max-h-[70vh] overflow-y-auto">
+            {loadingBatchItems ? (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="h-6 w-6 animate-spin text-white/40" />
+                <span className="ml-2 text-white/60">Loading serial codes...</span>
               </div>
-            </div>
-            <p className="font-mono text-lg sm:text-xl text-white/70">{selected.uniqCode}</p>
-            <button
-              onClick={() => handleDownloadSingle(selected)}
-              disabled={downloadingId === selected.id}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-black/40 px-6 py-3 text-sm text-white/70 transition hover:border-[#FFD700]/40 hover:bg-black/60 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Download className="h-4 w-4" />
-              {downloadingId === selected.id ? t("downloading") : t("downloadQRCode")}
-            </button>
+            ) : batchItems.length > 0 ? (
+              <div className="space-y-2">
+                <div className="grid grid-cols-3 gap-4 px-4 py-2 text-xs font-semibold text-white/60 border-b border-white/10">
+                  <div>Serial Code</div>
+                  <div>UniqCode</div>
+                  <div>Root Key</div>
+                </div>
+                {batchItems.map((item, index) => (
+                  <div
+                    key={index}
+                    className="grid grid-cols-3 gap-4 px-4 py-3 text-sm border-b border-white/5 hover:bg-white/5 transition-colors"
+                  >
+                    <div className="font-mono text-white/90">{item.serialCode}</div>
+                    <div className="font-mono text-white/70 text-xs">{item.uniqCode}</div>
+                    <div className="font-mono text-[#FFD700] font-semibold">
+                      {item.rootKey || "N/A"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-white/40">No items found for this batch.</div>
+            )}
           </div>
         )}
       </Modal>
