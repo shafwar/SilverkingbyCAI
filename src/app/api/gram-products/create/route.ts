@@ -42,10 +42,10 @@ export async function POST(request: Request) {
   const payload = parsed.data;
   console.log("[GramProductCreate] Validated payload:", JSON.stringify(payload, null, 2));
 
-  // Business rule: ALWAYS single QR per batch (regardless of weight/quantity)
-  const qrMode = "SINGLE_QR";
+  // Business rule: generate per quantity for Page 2 so serials & root keys align with quantity
   const weightGroup = payload.weight < 100 ? "SMALL" : "LARGE";
-  const qrCount = 1;
+  const qrMode = payload.quantity > 1 ? "MULTI_QR" : "SINGLE_QR";
+  const qrCount = Math.max(payload.quantity, 1);
 
   try {
     console.log("[GramProductCreate] Creating batch...");

@@ -56,6 +56,9 @@ export function QrPreviewGridGram({ batches }: Props) {
   const [batchItems, setBatchItems] = useState<
     Array<{ serialCode: string; uniqCode: string; rootKey: string | null }>
   >([]);
+  const [selectedQrItem, setSelectedQrItem] = useState<{ name: string; uniqCode: string } | null>(
+    null
+  );
   const [loadingBatchItems, setLoadingBatchItems] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -470,7 +473,12 @@ export function QrPreviewGridGram({ batches }: Props) {
                       <td className="px-4 lg:px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => setSelectedBatch(batch)}
+                            onClick={() =>
+                              setSelectedQrItem({
+                                name: batch.name,
+                                uniqCode: batch.firstItem.uniqCode,
+                              })
+                            }
                             className="inline-flex items-center gap-1 rounded-full border border-white/20 px-3 py-1 text-[11px] text-white/80 hover:border-white/50"
                           >
                             <Maximize2 className="h-3 w-3" />
@@ -493,9 +501,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                             className="inline-flex items-center gap-1 rounded-full border border-white/20 px-3 py-1 text-[11px] text-white/80 hover:border-white/50 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <Download className="h-3 w-3" />
-                            {downloadingId === batch.firstItem.id
-                              ? t("downloading")
-                              : t("download")}
+                            {downloadingId === batch.firstItem.id ? t("downloading") : t("download")}
                           </button>
                         </div>
                       </td>
@@ -584,6 +590,32 @@ export function QrPreviewGridGram({ batches }: Props) {
             ) : (
               <div className="text-center py-8 text-white/40">No items found for this batch.</div>
             )}
+          </div>
+        )}
+      </Modal>
+
+      {/* QR Preview Modal (enlarge like Page 1) */}
+      <Modal
+        open={Boolean(selectedQrItem)}
+        onClose={() => setSelectedQrItem(null)}
+        title={selectedQrItem ? `${selectedQrItem.name} - ${selectedQrItem.uniqCode}` : ""}
+      >
+        {selectedQrItem && (
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative w-full max-w-sm">
+              <div className="relative aspect-square w-full rounded-3xl border border-white/10 bg-white p-4 sm:p-6 overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  key={`qr-modal-${selectedQrItem.uniqCode}`}
+                  src={`/api/qr-gram/${encodeURIComponent(selectedQrItem.uniqCode)}`}
+                  alt={selectedQrItem.name}
+                  className="h-full w-full object-contain transition-opacity duration-300"
+                  loading="eager"
+                />
+              </div>
+            </div>
+            <p className="font-mono text-lg sm:text-xl text-white/70">{selectedQrItem.uniqCode}</p>
+            <p className="text-sm text-white/60">{selectedQrItem.name}</p>
           </div>
         )}
       </Modal>
