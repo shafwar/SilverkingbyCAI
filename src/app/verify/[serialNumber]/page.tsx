@@ -262,6 +262,116 @@ export default function VerifyPage() {
               <div className="animate-spin rounded-full h-16 w-16 border-4 border-luxury-gold border-t-transparent mx-auto mb-4"></div>
               <p className="text-luxury-silver text-lg">Verifying product...</p>
             </motion.div>
+          ) : result?.requiresRootKey ? (
+            // Two-step verification: require root key before showing success
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="space-y-6"
+            >
+              <div className="luxury-card text-center">
+                <h1 className="text-3xl md:text-4xl font-serif font-bold text-luxury-gold mb-3">
+                  Root Key Required
+                </h1>
+                <p className="text-luxury-silver text-lg">
+                  Please enter the root key to complete verification for this product.
+                </p>
+              </div>
+
+              <div className="luxury-card">
+                <h2 className="text-2xl font-serif font-bold text-luxury-gold mb-6 flex items-center gap-2">
+                  <Shield className="w-6 h-6" />
+                  Product Information
+                </h2>
+                <div className="space-y-4">
+                  <div className="flex justify-between py-3 border-b border-luxury-silver/10">
+                    <span className="text-luxury-silver">Product Name</span>
+                    <span className="text-luxury-lightSilver font-semibold">
+                      {result.product?.name}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-3 border-b border-luxury-silver/10">
+                    <span className="text-luxury-silver">Weight</span>
+                    <span className="text-luxury-lightSilver font-semibold">
+                      {getWeightLabel(result.product?.weight)}
+                    </span>
+                  </div>
+                  {typeof result.product?.stock === "number" && (
+                    <div className="flex justify-between py-3 border-b border-luxury-silver/10">
+                      <span className="text-luxury-silver">Quantity</span>
+                      <span className="text-luxury-lightSilver font-semibold">
+                        {result.product.stock} pcs
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between py-3 border-b border-luxury-silver/10">
+                    <span className="text-luxury-silver">Manufacturing Date</span>
+                    <span className="text-luxury-lightSilver font-semibold">
+                      {new Date(result.product?.createdAt || "").toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Root Key Verification Section */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="luxury-card"
+              >
+                <div className="mb-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4">
+                  <p className="text-yellow-400 text-sm font-semibold mb-2">
+                    ⚠️ Two-Step Verification Required
+                  </p>
+                  <p className="text-luxury-silver text-sm">
+                    Please enter the root key (3-4 alphanumeric characters) provided by your
+                    administrator to verify the specific SKP serial number.
+                  </p>
+                </div>
+                <form onSubmit={handleRootKeySubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-luxury-silver text-sm font-semibold mb-2">
+                      Root Key (3-4 characters)
+                    </label>
+                    <input
+                      type="text"
+                      value={rootKey}
+                      onChange={(e) => {
+                        setRootKey(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""));
+                        setRootKeyError(null);
+                      }}
+                      maxLength={4}
+                      placeholder="e.g., A1H2"
+                      className="w-full rounded-lg border border-luxury-silver/20 bg-luxury-black/50 px-4 py-3 text-luxury-lightSilver font-mono text-lg tracking-wider uppercase focus:border-luxury-gold focus:outline-none focus:ring-2 focus:ring-luxury-gold/20"
+                      disabled={verifyingRootKey}
+                    />
+                    {rootKeyError && (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-red-400 text-sm">{rootKeyError}</p>
+                        {result?.product?.actualSerialCode && (
+                          <p className="text-yellow-400 text-xs">
+                            💡 Tip: Make sure you're using the root key for serial code{" "}
+                            <span className="font-mono font-semibold">
+                              {result.product.actualSerialCode}
+                            </span>{" "}
+                            from the admin panel.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={verifyingRootKey || rootKey.trim().length < 3}
+                    className="w-full luxury-button disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {verifyingRootKey ? "Verifying..." : "Verify Root Key"}
+                  </button>
+                </form>
+              </motion.div>
+            </motion.div>
           ) : result?.verified ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -299,12 +409,12 @@ export default function VerifyPage() {
                     </span>
                   </div>
                   {typeof result.product?.stock === "number" && (
-                  <div className="flex justify-between py-3 border-b border-luxury-silver/10">
+                    <div className="flex justify-between py-3 border-b border-luxury-silver/10">
                       <span className="text-luxury-silver">Quantity</span>
                       <span className="text-luxury-lightSilver font-semibold">
                         {result.product.stock} pcs
-                    </span>
-                  </div>
+                      </span>
+                    </div>
                   )}
                   <div className="flex justify-between py-3 border-b border-luxury-silver/10">
                     <span className="text-luxury-silver">Manufacturing Date</span>
@@ -314,66 +424,6 @@ export default function VerifyPage() {
                   </div>
                 </div>
               </div>
-
-              {/* Root Key Verification Section (Page 2 only) */}
-              {result.requiresRootKey && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
-                  className="luxury-card"
-                >
-                  <div className="mb-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4">
-                    <p className="text-yellow-400 text-sm font-semibold mb-2">
-                      ⚠️ Two-Step Verification Required
-                    </p>
-                    <p className="text-luxury-silver text-sm">
-                      Please enter the root key (3-4 alphanumeric characters) provided by your
-                      administrator to verify the specific SKP serial number.
-                    </p>
-                  </div>
-                  <form onSubmit={handleRootKeySubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-luxury-silver text-sm font-semibold mb-2">
-                        Root Key (3-4 characters)
-                      </label>
-                      <input
-                        type="text"
-                        value={rootKey}
-                        onChange={(e) => {
-                          setRootKey(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""));
-                          setRootKeyError(null);
-                        }}
-                        maxLength={4}
-                        placeholder="e.g., A1H2"
-                        className="w-full rounded-lg border border-luxury-silver/20 bg-luxury-black/50 px-4 py-3 text-luxury-lightSilver font-mono text-lg tracking-wider uppercase focus:border-luxury-gold focus:outline-none focus:ring-2 focus:ring-luxury-gold/20"
-                        disabled={verifyingRootKey}
-                      />
-                      {rootKeyError && (
-                        <div className="mt-2 space-y-1">
-                          <p className="text-red-400 text-sm">{rootKeyError}</p>
-                          {result?.product?.actualSerialCode && (
-                            <p className="text-yellow-400 text-xs">
-                              💡 Tip: Make sure you're using the root key for serial code{" "}
-                              <span className="font-mono font-semibold">
-                                {result.product.actualSerialCode}
-                              </span>{" "}
-                              from the admin panel.
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={verifyingRootKey || rootKey.trim().length < 3}
-                      className="w-full luxury-button disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {verifyingRootKey ? "Verifying..." : "Verify Root Key"}
-                    </button>
-                  </form>
-                </motion.div>
-              )}
 
               {/* Show serial code only if root key verification is not required or completed */}
               {!result.requiresRootKey && (
