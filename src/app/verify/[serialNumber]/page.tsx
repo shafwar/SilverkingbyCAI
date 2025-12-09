@@ -172,13 +172,21 @@ export default function VerifyPage() {
     setRootKeyError(null);
 
     try {
+      // For gram products with root key verification:
+      // - When user scans QR with uniqCode (GK...), API returns product.serialCode = uniqCode
+      // - We need to use the original uniqCode from the QR scan (serialNumber param)
+      // - Or use product.serialCode if it's actually the uniqCode
+      const uniqCodeForVerification = result?.requiresRootKey 
+        ? serialNumber // Use the original QR scan uniqCode
+        : (result?.product?.serialCode || serialNumber);
+
       const response = await fetch("/api/verify/root-key", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          uniqCode: result?.product?.serialCode,
+          uniqCode: uniqCodeForVerification,
           rootKey: rootKey.trim().toUpperCase(),
         }),
       });

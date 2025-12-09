@@ -223,6 +223,7 @@ export async function POST(request: Request) {
         batchId: batch.id,
         uniqCode,
         serialCode,
+        rootKey, // Log plain text root key for debugging
         rootKeyHashLength: rootKeyHash.length,
         qrImageUrlLength: qrImageUrl.length,
       });

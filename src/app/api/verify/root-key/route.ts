@@ -48,11 +48,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log("[VerifyRootKey] Looking up item with:", {
+      normalizedUniqCode,
+      normalizedRootKey,
+    });
+
     // Find gram product item by uniqCode (QR code) or fallback to serialCode
     let gramItem = await prisma.gramProductItem.findUnique({
       where: { uniqCode: normalizedUniqCode },
       select: {
         id: true,
+        uniqCode: true,
         serialCode: true,
         rootKeyHash: true,
         rootKey: true,
@@ -60,10 +66,12 @@ export async function POST(request: NextRequest) {
     });
 
     if (!gramItem) {
+      console.log("[VerifyRootKey] Not found by uniqCode, trying serialCode...");
       gramItem = await prisma.gramProductItem.findUnique({
         where: { serialCode: normalizedUniqCode },
         select: {
           id: true,
+          uniqCode: true,
           serialCode: true,
           rootKeyHash: true,
           rootKey: true,
@@ -72,8 +80,17 @@ export async function POST(request: NextRequest) {
     }
 
     if (!gramItem) {
+      console.error("[VerifyRootKey] Item not found:", normalizedUniqCode);
       return NextResponse.json({ verified: false, error: "Product not found" }, { status: 404 });
     }
+
+    console.log("[VerifyRootKey] Item found:", {
+      id: gramItem.id,
+      uniqCode: gramItem.uniqCode,
+      serialCode: gramItem.serialCode,
+      hasRootKeyHash: !!gramItem.rootKeyHash,
+      hasRootKeyPlain: !!gramItem.rootKey,
+    });
 
     // Ensure hash exists
     if (!gramItem.rootKeyHash) {
@@ -85,13 +102,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify root key hash
-    const isRootKeyValid = await bcrypt.compare(normalizedRootKey, gramItem.rootKeyHash);
+    let isRootKeyValid = await bcrypt.compare(normalizedRootKey, gramItem.rootKeyHash);
+
+    // Fallback: If hash comparison fails but plain text rootKey exists, compare directly
+    // This helps with items created before rootKey field was added or migration issues
+    if (!isRootKeyValid && gramItem.rootKey) {
+      const storedRootKeyNormalized = gramItem.rootKey.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+      if (storedRootKeyNormalized === normalizedRootKey) {
+        console.log("[VerifyRootKey] Root key matched via plain text comparison (fallback)");
+        isRootKeyValid = true;
+      }
+    }
 
     if (!isRootKeyValid) {
       console.warn("[VerifyRootKey] Invalid root key", {
         uniqCode: normalizedUniqCode,
         serialCode: gramItem.serialCode,
         provided: normalizedRootKey,
+        storedPlainText: gramItem.rootKey || "N/A",
+        hashLength: gramItem.rootKeyHash.length,
+        hashPrefix: gramItem.rootKeyHash.substring(0, 10),
       });
       return NextResponse.json({ verified: false, error: "Invalid root key" }, { status: 401 });
     }
