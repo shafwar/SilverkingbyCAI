@@ -163,9 +163,11 @@ export async function POST(request: Request) {
     let sharedUniqCode: string | undefined;
 
     // Generate uniqCode with collision check
+    // Note: uniqCode is NOT unique (multiple items can share same uniqCode)
+    // We just need to check if this uniqCode already exists to avoid conflicts
     for (let attempt = 0; attempt < 10; attempt++) {
       const candidate = generateSerialCode("GK");
-      const existing = await prisma.gramProductItem.findUnique({
+      const existing = await prisma.gramProductItem.findFirst({
         where: { uniqCode: candidate },
         select: { id: true },
       });

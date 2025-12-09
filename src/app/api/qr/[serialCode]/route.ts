@@ -32,7 +32,9 @@ export async function GET(request: NextRequest, { params }: { params: { serialCo
       productName = product.name;
     } else {
       // New path: support gram-based inventory (page 2) using GramProductItem uniqCode
-      const gramItem = await prisma.gramProductItem.findUnique({
+      // Note: uniqCode is NOT unique - multiple items can share same uniqCode
+      // We just need to get the first item with this uniqCode
+      const gramItem = await prisma.gramProductItem.findFirst({
         where: { uniqCode: serialCode },
         include: {
           batch: true,

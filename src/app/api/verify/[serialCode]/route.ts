@@ -27,7 +27,9 @@ export async function GET(request: NextRequest, { params }: { params: { serialCo
 
     // --- PATH 1: Gram-based inventory (Page 2) using uniqCode or serialCode ---
     // Try lookup by uniqCode first (GK... format)
-    let gramItem = await prisma.gramProductItem.findUnique({
+    // Note: uniqCode is NOT unique - multiple items can share same uniqCode
+    // We just need to get the first item with this uniqCode
+    let gramItem = await prisma.gramProductItem.findFirst({
       where: { uniqCode: serial },
       include: {
         batch: true,

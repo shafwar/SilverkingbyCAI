@@ -17,7 +17,9 @@ export async function GET(request: NextRequest, { params }: { params: { uniqCode
       return new NextResponse("uniqCode is required", { status: 400 });
     }
 
-    const gramItem = await prisma.gramProductItem.findUnique({
+    // Note: uniqCode is NOT unique - multiple items can share same uniqCode
+    // We just need to get the first item with this uniqCode (they all share the same QR)
+    const gramItem = await prisma.gramProductItem.findFirst({
       where: { uniqCode },
       include: { batch: true },
     });

@@ -219,8 +219,10 @@ export async function POST(request: NextRequest) {
 
     if (!gramItem) {
       // Try one more time with exact match on original uniqCode (before normalization)
+      // Note: uniqCode is NOT unique - multiple items can share same uniqCode
+      // We just need to get the first item with this uniqCode
       try {
-        const exactMatch = await prisma.gramProductItem.findUnique({
+        const exactMatch = await prisma.gramProductItem.findFirst({
           where: { uniqCode: uniqCode.trim() },
           select: {
             id: true,
