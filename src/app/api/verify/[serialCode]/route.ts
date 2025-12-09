@@ -87,23 +87,22 @@ export async function GET(request: NextRequest, { params }: { params: { serialCo
       const gramFirstScanned = gramItem.scanLogs[0]?.scannedAt || gramItem.createdAt;
       const gramLocations: Array<{ city: string; country: string }> = [];
 
+      const isVerified = isLookupBySerialCode;
       return NextResponse.json(
         {
-          verified: true,
-          success: true,
-          // Only require root key if lookup is by uniqCode (initial QR scan)
-          // If lookup is by serialCode, user already passed root key verification
+          verified: isVerified, // only true AFTER root key step (lookup by serialCode)
+          success: isVerified,
+          // Require root key if lookup is by uniqCode (initial QR scan)
           requiresRootKey: isLookupByUniqCode,
           product: {
             id: gramItem.id,
             name: gramItem.batch.name,
             weight: gramItem.batch.weight,
             purity: "99.99%",
-            // Return serialCode based on lookup type:
-            // - If lookup by uniqCode: return uniqCode (for root key verification)
-            // - If lookup by serialCode: return serialCode (for final display)
+            // On initial QR scan, return uniqCode so frontend knows this is step 1
+            // After root-key verification, return the serialCode
             serialCode: isLookupBySerialCode ? gramItem.serialCode : gramItem.uniqCode,
-            // Always include actualSerialCode for reference
+            // Always include actualSerialCode for reference / hint
             actualSerialCode: gramItem.serialCode,
             price: null,
             stock: gramItem.batch.quantity,
