@@ -216,14 +216,28 @@ export function GramProductForm({ defaultValues }: GramProductFormProps) {
         }
 
         const data = await res.json();
-        const qrCount = data.qrCount ?? (isSmallWeight ? 1 : quantity);
+        const qrCount = data.qrCount ?? data.successCount ?? (isSmallWeight ? 1 : quantity);
+        const failedCount = data.failedCount ?? 0;
+        const expectedCount = data.expectedCount ?? quantity;
+        const successRate = data.successRate ?? "100%";
 
-        toast.success("Gram-based batch created", {
-          description: `Created ${qrCount} QR code${qrCount === 1 ? "" : "s"} for ${
-            values.name
-          } (${values.weight}gr)`,
-          duration: 2000,
-        });
+        // Show success or warning based on results
+        if (failedCount === 0) {
+          toast.success("Gram-based batch created", {
+            description: `Successfully created ${qrCount} item${qrCount === 1 ? "" : "s"} for ${
+              values.name
+            } (${values.weight}gr)`,
+            duration: 3000,
+          });
+        } else {
+          // Some items failed - show warning but still consider it a success
+          toast.warning("Batch created with some failures", {
+            description: `Created ${qrCount}/${expectedCount} items (${successRate} success rate). ${
+              failedCount
+            } item${failedCount === 1 ? "" : "s"} failed. Check logs for details.`,
+            duration: 5000,
+          });
+        }
 
         // Redirect to QR Preview Page 2
         router.push("/admin/qr-preview/page2");

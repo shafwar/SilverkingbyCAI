@@ -234,10 +234,15 @@ export async function POST(request: Request) {
       throw new Error(`Failed to generate QR code: ${qrError.message || "Unknown error"}`);
     }
 
-    // Process items in batches for better performance and error recovery
+    // Process items in batches with controlled concurrency
+    // Use sequential processing within batches to avoid database connection pool exhaustion
     const totalBatches = Math.ceil(qrCount / BATCH_SIZE);
     let processedCount = 0;
     let failedItems: Array<{ index: number; serialCode?: string; error: string; code?: string }> = [];
+
+    console.log(
+      `[GramProductCreate] Starting to process ${qrCount} items in ${totalBatches} batch(es) of ${BATCH_SIZE} items each...`
+    );
 
     for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
       const batchStart = batchIndex * BATCH_SIZE;
@@ -245,13 +250,18 @@ export async function POST(request: Request) {
       const currentBatch = itemData.slice(batchStart, batchEnd);
 
       console.log(
-        `[GramProductCreate] Processing batch ${batchIndex + 1}/${totalBatches} (items ${batchStart + 1}-${batchEnd})...`
+        `[GramProductCreate] Processing batch ${batchIndex + 1}/${totalBatches} (items ${batchStart + 1}-${batchEnd} of ${qrCount})...`
       );
 
-      // Process current batch with retry logic for failed items
-      const batchPromises = currentBatch.map(async (itemData, localIndex) => {
+      // Process items sequentially within each batch to ensure all are created
+      // This avoids race conditions and database connection pool exhaustion
+      const batchItems: any[] = [];
+      
+      for (let localIndex = 0; localIndex < currentBatch.length; localIndex++) {
+        const itemData = currentBatch[localIndex];
         const globalIndex = batchStart + localIndex;
         let lastError: any = null;
+        let itemCreated = false;
         
         // Retry up to 3 times for each item
         for (let retryAttempt = 0; retryAttempt < 3; retryAttempt++) {
@@ -272,7 +282,17 @@ export async function POST(request: Request) {
             });
 
             processedCount++;
-            return { ...item, rootKey: itemData.rootKey };
+            batchItems.push({ ...item, rootKey: itemData.rootKey });
+            itemCreated = true;
+            
+            // Log every 10 items for progress tracking
+            if ((globalIndex + 1) % 10 === 0 || globalIndex === qrCount - 1) {
+              console.log(
+                `[GramProductCreate] Progress: ${globalIndex + 1}/${qrCount} items created (${((globalIndex + 1) / qrCount) * 100).toFixed(1)}%)`
+              );
+            }
+            
+            break; // Success, exit retry loop
           } catch (error: any) {
             lastError = error;
             
@@ -294,7 +314,8 @@ export async function POST(request: Request) {
                   console.log(
                     `[GramProductCreate] Item ${itemData.serialCode} already exists in batch ${batch.id}, skipping...`
                   );
-                  return null;
+                  itemCreated = true; // Mark as "handled" even though we skip
+                  break;
                 }
               }
               
@@ -304,38 +325,38 @@ export async function POST(request: Request) {
                 continue;
               }
             } else {
-              // For other errors, don't retry
+              // For other errors, log and don't retry
+              console.error(
+                `[GramProductCreate] Error creating item ${globalIndex + 1} (${itemData.serialCode}):`,
+                error.message,
+                error.code || ""
+              );
               break;
             }
           }
         }
         
-        // If we get here, all retries failed
-        console.error(
-          `[GramProductCreate] Failed to create item ${globalIndex + 1} (${itemData.serialCode}) after 3 attempts:`,
-          lastError?.message || "Unknown error",
-          lastError?.code || ""
-        );
-        failedItems.push({
-          index: globalIndex,
-          serialCode: itemData.serialCode,
-          error: lastError?.message || "Unknown error",
-          code: lastError?.code || "UNKNOWN",
-        });
-        return null;
-      });
+        // If item creation failed after all retries
+        if (!itemCreated) {
+          console.error(
+            `[GramProductCreate] Failed to create item ${globalIndex + 1} (${itemData.serialCode}) after 3 attempts:`,
+            lastError?.message || "Unknown error",
+            lastError?.code || ""
+          );
+          failedItems.push({
+            index: globalIndex,
+            serialCode: itemData.serialCode,
+            error: lastError?.message || "Unknown error",
+            code: lastError?.code || "UNKNOWN",
+          });
+        }
+      }
 
-      // Wait for current batch to complete
-      const batchResults = await Promise.allSettled(batchPromises);
-      const successfulItems = batchResults
-        .filter((result) => result.status === "fulfilled" && result.value !== null)
-        .map((result) => (result as PromiseFulfilledResult<any>).value);
+      items.push(...batchItems);
 
-      items.push(...successfulItems);
-
-      // Log progress
+      // Log batch completion
       console.log(
-        `[GramProductCreate] Batch ${batchIndex + 1}/${totalBatches} complete. Success: ${successfulItems.length}, Failed: ${failedItems.length - (items.length - successfulItems.length)}`
+        `[GramProductCreate] Batch ${batchIndex + 1}/${totalBatches} complete. Created: ${batchItems.length}/${currentBatch.length} items. Total progress: ${items.length}/${qrCount} items created.`
       );
     }
 
