@@ -283,7 +283,7 @@ export function QrPreviewGridGram({ products }: Props) {
                   weightFilter === "LARGE" ? "bg-white text-black" : "text-white/70"
                 }`}
               >
-                ≥ 250gr
+                > 100gr
               </button>
             </div>
 

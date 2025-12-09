@@ -165,7 +165,7 @@ export function GramProductForm({ defaultValues }: GramProductFormProps) {
           <p className="mt-2 text-[11px] text-white/60">
             {isSmallWeight
               ? "Weights below 100gr will generate 1 QR for the whole batch."
-              : "Weights 250gr, 500gr, etc. will generate 1 QR per unit."}
+              : "Weights 100gr and above will generate 1 QR per unit."}
           </p>
         </div>
         <div className="rounded-lg border border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-transparent p-3 sm:p-4 backdrop-blur-sm">
