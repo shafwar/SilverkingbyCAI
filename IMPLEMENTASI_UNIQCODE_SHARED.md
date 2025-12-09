@@ -3,6 +3,7 @@
 ## ✅ Status: Implementasi Selesai
 
 ### Konsep Baru:
+
 - **1 UniqCode** untuk seluruh batch (untuk QR code)
 - **100 Root Keys** (satu per item, unik)
 - **100 Serial Codes** (SKA000001 sampai SKA000100)
@@ -36,12 +37,7 @@ for (let i = 0; i < qrCount; i++) {
 
 ```typescript
 // Generate QR code ONCE for the entire batch
-const qrResult = await generateAndStoreQR(
-  sharedUniqCode,
-  verifyUrl,
-  payload.name,
-  GRAM_QR_FOLDER
-);
+const qrResult = await generateAndStoreQR(sharedUniqCode, verifyUrl, payload.name, GRAM_QR_FOLDER);
 const sharedQrImageUrl = qrResult.url;
 
 // All items use the same QR image URL
@@ -70,6 +66,7 @@ for (const item of itemsWithUniqCode) {
 ## 📋 Flow Lengkap:
 
 ### 1. Batch Creation:
+
 - Admin create batch dengan quantity 100
 - System generate:
   - **1 uniqCode** (shared) → untuk QR
@@ -82,11 +79,13 @@ for (const item of itemsWithUniqCode) {
   - rootKey: BERBEDA (ZR4I, 2IKM, ED54, ...)
 
 ### 2. QR Scan:
+
 - User scan QR → uniqCode (contoh: `GKMIYRN...`)
 - System mencari semua items dengan uniqCode tersebut
 - Menampilkan form root key
 
 ### 3. Root Key Verification:
+
 - User input root key (contoh: `ED54`)
 - System mencari item dengan:
   - uniqCode: `GKMIYRN...` (dari QR scan)
