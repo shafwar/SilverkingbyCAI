@@ -164,23 +164,23 @@ export async function POST(request: Request) {
 
     // Generate uniqCode with collision check
     for (let attempt = 0; attempt < 10; attempt++) {
-        const candidate = generateSerialCode("GK");
-        const existing = await prisma.gramProductItem.findUnique({
-          where: { uniqCode: candidate },
-          select: { id: true },
-        });
-        if (!existing) {
+      const candidate = generateSerialCode("GK");
+      const existing = await prisma.gramProductItem.findUnique({
+        where: { uniqCode: candidate },
+        select: { id: true },
+      });
+      if (!existing) {
         sharedUniqCode = candidate;
-          break;
-        }
-      if (attempt === 9) {
-          throw new Error("Failed to generate unique QR code after multiple attempts");
-        }
+        break;
       }
+      if (attempt === 9) {
+        throw new Error("Failed to generate unique QR code after multiple attempts");
+      }
+    }
 
     if (!sharedUniqCode) {
-        throw new Error("Failed to generate unique QR code");
-      }
+      throw new Error("Failed to generate unique QR code");
+    }
 
     console.log("[GramProductCreate] Shared uniqCode for batch:", sharedUniqCode);
 
@@ -251,7 +251,8 @@ export async function POST(request: Request) {
     // Use sequential processing within batches to avoid database connection pool exhaustion
     const totalBatches = Math.ceil(qrCount / BATCH_SIZE);
     let processedCount = 0;
-    let failedItems: Array<{ index: number; serialCode?: string; error: string; code?: string }> = [];
+    let failedItems: Array<{ index: number; serialCode?: string; error: string; code?: string }> =
+      [];
 
     console.log(
       `[GramProductCreate] Starting to process ${qrCount} items in ${totalBatches} batch(es) of ${BATCH_SIZE} items each...`
@@ -269,13 +270,13 @@ export async function POST(request: Request) {
       // Process items sequentially within each batch to ensure all are created
       // This avoids race conditions and database connection pool exhaustion
       const batchItems: any[] = [];
-      
+
       for (let localIndex = 0; localIndex < currentBatch.length; localIndex++) {
         const itemData = currentBatch[localIndex];
         const globalIndex = batchStart + localIndex;
         let lastError: any = null;
         let itemCreated = false;
-        
+
         // Retry up to 3 times for each item
         for (let retryAttempt = 0; retryAttempt < 3; retryAttempt++) {
           try {
@@ -283,21 +284,21 @@ export async function POST(request: Request) {
             const qrImageUrl = sharedQrImageUrl;
 
             // Create database record
-      const item = await prisma.gramProductItem.create({
-        data: {
-          batchId: batch.id,
+            const item = await prisma.gramProductItem.create({
+              data: {
+                batchId: batch.id,
                 uniqCode: itemData.uniqCode, // Shared uniqCode for all items in batch
                 serialCode: itemData.serialCode, // Unique serialCode per item
                 rootKeyHash: itemData.rootKeyHash, // Unique rootKeyHash per item
                 rootKey: itemData.rootKey, // Unique rootKey per item (for admin display)
                 qrImageUrl, // Same QR image URL for all items (since uniqCode is shared)
-        },
-      });
+              },
+            });
 
             processedCount++;
             batchItems.push({ ...item, rootKey: itemData.rootKey });
             itemCreated = true;
-            
+
             // Log every 10 items for progress tracking
             if ((globalIndex + 1) % 10 === 0 || globalIndex === qrCount - 1) {
               const progressPercent = ((globalIndex + 1) / qrCount) * 100;
@@ -305,18 +306,18 @@ export async function POST(request: Request) {
                 `[GramProductCreate] Progress: ${globalIndex + 1}/${qrCount} items created (${progressPercent.toFixed(1)}%)`
               );
             }
-            
+
             break; // Success, exit retry loop
           } catch (error: any) {
             lastError = error;
-            
+
             // Check if it's a unique constraint violation (duplicate serialCode or uniqCode)
             if (error.code === "P2002") {
               const field = error.meta?.target?.[0] || "unknown";
               console.warn(
                 `[GramProductCreate] Unique constraint violation for item ${globalIndex + 1} (${itemData.serialCode}), field: ${field}. Retry ${retryAttempt + 1}/3...`
               );
-              
+
               // If it's a serialCode conflict, check if item already exists
               if (field === "serialCode") {
                 const existing = await prisma.gramProductItem.findUnique({
@@ -332,7 +333,7 @@ export async function POST(request: Request) {
                   break;
                 }
               }
-              
+
               // Wait a bit before retry (exponential backoff)
               if (retryAttempt < 2) {
                 await new Promise((resolve) => setTimeout(resolve, 100 * (retryAttempt + 1)));
@@ -349,7 +350,7 @@ export async function POST(request: Request) {
             }
           }
         }
-        
+
         // If item creation failed after all retries
         if (!itemCreated) {
           console.error(
@@ -401,22 +402,14 @@ export async function POST(request: Request) {
     }
 
     // CRITICAL: Verify all items were created
-    console.log(
-      `[GramProductCreate] ========== BATCH CREATION SUMMARY ==========`
-    );
-    console.log(
-      `[GramProductCreate] Expected items: ${qrCount}`
-    );
-    console.log(
-      `[GramProductCreate] Successfully created: ${items.length}`
-    );
-    console.log(
-      `[GramProductCreate] Failed: ${failedItems.length}`
-    );
+    console.log(`[GramProductCreate] ========== BATCH CREATION SUMMARY ==========`);
+    console.log(`[GramProductCreate] Expected items: ${qrCount}`);
+    console.log(`[GramProductCreate] Successfully created: ${items.length}`);
+    console.log(`[GramProductCreate] Failed: ${failedItems.length}`);
     console.log(
       `[GramProductCreate] Success rate: ${((items.length / qrCount) * 100).toFixed(1)}%`
     );
-    
+
     // Log sample of created items
     if (items.length > 0) {
       console.log(
@@ -428,18 +421,13 @@ export async function POST(request: Request) {
         }))
       );
     }
-    
+
     // Log sample of failed items
     if (failedItems.length > 0) {
-      console.log(
-        `[GramProductCreate] Sample failed items:`,
-        failedItems.slice(0, 5)
-      );
+      console.log(`[GramProductCreate] Sample failed items:`, failedItems.slice(0, 5));
     }
-    
-    console.log(
-      `[GramProductCreate] ===========================================`
-    );
+
+    console.log(`[GramProductCreate] ===========================================`);
 
     // If no items were created at all, throw error
     if (items.length === 0) {
@@ -450,7 +438,7 @@ export async function POST(request: Request) {
         `Failed to create any items. All ${qrCount} items failed. Check error logs for details.`
       );
     }
-    
+
     // If less than 90% success, log warning but don't throw
     if (items.length < qrCount * 0.9) {
       console.warn(
@@ -482,9 +470,10 @@ export async function POST(request: Request) {
         failedCount: failedItems.length,
         successRate: ((items.length / qrCount) * 100).toFixed(1) + "%",
         failedItems: failedItems.length > 0 ? failedItems.slice(0, 50) : [], // Return first 50 failures
-        warning: failedItems.length > 0 
-          ? `Some items failed to create (${failedItems.length}/${qrCount}). Check failedItems for details.`
-          : undefined,
+        warning:
+          failedItems.length > 0
+            ? `Some items failed to create (${failedItems.length}/${qrCount}). Check failedItems for details.`
+            : undefined,
       },
       { status: statusCode }
     );
