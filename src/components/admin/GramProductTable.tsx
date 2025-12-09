@@ -203,7 +203,7 @@ export function GramProductTable({ batches, onMutate }: Props) {
                 weightFilter === "LARGE" ? "bg-white text-black" : "text-white/70"
               }`}
             >
-              > 100gr (multi QR)
+              Over 100gr (multi QR)
             </button>
           </div>
         </div>
