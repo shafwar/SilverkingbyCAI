@@ -387,7 +387,6 @@ export function QrPreviewGridGram({ batches }: Props) {
               {isRefreshing ? t("refreshing") : t("refresh")}
             </span>
           </motion.button>
-
         </div>
       </div>
 

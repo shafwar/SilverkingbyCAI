@@ -166,23 +166,23 @@ export async function POST(request: Request) {
     // Note: uniqCode is NOT unique (multiple items can share same uniqCode)
     // We just need to check if this uniqCode already exists to avoid conflicts
     for (let attempt = 0; attempt < 10; attempt++) {
-      const candidate = generateSerialCode("GK");
+        const candidate = generateSerialCode("GK");
       const existing = await prisma.gramProductItem.findFirst({
-        where: { uniqCode: candidate },
-        select: { id: true },
-      });
-      if (!existing) {
+          where: { uniqCode: candidate },
+          select: { id: true },
+        });
+        if (!existing) {
         sharedUniqCode = candidate;
-        break;
-      }
+          break;
+        }
       if (attempt === 9) {
-        throw new Error("Failed to generate unique QR code after multiple attempts");
+          throw new Error("Failed to generate unique QR code after multiple attempts");
+        }
       }
-    }
 
     if (!sharedUniqCode) {
-      throw new Error("Failed to generate unique QR code");
-    }
+        throw new Error("Failed to generate unique QR code");
+      }
 
     console.log("[GramProductCreate] Shared uniqCode for batch:", sharedUniqCode);
 
@@ -286,16 +286,16 @@ export async function POST(request: Request) {
             const qrImageUrl = sharedQrImageUrl;
 
             // Create database record
-            const item = await prisma.gramProductItem.create({
-              data: {
-                batchId: batch.id,
+      const item = await prisma.gramProductItem.create({
+        data: {
+          batchId: batch.id,
                 uniqCode: itemData.uniqCode, // Shared uniqCode for all items in batch
                 serialCode: itemData.serialCode, // Unique serialCode per item
                 rootKeyHash: itemData.rootKeyHash, // Unique rootKeyHash per item
                 rootKey: itemData.rootKey, // Unique rootKey per item (for admin display)
                 qrImageUrl, // Same QR image URL for all items (since uniqCode is shared)
-              },
-            });
+        },
+      });
 
             processedCount++;
             batchItems.push({ ...item, rootKey: itemData.rootKey });
