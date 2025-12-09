@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
         // IMPORTANT: All items in a batch share the same uniqCode
         // We MUST match by rootKey to find the correct item
         console.log("[VerifyRootKey] Matching by rootKey among items with same uniqCode...");
-        
+
         // Find the item with matching rootKey
         for (const item of itemsWithUniqCode) {
           if (item.rootKey) {
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
               .trim()
               .toUpperCase()
               .replace(/[^A-Z0-9]/g, "");
-            
+
             if (storedRootKeyNormalized === normalizedRootKey) {
               gramItem = item;
               lookupMethod = "uniqCodeAndRootKey";
@@ -109,15 +109,18 @@ export async function POST(request: NextRequest) {
 
         // If still not found, log all available rootKeys for debugging
         if (!gramItem) {
-          console.warn("[VerifyRootKey] ❌ No matching rootKey found among items with same uniqCode:", {
-            uniqCode: normalizedUniqCode,
-            providedRootKey: normalizedRootKey,
-            totalItemsWithUniqCode: itemsWithUniqCode.length,
-            availableRootKeys: itemsWithUniqCode.map((item) => ({
-              serialCode: item.serialCode,
-              rootKey: item.rootKey,
-            })),
-          });
+          console.warn(
+            "[VerifyRootKey] ❌ No matching rootKey found among items with same uniqCode:",
+            {
+              uniqCode: normalizedUniqCode,
+              providedRootKey: normalizedRootKey,
+              totalItemsWithUniqCode: itemsWithUniqCode.length,
+              availableRootKeys: itemsWithUniqCode.map((item) => ({
+                serialCode: item.serialCode,
+                rootKey: item.rootKey,
+              })),
+            }
+          );
         }
       }
     } catch (error: any) {

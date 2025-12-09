@@ -161,7 +161,7 @@ export async function POST(request: Request) {
     // Each item will have a unique rootKey for verification
     console.log("[GramProductCreate] Generating shared uniqCode for batch...");
     let sharedUniqCode: string | undefined;
-    
+
     // Generate uniqCode with collision check
     for (let attempt = 0; attempt < 10; attempt++) {
       const candidate = generateSerialCode("GK");
@@ -249,8 +249,7 @@ export async function POST(request: Request) {
       );
 
       // Process current batch
-      const batchPromises = currentBatch.map(async (itemData, index) => {
-        const globalIndex = batchStart + index;
+      const batchPromises = currentBatch.map(async (itemData) => {
         try {
           // All items use the same QR image URL (since they share the same uniqCode)
           const qrImageUrl = sharedQrImageUrl;
@@ -259,17 +258,19 @@ export async function POST(request: Request) {
           const item = await prisma.gramProductItem.create({
             data: {
               batchId: batch.id,
-              uniqCode: itemData.uniqCode,
-              serialCode: itemData.serialCode,
-              rootKeyHash: itemData.rootKeyHash,
-              rootKey: itemData.rootKey, // Store plain text root key for admin display
-              qrImageUrl,
+              uniqCode: itemData.uniqCode, // Shared uniqCode for all items in batch
+              serialCode: itemData.serialCode, // Unique serialCode per item
+              rootKeyHash: itemData.rootKeyHash, // Unique rootKeyHash per item
+              rootKey: itemData.rootKey, // Unique rootKey per item (for admin display)
+              qrImageUrl, // Same QR image URL for all items (since uniqCode is shared)
             },
           });
 
           processedCount++;
           return { ...item, rootKey: itemData.rootKey };
         } catch (error: any) {
+          const itemIndex = currentBatch.indexOf(itemData);
+          const globalIndex = batchStart + itemIndex;
           console.error(
             `[GramProductCreate] Failed to create item ${globalIndex + 1} (${itemData.serialCode}):`,
             error.message
