@@ -25,8 +25,9 @@ export async function GET(request: NextRequest, { params }: { params: { serialCo
       ? userAgent.substring(0, 500) // Max 500 chars
       : undefined;
 
-    // --- PATH 1: Gram-based inventory (Page 2) using uniqCode ---
-    const gramItem = await prisma.gramProductItem.findUnique({
+    // --- PATH 1: Gram-based inventory (Page 2) using uniqCode or serialCode ---
+    // Try lookup by uniqCode first (GK... format)
+    let gramItem = await prisma.gramProductItem.findUnique({
       where: { uniqCode: serial },
       include: {
         batch: true,
@@ -40,7 +41,30 @@ export async function GET(request: NextRequest, { params }: { params: { serialCo
       },
     });
 
+    // If not found by uniqCode, try lookup by serialCode (SKP... format)
+    // This supports redirect after root key verification
+    if (!gramItem) {
+      gramItem = await prisma.gramProductItem.findUnique({
+        where: { serialCode: serial },
+        include: {
+          batch: true,
+          scanLogs: {
+            orderBy: { scannedAt: "asc" },
+            take: 1,
+            select: {
+              scannedAt: true,
+            },
+          },
+        },
+      });
+    }
+
     if (gramItem && gramItem.batch) {
+      // Determine if this is a lookup by serialCode (after root key verification)
+      // or by uniqCode (initial QR scan)
+      const isLookupBySerialCode = serial === gramItem.serialCode;
+      const isLookupByUniqCode = serial === gramItem.uniqCode;
+
       await prisma.$transaction([
         prisma.gramProductItem.update({
           where: { id: gramItem.id },
@@ -65,14 +89,19 @@ export async function GET(request: NextRequest, { params }: { params: { serialCo
         {
           verified: true,
           success: true,
-          requiresRootKey: true, // Flag for two-step verification (Page 2)
+          // Only require root key if lookup is by uniqCode (initial QR scan)
+          // If lookup is by serialCode, user already passed root key verification
+          requiresRootKey: isLookupByUniqCode,
           product: {
             id: gramItem.id,
             name: gramItem.batch.name,
             weight: gramItem.batch.weight,
             purity: "99.99%",
-            serialCode: gramItem.uniqCode,
-            // Include actual serialCode for redirect after root key verification
+            // Return serialCode based on lookup type:
+            // - If lookup by uniqCode: return uniqCode (for root key verification)
+            // - If lookup by serialCode: return serialCode (for final display)
+            serialCode: isLookupBySerialCode ? gramItem.serialCode : gramItem.uniqCode,
+            // Always include actualSerialCode for reference
             actualSerialCode: gramItem.serialCode,
             price: null,
             stock: gramItem.batch.quantity,
