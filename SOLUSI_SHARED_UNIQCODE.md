@@ -3,6 +3,7 @@
 ## ✅ Implementasi Selesai
 
 ### Konsep:
+
 - **1 UniqCode** untuk seluruh batch (100 items) → untuk QR code
 - **100 Root Keys** (satu per item, unik) → untuk verifikasi serial code
 - **100 Serial Codes** (SKA000001 sampai SKA000100) → untuk identifikasi item
@@ -12,6 +13,7 @@
 ### 1. Batch Creation ✅
 
 **Sebelumnya**: Setiap item punya uniqCode sendiri
+
 ```typescript
 // OLD: Setiap item punya uniqCode berbeda
 for (let i = 0; i < qrCount; i++) {
@@ -22,6 +24,7 @@ for (let i = 0; i < qrCount; i++) {
 ```
 
 **Sekarang**: Semua items share 1 uniqCode
+
 ```typescript
 // NEW: Generate ONE uniqCode for entire batch
 const sharedUniqCode = generateSerialCode("GK");
@@ -43,12 +46,7 @@ for (let i = 0; i < qrCount; i++) {
 
 ```typescript
 // Generate QR code ONCE before batch processing
-const qrResult = await generateAndStoreQR(
-  sharedUniqCode,
-  verifyUrl,
-  payload.name,
-  GRAM_QR_FOLDER
-);
+const qrResult = await generateAndStoreQR(sharedUniqCode, verifyUrl, payload.name, GRAM_QR_FOLDER);
 const sharedQrImageUrl = qrResult.url;
 
 // All items use the same QR image URL
@@ -77,6 +75,7 @@ for (const item of itemsWithUniqCode) {
 ## 📋 Flow Lengkap:
 
 ### 1. Batch Creation (Admin):
+
 ```
 Input: Quantity 100, Serial Prefix "SKA"
 Output:
@@ -87,6 +86,7 @@ Output:
 ```
 
 ### 2. QR Scan (User):
+
 ```
 User scans QR → uniqCode: GKMIYRN...
 System finds ALL items with this uniqCode (100 items)
@@ -94,6 +94,7 @@ Shows form: "Enter root key to verify specific SKP serial number"
 ```
 
 ### 3. Root Key Verification (User):
+
 ```
 User inputs root key: ED54
 System searches:
@@ -116,10 +117,12 @@ System searches:
 ### Test dengan Batch Baru:
 
 1. **Create Batch**:
+
    ```
    Quantity: 100
    Serial Prefix: "SKA"
    ```
+
    Expected:
    - ✅ 1 uniqCode untuk seluruh batch
    - ✅ 100 serialCodes (SKA000001 sampai SKA000100)
@@ -127,12 +130,14 @@ System searches:
    - ✅ 1 QR image di-generate
 
 2. **Verify Database**:
+
    ```sql
-   SELECT uniqCode, COUNT(*) as count 
-   FROM GramProductItem 
-   WHERE batchId = X 
+   SELECT uniqCode, COUNT(*) as count
+   FROM GramProductItem
+   WHERE batchId = X
    GROUP BY uniqCode;
    ```
+
    Expected: 1 row dengan count = 100
 
 3. **Test Root Key Verification**:
