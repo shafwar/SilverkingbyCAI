@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
         id: true,
         serialCode: true,
         rootKeyHash: true,
+        rootKey: true,
       },
     });
 
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest) {
           id: true,
           serialCode: true,
           rootKeyHash: true,
+          rootKey: true,
         },
       });
     }
@@ -73,10 +75,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ verified: false, error: "Product not found" }, { status: 404 });
     }
 
+    // Ensure hash exists
+    if (!gramItem.rootKeyHash) {
+      console.error("[VerifyRootKey] Missing rootKeyHash for item", gramItem.id);
+      return NextResponse.json(
+        { verified: false, error: "Root key not available for this item" },
+        { status: 500 }
+      );
+    }
+
     // Verify root key hash
     const isRootKeyValid = await bcrypt.compare(normalizedRootKey, gramItem.rootKeyHash);
 
     if (!isRootKeyValid) {
+      console.warn("[VerifyRootKey] Invalid root key", {
+        uniqCode: normalizedUniqCode,
+        serialCode: gramItem.serialCode,
+        provided: normalizedRootKey,
+      });
       return NextResponse.json({ verified: false, error: "Invalid root key" }, { status: 401 });
     }
 
