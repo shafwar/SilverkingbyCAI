@@ -89,7 +89,7 @@ export function QrPreviewGridGram({ batches }: Props) {
     setSelectedBatch(batch);
     setLoadingBatchItems(true);
     try {
-      const response = await fetch(`/api/gram-products/batch/${batch.batchId}`);
+      const response = await fetch(`/api/gram-products/batch/${batch.batchId}?includeItems=true`);
       if (response.ok) {
         const data = await response.json();
         setBatchItems(

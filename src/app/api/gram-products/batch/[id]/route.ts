@@ -21,28 +21,75 @@ export async function GET(
   }
 
   try {
-    const batch = await prisma.gramProductBatch.findUnique({
-      where: { id },
-    });
+    // Check if request wants items with root keys (for QR preview modal)
+    const url = new URL(request.url);
+    const includeItems = url.searchParams.get("includeItems") === "true";
 
-    if (!batch) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
+    if (includeItems) {
+      // Return batch with all items including root keys (for QR preview modal)
+      const batch = await prisma.gramProductBatch.findUnique({
+        where: { id },
+        include: {
+          items: {
+            orderBy: { serialCode: "asc" },
+            select: {
+              id: true,
+              uniqCode: true,
+              serialCode: true,
+              qrImageUrl: true,
+              rootKey: true, // Plain text root key for admin display
+              createdAt: true,
+            },
+          },
+        },
+      });
 
-    return NextResponse.json(
-      {
+      if (!batch) {
+        return NextResponse.json({ error: "Batch not found" }, { status: 404 });
+      }
+
+      return NextResponse.json({
         batch: {
           id: batch.id,
           name: batch.name,
           weight: batch.weight,
           quantity: batch.quantity,
-          qrMode: batch.qrMode,
-          weightGroup: batch.weightGroup,
           createdAt: batch.createdAt,
         },
-      },
-      { status: 200 }
-    );
+        items: batch.items.map((item) => ({
+          id: item.id,
+          uniqCode: item.uniqCode,
+          serialCode: item.serialCode,
+          qrImageUrl: item.qrImageUrl,
+          rootKey: item.rootKey || null, // Plain text root key
+          createdAt: item.createdAt,
+        })),
+      });
+    } else {
+      // Return basic batch info (existing behavior)
+      const batch = await prisma.gramProductBatch.findUnique({
+        where: { id },
+      });
+
+      if (!batch) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+
+      return NextResponse.json(
+        {
+          batch: {
+            id: batch.id,
+            name: batch.name,
+            weight: batch.weight,
+            quantity: batch.quantity,
+            qrMode: batch.qrMode,
+            weightGroup: batch.weightGroup,
+            createdAt: batch.createdAt,
+          },
+        },
+        { status: 200 }
+      );
+    }
   } catch (error: any) {
     console.error("[GramBatch GET] Error:", error);
     return NextResponse.json(
