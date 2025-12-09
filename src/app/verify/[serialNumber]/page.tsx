@@ -221,7 +221,9 @@ export default function VerifyPage() {
         window.location.href = `/verify/${encodeURIComponent(data.serialCode)}`;
       } else {
         console.error("[VerifyPage] Verification successful but serialCode missing:", data);
-        setRootKeyError("Verification successful but serial code not found. Please contact support.");
+        setRootKeyError(
+          "Verification successful but serial code not found. Please contact support."
+        );
         setVerifyingRootKey(false);
       }
     } catch (error: any) {

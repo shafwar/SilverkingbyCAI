@@ -99,26 +99,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Strategy 3: Try case-insensitive search if still not found
+    // Strategy 3: Try case-insensitive search using raw SQL (MySQL doesn't support mode: "insensitive")
     if (!gramItem) {
       try {
-        console.log("[VerifyRootKey] Trying case-insensitive search...");
-        const allItems = await prisma.gramProductItem.findMany({
-          where: {
-            OR: [
-              { uniqCode: { contains: normalizedUniqCode, mode: "insensitive" } },
-              { serialCode: { contains: normalizedUniqCode, mode: "insensitive" } },
-            ],
-          },
-          select: {
-            id: true,
-            uniqCode: true,
-            serialCode: true,
-            rootKeyHash: true,
-            rootKey: true,
-          },
-          take: 1,
-        });
+        console.log("[VerifyRootKey] Trying case-insensitive search via raw SQL...");
+        const allItems = await prisma.$queryRaw<
+          Array<{
+            id: number;
+            uniqCode: string;
+            serialCode: string;
+            rootKeyHash: string;
+            rootKey: string | null;
+          }>
+        >`
+          SELECT id, uniqCode, serialCode, rootKeyHash, rootKey
+          FROM GramProductItem
+          WHERE UPPER(uniqCode) = UPPER(${normalizedUniqCode})
+             OR UPPER(serialCode) = UPPER(${normalizedUniqCode})
+          LIMIT 1
+        `;
         if (allItems.length > 0) {
           gramItem = allItems[0];
           lookupMethod = "caseInsensitive";
