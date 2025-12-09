@@ -16,6 +16,10 @@ import bcrypt from "bcrypt";
 // Folder in R2 for the new gram-based QR assets
 const GRAM_QR_FOLDER = "qr-gram";
 
+// Batch processing configuration for large quantities
+const BATCH_SIZE = 100; // Process items in batches of 100
+const MAX_QUANTITY = 100000; // Maximum quantity limit for safety
+
 export async function POST(request: Request) {
   const session = await auth();
 
@@ -42,10 +46,28 @@ export async function POST(request: Request) {
   const payload = parsed.data;
   console.log("[GramProductCreate] Validated payload:", JSON.stringify(payload, null, 2));
 
+  // Validate quantity limit
+  if (payload.quantity > MAX_QUANTITY) {
+    return NextResponse.json(
+      {
+        error: `Quantity exceeds maximum limit of ${MAX_QUANTITY.toLocaleString()}. Please contact support for larger batches.`,
+      },
+      { status: 400 }
+    );
+  }
+
   // Business rule: generate per quantity for Page 2 so serials & root keys align with quantity
   const weightGroup = payload.weight < 100 ? "SMALL" : "LARGE";
   const qrMode = payload.quantity > 1 ? "MULTI_QR" : "SINGLE_QR";
   const qrCount = Math.max(payload.quantity, 1);
+
+  console.log("[GramProductCreate] Processing batch:", {
+    name: payload.name,
+    quantity: payload.quantity,
+    qrCount,
+    weightGroup,
+    qrMode,
+  });
 
   try {
     console.log("[GramProductCreate] Creating batch...");
@@ -67,34 +89,20 @@ export async function POST(request: Request) {
     // Determine serial codes based on serialPrefix or serialCode (like Page 1)
     // Safety: ensure serialPrefix exists and is not empty
     const hasSerialPrefix =
-      payload.serialPrefix &&
-      typeof payload.serialPrefix === "string" &&
-      payload.serialPrefix.trim() !== "";
-    const hasSerialCode =
-      payload.serialCode &&
-      typeof payload.serialCode === "string" &&
-      payload.serialCode.trim() !== "";
+      payload.serialPrefix && payload.serialPrefix.trim().length > 0;
+    const normalizedPrefix = hasSerialPrefix
+      ? normalizeSerialCode(payload.serialPrefix.trim())
+      : null;
 
-    console.log("[GramProductCreate] Serial check:", {
-      hasSerialPrefix,
-      hasSerialCode,
-      serialPrefix: payload.serialPrefix,
-      serialCode: payload.serialCode,
-    });
-
-    if (hasSerialPrefix) {
-      console.log("[GramProductCreate] Using serialPrefix:", payload.serialPrefix);
+    if (normalizedPrefix) {
       // Use serialPrefix for auto-generation (batch creation or continuation)
-      const serialPrefix = normalizeSerialCode(payload.serialPrefix);
-
-      // Check for existing products with same name and prefix to continue serial numbers
+      console.log("[GramProductCreate] Using serialPrefix:", normalizedPrefix);
+      
+      // Find existing serials with this prefix to determine starting number
       const existingItems = await prisma.gramProductItem.findMany({
         where: {
-          batch: {
-            name: payload.name.trim(),
-          },
           serialCode: {
-            startsWith: serialPrefix,
+            startsWith: normalizedPrefix,
           },
         },
         select: {
@@ -103,87 +111,74 @@ export async function POST(request: Request) {
         orderBy: {
           serialCode: "desc",
         },
+        take: 1000, // Limit to prevent memory issues
       });
 
       let startNumber = 1;
       if (existingItems.length > 0) {
-        // Find the highest serial number and continue from there
         const existingSerials = existingItems.map((item) => item.serialCode);
-        const highestNumber = findHighestSerialNumber(existingSerials, serialPrefix);
-        startNumber = highestNumber + 1;
-      }
-
-      // Generate serials starting from the next available number
-      serialCodes = generateSequentialSerials(serialPrefix, qrCount, startNumber);
-      console.log("[GramProductCreate] Generated serial codes:", serialCodes);
-
-      // Double-check if any of the generated serials already exist (safety check)
-      const conflictingSerials = await prisma.gramProductItem.findMany({
-        where: {
-          serialCode: {
-            in: serialCodes,
-          },
-        },
-        select: {
-          serialCode: true,
-        },
-      });
-
-      if (conflictingSerials.length > 0) {
-        return NextResponse.json(
-          {
-            error: "Some serial numbers already exist",
-            existingSerials: conflictingSerials.map((item) => item.serialCode),
-          },
-          { status: 400 }
+        const highestSerial = findHighestSerialNumber(existingSerials, normalizedPrefix);
+        startNumber = highestSerial ? highestSerial + 1 : 1;
+        console.log(
+          "[GramProductCreate] Starting serial number:",
+          startNumber,
+          "(highest found:",
+          highestSerial || "none",
+          ")"
         );
+      } else {
+        console.log("[GramProductCreate] No existing serials found, starting from 1");
       }
-    } else if (hasSerialCode) {
-      // Use custom serialCode (single product)
-      serialCodes = [payload.serialCode.trim().toUpperCase()];
-
-      // Check if serialCode already exists
-      const existingSerial = await prisma.gramProductItem.findUnique({
-        where: { serialCode: serialCodes[0] },
-        select: { id: true },
-      });
-
-      if (existingSerial) {
-        return NextResponse.json(
-          { error: `Serial code ${serialCodes[0]} already exists` },
-          { status: 400 }
-        );
-      }
+      
+      serialCodes = generateSequentialSerials(normalizedPrefix, qrCount, startNumber);
+    } else if (payload.serialCode && payload.serialCode.trim().length > 0) {
+      // Use explicit serialCode (single item)
+      serialCodes = [normalizeSerialCode(payload.serialCode.trim())];
+      console.log("[GramProductCreate] Using explicit serialCode:", serialCodes[0]);
     } else {
-      return NextResponse.json(
-        {
-          error: "Either serialPrefix or serialCode must be provided",
-          details:
-            "Please provide either a serial prefix (for auto-generation) or a custom serial code",
-        },
-        { status: 400 }
+      // Fallback: generate a default serial code
+      serialCodes = generateSequentialSerials("SKP", qrCount, 1);
+      console.log("[GramProductCreate] Using default serialPrefix: SKP");
+    }
+
+    // Validate serial codes count matches quantity
+    if (serialCodes.length !== qrCount) {
+      throw new Error(
+        `Serial codes count (${serialCodes.length}) does not match quantity (${qrCount})`
       );
     }
 
-    for (let i = 0; i < qrCount; i++) {
-      // Generate a uniq code for each QR (independent from legacy serials)
-      // Prefix "GK" (Gram King) keeps it visually distinct from legacy SK* serials
-      let uniqCode: string | undefined;
+    console.log(
+      "[GramProductCreate] Generated",
+      serialCodes.length,
+      "serial codes. First:",
+      serialCodes[0],
+      "Last:",
+      serialCodes[serialCodes.length - 1]
+    );
 
-      // Small retry loop in case of very rare collision on uniqCode
+    // Pre-generate all uniqCodes, rootKeys, and rootKeyHashes in memory for better performance
+    console.log("[GramProductCreate] Pre-generating uniqCodes and root keys...");
+    const itemData: Array<{
+      uniqCode: string;
+      serialCode: string;
+      rootKey: string;
+      rootKeyHash: string;
+    }> = [];
+
+    for (let i = 0; i < qrCount; i++) {
+      // Generate uniqCode with collision check
+      let uniqCode: string | undefined;
       for (let attempt = 0; attempt < 5; attempt++) {
         const candidate = generateSerialCode("GK");
-
         const existing = await prisma.gramProductItem.findUnique({
           where: { uniqCode: candidate },
           select: { id: true },
         });
-
         if (!existing) {
           uniqCode = candidate;
           break;
         }
-
         if (attempt === 4) {
           throw new Error("Failed to generate unique QR code after multiple attempts");
         }
@@ -193,77 +188,113 @@ export async function POST(request: Request) {
         throw new Error("Failed to generate unique QR code");
       }
 
-      // Generate root key alphanumeric (3-4 chars) for two-step verification
+      // Generate root key and hash
       const rootKey = generateRootKey();
       const rootKeyHash = await bcrypt.hash(rootKey, 10);
 
-      // Use the serial code from the generated list
-      const serialCode = serialCodes[i];
-
-      // Gunakan verify URL utama agar diarahkan ke halaman authenticity yang sama
-      const verifyUrl = getVerifyUrl(uniqCode);
-      console.log("[GramProductCreate] Generating QR for:", { uniqCode, serialCode, verifyUrl });
-
-      let qrImageUrl: string;
-      try {
-        const qrResult = await generateAndStoreQR(
-          uniqCode,
-          verifyUrl,
-          payload.name,
-          GRAM_QR_FOLDER
-        );
-        qrImageUrl = qrResult.url;
-        console.log("[GramProductCreate] QR generated successfully:", qrImageUrl);
-      } catch (qrError: any) {
-        console.error("[GramProductCreate] QR generation failed:", qrError);
-        throw new Error(`Failed to generate QR code: ${qrError.message || "Unknown error"}`);
-      }
-
-      console.log("[GramProductCreate] Creating item:", {
-        batchId: batch.id,
+      itemData.push({
         uniqCode,
-        serialCode,
-        rootKey, // Log plain text root key for debugging
-        rootKeyHashLength: rootKeyHash.length,
-        qrImageUrlLength: qrImageUrl.length,
+        serialCode: serialCodes[i],
+        rootKey,
+        rootKeyHash,
       });
 
-      // Verify Prisma client recognizes rootKeyHash before creating
-      // This will help catch schema sync issues early
-      let item;
-      try {
-        item = await prisma.gramProductItem.create({
-          data: {
-            batchId: batch.id,
-            uniqCode,
-            serialCode,
-            rootKeyHash,
-            rootKey, // Store plain text root key for admin display
-            qrImageUrl,
-          },
-        });
-        console.log("[GramProductCreate] Item created successfully:", item.id);
-      } catch (createError: any) {
-        // Enhanced error logging for Prisma errors
-        if (createError.message && createError.message.includes("rootKeyHash")) {
-          console.error(
-            "[GramProductCreate] CRITICAL: Prisma client does not recognize rootKeyHash!"
-          );
-          console.error("[GramProductCreate] This usually means:");
-          console.error(
-            "[GramProductCreate] 1. Prisma client needs to be regenerated: npx prisma generate"
-          );
-          console.error("[GramProductCreate] 2. Next.js server needs to be restarted");
-          console.error("[GramProductCreate] 3. Check that schema.prisma has rootKeyHash field");
-          throw new Error(
-            `Prisma schema sync issue: rootKeyHash field not recognized. Please restart the Next.js server after running 'npx prisma generate'. Original error: ${createError.message}`
-          );
-        }
-        throw createError; // Re-throw if it's a different error
+      // Log progress for large batches
+      if ((i + 1) % 1000 === 0) {
+        console.log(`[GramProductCreate] Pre-generated ${i + 1}/${qrCount} items...`);
       }
-
-      items.push({ ...item, rootKey }); // Include rootKey in response for admin display
     }
+
+    console.log("[GramProductCreate] Pre-generation complete. Starting QR generation and database insertion...");
+
+    // Process items in batches for better performance and error recovery
+    const totalBatches = Math.ceil(qrCount / BATCH_SIZE);
+    let processedCount = 0;
+    let failedItems: Array<{ index: number; error: string }> = [];
+
+    for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+      const batchStart = batchIndex * BATCH_SIZE;
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, qrCount);
+      const currentBatch = itemData.slice(batchStart, batchEnd);
+
+      console.log(
+        `[GramProductCreate] Processing batch ${batchIndex + 1}/${totalBatches} (items ${batchStart + 1}-${batchEnd})...`
+      );
+
+      // Process current batch
+      const batchPromises = currentBatch.map(async (itemData, index) => {
+        const globalIndex = batchStart + index;
+        try {
+          // Generate QR code
+          const verifyUrl = getVerifyUrl(itemData.uniqCode);
+          const qrResult = await generateAndStoreQR(
+            itemData.uniqCode,
+            verifyUrl,
+            payload.name,
+            GRAM_QR_FOLDER
+          );
+          const qrImageUrl = qrResult.url;
+
+          // Create database record
+          const item = await prisma.gramProductItem.create({
+            data: {
+              batchId: batch.id,
+              uniqCode: itemData.uniqCode,
+              serialCode: itemData.serialCode,
+              rootKeyHash: itemData.rootKeyHash,
+              rootKey: itemData.rootKey, // Store plain text root key for admin display
+              qrImageUrl,
+            },
+          });
+
+          processedCount++;
+          return { ...item, rootKey: itemData.rootKey };
+        } catch (error: any) {
+          console.error(
+            `[GramProductCreate] Failed to create item ${globalIndex + 1} (${itemData.serialCode}):`,
+            error.message
+          );
+          failedItems.push({
+            index: globalIndex,
+            error: error.message || "Unknown error",
+          });
+          return null;
+        }
+      });
+
+      // Wait for current batch to complete
+      const batchResults = await Promise.allSettled(batchPromises);
+      const successfulItems = batchResults
+        .filter((result) => result.status === "fulfilled" && result.value !== null)
+        .map((result) => (result as PromiseFulfilledResult<any>).value);
+
+      items.push(...successfulItems);
+
+      // Log progress
+      console.log(
+        `[GramProductCreate] Batch ${batchIndex + 1}/${totalBatches} complete. Processed: ${processedCount}/${qrCount}, Failed: ${failedItems.length}`
+      );
+
+      // If too many failures, abort
+      if (failedItems.length > qrCount * 0.1) {
+        // More than 10% failures
+        throw new Error(
+          `Too many failures (${failedItems.length}/${qrCount}). Aborting batch creation.`
+        );
+      }
+    }
+
+    // If we have failures, log them but continue
+    if (failedItems.length > 0) {
+      console.warn(
+        `[GramProductCreate] Completed with ${failedItems.length} failures out of ${qrCount} items:`,
+        failedItems.slice(0, 10) // Log first 10 failures
+      );
+    }
+
+    console.log(
+      `[GramProductCreate] Batch creation complete. Successfully created ${items.length}/${qrCount} items.`
+    );
 
     return NextResponse.json(
       {
@@ -279,56 +310,47 @@ export async function POST(request: Request) {
             rootKey, // Return rootKey for admin to display/share (plain text, not hashed)
           };
         }),
-        qrCount,
+        qrCount: items.length,
+        failedCount: failedItems.length,
+        failedItems: failedItems.length > 0 ? failedItems.slice(0, 50) : [], // Return first 50 failures
       },
       { status: 201 }
     );
   } catch (error: any) {
-    // Log full error for debugging
-    console.error("[GramProductCreate] ========== ERROR START ==========");
-    console.error("[GramProductCreate] Error type:", typeof error);
-    console.error("[GramProductCreate] Error name:", error?.name);
-    console.error("[GramProductCreate] Error message:", error?.message);
-    console.error("[GramProductCreate] Error code:", error?.code);
-    console.error("[GramProductCreate] Error meta:", JSON.stringify(error?.meta, null, 2));
-    console.error("[GramProductCreate] Error stack:", error?.stack);
-    console.error(
-      "[GramProductCreate] Full error object:",
-      JSON.stringify(error, Object.getOwnPropertyNames(error), 2)
-    );
-    console.error("[GramProductCreate] ========== ERROR END ==========");
+    console.error("[GramProductCreate] Error:", error);
 
-    // Better error handling - check for Prisma errors, validation errors, etc.
     let errorMessage = "Failed to create gram-based product batch";
-    let errorDetails = error?.message || "Unknown error";
+    let errorDetails: string | undefined;
+    let statusCode = 500;
 
-    // Handle Prisma errors
-    if (error?.code === "P2002") {
-      errorMessage = "Duplicate entry detected";
-      const field = error.meta?.target?.[0] || "record";
-      errorDetails = `A record with this ${field} already exists. Details: ${JSON.stringify(error.meta)}`;
-    } else if (error?.code === "P2003") {
-      errorMessage = "Invalid reference";
+    // Enhanced error handling for Prisma errors
+    if (error.code === "P2002") {
+      errorDetails = `Unique constraint violation. Field: ${error.meta?.target || "unknown"}`;
+      statusCode = 409;
+    } else if (error.code === "P2003") {
       errorDetails = `Referenced batch or related record does not exist. Field: ${error.meta?.field_name || "unknown"}`;
-    } else if (error?.code === "P2011") {
-      errorMessage = "Null constraint violation";
-      errorDetails = `Required field is missing: ${error.meta?.constraint || "unknown"}`;
-    } else if (error?.message) {
+      statusCode = 400;
+    } else if (error.code === "P2011") {
+      errorDetails = `Null constraint violation. Field: ${error.meta?.constraint || "unknown"}`;
+      statusCode = 400;
+    } else if (error.message) {
       errorDetails = error.message;
+      if (error.message.includes("rootKeyHash")) {
+        errorDetails =
+          "Prisma schema sync issue: rootKeyHash field not recognized. Please restart the Next.js server after running 'npx prisma generate'.";
+        statusCode = 500;
+      }
     }
 
     return NextResponse.json(
       {
         error: errorMessage,
         details: errorDetails,
-        // Include field errors if available
-        ...(error?.fieldErrors && { fieldErrors: error.fieldErrors }),
-        // Include Prisma meta for debugging
-        ...(error?.meta && { meta: error.meta }),
-        // Include error code for easier debugging
-        ...(error?.code && { errorCode: error.code }),
+        // Include Prisma error code and meta for debugging
+        ...(error.code && { prismaCode: error.code }),
+        ...(error.meta && { prismaMeta: error.meta }),
       },
-      { status: 500 }
+      { status: statusCode }
     );
   }
 }
