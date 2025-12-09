@@ -5,12 +5,14 @@ import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { Product } from "./ProductModal";
+import Image from "next/image";
 
 const SLIDE_INTERVAL_MS = 8000; // 8s cadence (within requested 7-9s)
 // Use browser timer IDs (numbers) to avoid Node Timeout typing conflicts
 let slideStartTimeoutId: number | null = null;
 let slideIntervalId: number | null = null;
 const slideListeners = new Set<() => void>();
+const PLACEHOLDER_BLUR = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
 
 const startGlobalSlider = () => {
   if (typeof window === "undefined") return;
@@ -63,6 +65,8 @@ export default function ProductCard({ product, onProductSelect, index = 0 }: Pro
   const [isHovered, setIsHovered] = useState(false);
   const [imagesReady, setImagesReady] = useState(false);
   const hasMultipleImages = images.length > 1;
+  const responsiveSizes =
+    "(min-width: 1280px) 320px, (min-width: 1024px) 280px, (min-width: 768px) 240px, 90vw";
 
   // Reset slider index whenever image set changes (e.g. new CMS product or edited images)
   useEffect(() => {
@@ -170,13 +174,9 @@ export default function ProductCard({ product, onProductSelect, index = 0 }: Pro
           {images.map(
             (img, idx) =>
               idx === currentImageIndex && (
-                <motion.img
+                <motion.div
                   key={`${product.id}-${idx}`}
-                  src={img}
-                  alt={`${product.name} - Image ${idx + 1}`}
-                  className="absolute inset-0 w-full h-full object-cover"
-                  loading={idx === 0 ? "eager" : "lazy"}
-                  decoding="async"
+                  className="absolute inset-0"
                   initial={{ opacity: 0, scale: 1.02 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.98 }}
@@ -186,7 +186,18 @@ export default function ProductCard({ product, onProductSelect, index = 0 }: Pro
                     opacity: { duration: 1.0 },
                     scale: { duration: 1.2 },
                   }}
-                />
+                >
+                  <Image
+                    src={img}
+                    alt={`${product.name} - Image ${idx + 1}`}
+                    fill
+                    sizes={responsiveSizes}
+                    className="object-cover"
+                    priority={idx === 0 && index < 2}
+                    placeholder="blur"
+                    blurDataURL={PLACEHOLDER_BLUR}
+                  />
+                </motion.div>
               )
           )}
         </AnimatePresence>

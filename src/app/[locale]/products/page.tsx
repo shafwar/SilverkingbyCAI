@@ -15,6 +15,7 @@ import ProductModal, { type Product } from "@/components/ui/ProductModal";
 import ProductCard, { type ProductWithPricing } from "@/components/ui/ProductCard";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
+import Image from "next/image";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -98,6 +99,8 @@ type ProductCategory = {
 // Category list for filtering - will be created inside component using translations
 
 // Product Category Grid Item with Hover Slideshow
+const CATEGORY_BLUR = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
+
 const CategoryGridItem = ({
   category,
   index,
@@ -184,13 +187,15 @@ const CategoryGridItem = ({
 
               {/* Product Image or Icon */}
               {product.image ? (
-                <img
+                <Image
                   src={product.image}
                   alt={product.name}
-                  className="h-full w-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                  }}
+                  fill
+                  sizes="(min-width: 1280px) 360px, (min-width: 1024px) 320px, (min-width: 768px) 280px, 90vw"
+                  className="object-cover"
+                  placeholder="blur"
+                  blurDataURL={CATEGORY_BLUR}
+                  priority={idx === 0 && index < 2}
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center">

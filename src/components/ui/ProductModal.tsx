@@ -4,6 +4,7 @@ import { AnimatePresence, motion, type Variants } from "framer-motion";
 import { useEffect } from "react";
 import Link from "next/link";
 import { X, Shield, Scale, Gem } from "lucide-react";
+import Image from "next/image";
 
 /**
  * ProductModal Component
@@ -119,6 +120,8 @@ const backdropVariants: Variants = {
   exit: { opacity: 0, transition: { duration: 0.2 } },
 };
 
+const MODAL_BLUR = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
+
 export type Product = {
   id: string;
   name: string;
@@ -216,13 +219,14 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
                   className="relative flex h-48 w-48 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.03] to-transparent"
                 >
                   {product.image ? (
-                    <img
+                    <Image
                       src={product.image}
                       alt={product.name}
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
+                      fill
+                      sizes="192px"
+                      className="object-cover"
+                      placeholder="blur"
+                      blurDataURL={MODAL_BLUR}
                     />
                   ) : (
                     <Gem className="h-20 w-20 text-white/20" />
