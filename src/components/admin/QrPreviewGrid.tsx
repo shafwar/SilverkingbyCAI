@@ -307,7 +307,7 @@ export function QrPreviewGrid() {
       if (product.name && product.name.trim().length > 0) {
         const nameFontSize = Math.floor(frontTemplateImg.width * 0.027);
         const nameY = qrY - 40; // Fixed spacing above QR
-        
+
         // CRITICAL: Measure text width to create proper white background
         // Also measure placeholder width to ensure complete coverage
         frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
@@ -315,8 +315,9 @@ export function QrPreviewGrid() {
         const placeholderNameWidth = frontCtx.measureText("0000000000000000").width; // Template placeholder width
         const nameTextHeight = nameFontSize;
         const textOverwritePadding = 20; // Padding untuk kotak putih
-        const overwriteWidth = Math.max(nameTextWidth, placeholderNameWidth) + textOverwritePadding * 2;
-        
+        const overwriteWidth =
+          Math.max(nameTextWidth, placeholderNameWidth) + textOverwritePadding * 2;
+
         // Overwrite placeholder area with white background (cover full placeholder width)
         frontCtx.fillStyle = "#ffffff";
         frontCtx.fillRect(
@@ -333,7 +334,9 @@ export function QrPreviewGrid() {
         frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
         // Gunakan product.name as-is
         frontCtx.fillText(product.name.trim(), frontTemplateImg.width / 2, nameY);
-        console.log(`[Download] Product name drawn with white box: "${product.name.trim()}" at Y=${nameY}`);
+        console.log(
+          `[Download] Product name drawn with white box: "${product.name.trim()}" at Y=${nameY}`
+        );
       }
 
       // 2. Serial code di BAWAH QR (diluar dari box QR nya) dengan kotak putih
@@ -341,7 +344,7 @@ export function QrPreviewGrid() {
       if (product.serialCode && product.serialCode.trim().length > 0) {
         const serialFontSize = Math.floor(frontTemplateImg.width * 0.031);
         const serialY = qrY + qrSize + 40; // Fixed spacing below QR (diluar box QR)
-        
+
         // CRITICAL: Measure text width to create proper white background
         // Also measure placeholder width to ensure complete coverage
         frontCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
@@ -349,8 +352,9 @@ export function QrPreviewGrid() {
         const placeholderSerialWidth = frontCtx.measureText("00000000").width; // Template placeholder width
         const serialTextHeight = serialFontSize;
         const textOverwritePadding = 20; // Padding untuk kotak putih
-        const overwriteSerialWidth = Math.max(serialTextWidth, placeholderSerialWidth) + textOverwritePadding * 2;
-        
+        const overwriteSerialWidth =
+          Math.max(serialTextWidth, placeholderSerialWidth) + textOverwritePadding * 2;
+
         // Overwrite placeholder area with white background (cover full placeholder width)
         frontCtx.fillStyle = "#ffffff";
         frontCtx.fillRect(
@@ -446,7 +450,7 @@ export function QrPreviewGrid() {
           if (product.name && product.name.trim().length > 0) {
             const nameFontSize = Math.floor(localFrontImg.width * 0.027);
             const nameY = qrY - 40; // Fixed spacing above QR (same as main path)
-            
+
             // CRITICAL: Measure text width to create proper white background
             // Also measure placeholder width to ensure complete coverage
             fallbackCtx.font = `${nameFontSize}px Arial, sans-serif`;
@@ -454,8 +458,9 @@ export function QrPreviewGrid() {
             const placeholderNameWidth = fallbackCtx.measureText("0000000000000000").width; // Template placeholder width
             const nameTextHeight = nameFontSize;
             const textOverwritePadding = 20; // Padding untuk kotak putih
-            const overwriteWidth = Math.max(nameTextWidth, placeholderNameWidth) + textOverwritePadding * 2;
-            
+            const overwriteWidth =
+              Math.max(nameTextWidth, placeholderNameWidth) + textOverwritePadding * 2;
+
             // Overwrite placeholder area with white background (cover full placeholder width)
             fallbackCtx.fillStyle = "#ffffff";
             fallbackCtx.fillRect(
@@ -478,16 +483,19 @@ export function QrPreviewGrid() {
           if (product.serialCode && product.serialCode.trim().length > 0) {
             const serialFontSize = Math.floor(localFrontImg.width * 0.031);
             const serialY = qrY + qrSize + 40; // Fixed spacing below QR (diluar box QR)
-            
+
             // CRITICAL: Measure text width to create proper white background
             // Also measure placeholder width to ensure complete coverage
             fallbackCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
-            const serialTextWidth = fallbackCtx.measureText(product.serialCode.trim().toUpperCase()).width;
+            const serialTextWidth = fallbackCtx.measureText(
+              product.serialCode.trim().toUpperCase()
+            ).width;
             const placeholderSerialWidth = fallbackCtx.measureText("00000000").width; // Template placeholder width
             const serialTextHeight = serialFontSize;
             const textOverwritePadding = 20; // Padding untuk kotak putih
-            const overwriteSerialWidth = Math.max(serialTextWidth, placeholderSerialWidth) + textOverwritePadding * 2;
-            
+            const overwriteSerialWidth =
+              Math.max(serialTextWidth, placeholderSerialWidth) + textOverwritePadding * 2;
+
             // Overwrite placeholder area with white background (cover full placeholder width)
             fallbackCtx.fillStyle = "#ffffff";
             fallbackCtx.fillRect(
@@ -2091,7 +2099,7 @@ export function QrPreviewGrid() {
                       }`}
                     >
                       {/* Checkbox overlay */}
-                      <div className="absolute top-3 left-3 z-10">
+                      <div className="absolute top-3 left-3 z-10 sm:top-4 sm:left-4">
                         <button
                           type="button"
                           onClick={(e) => {
@@ -2099,6 +2107,8 @@ export function QrPreviewGrid() {
                             toggleSelectItem(product.id);
                           }}
                           className="inline-flex items-center justify-center rounded-lg bg-black/60 backdrop-blur-sm p-1.5 text-white/60 hover:text-white transition-colors hover:bg-black/80"
+                          aria-label={isItemSelected ? t("selected") : t("selected")}
+                          aria-checked={isItemSelected}
                         >
                           {isItemSelected ? (
                             <CheckSquare2 className="h-5 w-5 text-[#FFD700]" />
@@ -2109,10 +2119,10 @@ export function QrPreviewGrid() {
                       </div>
 
                       {/* QR Code Image */}
-                      <div className="relative aspect-square w-full rounded-lg border border-white/10 bg-white p-3 sm:p-4 mb-3">
+                      <div className="relative aspect-square w-full rounded-lg border border-white/10 bg-white p-3 sm:p-4 mb-3 sm:mb-4">
                         <img
                           src={`/api/qr/${product.serialCode}`}
-                          alt={product.name}
+                          alt={`QR code for ${product.name} - ${product.serialCode}`}
                           className="h-full w-full object-contain"
                           loading="lazy"
                           onError={(e) => {
@@ -2126,34 +2136,44 @@ export function QrPreviewGrid() {
                       </div>
 
                       {/* Product Info */}
-                      <div className="space-y-2">
-                        <h3 className="font-mono text-sm font-semibold text-white truncate">
+                      <div className="space-y-2 mb-4">
+                        <h3
+                          className="font-mono text-sm sm:text-base font-semibold text-white truncate"
+                          title={product.serialCode}
+                        >
                           {product.serialCode}
                         </h3>
-                        <p className="text-xs text-white/70 line-clamp-2">{product.name}</p>
-                        <p className="text-xs text-white/50">{product.weight} gr</p>
+                        <p
+                          className="text-xs sm:text-sm text-white/70 line-clamp-2 min-h-[2.5rem]"
+                          title={product.name}
+                        >
+                          {product.name}
+                        </p>
+                        <p className="text-xs sm:text-sm text-white/50">{product.weight} gr</p>
                       </div>
 
-                      {/* Action Buttons */}
-                      <div className="mt-4 flex items-center gap-2">
+                      {/* Action Buttons - Responsive Layout */}
+                      <div className="flex flex-col sm:flex-row sm:flex-nowrap items-stretch sm:items-center gap-2">
                         <motion.button
                           onClick={() => setSelected(product)}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70 transition hover:border-[#FFD700]/40 hover:bg-white/10 hover:text-white"
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full border border-white/15 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm text-white/80 transition hover:border-white/40 hover:bg-white/5 active:scale-95 touch-manipulation min-h-[38px]"
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
+                          aria-label={t("enlarge")}
                         >
-                          <Maximize2 className="h-3.5 w-3.5" />
-                          {t("enlarge")}
+                          <Maximize2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                          <span className="whitespace-nowrap">{t("enlarge")}</span>
                         </motion.button>
                         <motion.button
                           onClick={() => handleDownload(product)}
                           disabled={isDownloading}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70 transition hover:border-[#FFD700]/40 hover:bg-white/10 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full border border-white/15 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm text-white/80 transition hover:border-white/40 hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 touch-manipulation min-h-[38px]"
                           whileHover={{ scale: isDownloading ? 1 : 1.05 }}
                           whileTap={{ scale: isDownloading ? 1 : 0.95 }}
+                          aria-label={t("download")}
                         >
-                          <Download className="h-3.5 w-3.5" />
-                          {t("download")}
+                          <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                          <span className="whitespace-nowrap">{t("download")}</span>
                         </motion.button>
                       </div>
                     </AnimatedCard>

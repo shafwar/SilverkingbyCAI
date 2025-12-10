@@ -332,7 +332,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                   weightFilter === "SMALL" ? "bg-white text-black" : "text-white/70"
                 }`}
               >
-                ≤ 100gr
+                ≤ 99gr
               </button>
               <button
                 onClick={() => setWeightFilter("LARGE")}
@@ -340,7 +340,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                   weightFilter === "LARGE" ? "bg-white text-black" : "text-white/70"
                 }`}
               >
-                Over 100gr
+                Over 99gr
               </button>
             </div>
 
@@ -531,6 +531,60 @@ export function QrPreviewGridGram({ batches }: Props) {
                   <p className="text-xs text-white/70 line-clamp-2">{batch.name}</p>
                   <p className="text-xs text-white/50">{batch.weight} gr</p>
                   <p className="text-xs text-white/40">{batch.itemCount} items</p>
+                </div>
+
+                {/* Root key status */}
+                <div className="mt-2">
+                  {batch.firstItem.hasRootKey ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-green-500/20 px-2 py-1 text-[10px] text-green-300 border border-green-500/30">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Active root key
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-white/40">Root key: —</span>
+                  )}
+                </div>
+
+                {/* Action buttons */}
+                <div className="mt-3 flex flex-col sm:flex-row sm:flex-wrap gap-2">
+                  <button
+                    onClick={() =>
+                      setSelectedQrItem({
+                        name: batch.name,
+                        uniqCode: batch.firstItem.uniqCode,
+                      })
+                    }
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full border border-white/15 px-3 py-2 text-[11px] text-white/80 hover:border-white/40 hover:bg-white/5 transition"
+                  >
+                    <Maximize2 className="h-3.5 w-3.5" />
+                    {t("enlarge")}
+                  </button>
+                  <button
+                    onClick={() =>
+                      handleDownloadSingle({
+                        id: batch.firstItem.id,
+                        name: batch.name,
+                        weight: batch.weight,
+                        uniqCode: batch.firstItem.uniqCode,
+                        serialCode: batch.firstItem.serialCode,
+                        qrImageUrl: batch.firstItem.qrImageUrl,
+                        weightGroup: batch.weightGroup,
+                        hasRootKey: batch.firstItem.hasRootKey,
+                      })
+                    }
+                    disabled={downloadingId === batch.firstItem.id}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full border border-white/15 px-3 py-2 text-[11px] text-white/80 hover:border-white/40 hover:bg-white/5 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    {downloadingId === batch.firstItem.id ? t("downloading") : t("download")}
+                  </button>
+                  <button
+                    onClick={() => handleSerialCodeClick(batch)}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full border border-white/15 px-3 py-2 text-[11px] text-white/80 hover:border-white/40 hover:bg-white/5 transition"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    Root Key / Serial
+                  </button>
                 </div>
               </div>
             ))
