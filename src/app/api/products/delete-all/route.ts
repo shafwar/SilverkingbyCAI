@@ -21,6 +21,7 @@ export async function DELETE(request: Request) {
     if (!session || (session.user as any).role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const deletedBy = (session.user as any)?.email as string | undefined;
 
     // Get all products with their QR records and scan logs
     const allProducts = await prisma.product.findMany({
@@ -44,6 +45,12 @@ export async function DELETE(request: Request) {
     const result = await prisma.$transaction(async (tx) => {
       let deletedCount = 0;
       let qrAssetsToDelete: Array<{ serialCode: string; qrImageUrl: string }> = [];
+      const batch = await tx.productDeleteBatch.create({
+        data: {
+          deletedBy: deletedBy ?? null,
+          itemCount: allProducts.length,
+        },
+      });
 
       // Collect QR assets to delete (outside transaction for async operations)
       for (const product of allProducts) {
@@ -54,6 +61,26 @@ export async function DELETE(request: Request) {
           });
         }
       }
+
+      // Archive delete history for restore
+      await tx.productDeleteHistory.createMany({
+        data: allProducts.map((product) => ({
+          productId: product.id,
+          name: product.name,
+          weight: product.weight,
+          serialCode: product.serialCode,
+          price: product.price,
+          stock: product.stock,
+          qrImageUrl: product.qrRecord?.qrImageUrl ?? null,
+          scanCount:
+            product.qrRecord?.scanCount ??
+            product.qrRecord?.scanLogs?.length ??
+            0,
+          deletedBy: deletedBy ?? null,
+          batchId: batch.id,
+          deletedAt: new Date(),
+        })),
+      });
 
       // Delete all scan logs first (cascade order)
       const scanLogsCount = await tx.qRScanLog.deleteMany({});

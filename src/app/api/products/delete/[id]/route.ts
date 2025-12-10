@@ -13,6 +13,7 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const deletedBy = (session.user as any)?.email as string | undefined;
   const id = Number(params.id);
 
   if (Number.isNaN(id)) {
@@ -29,6 +30,31 @@ export async function DELETE(
   }
 
   await prisma.$transaction(async (tx) => {
+    const batch = await tx.productDeleteBatch.create({
+      data: {
+        deletedBy: deletedBy ?? null,
+        itemCount: 1,
+      },
+    });
+
+    await tx.productDeleteHistory.create({
+      data: {
+        productId: product.id,
+        name: product.name,
+        weight: product.weight,
+        serialCode: product.serialCode,
+        price: product.price,
+        stock: product.stock,
+        qrImageUrl: product.qrRecord?.qrImageUrl,
+        scanCount:
+          product.qrRecord?.scanCount ??
+          product.qrRecord?.scanLogs?.length ??
+          0,
+        deletedBy: deletedBy ?? null,
+        batchId: batch.id,
+      },
+    });
+
     if (product.qrRecord) {
       await tx.qRScanLog.deleteMany({ where: { qrRecordId: product.qrRecord.id } });
       await tx.qrRecord.delete({ where: { id: product.qrRecord.id } });

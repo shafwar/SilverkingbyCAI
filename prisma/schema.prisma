@@ -30,6 +30,40 @@ model Product {
   qrRecord   QrRecord?
 }
 
+/// Archived copy of deleted products for recovery
+model ProductDeleteHistory {
+  id                Int       @id @default(autoincrement())
+  productId         Int
+  name              String
+  weight            Int
+  serialCode        String
+  price             Float?
+  stock             Int?
+  qrImageUrl        String?
+  scanCount         Int?      @default(0)
+  deletedBy         String?
+  deletedAt         DateTime  @default(now())
+  restoredAt        DateTime?
+  restoredProductId Int?
+  notes             String?
+  batchId           Int?
+  batch             ProductDeleteBatch? @relation(fields: [batchId], references: [id])
+
+  @@index([deletedAt])
+  @@index([serialCode])
+}
+
+/// Group of deleted items in one operation
+model ProductDeleteBatch {
+  id         Int       @id @default(autoincrement())
+  deletedAt  DateTime  @default(now())
+  deletedBy  String?
+  itemCount  Int
+  histories  ProductDeleteHistory[]
+
+  @@index([deletedAt])
+}
+
 /// CMS-facing product data for the public products page
 /// This is intentionally separated from the QR `Product` model above so that
 /// marketing content (images, copywriting, pricing display) can evolve
