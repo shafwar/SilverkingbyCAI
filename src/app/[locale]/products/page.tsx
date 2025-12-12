@@ -520,7 +520,50 @@ export default function ProductsPage() {
     };
   }, [t]);
 
-  const defaultProducts = useMemo<ProductWithPricing[]>(() => [], [t]);
+  const defaultProducts = useMemo<ProductWithPricing[]>(
+    () => [
+      {
+        id: "default-1",
+        name: "Silver King 50 Gr",
+        rangeName: t("product.rangeName"),
+        image: "/images/default-50gr.png",
+        purity: t("product.purity"),
+        weight: "50gr",
+        description: `${t("product.description")}`,
+        category: t("categories.50gram.title"),
+        basePrice: 750000,
+        discount: 0,
+        finalPrice: 750000,
+      },
+      {
+        id: "default-2",
+        name: "Silver King 100 Gr",
+        rangeName: t("product.rangeName"),
+        image: "/images/default-100gr.png",
+        purity: t("product.purity"),
+        weight: "100gr",
+        description: `${t("product.description")}`,
+        category: t("categories.100gram.title"),
+        basePrice: 1500000,
+        discount: 0,
+        finalPrice: 1500000,
+      },
+      {
+        id: "default-3",
+        name: "Silver King 250 Gr",
+        rangeName: t("product.rangeName"),
+        image: "/images/default-250gr.png",
+        purity: t("product.purity"),
+        weight: "250gr",
+        description: `${t("product.description")}`,
+        category: t("categories.250gram.title"),
+        basePrice: 3750000,
+        discount: 0,
+        finalPrice: 3750000,
+      },
+    ],
+    [t]
+  );
 
   const allProducts = useMemo<ProductWithPricing[]>(() => {
     // Combine CMS and default products, but filter out defaults that have CMS overrides
