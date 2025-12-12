@@ -520,45 +520,7 @@ export default function ProductsPage() {
     };
   }, [t]);
 
-  const defaultProducts = useMemo<ProductWithPricing[]>(
-    () => [
-      {
-        id: "default-1",
-        name: "50gr",
-        rangeName: t("product.rangeName"),
-        image: "/images/50gr.jpeg",
-        purity: t("product.purity"),
-        weight: "50gr",
-        description: `${t("product.description")}`,
-        category: t("categories.50gram.title"),
-        // Additional images for slider
-        images: ["/images/50gr.jpeg", "/images/50gr(2).jpeg"],
-      },
-      {
-        id: "default-2",
-        name: "100gr",
-        rangeName: t("product.rangeName"),
-        image: "/images/100gr.jpeg",
-        purity: t("product.purity"),
-        weight: "100gr",
-        description: `${t("product.description")}`,
-        category: t("categories.100gram.title"),
-        // Additional images for slider
-        images: ["/images/100gr.jpeg", "/images/100gr(2).jpeg"],
-      },
-      {
-        id: "default-3",
-        name: "100gr",
-        rangeName: t("product.rangeName"),
-        image: "/images/silverking-gold.jpeg",
-        purity: t("product.purity"),
-        weight: "100gr",
-        description: `${t("product.description")}`,
-        category: t("categories.100gram.title"),
-      },
-    ],
-    [t]
-  );
+  const defaultProducts = useMemo<ProductWithPricing[]>(() => [], [t]);
 
   const allProducts = useMemo<ProductWithPricing[]>(() => {
     // Combine CMS and default products, but filter out defaults that have CMS overrides
