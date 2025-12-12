@@ -162,16 +162,26 @@ export function QrPreviewGridGram({ batches }: Props) {
     try {
       setDownloadingId(product.id);
 
+      // Validate product data
+      if (!product.name || product.name.trim().length === 0) {
+        throw new Error("Product name is empty");
+      }
+      if (!product.uniqCode || product.uniqCode.trim().length === 0) {
+        throw new Error("Unique code is empty");
+      }
+
       const body = {
         product: {
           id: product.id,
-          name: product.name,
+          name: product.name.trim(),
           // IMPORTANT: For page 2 we use uniqCode as serialCode
-          serialCode: product.uniqCode,
+          serialCode: product.uniqCode.trim().toUpperCase(),
           weight: product.weight,
           isGram: true,
         },
       };
+
+      console.log("[GramPreview] Sending download request:", body);
 
       const response = await fetch("/api/qr/download-single-pdf", {
         method: "POST",
@@ -183,11 +193,20 @@ export function QrPreviewGridGram({ batches }: Props) {
 
       if (!response.ok) {
         const text = await response.text();
-        console.error("[GramPreview] Download single PDF failed:", text);
-        throw new Error(text || "Failed to download QR certificate PDF");
+        console.error("[GramPreview] Download single PDF failed:", {
+          status: response.status,
+          statusText: response.statusText,
+          error: text,
+        });
+        throw new Error(text || `Failed with status ${response.status}`);
       }
 
+      // Validate blob
       const blob = await response.blob();
+      if (blob.size === 0) {
+        throw new Error("Downloaded file is empty");
+      }
+
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -196,9 +215,12 @@ export function QrPreviewGridGram({ batches }: Props) {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
+
+      console.log("[GramPreview] Serticard downloaded successfully:", link.download);
     } catch (error) {
       console.error("[GramPreview] handleDownloadSingle error:", error);
-      alert("Gagal mengunduh Serticard QR (PDF tunggal). Silakan coba lagi.");
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      alert(`Gagal mengunduh Serticard QR: ${errorMsg}`);
     } finally {
       setDownloadingId(null);
       setDownloadDropdownOpen(null);
@@ -219,28 +241,63 @@ export function QrPreviewGridGram({ batches }: Props) {
     try {
       setDownloadingId(product.id);
 
-      // Fetch QR image
-      const qrImageUrl =
-        product.qrImageUrl || `/api/qr-gram/${encodeURIComponent(product.uniqCode)}`;
+      // Try R2 URL first if available, then fallback to API endpoint
+      let qrImageUrl = product.qrImageUrl;
+      
+      // If no R2 URL, fetch from API endpoint which returns QR with text
+      if (!qrImageUrl) {
+        qrImageUrl = `/api/qr-gram/${encodeURIComponent(product.uniqCode)}`;
+      }
 
-      const response = await fetch(qrImageUrl);
+      console.log("[GramPreview] Downloading original QR from:", qrImageUrl);
+
+      const response = await fetch(qrImageUrl, {
+        method: "GET",
+        headers: {
+          "Accept": "image/png",
+        },
+      });
+
       if (!response.ok) {
-        throw new Error("Failed to fetch QR image");
+        const errorText = await response.text().catch(() => "");
+        console.error("[GramPreview] QR fetch failed:", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+          url: qrImageUrl,
+        });
+        throw new Error(`Failed to fetch QR image (${response.status}): ${errorText || response.statusText}`);
+      }
+
+      // Ensure response is image type
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("image")) {
+        throw new Error(`Invalid response type: ${contentType}. Expected image/png`);
       }
 
       const blob = await response.blob();
+      
+      // Validate blob size
+      if (blob.size === 0) {
+        throw new Error("Downloaded file is empty");
+      }
+
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      // Format: UniqCode_SerialCode_Weight
-      link.download = `${product.uniqCode}_${product.name.replace(/\s+/g, "_")}.png`;
+      // Format: UniqCode_ProductName.png
+      const sanitizedName = product.name.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_-]/g, "");
+      link.download = `${product.uniqCode}_${sanitizedName}.png`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
+
+      console.log("[GramPreview] Original QR downloaded successfully:", link.download);
     } catch (error) {
       console.error("[GramPreview] handleDownloadOriginal error:", error);
-      alert("Gagal mengunduh QR original. Silakan coba lagi.");
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      alert(`Gagal mengunduh QR original: ${errorMsg}`);
     } finally {
       setDownloadingId(null);
       setDownloadDropdownOpen(null);
@@ -284,14 +341,17 @@ export function QrPreviewGridGram({ batches }: Props) {
         <button
           onClick={() => setDownloadDropdownOpen(isOpen ? null : batchId)}
           disabled={isLoading}
-          className="w-full inline-flex items-center justify-center gap-1 rounded-full border border-white/20 px-3 py-1 text-[11px] text-white/80 hover:border-white/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          className="w-full inline-flex items-center justify-center gap-1.5 rounded-full border border-white/20 px-2.5 sm:px-3 py-2 sm:py-1 text-[10px] sm:text-[11px] text-white/80 hover:border-white/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
-          <Download className="h-3 w-3" />
-          <span className="whitespace-nowrap">
+          <Download className="h-3 w-3 flex-shrink-0" />
+          <span className="whitespace-nowrap hidden sm:inline">
             {isLoading ? t("downloading") : t("download")}
           </span>
+          <span className="whitespace-nowrap sm:hidden">
+            {isLoading ? "..." : t("download")}
+          </span>
           <ChevronDown
-            className={`h-3 w-3 transition-transform duration-200 ${
+            className={`h-3 w-3 flex-shrink-0 transition-transform duration-200 ${
               isOpen ? "rotate-180" : ""
             }`}
           />
@@ -305,26 +365,26 @@ export function QrPreviewGridGram({ batches }: Props) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.95 }}
               transition={{ duration: 0.15 }}
-              className="absolute left-0 right-0 top-full mt-1 w-56 rounded-lg border border-white/10 bg-white/5 backdrop-blur-xl shadow-lg overflow-hidden z-[9999]"
+              className="absolute left-0 right-0 top-full mt-2 w-max sm:w-64 min-w-fit rounded-lg border border-white/10 bg-white/5 backdrop-blur-xl shadow-lg overflow-hidden z-[9999]"
               onClick={(e) => e.stopPropagation()}
             >
               <button
                 onClick={() => handleDownloadSingle(product)}
                 disabled={isLoading}
-                className="w-full px-4 py-2.5 text-left text-xs text-white/80 hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border-b border-white/5"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-left text-xs sm:text-sm text-white/80 hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border-b border-white/5"
               >
-                <div className="font-semibold text-white mb-0.5">Serticard Template</div>
-                <div className="text-[10px] text-white/50">
+                <div className="font-semibold text-white mb-0.5 sm:mb-1">Serticard Template</div>
+                <div className="text-[9px] sm:text-[10px] text-white/50 line-clamp-2">
                   Download dengan template sertifikat
                 </div>
               </button>
               <button
                 onClick={() => handleDownloadOriginal(product)}
                 disabled={isLoading}
-                className="w-full px-4 py-2.5 text-left text-xs text-white/80 hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-left text-xs sm:text-sm text-white/80 hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="font-semibold text-white mb-0.5">Original QR Only</div>
-                <div className="text-[10px] text-white/50">
+                <div className="font-semibold text-white mb-0.5 sm:mb-1">Original QR Only</div>
+                <div className="text-[9px] sm:text-[10px] text-white/50 line-clamp-2">
                   Hanya QR dengan nomor seri & judul
                 </div>
               </button>
