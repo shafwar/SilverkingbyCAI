@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "./Modal";
 import {
   Search,
@@ -16,6 +16,7 @@ import {
   RefreshCw,
   FileText,
   CheckCircle2,
+  ChevronDown,
 } from "lucide-react";
 
 type GramPreviewBatch = {
@@ -61,6 +62,27 @@ export function QrPreviewGridGram({ batches }: Props) {
   );
   const [loadingBatchItems, setLoadingBatchItems] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [downloadDropdownOpen, setDownloadDropdownOpen] = useState<number | null>(null);
+  const downloadDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        downloadDropdownRef.current &&
+        !downloadDropdownRef.current.contains(event.target as Node)
+      ) {
+        setDownloadDropdownOpen(null);
+      }
+    };
+
+    if (downloadDropdownOpen !== null) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [downloadDropdownOpen]);
 
   const filteredBatches = useMemo(() => {
     let result = batches;
@@ -179,6 +201,49 @@ export function QrPreviewGridGram({ batches }: Props) {
       alert("Gagal mengunduh Serticard QR (PDF tunggal). Silakan coba lagi.");
     } finally {
       setDownloadingId(null);
+      setDownloadDropdownOpen(null);
+    }
+  };
+
+  const handleDownloadOriginal = async (product: {
+    id: number;
+    name: string;
+    weight: number;
+    uniqCode: string;
+    serialCode?: string;
+    qrImageUrl: string | null;
+    weightGroup: string | null;
+    hasRootKey?: boolean;
+  }) => {
+    if (!product) return;
+    try {
+      setDownloadingId(product.id);
+
+      // Fetch QR image
+      const qrImageUrl =
+        product.qrImageUrl || `/api/qr-gram/${encodeURIComponent(product.uniqCode)}`;
+
+      const response = await fetch(qrImageUrl);
+      if (!response.ok) {
+        throw new Error("Failed to fetch QR image");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      // Format: UniqCode_SerialCode_Weight
+      link.download = `${product.uniqCode}_${product.name.replace(/\s+/g, "_")}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("[GramPreview] handleDownloadOriginal error:", error);
+      alert("Gagal mengunduh QR original. Silakan coba lagi.");
+    } finally {
+      setDownloadingId(null);
+      setDownloadDropdownOpen(null);
     }
   };
 
@@ -192,6 +257,82 @@ export function QrPreviewGridGram({ batches }: Props) {
       // Beri sedikit waktu supaya animasi terasa natural
       setTimeout(() => setIsRefreshing(false), 800);
     }
+  };
+
+  // Download dropdown button component
+  const DownloadDropdown = ({
+    batchId,
+    product,
+  }: {
+    batchId: number;
+    product: {
+      id: number;
+      name: string;
+      weight: number;
+      uniqCode: string;
+      serialCode?: string;
+      qrImageUrl: string | null;
+      weightGroup: string | null;
+      hasRootKey?: boolean;
+    };
+  }) => {
+    const isOpen = downloadDropdownOpen === batchId;
+    const isLoading = downloadingId === product.id;
+
+    return (
+      <div className="relative inline-block w-full">
+        <button
+          onClick={() => setDownloadDropdownOpen(isOpen ? null : batchId)}
+          disabled={isLoading}
+          className="w-full inline-flex items-center justify-center gap-1 rounded-full border border-white/20 px-3 py-1 text-[11px] text-white/80 hover:border-white/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+        >
+          <Download className="h-3 w-3" />
+          <span className="whitespace-nowrap">
+            {isLoading ? t("downloading") : t("download")}
+          </span>
+          <ChevronDown
+            className={`h-3 w-3 transition-transform duration-200 ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+
+        <AnimatePresence mode="wait">
+          {isOpen && (
+            <motion.div
+              key="download-dropdown"
+              initial={{ opacity: 0, y: -8, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.95 }}
+              transition={{ duration: 0.15 }}
+              className="absolute left-0 right-0 top-full mt-1 w-56 rounded-lg border border-white/10 bg-white/5 backdrop-blur-xl shadow-lg overflow-hidden z-[9999]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => handleDownloadSingle(product)}
+                disabled={isLoading}
+                className="w-full px-4 py-2.5 text-left text-xs text-white/80 hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border-b border-white/5"
+              >
+                <div className="font-semibold text-white mb-0.5">Serticard Template</div>
+                <div className="text-[10px] text-white/50">
+                  Download dengan template sertifikat
+                </div>
+              </button>
+              <button
+                onClick={() => handleDownloadOriginal(product)}
+                disabled={isLoading}
+                className="w-full px-4 py-2.5 text-left text-xs text-white/80 hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="font-semibold text-white mb-0.5">Original QR Only</div>
+                <div className="text-[10px] text-white/50">
+                  Hanya QR dengan nomor seri & judul
+                </div>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
   };
 
   const handleDownloadAll = async () => {
@@ -391,8 +532,8 @@ export function QrPreviewGridGram({ batches }: Props) {
       </div>
 
       {layoutView === "table" ? (
-        <div className="overflow-hidden rounded-3xl border border-white/5 bg-white/[0.02]">
-          <div className="overflow-x-auto">
+        <div className="overflow-visible rounded-3xl border border-white/5 bg-white/[0.02]">
+          <div className="overflow-x-auto overflow-y-visible">
             <table className="w-full text-sm text-white/70">
               <thead>
                 <tr className="bg-white/[0.03] text-left text-xs uppercase tracking-[0.4em] text-white/40">
@@ -469,27 +610,19 @@ export function QrPreviewGridGram({ batches }: Props) {
                             <Maximize2 className="h-3 w-3" />
                             {t("enlarge")}
                           </button>
-                          <button
-                            onClick={() =>
-                              handleDownloadSingle({
-                                id: batch.firstItem.id,
-                                name: batch.name,
-                                weight: batch.weight,
-                                uniqCode: batch.firstItem.uniqCode,
-                                serialCode: batch.firstItem.serialCode,
-                                qrImageUrl: batch.firstItem.qrImageUrl,
-                                weightGroup: batch.weightGroup,
-                                hasRootKey: batch.firstItem.hasRootKey,
-                              })
-                            }
-                            disabled={downloadingId === batch.firstItem.id}
-                            className="inline-flex items-center gap-1 rounded-full border border-white/20 px-3 py-1 text-[11px] text-white/80 hover:border-white/50 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <Download className="h-3 w-3" />
-                            {downloadingId === batch.firstItem.id
-                              ? t("downloading")
-                              : t("download")}
-                          </button>
+                          <DownloadDropdown
+                            batchId={batch.batchId}
+                            product={{
+                              id: batch.firstItem.id,
+                              name: batch.name,
+                              weight: batch.weight,
+                              uniqCode: batch.firstItem.uniqCode,
+                              serialCode: batch.firstItem.serialCode,
+                              qrImageUrl: batch.firstItem.qrImageUrl,
+                              weightGroup: batch.weightGroup,
+                              hasRootKey: batch.firstItem.hasRootKey,
+                            }}
+                          />
                         </div>
                       </td>
                     </tr>
@@ -559,9 +692,10 @@ export function QrPreviewGridGram({ batches }: Props) {
                     <Maximize2 className="h-3.5 w-3.5" />
                     {t("enlarge")}
                   </button>
-                  <button
-                    onClick={() =>
-                      handleDownloadSingle({
+                  <div className="flex-1 relative" ref={downloadDropdownRef}>
+                    <DownloadDropdown
+                      batchId={batch.batchId}
+                      product={{
                         id: batch.firstItem.id,
                         name: batch.name,
                         weight: batch.weight,
@@ -570,14 +704,9 @@ export function QrPreviewGridGram({ batches }: Props) {
                         qrImageUrl: batch.firstItem.qrImageUrl,
                         weightGroup: batch.weightGroup,
                         hasRootKey: batch.firstItem.hasRootKey,
-                      })
-                    }
-                    disabled={downloadingId === batch.firstItem.id}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full border border-white/15 px-3 py-2 text-[11px] text-white/80 hover:border-white/40 hover:bg-white/5 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    {downloadingId === batch.firstItem.id ? t("downloading") : t("download")}
-                  </button>
+                      }}
+                    />
+                  </div>
                   <button
                     onClick={() => handleSerialCodeClick(batch)}
                     className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full border border-white/15 px-3 py-2 text-[11px] text-white/80 hover:border-white/40 hover:bg-white/5 transition"
