@@ -61,7 +61,9 @@ export function QrPreviewGrid() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
+  const downloadMenuRef = useRef<HTMLDivElement>(null);
 
   // Use download context for global state management
   const {
@@ -107,16 +109,22 @@ export function QrPreviewGrid() {
       ) {
         setIsCategoryDropdownOpen(false);
       }
+      if (
+        downloadMenuRef.current &&
+        !downloadMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsDownloadMenuOpen(false);
+      }
     };
 
-    if (isCategoryDropdownOpen) {
+    if (isCategoryDropdownOpen || isDownloadMenuOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isCategoryDropdownOpen]);
+  }, [isCategoryDropdownOpen, isDownloadMenuOpen]);
 
   // Filter products based on search query and category
   const filteredProducts = useMemo(() => {
@@ -662,6 +670,81 @@ export function QrPreviewGrid() {
       });
     } finally {
       setIsDownloading(false);
+    }
+  };
+
+  const handleDownloadOriginal = async (product: Product) => {
+    setIsDownloading(true);
+    try {
+      console.log("[Download Original] Starting download for:", product.serialCode);
+
+      // Fetch the original QR with title and serial (no template)
+      const downloadUrl = `${window.location.origin}/api/qr/${encodeURIComponent(product.serialCode)}/download-original`;
+
+      console.log("[Download Original] Fetching from:", downloadUrl);
+
+      const response = await fetch(downloadUrl, {
+        method: "GET",
+        headers: {
+          "Accept": "image/png",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status} ${response.statusText}`);
+      }
+
+      // Get the blob
+      const blob = await response.blob();
+
+      if (blob.size === 0) {
+        throw new Error("Downloaded file is empty");
+      }
+
+      console.log("[Download Original] Blob received, size:", blob.size);
+
+      // Get filename from Content-Disposition header or generate one
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let filename = "QR-Original.png";
+
+      if (contentDisposition) {
+        const matches = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (matches && matches[1]) {
+          filename = decodeURIComponent(matches[1]);
+        }
+      } else {
+        filename = `QR-Original-${product.serialCode}.png`;
+      }
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      console.log("[Download Original] Download completed successfully");
+      toast.success(t("downloadSuccess"), {
+        description: `Downloaded: ${filename}`,
+      });
+    } catch (error: any) {
+      console.error("[Download Original] Failed to download QR code:", error);
+      console.error("[Download Original] Error details:", {
+        message: error?.message,
+        stack: error?.stack,
+        name: error?.name,
+      });
+
+      const errorMessage = error?.message || "Unknown error occurred";
+      toast.error(t("downloadFailed"), {
+        description: errorMessage,
+      });
+    } finally {
+      setIsDownloading(false);
+      setIsDownloadMenuOpen(false);
     }
   };
 
@@ -2209,16 +2292,75 @@ export function QrPreviewGrid() {
               </div>
             </div>
             <p className="font-mono text-lg sm:text-xl text-white/70">{selected.serialCode}</p>
-            <motion.button
-              onClick={() => handleDownload(selected)}
-              disabled={isDownloading}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-black/40 px-6 py-3 text-sm text-white/70 transition hover:border-[#FFD700]/40 hover:bg-black/60 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-              whileHover={{ scale: isDownloading ? 1 : 1.05 }}
-              whileTap={{ scale: isDownloading ? 1 : 0.95 }}
-            >
-              <Download className="h-4 w-4" />
-              {isDownloading ? t("downloading") : t("downloadQRCode")}
-            </motion.button>
+            {/* Download Menu Dropdown */}
+            <div ref={downloadMenuRef} className="relative w-full sm:w-auto">
+              <motion.button
+                onClick={() => setIsDownloadMenuOpen(!isDownloadMenuOpen)}
+                disabled={isDownloading}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-black/40 px-6 py-3 text-sm text-white/70 transition hover:border-[#FFD700]/40 hover:bg-black/60 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                whileHover={{ scale: isDownloading ? 1 : 1.05 }}
+                whileTap={{ scale: isDownloading ? 1 : 0.95 }}
+              >
+                <Download className="h-4 w-4" />
+                <span>{isDownloading ? t("downloading") : t("downloadQRCode")}</span>
+                <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isDownloadMenuOpen ? "rotate-180" : ""}`} />
+              </motion.button>
+
+              {/* Dropdown Menu */}
+              <AnimatePresence>
+                {isDownloadMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 top-full mt-2 w-56 rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 to-white/5 shadow-xl backdrop-blur-xl overflow-hidden z-50"
+                  >
+                    <div className="p-2">
+                      {/* Download with Template */}
+                      <motion.button
+                        onClick={() => {
+                          handleDownload(selected);
+                          setIsDownloadMenuOpen(false);
+                        }}
+                        disabled={isDownloading}
+                        className="w-full flex items-start gap-3 rounded-lg px-4 py-3 text-left text-sm text-white/80 transition hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                        whileHover={{ x: 2 }}
+                      >
+                        <div className="mt-0.5">
+                          <div className="h-4 w-4 rounded border border-white/30 flex items-center justify-center bg-white/5" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium text-white">{t("downloadTemplate") || "Download with Template"}</div>
+                          <div className="text-xs text-white/50 mt-0.5">{t("downloadTemplateDesc") || "QR code with certificate template"}</div>
+                        </div>
+                      </motion.button>
+
+                      <div className="h-px bg-white/5 my-2" />
+
+                      {/* Download Original */}
+                      <motion.button
+                        onClick={() => {
+                          handleDownloadOriginal(selected);
+                          setIsDownloadMenuOpen(false);
+                        }}
+                        disabled={isDownloading}
+                        className="w-full flex items-start gap-3 rounded-lg px-4 py-3 text-left text-sm text-white/80 transition hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                        whileHover={{ x: 2 }}
+                      >
+                        <div className="mt-0.5">
+                          <div className="h-4 w-4 rounded border border-white/30 flex items-center justify-center bg-white/5" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium text-white">{t("downloadOriginal") || "Download Original"}</div>
+                          <div className="text-xs text-white/50 mt-0.5">{t("downloadOriginalDesc") || "QR code with title and serial only"}</div>
+                        </div>
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         )}
       </Modal>
