@@ -166,7 +166,7 @@ export async function GET(
     // Set response headers
     const filename = `QR-Original-${serialCode}-${product.name.replace(/[^a-zA-Z0-9-]/g, "-")}.png`;
 
-    return new NextResponse(pngBuffer, {
+    return new NextResponse(new Uint8Array(pngBuffer), {
       headers: {
         "Content-Type": "image/png",
         "Content-Disposition": `attachment; filename="${encodeURIComponent(filename)}"`,
