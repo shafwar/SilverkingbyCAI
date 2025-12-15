@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export default function QRPreviewPage() {
   return (
-    <div className="h-[calc(100vh-8rem)] overflow-y-auto pr-2 scrollbar-admin space-y-4">
+    <div className="h-[calc(100vh-8rem)] overflow-y-scroll scrollbar-admin pr-2 space-y-4">
       {/* Page switcher */}
       <div className="flex items-center justify-end pt-2 pr-1 gap-2">
         <Link
@@ -26,4 +26,3 @@ export default function QRPreviewPage() {
     </div>
   );
 }
-

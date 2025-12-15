@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState, useMemo } from "react";
+import { ReactNode, useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -38,6 +38,8 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isNavHidden, setIsNavHidden] = useState(false);
+  const lastScrollYRef = useRef(0);
   
   // Get download state from context
   const { downloadState, cancelDownload, setIsDownloadMinimized } = useDownload();
@@ -66,6 +68,29 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
     { label: safeT(t, 'logs', 'Logs'), href: "/admin/logs", icon: ActivitySquare },
     { label: safeT(t, 'analyticsLabel', 'Analytics'), href: "/admin/analytics", icon: BarChart3 },
   ], [t, tDashboard, safeT, locale]);
+
+  // Dynamic navbar behavior based on scroll direction
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleScroll = () => {
+      const currentY = window.scrollY || 0;
+      const lastY = lastScrollYRef.current;
+
+      // Jika scroll ke bawah dan sudah lewat beberapa px dari atas, sembunyikan navbar
+      if (currentY > lastY && currentY > 80) {
+        setIsNavHidden(true);
+      } else {
+        // Jika scroll ke atas, tampilkan kembali navbar
+        setIsNavHidden(false);
+      }
+
+      lastScrollYRef.current = currentY;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleSignOut = async () => {
     await signOut({ redirect: false });
@@ -118,7 +143,8 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
     <div className="min-h-screen bg-gradient-to-br from-black via-[#050505] to-[#050505] text-white">
       <motion.nav
         initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
+        animate={isNavHidden ? { y: -80, opacity: 0.98 } : { y: 0, opacity: 1 }}
+        transition={{ duration: 0.25, ease: "easeInOut" }}
         className="fixed inset-x-0 top-0 z-40 border-b border-white/5 bg-black/80 backdrop-blur-2xl"
       >
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-4 sm:px-6 py-3 sm:py-4">

@@ -457,38 +457,88 @@
     background: rgba(255, 255, 255, 0.3);
   }
 
-  /* Admin scrollbar - visible and styled for Products and QR Preview pages */
+  /* Admin scrollbar - minimalist, netral, dan dinamis untuk halaman admin */
   .scrollbar-admin {
     /* Firefox */
     scrollbar-width: thin;
-    scrollbar-color: rgba(212, 175, 55, 0.6) rgba(255, 255, 255, 0.1);
+    /* Thumb abu-abu netral, track transparan */
+    scrollbar-color: rgba(148, 163, 184, 0.6) transparent;
+    /* Smooth feel when scrolling with keyboard / wheel */
+    scroll-behavior: smooth;
+    transition:
+      scrollbar-color 0.25s ease,
+      background-color 0.25s ease;
   }
 
+  /* Saat area di-hover, thumb sedikit lebih kontras (Firefox) */
+  .scrollbar-admin:hover {
+    scrollbar-color: rgba(148, 163, 184, 0.9) rgba(15, 23, 42, 0.4);
+  }
+
+  /* Base: mobile-first (phone) */
   .scrollbar-admin::-webkit-scrollbar {
     /* Chrome, Safari, Opera, Edge */
-    width: 10px;
-    height: 10px;
+    width: 6px;
+    height: 6px;
   }
 
   .scrollbar-admin::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 10px;
+    background: transparent;
+    border-radius: 999px;
     margin: 4px 0;
+    transition: background 0.2s ease-out;
   }
 
   .scrollbar-admin::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, rgba(212, 175, 55, 0.8) 0%, rgba(212, 175, 55, 0.6) 100%);
-    border-radius: 10px;
-    border: 2px solid rgba(0, 0, 0, 0.2);
-    transition: background 0.2s ease;
+    background: rgba(148, 163, 184, 0.55); /* slate-400-ish */
+    border-radius: 999px;
+    border: 1px solid rgba(15, 23, 42, 0.8); /* dark slate border */
+    opacity: 0.6;
+    box-shadow: 0 0 0 0 rgba(148, 163, 184, 0);
+    transition:
+      background 0.2s ease-out,
+      opacity 0.2s ease-out,
+      box-shadow 0.2s ease-out,
+      border-color 0.2s ease-out,
+      transform 0.15s ease-out;
   }
 
-  .scrollbar-admin::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, rgba(212, 175, 55, 1) 0%, rgba(212, 175, 55, 0.8) 100%);
+  /* Hover effect: sedikit lebih terang, lebih opaque, dengan subtle glow & scale */
+  .scrollbar-admin:hover::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.9);
+    opacity: 1;
+    border-color: rgba(15, 23, 42, 0.9);
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.75), 0 0 10px rgba(148, 163, 184, 0.4);
+    transform: translateX(-0.5px);
   }
 
   .scrollbar-admin::-webkit-scrollbar-thumb:active {
-    background: linear-gradient(180deg, rgba(212, 175, 55, 0.9) 0%, rgba(212, 175, 55, 0.7) 100%);
+    background: rgba(148, 163, 184, 1);
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.9), 0 0 14px rgba(148, 163, 184, 0.6);
+    transform: translateX(-1px);
+  }
+
+  /* Desktop & large screens: sedikit lebih tebal, tetap minimalis */
+  @media (min-width: 768px) {
+    .scrollbar-admin::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    .scrollbar-admin::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.55);
+    }
+
+    .scrollbar-admin::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.85);
+      border-width: 1px;
+      opacity: 0.9;
+    }
+
+    .scrollbar-admin:hover::-webkit-scrollbar-thumb {
+      background: rgba(226, 232, 240, 0.95); /* mendekati slate-100 untuk hover */
+      box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.9), 0 0 16px rgba(148, 163, 184, 0.7);
+    }
   }
 }
 

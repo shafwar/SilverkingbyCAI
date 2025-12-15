@@ -54,7 +54,7 @@ export default async function QrPreviewPage2() {
   const batches = Array.from(batchesMap.values()).sort((a, b) => b.batchId - a.batchId);
 
   return (
-    <div className="h-[calc(100vh-8rem)] overflow-y-auto pr-2 scrollbar-admin space-y-4">
+    <div className="h-[calc(100vh-8rem)] pr-2 space-y-4 scrollbar-admin overflow-y-scroll">
       {/* Page switcher */}
       <div className="flex items-center justify-end pt-2 pr-1 gap-2">
         <Link
