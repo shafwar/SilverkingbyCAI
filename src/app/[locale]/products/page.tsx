@@ -3,7 +3,7 @@
 import Navbar from "@/components/layout/Navbar";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import Link from "next/link";
-import { Sparkles, Gem, ArrowRight, Shield, ArrowDown, QrCode, X, RotateCcw } from "lucide-react";
+import { Sparkles, Gem, ArrowRight, Shield, ArrowDown, QrCode, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { APP_NAME } from "@/utils/constants";
 import { useRef, useState, useEffect, useMemo } from "react";
@@ -520,76 +520,10 @@ export default function ProductsPage() {
     };
   }, [t]);
 
-  const defaultProducts = useMemo<ProductWithPricing[]>(
-    () => [
-      {
-        id: "default-1",
-        name: "Silver King 50 Gr",
-        rangeName: t("product.rangeName"),
-        image: "/images/default-50gr.png",
-        purity: t("product.purity"),
-        weight: "50gr",
-        description: `${t("product.description")}`,
-        category: t("categories.50gram.title"),
-        basePrice: 750000,
-        discount: 0,
-        finalPrice: 750000,
-      },
-      {
-        id: "default-2",
-        name: "Silver King 100 Gr",
-        rangeName: t("product.rangeName"),
-        image: "/images/default-100gr.png",
-        purity: t("product.purity"),
-        weight: "100gr",
-        description: `${t("product.description")}`,
-        category: t("categories.100gram.title"),
-        basePrice: 1500000,
-        discount: 0,
-        finalPrice: 1500000,
-      },
-      {
-        id: "default-3",
-        name: "Silver King 250 Gr",
-        rangeName: t("product.rangeName"),
-        image: "/images/default-250gr.png",
-        purity: t("product.purity"),
-        weight: "250gr",
-        description: `${t("product.description")}`,
-        category: t("categories.250gram.title"),
-        basePrice: 3750000,
-        discount: 0,
-        finalPrice: 3750000,
-      },
-    ],
-    [t]
-  );
-
   const allProducts = useMemo<ProductWithPricing[]>(() => {
-    // Combine CMS and default products, but filter out defaults that have CMS overrides
-    const combined: ProductWithPricing[] = [];
-
-    // Collect IDs that CMS products are overriding
-    const overriddenIds = new Set<string>();
-    if (cmsProducts) {
-      cmsProducts.forEach((p) => {
-        if (p.id.startsWith("default-")) {
-          // This CMS product overrides a default
-          overriddenIds.add(p.id);
-        }
-        combined.push(p);
-      });
-    }
-
-    // Add default products only if they're not overridden by CMS
-    defaultProducts.forEach((defaultProd) => {
-      if (!overriddenIds.has(defaultProd.id)) {
-        combined.push(defaultProd);
-      }
-    });
-
-    return combined;
-  }, [cmsProducts, defaultProducts]);
+    // Only use CMS products - no hardcoded defaults
+    return cmsProducts || [];
+  }, [cmsProducts]);
 
   const openNewCmsProduct = () => {
     if (!isAdmin) return;
@@ -773,24 +707,6 @@ export default function ProductsPage() {
     } catch (error) {
       console.error("[CMS_PRODUCTS_DELETE_INLINE]", error);
       alert(error instanceof Error ? error.message : t("cmsForm.validation.deleteFailed"));
-    }
-  };
-
-  const revertToDefault = async (cmsId?: number) => {
-    if (!isAdmin || !cmsId) return;
-    if (!confirm(t("cmsForm.validation.confirmRevert"))) return;
-    try {
-      const res = await fetch(`/api/cms/products/${cmsId}`, { method: "DELETE" });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || t("cmsForm.validation.revertFailed"));
-      }
-      // Remove from CMS products list - default will reappear automatically
-      setCmsProducts((prev) => (prev ? prev.filter((p) => p.cmsId !== cmsId) : prev));
-      alert(t("cmsForm.validation.revertSuccess"));
-    } catch (error) {
-      console.error("[CMS_PRODUCTS_REVERT]", error);
-      alert(error instanceof Error ? error.message : t("cmsForm.validation.revertFailed"));
     }
   };
 
@@ -1524,29 +1440,10 @@ export default function ProductsPage() {
                               {tCommon("edit")}
                             </button>
 
-                            {/* Revert Button - Only show for CMS overrides of default products */}
-                            {product.cmsId && product.id.startsWith("default-") && (
-                              <button
-                                type="button"
-                                onClick={() => revertToDefault(product.cmsId)}
-                                className="rounded-full bg-black/60 px-2 py-1 text-[10px] text-luxury-gold border border-luxury-gold/60 hover:bg-black/80 transition-all flex items-center gap-1"
-                                title={t("cmsForm.revertToDefault")}
-                              >
-                                <RotateCcw size={10} />
-                                <span className="hidden sm:inline">{t("cmsForm.revert")}</span>
-                              </button>
-                            )}
-
                             <button
                               type="button"
                               onClick={() => {
-                                // Check if this is a default product or CMS override of default
-                                const isDefaultOrOverride =
-                                  !product.cmsId || product.id.startsWith("default-");
-
-                                if (isDefaultOrOverride) {
-                                  alert(t("cmsForm.validation.cannotDeleteDefault"));
-                                } else if (product.cmsId) {
+                                if (product.cmsId) {
                                   deleteCmsProduct(product.cmsId);
                                 }
                               }}
