@@ -1,105 +1,36 @@
-"use client";
+import { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+import { generatePageMetadata } from "@/lib/seo";
+import HomePageClient from "./HomePageClient";
 
-import { useState, useLayoutEffect, useEffect, Suspense } from "react";
-import dynamic from "next/dynamic";
-import Navbar from "@/components/layout/Navbar";
-import SplashScreen from "@/components/sections/SplashScreen";
-import { PageLoadingSkeleton } from "@/components/ui/PageLoadingSkeleton";
+export async function generateMetadata({
+  params,
+}: {
+  params: { locale: string };
+}): Promise<Metadata> {
+  const { locale } = params;
+  const t = await getTranslations({ locale, namespace: "home" });
 
-// Lazy load HeroSection to improve initial page load
-const HeroSection = dynamic(() => import("@/components/sections/HeroSection"), {
-  loading: () => <PageLoadingSkeleton />,
-  ssr: true, // Still SSR for SEO, but lazy load on client
-});
+  return generatePageMetadata({
+    title: t("title") || "Silver King by CAI",
+    description:
+      t("hero.subtitle") ||
+      "Expert manufacturing of gold, silver, and palladium products. Custom bar fabrication, uncompromising purity, and QR-verified authenticity—redefining trust in precious metals.",
+    path: "",
+    locale,
+    keywords: [
+      "precious metals",
+      "gold bars",
+      "silver bars",
+      "palladium",
+      "bullion",
+      "investment",
+      "QR verification",
+      "authenticity",
+    ],
+  });
+}
 
 export default function HomePage() {
-  // Initialize with true to prevent flash - splash shows FIRST
-  const [showSplash, setShowSplash] = useState<boolean>(true);
-  const [splashComplete, setSplashComplete] = useState(false);
-  const [isClient, setIsClient] = useState(false);
-
-  // Add home-page class to body for CSS targeting
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      document.body.classList.add("home-page");
-      return () => {
-        document.body.classList.remove("home-page");
-      };
-    }
-  }, []);
-
-  // IMMEDIATELY check if splash should be shown (BEFORE first render)
-  useLayoutEffect(() => {
-    setIsClient(true);
-    if (typeof window !== "undefined") {
-      try {
-        const splashShown = sessionStorage.getItem("splashShown");
-        
-        if (splashShown === "true") {
-          // Skip splash entirely - set immediately
-          setShowSplash(false);
-          setSplashComplete(true);
-        } else {
-          // Show splash - already set to true, no change needed
-          setShowSplash(true);
-        }
-      } catch (error) {
-        // Handle sessionStorage errors (e.g., in private browsing)
-        console.warn("[HomePage] sessionStorage error:", error);
-        setShowSplash(false);
-        setSplashComplete(true);
-      }
-    }
-  }, []);
-
-  const handleSplashComplete = () => {
-    if (typeof window !== "undefined") {
-      try {
-        sessionStorage.setItem("splashShown", "true");
-      } catch (error) {
-        console.warn("[HomePage] sessionStorage set error:", error);
-      }
-    }
-    setShowSplash(false);
-    setSplashComplete(true);
-  };
-
-  // Always render both splash and content to prevent hydration mismatch
-  return (
-    <>
-      {/* Splash Screen - Always render, control visibility */}
-      {(!isClient || showSplash) && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 9999,
-            pointerEvents: "auto",
-          }}
-        >
-          <SplashScreen onComplete={handleSplashComplete} />
-        </div>
-      )}
-
-      {/* Main Content - Always render, control visibility */}
-      <div
-        style={{
-          opacity: isClient && !showSplash ? 1 : 0,
-          transition: "opacity 0.3s ease-in",
-          pointerEvents: isClient && !showSplash ? "auto" : "none",
-          position: "relative",
-          zIndex: 1,
-        }}
-        className="home-page-content"
-      >
-        <Navbar />
-        <main className="min-h-screen bg-black">
-          <HeroSection shouldAnimate={splashComplete} />
-        </main>
-      </div>
-    </>
-  );
+  return <HomePageClient />;
 }

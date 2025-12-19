@@ -8,6 +8,7 @@ import "@/styles/globals.css";
 import { Providers } from "../providers";
 import Navbar from "@/components/layout/Navbar";
 import { PagePrefetchClient } from "@/components/layout/PagePrefetchClient";
+import { StructuredData } from "@/components/seo/StructuredData";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -49,6 +50,7 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} className={`${GeistSans.variable} ${playfair.variable}`}>
       <body className={`${GeistSans.className} antialiased`}>
+        <StructuredData type="Organization" locale={locale} />
         <NextIntlClientProvider messages={messages}>
             <Providers>
               <PagePrefetchClient />

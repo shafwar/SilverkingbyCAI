@@ -45,6 +45,9 @@ export const metadata: Metadata = {
     description: APP_DESCRIPTION,
     images: [logoUrl],
   },
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || "",
+  },
 };
 
 // Root layout - handles root page (/) and admin/API routes
