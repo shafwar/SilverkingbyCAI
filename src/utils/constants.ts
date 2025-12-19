@@ -15,7 +15,7 @@ export const ROLES = {
 
 export const APP_NAME = "Silver King by CAI";
 export const APP_DESCRIPTION =
-  "The Art of Precious Metal Perfection. Luxury gold, silver, palladium, and custom silver bars.";
+  "Expert manufacturing of premium gold, silver, and palladium bars with QR-verified authenticity. ISO 9001 certified precious metals manufacturer offering investment-grade bullion from 5gr to 500gr, featuring 99.99% purity guarantee, advanced spectrometry testing, and blockchain-ready traceability. Custom bar fabrication, uncompromising quality standards, and instant QR code verification system for complete product provenance and anti-counterfeit protection.";
 
 /**
  * Get the base URL for the application
