@@ -1,5 +1,5 @@
 import { getBaseUrl, APP_NAME, APP_DESCRIPTION } from '@/utils/constants';
-import { getR2Url } from '@/utils/r2-url';
+import { getAbsoluteImageUrl } from '@/utils/r2-url';
 
 interface StructuredDataProps {
   type?: 'Organization' | 'Website' | 'BreadcrumbList';
@@ -9,7 +9,7 @@ interface StructuredDataProps {
 
 export function StructuredData({ type = 'Organization', breadcrumbs, locale = 'en' }: StructuredDataProps) {
   const baseUrl = getBaseUrl();
-  const logoUrl = getR2Url('/images/cai-logo.png');
+  const logoUrl = getAbsoluteImageUrl('/images/cai-logo.png', baseUrl);
 
   const organizationSchema = {
     '@context': 'https://schema.org',

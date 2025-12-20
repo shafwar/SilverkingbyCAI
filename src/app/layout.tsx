@@ -3,7 +3,7 @@ import { GeistSans } from "geist/font/sans";
 import { Playfair_Display } from "next/font/google";
 import "@/styles/globals.css";
 import { APP_NAME, APP_DESCRIPTION, getBaseUrl } from "@/utils/constants";
-import { getR2Url } from "@/utils/r2-url";
+import { getAbsoluteImageUrl } from "@/utils/r2-url";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -14,8 +14,8 @@ const playfair = Playfair_Display({
 
 const metadataBase = getBaseUrl();
 
-// Get R2 URLs for metadata (static at build time)
-const logoUrl = getR2Url("/images/cai-logo.png");
+// Get absolute URL for logo (ensures Google can access it)
+const logoUrl = getAbsoluteImageUrl("/images/cai-logo.png", metadataBase);
 
 export const metadata: Metadata = {
   metadataBase: new URL(metadataBase),
@@ -25,17 +25,21 @@ export const metadata: Metadata = {
   icons: {
     icon: logoUrl,
     apple: logoUrl,
+    shortcut: logoUrl,
   },
   openGraph: {
     title: APP_NAME,
     description: APP_DESCRIPTION,
     type: "website",
+    url: metadataBase,
+    siteName: APP_NAME,
     images: [
       {
         url: logoUrl,
         width: 1200,
         height: 630,
         alt: "CAI Logo - Silver King by CAI",
+        type: "image/png",
       },
     ],
   },
@@ -44,9 +48,14 @@ export const metadata: Metadata = {
     title: APP_NAME,
     description: APP_DESCRIPTION,
     images: [logoUrl],
+    creator: "@silverking",
   },
   verification: {
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || "",
+  },
+  // Additional metadata for better Google indexing
+  alternates: {
+    canonical: metadataBase,
   },
 };
 

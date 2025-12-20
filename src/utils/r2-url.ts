@@ -63,3 +63,26 @@ export function getR2UrlClient(localPath: string): string {
   return `${baseUrl}/${r2Path}`;
 }
 
+/**
+ * Get absolute URL for logo/image for SEO metadata
+ * This ensures Google can always access the logo with a full URL
+ * @param localPath - Local public path (e.g., "/images/logo.png")
+ * @param baseUrl - Base URL of the website (from getBaseUrl())
+ * @returns Absolute URL (either R2 URL or baseUrl + localPath)
+ */
+export function getAbsoluteImageUrl(localPath: string, baseUrl: string): string {
+  // Try to get R2 URL first
+  const r2Url = getR2Url(localPath);
+  
+  // If R2 URL is returned and it's already absolute (starts with http), use it
+  if (r2Url.startsWith('http://') || r2Url.startsWith('https://')) {
+    return r2Url;
+  }
+  
+  // Otherwise, construct absolute URL using baseUrl
+  const cleanPath = localPath.startsWith('/') ? localPath : `/${localPath}`;
+  const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+  
+  return `${cleanBaseUrl}${cleanPath}`;
+}
+

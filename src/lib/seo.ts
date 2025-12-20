@@ -1,10 +1,10 @@
 import { Metadata } from 'next';
 import { getBaseUrl, APP_NAME, APP_DESCRIPTION } from '@/utils/constants';
-import { getR2Url } from '@/utils/r2-url';
+import { getAbsoluteImageUrl } from '@/utils/r2-url';
 import { routing } from '@/i18n/routing';
 
 const baseUrl = getBaseUrl();
-const logoUrl = getR2Url('/images/cai-logo.png');
+const logoUrl = getAbsoluteImageUrl('/images/cai-logo.png', baseUrl);
 
 interface PageMetadataOptions {
   title: string;
