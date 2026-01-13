@@ -241,7 +241,13 @@ export function PageTransitionOverlay() {
         blurRemovalTimeoutRef.current = null;
       }
     };
-  }, [isActive, deviceInfo.isMobile, transitionSettings.progressSpeed, isMounted, isSplashComplete]);
+  }, [
+    isActive,
+    deviceInfo.isMobile,
+    transitionSettings.progressSpeed,
+    isMounted,
+    isSplashComplete,
+  ]);
 
   // CRITICAL: Safety fallback - ensure blur is ALWAYS removed after maximum time
   // This prevents stuck blur if pathname detection fails
