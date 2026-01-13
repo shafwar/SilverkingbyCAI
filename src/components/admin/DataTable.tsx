@@ -28,8 +28,8 @@ export function DataTable<T extends Record<string, any>>({
   isLoading,
   emptyState,
 }: DataTableProps<T>) {
-  const t = useTranslations('admin.analytics');
-  const defaultEmptyState = emptyState ?? t('noRecordsAvailable');
+  const t = useTranslations("admin.analytics");
+  const defaultEmptyState = emptyState ?? t("noRecordsAvailable");
   const [sortKey, setSortKey] = useState<TableColumn<T>["key"]>();
   const [direction, setDirection] = useState<"asc" | "desc">("asc");
 
@@ -118,7 +118,9 @@ export function DataTable<T extends Record<string, any>>({
                         column.align === "right" && "text-right"
                       )}
                     >
-                      {column.render ? column.render(row) : String(row[column.key as keyof T] ?? "—")}
+                      {column.render
+                        ? column.render(row)
+                        : String(row[column.key as keyof T] ?? "—")}
                     </td>
                   ))}
                 </motion.tr>
@@ -127,7 +129,7 @@ export function DataTable<T extends Record<string, any>>({
           </tbody>
         </table>
       </div>
-      
+
       {/* Mobile Cards */}
       <div className="md:hidden divide-y divide-white/5">
         {sortedData.map((row, rowIndex) => (
@@ -140,11 +142,19 @@ export function DataTable<T extends Record<string, any>>({
             className="p-3 sm:p-4 space-y-2 active:bg-white/5 transition-colors"
           >
             {columns.map((column, colIndex) => {
-              const value = column.render ? column.render(row) : String(row[column.key as keyof T] ?? "—");
+              const value = column.render
+                ? column.render(row)
+                : String(row[column.key as keyof T] ?? "—");
               // Skip first column on mobile if it's a checkbox/select column
-              if (colIndex === 0 && value != null && typeof value === 'object' && value !== null && 'props' in value) {
+              if (
+                colIndex === 0 &&
+                value != null &&
+                typeof value === "object" &&
+                value !== null &&
+                "props" in value
+              ) {
                 const props = (value as any).props;
-                if (props?.className?.includes('checkbox')) {
+                if (props?.className?.includes("checkbox")) {
                   return null;
                 }
               }
@@ -154,7 +164,9 @@ export function DataTable<T extends Record<string, any>>({
                     {column.header}
                   </p>
                   <div className="text-right flex-1 min-w-0">
-                    <p className="text-xs sm:text-sm text-white/80 break-words">{String(value ?? "—")}</p>
+                    <p className="text-xs sm:text-sm text-white/80 break-words">
+                      {String(value ?? "—")}
+                    </p>
                   </div>
                 </div>
               );
@@ -165,5 +177,3 @@ export function DataTable<T extends Record<string, any>>({
     </div>
   );
 }
-
-

@@ -9,9 +9,6 @@ import {
   MapPin,
   Send,
   Instagram,
-  Twitter,
-  Linkedin,
-  Youtube,
 } from "lucide-react";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
@@ -27,18 +24,42 @@ export default function ContactPageClient() {
     message: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmitError(null);
 
-    // Simulate form submission
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          message: formData.message,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to send message");
+      }
+
+      // Success - reset form
       setFormData({ name: "", email: "", message: "" });
       alert(t("successMessage"));
-    }, 1000);
+    } catch (error: any) {
+      console.error("Error submitting feedback:", error);
+      setSubmitError(error.message || "Failed to send message. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -141,6 +162,11 @@ export default function ContactPageClient() {
                     />
                   </div>
 
+                  {submitError && (
+                    <div className="rounded-lg border border-red-500/50 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                      {submitError}
+                    </div>
+                  )}
                   <motion.button
                     type="submit"
                     disabled={isSubmitting}
@@ -188,10 +214,10 @@ export default function ContactPageClient() {
                   <div>
                     <h3 className="mb-1 text-sm font-semibold text-white">{t("info.email")}</h3>
                     <a
-                      href="mailto:info@cahayasilverking.id"
+                      href="mailto:cahayaabuindonesia@gmail.com"
                       className="text-sm text-luxury-silver/70 hover:text-luxury-gold transition-colors"
                     >
-                      info@cahayasilverking.id
+                      cahayaabuindonesia@gmail.com
                     </a>
                   </div>
                 </div>
@@ -204,10 +230,10 @@ export default function ContactPageClient() {
                   <div>
                     <h3 className="mb-1 text-sm font-semibold text-white">{t("info.phone")}</h3>
                     <a
-                      href="tel:+62123456789"
+                      href="tel:+6285285726980"
                       className="text-sm text-luxury-silver/70 hover:text-luxury-gold transition-colors"
                     >
-                      +62 123 456 789
+                      +62 852-8572-6980 (Nadhifa)
                     </a>
                   </div>
                 </div>
@@ -229,36 +255,13 @@ export default function ContactPageClient() {
                 <h3 className="mb-4 text-sm font-semibold text-white">{t("socialTitle")}</h3>
                 <div className="flex gap-4">
                   <a
-                    href="https://instagram.com"
+                    href="https://www.instagram.com/silverkingofc/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="rounded-lg border border-white/10 bg-white/5 p-3 text-white/60 hover:border-luxury-gold/40 hover:bg-white/10 hover:text-luxury-gold transition-all"
+                    aria-label="Follow us on Instagram"
                   >
                     <Instagram className="h-5 w-5" />
-                  </a>
-                  <a
-                    href="https://twitter.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-lg border border-white/10 bg-white/5 p-3 text-white/60 hover:border-luxury-gold/40 hover:bg-white/10 hover:text-luxury-gold transition-all"
-                  >
-                    <Twitter className="h-5 w-5" />
-                  </a>
-                  <a
-                    href="https://linkedin.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-lg border border-white/10 bg-white/5 p-3 text-white/60 hover:border-luxury-gold/40 hover:bg-white/10 hover:text-luxury-gold transition-all"
-                  >
-                    <Linkedin className="h-5 w-5" />
-                  </a>
-                  <a
-                    href="https://youtube.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-lg border border-white/10 bg-white/5 p-3 text-white/60 hover:border-luxury-gold/40 hover:bg-white/10 hover:text-luxury-gold transition-all"
-                  >
-                    <Youtube className="h-5 w-5" />
                   </a>
                 </div>
               </div>

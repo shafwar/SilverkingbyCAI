@@ -54,18 +54,18 @@ export default async function QrPreviewPage2() {
   const batches = Array.from(batchesMap.values()).sort((a, b) => b.batchId - a.batchId);
 
   return (
-    <div className="h-[calc(100vh-8rem)] pr-2 space-y-4 scrollbar-admin overflow-y-scroll">
+    <div className="h-[calc(100vh-8rem)] pr-1 sm:pr-2 space-y-3 sm:space-y-4 scrollbar-admin overflow-y-scroll">
       {/* Page switcher */}
-      <div className="flex items-center justify-end pt-2 pr-1 gap-2">
+      <div className="flex items-center justify-end pt-2 pr-1 gap-1.5 sm:gap-2">
         <Link
           href="/admin/qr-preview"
-          className="rounded-full border border-white/20 px-3 py-1.5 text-xs text-white/70 hover:border-white/60"
+          className="rounded-full border border-white/20 px-2 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-xs text-white/70 hover:border-white/60 touch-manipulation"
         >
           Page 1
         </Link>
         <Link
           href="/admin/qr-preview/page2"
-          className="rounded-full border border-white px-3 py-1.5 text-xs text-black bg-white"
+          className="rounded-full border border-white px-2 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-xs text-black bg-white touch-manipulation"
         >
           Page 2
         </Link>

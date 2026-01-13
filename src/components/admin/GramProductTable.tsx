@@ -158,32 +158,32 @@ export function GramProductTable({ batches, onMutate }: Props) {
       {/* Search + Filter */}
       <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+          <Search className="absolute left-2.5 sm:left-3 top-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 -translate-y-1/2 text-white/40" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t("searchPlaceholder")}
-            className="w-full rounded-full border border-white/15 bg-white/5 px-10 py-2 text-sm text-white placeholder:text-white/40 focus:border-[#FFD700] focus:outline-none focus:ring-2 focus:ring-[#FFD700]/20"
+            className="w-full rounded-full border border-white/15 bg-white/5 pl-8 sm:pl-10 pr-8 sm:pr-10 py-1.5 sm:py-2 text-xs sm:text-sm text-white placeholder:text-white/40 focus:border-[#FFD700] focus:outline-none focus:ring-2 focus:ring-[#FFD700]/20"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-white/40 hover:text-white transition"
+              className="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-white/40 hover:text-white transition touch-manipulation"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </button>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1 text-xs text-white/60">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          <span className="flex items-center gap-1 text-[10px] sm:text-xs text-white/60">
             <Filter className="h-3 w-3" />
-            Mode
+            <span className="hidden sm:inline">Mode</span>
           </span>
-          <div className="flex rounded-full border border-white/15 bg-white/5 p-1 text-xs">
+          <div className="flex rounded-full border border-white/15 bg-white/5 p-0.5 sm:p-1 text-[10px] sm:text-xs">
             <button
               onClick={() => setWeightFilter("ALL")}
-              className={`px-3 py-1 rounded-full ${
+              className={`px-2 py-1 sm:px-3 sm:py-1 rounded-full touch-manipulation ${
                 weightFilter === "ALL" ? "bg-white text-black" : "text-white/70"
               }`}
             >
@@ -191,19 +191,21 @@ export function GramProductTable({ batches, onMutate }: Props) {
             </button>
             <button
               onClick={() => setWeightFilter("SMALL")}
-              className={`px-3 py-1 rounded-full ${
+              className={`px-2 py-1 sm:px-3 sm:py-1 rounded-full touch-manipulation ${
                 weightFilter === "SMALL" ? "bg-white text-black" : "text-white/70"
               }`}
             >
-              ≤ 100gr (1 QR)
+              <span className="hidden sm:inline">≤ 100gr (1 QR)</span>
+              <span className="sm:hidden">≤100</span>
             </button>
             <button
               onClick={() => setWeightFilter("LARGE")}
-              className={`px-3 py-1 rounded-full ${
+              className={`px-2 py-1 sm:px-3 sm:py-1 rounded-full touch-manipulation ${
                 weightFilter === "LARGE" ? "bg-white text-black" : "text-white/70"
               }`}
             >
-              Over 100gr (multi QR)
+              <span className="hidden sm:inline">Over 100gr (multi QR)</span>
+              <span className="sm:hidden">>100</span>
             </button>
           </div>
         </div>
@@ -214,10 +216,10 @@ export function GramProductTable({ batches, onMutate }: Props) {
         <button
           onClick={() => setShowDeleteAllModal(true)}
           disabled={isDeletingAll || batches.length === 0}
-          className="flex items-center gap-2 rounded-full border border-red-400/40 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 transition hover:border-red-400 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex items-center gap-1.5 sm:gap-2 rounded-full border border-red-400/40 bg-red-500/10 px-3 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-sm font-medium text-red-300 transition hover:border-red-400 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
         >
-          <Trash2 className="h-4 w-4" />
-          {isDeletingAll ? t("deletingAll") : t("deleteAllProducts")}
+          <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          <span className="whitespace-nowrap">{isDeletingAll ? t("deletingAll") : t("deleteAllProducts")}</span>
         </button>
       </div>
 

@@ -42,5 +42,3 @@ export function AnimatedCard({
     </motion.div>
   );
 }
-
-

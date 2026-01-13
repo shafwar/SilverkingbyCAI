@@ -346,20 +346,20 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
       <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         {/* Search Bar */}
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+          <Search className="absolute left-2.5 sm:left-3 top-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 -translate-y-1/2 text-white/40" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t("searchPlaceholder")}
-            className="w-full rounded-full border border-white/15 bg-white/5 px-10 py-2 text-sm text-white placeholder:text-white/40 focus:border-[#FFD700] focus:outline-none focus:ring-2 focus:ring-[#FFD700]/20"
+            className="w-full rounded-full border border-white/15 bg-white/5 pl-8 sm:pl-10 pr-8 sm:pr-10 py-1.5 sm:py-2 text-xs sm:text-sm text-white placeholder:text-white/40 focus:border-[#FFD700] focus:outline-none focus:ring-2 focus:ring-[#FFD700]/20"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-white/40 hover:text-white transition"
+              className="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-white/40 hover:text-white transition touch-manipulation"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </button>
           )}
         </div>
@@ -367,18 +367,18 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setShowHistoryModal(true)}
-            className="flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm font-medium text-white/80 transition hover:border-white/40 hover:bg-white/10"
+            className="flex items-center gap-1.5 sm:gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-sm font-medium text-white/80 transition hover:border-white/40 hover:bg-white/10 touch-manipulation"
           >
-            <History className="h-4 w-4" />
-            {t("viewDeleteHistory")}
+            <History className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="whitespace-nowrap">{t("viewDeleteHistory")}</span>
           </button>
           <button
             onClick={handleDeleteAll}
             disabled={isDeletingAll || products.length === 0}
-            className="flex items-center gap-2 rounded-full border border-red-400/40 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 transition hover:border-red-400 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex items-center gap-1.5 sm:gap-2 rounded-full border border-red-400/40 bg-red-500/10 px-3 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-sm font-medium text-red-300 transition hover:border-red-400 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50 touch-manipulation"
           >
-            <Trash2 className="h-4 w-4" />
-            {isDeletingAll ? t("deletingAll") : t("deleteAllProducts")}
+            <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="whitespace-nowrap">{isDeletingAll ? t("deletingAll") : t("deleteAllProducts")}</span>
           </button>
         </div>
       </div>

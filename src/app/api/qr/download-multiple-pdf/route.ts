@@ -577,7 +577,7 @@ export async function POST(request: NextRequest) {
 
         // 1. Nama produk di ATAS QR (persis seperti handleDownload)
         // CRITICAL: productName is already validated and trimmed above
-        const nameFontSize = Math.floor(frontTemplateImage.width * 0.027); // SAMA dengan handleDownload
+        const nameFontSize = Math.floor(frontTemplateImage.width * 0.042); // SAMA dengan handleDownload
         const nameY = qrY - 40; // SAMA dengan handleDownload (bukan -35)
 
         // CRITICAL: Measure text width to create proper white background
@@ -611,7 +611,7 @@ export async function POST(request: NextRequest) {
 
         // 2. Serial code di BAWAH QR (persis seperti handleDownload)
         // CRITICAL: productSerialCode is already validated, trimmed, and uppercased above
-        const serialFontSize = Math.floor(frontTemplateImage.width * 0.031); // SAMA dengan handleDownload
+        const serialFontSize = Math.floor(frontTemplateImage.width * 0.048); // SAMA dengan handleDownload
         const serialY = qrY + qrSize + 40; // SAMA dengan handleDownload (bukan +35)
 
         // CRITICAL: Measure text width to create proper white background

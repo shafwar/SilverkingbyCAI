@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
     const textOverwritePadding = 20;
 
     // Product name above QR
-    const nameFontSize = Math.floor(frontTemplateImage.width * 0.027);
+    const nameFontSize = Math.floor(frontTemplateImage.width * 0.042);
     const nameY = qrY - 40;
     
     // Set font with proper fallback
@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Serial/uniq code below QR
-    const serialFontSize = Math.floor(frontTemplateImage.width * 0.031);
+    const serialFontSize = Math.floor(frontTemplateImage.width * 0.048);
     const serialY = qrY + qrSize + 40;
     
     // Set monospace font for serial code

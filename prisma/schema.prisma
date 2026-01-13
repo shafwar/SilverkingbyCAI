@@ -32,7 +32,7 @@ model Product {
 
 /// Archived copy of deleted products for recovery
 model ProductDeleteHistory {
-  id                Int       @id @default(autoincrement())
+  id                Int                 @id @default(autoincrement())
   productId         Int
   name              String
   weight            Int
@@ -40,9 +40,9 @@ model ProductDeleteHistory {
   price             Float?
   stock             Int?
   qrImageUrl        String?
-  scanCount         Int?      @default(0)
+  scanCount         Int?                @default(0)
   deletedBy         String?
-  deletedAt         DateTime  @default(now())
+  deletedAt         DateTime            @default(now())
   restoredAt        DateTime?
   restoredProductId Int?
   notes             String?
@@ -55,11 +55,11 @@ model ProductDeleteHistory {
 
 /// Group of deleted items in one operation
 model ProductDeleteBatch {
-  id         Int       @id @default(autoincrement())
-  deletedAt  DateTime  @default(now())
-  deletedBy  String?
-  itemCount  Int
-  histories  ProductDeleteHistory[]
+  id        Int                    @id @default(autoincrement())
+  deletedAt DateTime               @default(now())
+  deletedBy String?
+  itemCount Int
+  histories ProductDeleteHistory[]
 
   @@index([deletedAt])
 }
@@ -159,7 +159,7 @@ model GramProductItem {
   createdAt     DateTime         @default(now())
   batch         GramProductBatch @relation(fields: [batchId], references: [id])
   scanLogs      GramQRScanLog[]
-  
+
   /// Index for faster lookups by uniqCode (since multiple items can have same uniqCode)
   @@index([uniqCode])
 }
@@ -172,4 +172,17 @@ model GramQRScanLog {
   userAgent String?
   location  String?
   qrItem    GramProductItem @relation(fields: [qrItemId], references: [id])
+}
+
+/// Contact form feedback messages from users
+model Feedback {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String
+  message   String   @db.Text
+  createdAt DateTime @default(now())
+  read      Boolean  @default(false)
+
+  @@index([createdAt])
+  @@index([read])
 }

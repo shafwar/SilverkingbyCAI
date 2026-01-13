@@ -2,15 +2,15 @@
 
 import { useTranslations } from "next-intl";
 import { StatsHeader } from "@/components/admin/StatsHeader";
-import { AnalyticsPanel } from "@/components/admin/AnalyticsPanel";
+import { FeedbackTable } from "@/components/admin/FeedbackTable";
 
-export default function AnalyticsPage() {
-  const t = useTranslations("admin.analytics");
+export default function FeedbackPage() {
+  const t = useTranslations("admin.feedback");
 
   return (
-    <div className="space-y-4 sm:space-y-6 md:space-y-8">
+    <div className="space-y-8">
       <StatsHeader eyebrow={t("eyebrow")} title={t("title")} description={t("description")} />
-      <AnalyticsPanel />
+      <FeedbackTable />
     </div>
   );
 }

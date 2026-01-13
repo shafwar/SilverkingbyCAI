@@ -305,7 +305,7 @@ export function QrPreviewGrid() {
       // 1. Nama produk di ATAS QR dengan kotak putih
       // Position: Di atas QR code, dengan spacing yang tepat
       if (product.name && product.name.trim().length > 0) {
-        const nameFontSize = Math.floor(frontTemplateImg.width * 0.027);
+        const nameFontSize = Math.floor(frontTemplateImg.width * 0.042);
         const nameY = qrY - 40; // Fixed spacing above QR
 
         // CRITICAL: Measure text width to create proper white background
@@ -342,7 +342,7 @@ export function QrPreviewGrid() {
       // 2. Serial code di BAWAH QR (diluar dari box QR nya) dengan kotak putih
       // Position: Di bawah QR code, dengan spacing yang tepat
       if (product.serialCode && product.serialCode.trim().length > 0) {
-        const serialFontSize = Math.floor(frontTemplateImg.width * 0.031);
+        const serialFontSize = Math.floor(frontTemplateImg.width * 0.048);
         const serialY = qrY + qrSize + 40; // Fixed spacing below QR (diluar box QR)
 
         // CRITICAL: Measure text width to create proper white background
@@ -448,7 +448,7 @@ export function QrPreviewGrid() {
 
           // 1. Nama produk di ATAS QR dengan kotak putih
           if (product.name && product.name.trim().length > 0) {
-            const nameFontSize = Math.floor(localFrontImg.width * 0.027);
+            const nameFontSize = Math.floor(localFrontImg.width * 0.042);
             const nameY = qrY - 40; // Fixed spacing above QR (same as main path)
 
             // CRITICAL: Measure text width to create proper white background
@@ -481,7 +481,7 @@ export function QrPreviewGrid() {
 
           // 2. Serial code di BAWAH QR (diluar dari box QR nya) dengan kotak putih
           if (product.serialCode && product.serialCode.trim().length > 0) {
-            const serialFontSize = Math.floor(localFrontImg.width * 0.031);
+            const serialFontSize = Math.floor(localFrontImg.width * 0.048);
             const serialY = qrY + qrSize + 40; // Fixed spacing below QR (diluar box QR)
 
             // CRITICAL: Measure text width to create proper white background
@@ -1453,7 +1453,7 @@ export function QrPreviewGrid() {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 min-w-0">
             {/* Search Bar */}
             <motion.div
-              className="group flex flex-1 items-center rounded-full border border-white/10 bg-white/5 px-4 py-2.5 sm:px-5 sm:py-3 focus-within:border-[#FFD700]/50 focus-within:bg-white/10 focus-within:shadow-[0_0_20px_rgba(255,215,0,0.15)] transition-all backdrop-blur-sm min-w-0"
+              className="group flex flex-1 items-center rounded-full border border-white/10 bg-white/5 px-3 py-2 sm:px-4 sm:py-2.5 md:px-5 md:py-3 focus-within:border-[#FFD700]/50 focus-within:bg-white/10 focus-within:shadow-[0_0_20px_rgba(255,215,0,0.15)] transition-all backdrop-blur-sm min-w-0"
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{
@@ -1462,13 +1462,13 @@ export function QrPreviewGrid() {
                 delay: 0.5,
               }}
             >
-              <Search className="h-4 w-4 text-white/50 mr-2 sm:mr-3 transition-colors group-focus-within:text-[#FFD700]/70 flex-shrink-0" />
+              <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white/50 mr-2 sm:mr-3 transition-colors group-focus-within:text-[#FFD700]/70 flex-shrink-0" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t("searchPlaceholder")}
-                className="flex-1 bg-transparent text-sm font-light text-white placeholder:text-white/40 placeholder:font-light focus:outline-none min-w-0"
+                className="flex-1 bg-transparent text-xs sm:text-sm font-light text-white placeholder:text-white/40 placeholder:font-light focus:outline-none min-w-0"
               />
             </motion.div>
 
@@ -1501,7 +1501,7 @@ export function QrPreviewGrid() {
 
               <motion.button
                 onClick={() => setLayoutView("table")}
-                className="relative z-10 flex items-center justify-center p-2 rounded-lg transition-colors min-w-[36px]"
+                className="relative z-10 flex items-center justify-center p-1.5 sm:p-2 rounded-lg transition-colors min-w-[32px] sm:min-w-[36px] touch-manipulation"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 transition={{
@@ -1521,12 +1521,12 @@ export function QrPreviewGrid() {
                     ease: "easeOut",
                   }}
                 >
-                  <Table2 className="h-4 w-4" />
+                  <Table2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </motion.div>
               </motion.button>
               <motion.button
                 onClick={() => setLayoutView("grid")}
-                className="relative z-10 flex items-center justify-center p-2 rounded-lg transition-colors min-w-[36px]"
+                className="relative z-10 flex items-center justify-center p-1.5 sm:p-2 rounded-lg transition-colors min-w-[32px] sm:min-w-[36px] touch-manipulation"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 transition={{
@@ -1546,7 +1546,7 @@ export function QrPreviewGrid() {
                     ease: "easeOut",
                   }}
                 >
-                  <Grid3x3 className="h-4 w-4" />
+                  <Grid3x3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </motion.div>
               </motion.button>
             </motion.div>
@@ -1567,12 +1567,12 @@ export function QrPreviewGrid() {
             <motion.button
               type="button"
               onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-              className="group relative flex w-full items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2.5 sm:px-5 sm:py-3 text-sm font-light text-white backdrop-blur-sm transition-all hover:border-[#FFD700]/50 hover:bg-white/10 focus:border-[#FFD700]/50 focus:bg-white/10 focus:outline-none focus:shadow-[0_0_20px_rgba(255,215,0,0.15)] justify-between"
+              className="group relative flex w-full items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-light text-white backdrop-blur-sm transition-all hover:border-[#FFD700]/50 hover:bg-white/10 focus:border-[#FFD700]/50 focus:bg-white/10 focus:outline-none focus:shadow-[0_0_20px_rgba(255,215,0,0.15)] justify-between touch-manipulation"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                <Filter className="h-4 w-4 text-white/50 transition-colors group-hover:text-[#FFD700]/70 flex-shrink-0" />
+                <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white/50 transition-colors group-hover:text-[#FFD700]/70 flex-shrink-0" />
                 <span className="truncate text-left">
                   {selectedCategory
                     ? (() => {
@@ -1589,7 +1589,7 @@ export function QrPreviewGrid() {
                 transition={{ duration: 0.2 }}
                 className="flex-shrink-0"
               >
-                <ChevronDown className="h-4 w-4 text-white/50 transition-colors group-hover:text-[#FFD700]/70" />
+                <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white/50 transition-colors group-hover:text-[#FFD700]/70" />
               </motion.div>
             </motion.button>
 
@@ -2156,23 +2156,23 @@ export function QrPreviewGrid() {
                       <div className="flex flex-col sm:flex-row sm:flex-nowrap items-stretch sm:items-center gap-2">
                         <motion.button
                           onClick={() => setSelected(product)}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full border border-white/15 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm text-white/80 transition hover:border-white/40 hover:bg-white/5 active:scale-95 touch-manipulation min-h-[38px]"
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full border border-white/15 px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs text-white/80 transition hover:border-white/40 hover:bg-white/5 active:scale-95 touch-manipulation min-h-[36px] sm:min-h-[38px]"
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           aria-label={t("enlarge")}
                         >
-                          <Maximize2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                          <Maximize2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0" />
                           <span className="whitespace-nowrap">{t("enlarge")}</span>
                         </motion.button>
                         <motion.button
                           onClick={() => handleDownload(product)}
                           disabled={isDownloading}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full border border-white/15 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm text-white/80 transition hover:border-white/40 hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 touch-manipulation min-h-[38px]"
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full border border-white/15 px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs text-white/80 transition hover:border-white/40 hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 touch-manipulation min-h-[36px] sm:min-h-[38px]"
                           whileHover={{ scale: isDownloading ? 1 : 1.05 }}
                           whileTap={{ scale: isDownloading ? 1 : 0.95 }}
                           aria-label={t("download")}
                         >
-                          <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                          <Download className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0" />
                           <span className="whitespace-nowrap">{t("download")}</span>
                         </motion.button>
                       </div>

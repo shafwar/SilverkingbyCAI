@@ -9,14 +9,14 @@ import { BarChartTopProducts } from "@/components/admin/BarChartTopProducts";
 import { DonutChartDistribution } from "@/components/admin/DonutChartDistribution";
 
 export default function AdminDashboard() {
-  const t = useTranslations('admin');
+  const t = useTranslations("admin");
 
   return (
     <div className="space-y-6 sm:space-y-8 md:space-y-10">
       <StatsHeader
-        eyebrow={t('command.eyebrow')}
-        title={t('command.title')}
-        description={t('command.description')}
+        eyebrow={t("command.eyebrow")}
+        title={t("command.title")}
+        description={t("command.description")}
       />
 
       <DashboardMetrics />

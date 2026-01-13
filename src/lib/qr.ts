@@ -658,7 +658,7 @@ export async function generateQRWithSerticard(
 
     if (normalizedSerialCode && normalizedSerialCode.length >= 3) {
       const serialY = qrY + qrSize + 40;
-      const fontSize = Math.floor(templateImage.width * 0.035); // Responsive font size
+      const fontSize = Math.floor(templateImage.width * 0.052); // Responsive font size - enlarged for better visibility
       
       ctx.fillStyle = "#222222";
       ctx.textAlign = "center";
@@ -670,7 +670,7 @@ export async function generateQRWithSerticard(
     // Add product name if provided (above QR code)
     if (productName) {
       const nameY = qrY - 50;
-      const fontSize = Math.floor(templateImage.width * 0.028);
+      const fontSize = Math.floor(templateImage.width * 0.043); // Enlarged for better visibility
       
       ctx.fillStyle = "#222222";
       ctx.textAlign = "center";
