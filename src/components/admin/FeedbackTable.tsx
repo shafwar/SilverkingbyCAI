@@ -144,7 +144,7 @@ export function FeedbackTable() {
         sortable: true,
       },
     ],
-    [tFeedback, handleToggleRead, mutate]
+    [tFeedback, handleToggleRead]
   );
 
   return (

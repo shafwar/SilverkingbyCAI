@@ -205,7 +205,7 @@ export function GramProductTable({ batches, onMutate }: Props) {
               }`}
             >
               <span className="hidden sm:inline">Over 100gr (multi QR)</span>
-              <span className="sm:hidden">>100</span>
+              <span className="sm:hidden">{'>'}100</span>
             </button>
           </div>
         </div>

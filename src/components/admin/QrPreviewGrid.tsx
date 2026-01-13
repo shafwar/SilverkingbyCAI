@@ -1815,7 +1815,7 @@ export function QrPreviewGrid() {
                                 onClick={() => toggleSelectItem(product.id)}
                                 className="inline-flex items-center justify-center text-white/60 hover:text-white transition-colors"
                                 aria-label={isItemSelected ? t("selected") : t("selected")}
-                                aria-checked={isItemSelected}
+                                aria-pressed={isItemSelected}
                               >
                                 {isItemSelected ? (
                                   <CheckSquare2 className="h-5 w-5 text-[#FFD700]" />
@@ -1981,7 +1981,7 @@ export function QrPreviewGrid() {
                                 onClick={() => toggleSelectItem(product.id)}
                                 className="inline-flex items-center justify-center text-white/60 hover:text-white transition-colors"
                                 aria-label={isItemSelected ? t("selected") : t("selected")}
-                                aria-checked={isItemSelected}
+                                aria-pressed={isItemSelected}
                               >
                                 {isItemSelected ? (
                                   <CheckSquare2 className="h-5 w-5 text-[#FFD700]" />
@@ -2108,7 +2108,7 @@ export function QrPreviewGrid() {
                           }}
                           className="inline-flex items-center justify-center rounded-lg bg-black/60 backdrop-blur-sm p-1.5 text-white/60 hover:text-white transition-colors hover:bg-black/80"
                           aria-label={isItemSelected ? t("selected") : t("selected")}
-                          aria-checked={isItemSelected}
+                          aria-pressed={isItemSelected}
                         >
                           {isItemSelected ? (
                             <CheckSquare2 className="h-5 w-5 text-[#FFD700]" />

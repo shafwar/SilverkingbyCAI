@@ -159,7 +159,8 @@ export default function HeroWithVideo({
         console.error("[HeroWithVideo] Error removing event listeners:", error);
       }
     };
-  }, [isMobile]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMobile]); // currentVideoSrc is computed from isMobile, videoSrc, mobileSrc
 
   // Determine which video source to use with error handling
   const currentVideoSrc = (() => {

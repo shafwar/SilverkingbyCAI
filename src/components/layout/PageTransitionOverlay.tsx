@@ -88,7 +88,8 @@ export function PageTransitionOverlay() {
         clearInterval(checkInterval);
       };
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // isSplashComplete is checked via MutationObserver, no need to add as dependency
 
   // ENHANCED transition settings - DEEP blur effect with smooth animation
   // OPTIMIZED for all pages and mobile devices
@@ -240,7 +241,7 @@ export function PageTransitionOverlay() {
         blurRemovalTimeoutRef.current = null;
       }
     };
-  }, [isActive, deviceInfo.isMobile, transitionSettings.progressSpeed, isMounted]);
+  }, [isActive, deviceInfo.isMobile, transitionSettings.progressSpeed, isMounted, isSplashComplete]);
 
   // CRITICAL: Safety fallback - ensure blur is ALWAYS removed after maximum time
   // This prevents stuck blur if pathname detection fails
@@ -309,7 +310,7 @@ export function PageTransitionOverlay() {
         blurRemovalTimeoutRef.current = null;
       }
     };
-  }, [isActive, isMounted]);
+  }, [isActive, isMounted, transitionSettings.duration]);
 
   // Apply blur to body when transitioning dengan optimasi mobile
   // ALWAYS ensure HeroSection gets blur effect during transition
