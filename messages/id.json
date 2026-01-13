@@ -392,6 +392,7 @@
     "getInTouch": "Hubungi Kami",
     "description": "Kami ingin mendengar dari Anda. Kirimkan pesan kepada kami dan kami akan merespons sesegera mungkin.",
     "formTitle": "Kirimkan pesan kepada kami",
+    "formSubtitle": "Isi formulir di bawah ini dan kami akan menghubungi Anda kembali.",
     "form": {
       "name": "Nama",
       "namePlaceholder": "Nama Anda",
@@ -402,7 +403,8 @@
       "submit": "Kirim Pesan",
       "submitting": "Mengirim..."
     },
-    "successMessage": "Terima kasih! Pesan Anda telah terkirim. Kami akan segera menghubungi Anda.",
+    "successMessage": "Pesan berhasil dikirim!",
+    "successDescription": "Kami akan menghubungi Anda kembali sesegera mungkin.",
     "infoTitle": "Hubungi kami",
     "infoDescription": "Ada pertanyaan atau butuh bantuan? Kami siap membantu. Hubungi kami melalui salah satu saluran di bawah ini.",
     "info": {

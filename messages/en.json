@@ -392,6 +392,7 @@
     "getInTouch": "Get in Touch",
     "description": "We'd love to hear from you. Send us a message and we'll respond as soon as possible.",
     "formTitle": "Send us a message",
+    "formSubtitle": "Fill out the form below and we'll get back to you.",
     "form": {
       "name": "Name",
       "namePlaceholder": "Your name",
@@ -402,7 +403,8 @@
       "submit": "Send Message",
       "submitting": "Sending..."
     },
-    "successMessage": "Thank you! Your message has been sent. We'll get back to you soon.",
+    "successMessage": "Message sent successfully!",
+    "successDescription": "We'll get back to you as soon as possible.",
     "infoTitle": "Get in touch",
     "infoDescription": "Have questions or need assistance? We're here to help. Reach out to us through any of the channels below.",
     "info": {
