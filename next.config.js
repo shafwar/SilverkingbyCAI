@@ -28,8 +28,8 @@ const nextConfig = {
     },
     // Optimize prefetching for faster navigation
     optimizePackageImports: ["lucide-react", "framer-motion"],
-    // Enable faster page transitions
-    optimizeCss: true,
+    // Disabled optimizeCss - requires 'critters' package and causes build errors
+    // optimizeCss: true,
   },
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
