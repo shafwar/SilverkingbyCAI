@@ -4,12 +4,13 @@ import { useMemo, useState, useEffect, useCallback } from "react";
 import useSWR from "swr";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
-import { Search, Mail, Check, X } from "lucide-react";
+import { Search, Mail, Check, X, Eye } from "lucide-react";
 import { toast } from "sonner";
 
 import { fetcher } from "@/lib/fetcher";
 import { DataTable, TableColumn } from "./DataTable";
 import { AnimatedCard } from "./AnimatedCard";
+import { Modal } from "./Modal";
 
 type FeedbackItem = {
   id: number;
@@ -37,6 +38,7 @@ export function FeedbackTable() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [readFilter, setReadFilter] = useState<string | null>(null);
+  const [selectedMessage, setSelectedMessage] = useState<FeedbackItem | null>(null);
 
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedSearch(search), 400);
@@ -51,26 +53,29 @@ export function FeedbackTable() {
     refreshInterval: 10000,
   });
 
-  const handleToggleRead = useCallback(async (id: number, currentRead: boolean) => {
-    try {
-      const response = await fetch("/api/admin/feedback", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ id, read: !currentRead }),
-      });
+  const handleToggleRead = useCallback(
+    async (id: number, currentRead: boolean) => {
+      try {
+        const response = await fetch("/api/admin/feedback", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ id, read: !currentRead }),
+        });
 
-      if (!response.ok) {
-        throw new Error("Failed to update feedback");
+        if (!response.ok) {
+          throw new Error("Failed to update feedback");
+        }
+
+        toast.success(currentRead ? tFeedback("markedUnread") : tFeedback("markedRead"));
+        mutate();
+      } catch (error) {
+        toast.error(tFeedback("updateError"));
       }
-
-      toast.success(currentRead ? tFeedback("markedUnread") : tFeedback("markedRead"));
-      mutate();
-    } catch (error) {
-      toast.error(tFeedback("updateError"));
-    }
-  }, [mutate, tFeedback]);
+    },
+    [mutate, tFeedback]
+  );
 
   const columns: TableColumn<FeedbackItem>[] = useMemo(
     () => [
@@ -88,11 +93,7 @@ export function FeedbackTable() {
             }`}
             title={row.read ? tFeedback("markUnread") : tFeedback("markRead")}
           >
-            {row.read ? (
-              <Check className="h-4 w-4" />
-            ) : (
-              <Mail className="h-4 w-4" />
-            )}
+            {row.read ? <Check className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
           </button>
         ),
       },
@@ -102,10 +103,10 @@ export function FeedbackTable() {
         sortable: true,
         render: (row) => (
           <div className="flex items-center gap-2">
-            <span className={row.read ? "text-white/60" : "text-white font-medium"}>{row.name}</span>
-            {!row.read && (
-              <span className="h-2 w-2 rounded-full bg-yellow-400 animate-pulse" />
-            )}
+            <span className={row.read ? "text-white/60" : "text-white font-medium"}>
+              {row.name}
+            </span>
+            {!row.read && <span className="h-2 w-2 rounded-full bg-yellow-400 animate-pulse" />}
           </div>
         ),
       },
@@ -127,11 +128,27 @@ export function FeedbackTable() {
       {
         key: "message",
         header: tFeedback("message"),
-        render: (row) => (
-          <div className={`max-w-md line-clamp-2 text-sm ${row.read ? "text-white/50" : "text-white/80"}`}>
-            {row.message}
-          </div>
-        ),
+        render: (row) => {
+          const isLongMessage = row.message.length > 100;
+          return (
+            <div className="max-w-md">
+              <div
+                className={`text-sm ${row.read ? "text-white/50" : "text-white/80"} ${isLongMessage ? "line-clamp-2" : ""}`}
+              >
+                {row.message}
+              </div>
+              {isLongMessage && (
+                <button
+                  onClick={() => setSelectedMessage(row)}
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs text-luxury-gold hover:text-luxury-lightGold transition-colors font-medium"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  {tFeedback("viewFull") || "View Full Message"}
+                </button>
+              )}
+            </div>
+          );
+        },
       },
       {
         key: "createdAt",
@@ -248,6 +265,98 @@ export function FeedbackTable() {
           </button>
         </div>
       )}
+
+      {/* Full Message Modal */}
+      <Modal
+        open={Boolean(selectedMessage)}
+        onClose={() => setSelectedMessage(null)}
+        title={
+          selectedMessage
+            ? `${tFeedback("messageFrom") || "Message from"} ${selectedMessage.name}`
+            : ""
+        }
+      >
+        {selectedMessage && (
+          <div className="space-y-6">
+            {/* Message Details */}
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-white/60 mb-1">
+                      {tFeedback("name")}
+                    </h3>
+                    <p className="text-lg font-medium text-white">{selectedMessage.name}</p>
+                  </div>
+                  <button
+                    onClick={() => handleToggleRead(selectedMessage.id, selectedMessage.read)}
+                    className={`p-2 rounded-full transition ${
+                      selectedMessage.read
+                        ? "bg-green-500/20 text-green-400 hover:bg-green-500/30"
+                        : "bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30"
+                    }`}
+                    title={selectedMessage.read ? tFeedback("markUnread") : tFeedback("markRead")}
+                  >
+                    {selectedMessage.read ? (
+                      <Check className="h-5 w-5" />
+                    ) : (
+                      <Mail className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+
+                <div className="mb-4">
+                  <h3 className="text-sm font-semibold text-white/60 mb-1">{tFeedback("email")}</h3>
+                  <a
+                    href={`mailto:${selectedMessage.email}`}
+                    className="text-base text-luxury-gold hover:text-luxury-lightGold transition-colors break-all"
+                  >
+                    {selectedMessage.email}
+                  </a>
+                </div>
+
+                <div className="mb-4">
+                  <h3 className="text-sm font-semibold text-white/60 mb-1">{tFeedback("date")}</h3>
+                  <p className="text-base text-white/80">
+                    {new Date(selectedMessage.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+
+              {/* Full Message */}
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                <h3 className="text-sm font-semibold text-white/60 mb-3">{tFeedback("message")}</h3>
+                <div className="text-base text-white/90 leading-relaxed whitespace-pre-wrap break-words">
+                  {selectedMessage.message}
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <motion.button
+                onClick={() => {
+                  window.location.href = `mailto:${selectedMessage.email}?subject=Re: ${tFeedback("messageFrom") || "Message"} ${selectedMessage.name}`;
+                }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-luxury-gold/40 bg-luxury-gold/10 px-5 py-3 text-sm font-medium text-luxury-gold transition hover:border-luxury-gold/60 hover:bg-luxury-gold/20"
+              >
+                <Mail className="h-4 w-4" />
+                {tFeedback("reply") || "Reply"}
+              </motion.button>
+              <motion.button
+                onClick={() => setSelectedMessage(null)}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex-1 rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-medium text-white transition hover:bg-white/10"
+              >
+                {tFeedback("close") || "Close"}
+              </motion.button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </AnimatedCard>
   );
 }

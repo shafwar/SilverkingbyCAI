@@ -736,7 +736,11 @@
       "markedRead": "Ditandai sebagai dibaca",
       "markedUnread": "Ditandai sebagai belum dibaca",
       "updateError": "Gagal memperbarui umpan balik",
-      "loadError": "Gagal memuat umpan balik"
+      "loadError": "Gagal memuat umpan balik",
+      "viewFull": "Lihat Pesan Lengkap",
+      "messageFrom": "Pesan dari",
+      "reply": "Balas",
+      "close": "Tutup"
     },
     "logsDetail": {
       "product": "Produk",

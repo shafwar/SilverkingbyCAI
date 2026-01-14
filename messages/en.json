@@ -732,7 +732,11 @@
       "markedRead": "Marked as read",
       "markedUnread": "Marked as unread",
       "updateError": "Failed to update feedback",
-      "loadError": "Failed to load feedback"
+      "loadError": "Failed to load feedback",
+      "viewFull": "View Full Message",
+      "messageFrom": "Message from",
+      "reply": "Reply",
+      "close": "Close"
     },
     "logsDetail": {
       "product": "Product",
