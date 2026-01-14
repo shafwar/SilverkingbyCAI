@@ -333,32 +333,12 @@ export function FeedbackTable() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3">
-              <motion.a
-                href={`mailto:${selectedMessage.email}?subject=${encodeURIComponent(`Re: ${tFeedback("messageFrom") || "Message"} ${selectedMessage.name}`)}`}
-                onClick={(e) => {
-                  // Ensure click works properly and doesn't close modal
-                  e.stopPropagation();
-                  // Fallback: if href doesn't work, try window.location
-                  if (!e.defaultPrevented) {
-                    const mailtoLink = `mailto:${selectedMessage.email}?subject=${encodeURIComponent(`Re: ${tFeedback("messageFrom") || "Message"} ${selectedMessage.name}`)}`;
-                    window.location.href = mailtoLink;
-                  }
-                }}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-luxury-gold/40 bg-luxury-gold/10 px-5 py-3 text-sm font-medium text-luxury-gold transition hover:border-luxury-gold/60 hover:bg-luxury-gold/20 cursor-pointer no-underline touch-manipulation"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Mail className="h-4 w-4" />
-                {tFeedback("reply") || "Reply"}
-              </motion.a>
+            <div className="flex justify-center">
               <motion.button
                 onClick={() => setSelectedMessage(null)}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="flex-1 rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-medium text-white transition hover:bg-white/10"
+                className="w-full sm:w-auto min-w-[120px] rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-medium text-white transition hover:bg-white/10"
               >
                 {tFeedback("close") || "Close"}
               </motion.button>
