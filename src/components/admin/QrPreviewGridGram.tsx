@@ -65,7 +65,6 @@ export function QrPreviewGridGram({ batches }: Props) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [downloadDropdownOpen, setDownloadDropdownOpen] = useState<number | null>(null);
   const downloadDropdownRef = useRef<HTMLDivElement>(null);
-  const [selectedTemplateVariant, setSelectedTemplateVariant] = useState<SerticardVariantId>("01");
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -150,16 +149,19 @@ export function QrPreviewGridGram({ batches }: Props) {
     window.URL.revokeObjectURL(url);
   };
 
-  const handleDownloadSingle = async (product: {
-    id: number;
-    name: string;
-    weight: number;
-    uniqCode: string;
-    serialCode?: string;
-    qrImageUrl: string | null;
-    weightGroup: string | null;
-    hasRootKey?: boolean;
-  }) => {
+  const handleDownloadSingle = async (
+    product: {
+      id: number;
+      name: string;
+      weight: number;
+      uniqCode: string;
+      serialCode?: string;
+      qrImageUrl: string | null;
+      weightGroup: string | null;
+      hasRootKey?: boolean;
+    },
+    variantId: SerticardVariantId
+  ) => {
     if (!product) return;
     try {
       setDownloadingId(product.id);
@@ -181,7 +183,7 @@ export function QrPreviewGridGram({ batches }: Props) {
           weight: product.weight,
           isGram: true,
         },
-        templateVariant: selectedTemplateVariant,
+        templateVariant: variantId,
       };
 
       console.log("[GramPreview] Sending download request:", body);
@@ -375,25 +377,36 @@ export function QrPreviewGridGram({ batches }: Props) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -4, scale: 0.97 }}
               transition={{ duration: 0.2 }}
-              className="absolute right-0 top-full mt-1 w-56 rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.08] via-white/[0.05] to-white/[0.02] backdrop-blur-md shadow-2xl overflow-hidden z-[9999]"
+              className="absolute right-0 top-full mt-1 w-60 rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.08] via-white/[0.05] to-white/[0.02] backdrop-blur-md shadow-2xl overflow-hidden z-[9999] max-h-[320px] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-              <button
-                onClick={() => handleDownloadSingle(product)}
-                disabled={isLoading}
-                className="w-full px-4 py-3 text-left hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border-b border-white/5 hover:border-white/10"
-              >
-                <div className="font-semibold text-white text-sm mb-1">Serticard Template</div>
-                <div className="text-xs text-white/50">PDF dengan template profesional</div>
-              </button>
-              <button
-                onClick={() => handleDownloadOriginal(product)}
-                disabled={isLoading}
-                className="w-full px-4 py-3 text-left hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <div className="font-semibold text-white text-sm mb-1">Original QR Only</div>
-                <div className="text-xs text-white/50">PNG dengan judul & nomor seri</div>
-              </button>
+              <div className="px-3 py-2 border-b border-white/5 bg-white/[0.02]">
+                <div className="font-semibold text-white text-xs">Serticard Template (PDF)</div>
+                <div className="text-[10px] text-white/40">Pilih template yang ingin diunduh</div>
+              </div>
+              <div className="overflow-y-auto flex-1 min-h-0 py-1">
+                {SERTICARD_VARIANTS.map((v) => (
+                  <button
+                    key={v.id}
+                    onClick={() => handleDownloadSingle(product, v.id)}
+                    disabled={isLoading}
+                    className="w-full px-3 py-2 text-left hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
+                  >
+                    <span className="font-medium text-white text-sm">{v.label}</span>
+                    <span className="text-[10px] text-white/40">{v.frontNum}-{v.backNum}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="border-t border-white/5 px-3 py-1 bg-white/[0.02]">
+                <button
+                  onClick={() => handleDownloadOriginal(product)}
+                  disabled={isLoading}
+                  className="w-full px-3 py-2.5 text-left hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="font-semibold text-white text-sm">Original QR Only</div>
+                  <div className="text-xs text-white/50">PNG dengan judul & nomor seri</div>
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -574,22 +587,8 @@ export function QrPreviewGridGram({ batches }: Props) {
           </div>
         </div>
 
-        {/* Action buttons: Template selector + Refresh */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] sm:text-xs text-white/50 whitespace-nowrap">{t("serticardTemplate") || "Template:"}</span>
-            <select
-              value={selectedTemplateVariant}
-              onChange={(e) => setSelectedTemplateVariant(e.target.value as SerticardVariantId)}
-              className="rounded-full border border-white/15 bg-black/40 px-2.5 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs text-white focus:border-[#FFD700]/50 focus:outline-none focus:ring-1 focus:ring-[#FFD700]/30"
-            >
-              {SERTICARD_VARIANTS.map((v) => (
-                <option key={v.id} value={v.id} className="bg-[#0a0a0a] text-white">
-                  {v.label}
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Action buttons: Refresh */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
           <motion.button
             type="button"
             onClick={handleRefresh}
