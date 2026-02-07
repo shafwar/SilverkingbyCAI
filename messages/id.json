@@ -712,6 +712,7 @@
       "downloadSelectedFailed": "Silakan pilih setidaknya satu kode QR untuk diunduh.",
       "downloadSuccess": "Berhasil mengunduh PNG dengan {count} kode QR!",
       "downloadSelectedSuccess": "Berhasil mengunduh PNG dengan {count} kode QR terpilih!",
+      "serticardTemplate": "Template",
       "filterByCategory": "Filter berdasarkan Kategori",
       "allCategories": "Semua Kategori",
       "category": "Kategori"

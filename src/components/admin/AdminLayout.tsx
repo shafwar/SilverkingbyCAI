@@ -189,7 +189,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         // Silently fail
       }
     }
-    
+
     // Navigate immediately for external links, or after short delay for internal
     if (isExternal) {
       window.location.href = href;
@@ -246,9 +246,9 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
       // For desktop, use Link with prefetch or <a>
       if (isExternal) {
         return (
-          <a 
-            key={item.href} 
-            href={item.href} 
+          <a
+            key={item.href}
+            href={item.href}
             className={linkClassName}
             onMouseEnter={() => {
               // Prefetch on hover for external links
@@ -270,9 +270,9 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
       }
 
       return (
-        <Link 
-          key={item.href} 
-          href={item.href} 
+        <Link
+          key={item.href}
+          href={item.href}
           prefetch={true}
           className={linkClassName}
           onMouseEnter={() => {
@@ -291,7 +291,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
     });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-[#050505] to-[#050505] text-white">
+    <div className="min-h-screen bg-black text-white">
       <motion.nav
         initial={{ opacity: 0, y: -10 }}
         animate={
@@ -306,8 +306,8 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         )}
       >
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-4 sm:px-5 md:px-6 py-2.5 sm:py-3">
-          <Link 
-            href="/admin" 
+          <Link
+            href="/admin"
             prefetch={true}
             className="flex items-center group"
             onMouseEnter={() => {
@@ -339,7 +339,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
             </div>
             <button
               onClick={handleSignOut}
-              className="hidden rounded-full border border-white/15 bg-gradient-to-r from-[#FFD700]/30 to-[#E5C100]/20 px-2.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-medium text-white transition hover:border-[#FFD700]/50 sm:inline-flex"
+              className="hidden rounded-full border border-white/15 bg-[#FFD700]/20 px-2.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-medium text-white transition hover:border-[#FFD700]/50 sm:inline-flex"
             >
               {safeT(t, "logout", "Logout")}
             </button>
@@ -365,15 +365,15 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
               duration: 0.4,
               ease: [0.25, 0.1, 0.25, 1], // Custom easing for premium feel
             }}
-            className="fixed inset-0 z-[101] bg-gradient-to-br from-black via-[#050505] to-[#050505] lg:hidden overflow-y-auto"
+            className="fixed inset-0 z-[101] bg-black lg:hidden overflow-y-auto"
             style={{ willChange: "transform" }}
           >
             {/* Menu Header */}
             <div className="flex items-center justify-between px-4 sm:px-5 md:px-6 py-4 sm:py-5 border-b border-white/[0.03]">
-              <Link 
-                href="/admin" 
+              <Link
+                href="/admin"
                 prefetch={true}
-                className="flex items-center group" 
+                className="flex items-center group"
                 onClick={handleCloseMenu}
                 onMouseEnter={() => {
                   try {

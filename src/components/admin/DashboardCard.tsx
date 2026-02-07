@@ -15,12 +15,12 @@ type DashboardCardProps = {
 
 const accentMap: Record<
   NonNullable<DashboardCardProps["accent"]>,
-  { bg: string; text: string }
+  { bgClass: string; text: string }
 > = {
-  gold: { bg: "from-[#FFD700]/20 via-[#E5C100]/10 to-transparent", text: "text-[#FFD700]" },
-  silver: { bg: "from-[#C0C0C0]/20 via-[#A0A0A0]/10 to-transparent", text: "text-[#C0C0C0]" },
-  emerald: { bg: "from-emerald-400/30 via-emerald-400/10 to-transparent", text: "text-emerald-300" },
-  blue: { bg: "from-sky-400/30 via-sky-400/10 to-transparent", text: "text-sky-300" },
+  gold: { bgClass: "admin-card-gradient-gold", text: "text-[#FFD700]" },
+  silver: { bgClass: "admin-card-gradient-silver", text: "text-[#C0C0C0]" },
+  emerald: { bgClass: "admin-card-gradient-emerald", text: "text-emerald-300" },
+  blue: { bgClass: "admin-card-gradient-blue", text: "text-sky-300" },
 };
 
 export function DashboardCard({
@@ -35,7 +35,7 @@ export function DashboardCard({
   return (
     <AnimatedCard delay={delay} className="relative overflow-hidden">
       <div
-        className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${accentDefinition.bg}`}
+        className={`pointer-events-none absolute inset-0 ${accentDefinition.bgClass}`}
         aria-hidden="true"
       />
       <div className="relative flex items-start justify-between gap-3">
@@ -58,7 +58,7 @@ export function DashboardCard({
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: delay + 0.1 }}
-            className="rounded-full border border-white/10 bg-white/5 p-2 sm:p-3 text-white flex-shrink-0"
+            className="rounded-full border border-white/10 bg-[#141414] p-2 sm:p-3 text-white flex-shrink-0"
           >
             {icon}
           </motion.div>

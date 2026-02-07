@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   ChevronDown,
 } from "lucide-react";
+import { SERTICARD_VARIANTS, type SerticardVariantId } from "@/utils/serticard-templates";
 
 type GramPreviewBatch = {
   batchId: number;
@@ -64,6 +65,7 @@ export function QrPreviewGridGram({ batches }: Props) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [downloadDropdownOpen, setDownloadDropdownOpen] = useState<number | null>(null);
   const downloadDropdownRef = useRef<HTMLDivElement>(null);
+  const [selectedTemplateVariant, setSelectedTemplateVariant] = useState<SerticardVariantId>("01");
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -179,6 +181,7 @@ export function QrPreviewGridGram({ batches }: Props) {
           weight: product.weight,
           isGram: true,
         },
+        templateVariant: selectedTemplateVariant,
       };
 
       console.log("[GramPreview] Sending download request:", body);
@@ -571,8 +574,22 @@ export function QrPreviewGridGram({ batches }: Props) {
           </div>
         </div>
 
-        {/* Action buttons: Muat Ulang (Download moved into serials modal) */}
+        {/* Action buttons: Template selector + Refresh */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] sm:text-xs text-white/50 whitespace-nowrap">{t("serticardTemplate") || "Template:"}</span>
+            <select
+              value={selectedTemplateVariant}
+              onChange={(e) => setSelectedTemplateVariant(e.target.value as SerticardVariantId)}
+              className="rounded-full border border-white/15 bg-black/40 px-2.5 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs text-white focus:border-[#FFD700]/50 focus:outline-none focus:ring-1 focus:ring-[#FFD700]/30"
+            >
+              {SERTICARD_VARIANTS.map((v) => (
+                <option key={v.id} value={v.id} className="bg-[#0a0a0a] text-white">
+                  {v.label}
+                </option>
+              ))}
+            </select>
+          </div>
           <motion.button
             type="button"
             onClick={handleRefresh}

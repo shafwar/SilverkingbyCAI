@@ -28,6 +28,7 @@ import { Modal } from "./Modal";
 import { AnimatedCard } from "./AnimatedCard";
 import { useDownload } from "@/contexts/DownloadContext";
 import { toast } from "sonner";
+import { SERTICARD_VARIANTS, getSerticardVariant, getLocalTemplateFilename, type SerticardVariantId } from "@/utils/serticard-templates";
 
 type Product = {
   id: number;
@@ -62,6 +63,7 @@ export function QrPreviewGrid() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
+  const [selectedTemplateVariant, setSelectedTemplateVariant] = useState<SerticardVariantId>("01");
 
   // Use download context for global state management
   const {
@@ -194,8 +196,8 @@ export function QrPreviewGrid() {
 
       // Use proxy endpoint for templates to avoid CORS/tainted canvas issues
       // Proxy will fetch from R2 and serve with proper CORS headers, or fallback to local
-      const absoluteFrontUrl = `${window.location.origin}/api/admin/template-proxy?template=front`;
-      const absoluteBackUrl = `${window.location.origin}/api/admin/template-proxy?template=back`;
+      const absoluteFrontUrl = `${window.location.origin}/api/admin/template-proxy?template=front&variant=${selectedTemplateVariant}`;
+      const absoluteBackUrl = `${window.location.origin}/api/admin/template-proxy?template=back&variant=${selectedTemplateVariant}`;
 
       console.log("[Download] Using template proxy URLs:", {
         front: absoluteFrontUrl,
@@ -219,8 +221,10 @@ export function QrPreviewGrid() {
         console.log("[Download] Front template loaded from:", absoluteFrontUrl);
       } catch (frontErr: any) {
         console.warn("[Download] Failed to load front template from R2, trying local:", frontErr);
-        // Fallback to local path
-        const localFrontUrl = window.location.origin + "/images/serticard/Serticard-01.png";
+        // Fallback to local static path
+        const v = getSerticardVariant(selectedTemplateVariant);
+        const localFrontPath = v ? `/${v.localBase}/${getLocalTemplateFilename(v.frontNum, v.ext)}` : "/images/serticard/Serticard-01.png";
+        const localFrontUrl = window.location.origin + localFrontPath;
         try {
           frontTemplateImg = await loadImage(localFrontUrl);
           console.log("[Download] Front template loaded from local:", localFrontUrl);
@@ -234,8 +238,10 @@ export function QrPreviewGrid() {
         console.log("[Download] Back template loaded from:", absoluteBackUrl);
       } catch (backErr: any) {
         console.warn("[Download] Failed to load back template from R2, trying local:", backErr);
-        // Fallback to local path
-        const localBackUrl = window.location.origin + "/images/serticard/Serticard-02.png";
+        // Fallback to local static path
+        const v = getSerticardVariant(selectedTemplateVariant);
+        const localBackPath = v ? `/${v.localBase}/${getLocalTemplateFilename(v.backNum, v.ext)}` : "/images/serticard/Serticard-02.png";
+        const localBackUrl = window.location.origin + localBackPath;
         try {
           backTemplateImg = await loadImage(localBackUrl);
           console.log("[Download] Back template loaded from local:", localBackUrl);
@@ -275,8 +281,9 @@ export function QrPreviewGrid() {
           console.warn(
             "[Download] Tainted canvas detected, reloading front template without crossOrigin"
           );
-          const localFrontUrl = window.location.origin + "/images/serticard/Serticard-01.png";
-          const fallbackImg = await loadImage(localFrontUrl);
+          const v = getSerticardVariant(selectedTemplateVariant);
+          const localFrontPath = v ? `/${v.localBase}/${getLocalTemplateFilename(v.frontNum, v.ext)}` : "/images/serticard/Serticard-01.png";
+          const fallbackImg = await loadImage(window.location.origin + localFrontPath);
           frontCtx.drawImage(fallbackImg, 0, 0);
           frontTemplateImg = fallbackImg; // Update reference for later use
         } else {
@@ -399,8 +406,9 @@ export function QrPreviewGrid() {
           console.warn(
             "[Download] Tainted canvas detected, reloading back template without crossOrigin"
           );
-          const localBackUrl = window.location.origin + "/images/serticard/Serticard-02.png";
-          const fallbackImg = await loadImage(localBackUrl);
+          const vb = getSerticardVariant(selectedTemplateVariant);
+          const localBackPath = vb ? `/${vb.localBase}/${getLocalTemplateFilename(vb.backNum, vb.ext)}` : "/images/serticard/Serticard-02.png";
+          const fallbackImg = await loadImage(window.location.origin + localBackPath);
           backCtx.drawImage(fallbackImg, 0, 0);
           backTemplateImg = fallbackImg; // Update reference for later use
         } else {
@@ -419,9 +427,9 @@ export function QrPreviewGrid() {
       } catch (toDataError: any) {
         if (toDataError.message?.includes("tainted")) {
           console.warn("[Download] Tainted canvas error on front, using local template fallback");
-          // Reload with local template and recreate canvas
-          const localFrontUrl = window.location.origin + "/images/serticard/Serticard-01.png";
-          const localFrontImg = await loadImage(localFrontUrl);
+          const v = getSerticardVariant(selectedTemplateVariant);
+          const localFrontPath = v ? `/${v.localBase}/${getLocalTemplateFilename(v.frontNum, v.ext)}` : "/images/serticard/Serticard-01.png";
+          const localFrontImg = await loadImage(window.location.origin + localFrontPath);
           const fallbackCanvas = document.createElement("canvas");
           fallbackCanvas.width = localFrontImg.width;
           fallbackCanvas.height = localFrontImg.height;
@@ -528,9 +536,9 @@ export function QrPreviewGrid() {
       } catch (toDataError: any) {
         if (toDataError.message?.includes("tainted")) {
           console.warn("[Download] Tainted canvas error on back, using local template fallback");
-          // Reload with local template and recreate canvas
-          const localBackUrl = window.location.origin + "/images/serticard/Serticard-02.png";
-          const localBackImg = await loadImage(localBackUrl);
+          const v = getSerticardVariant(selectedTemplateVariant);
+          const localBackPath = v ? `/${v.localBase}/${getLocalTemplateFilename(v.backNum, v.ext)}` : "/images/serticard/Serticard-02.png";
+          const localBackImg = await loadImage(window.location.origin + localBackPath);
           const fallbackCanvas = document.createElement("canvas");
           fallbackCanvas.width = localBackImg.width;
           fallbackCanvas.height = localBackImg.height;
@@ -744,7 +752,7 @@ export function QrPreviewGrid() {
           // Call endpoint for this batch (100 files) - backend will generate and return 1 ZIP
           // CRITICAL: Send products (full objects) instead of serialCodes
           // Backend will use these products directly, same as handleDownload (single)
-          const requestBody = { products, batchNumber };
+          const requestBody = { products, batchNumber, templateVariant: selectedTemplateVariant };
           console.log(
             `[DownloadAll] Request body size:`,
             JSON.stringify(requestBody).length,
@@ -1071,7 +1079,7 @@ export function QrPreviewGrid() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ serialCodes }),
+        body: JSON.stringify({ serialCodes, templateVariant: selectedTemplateVariant }),
         signal: abortController.signal,
       });
 
@@ -1691,6 +1699,22 @@ export function QrPreviewGrid() {
                 </span>
               </motion.button>
             )}
+
+            {/* Serticard Template Selector */}
+            <div className="relative flex items-center gap-2">
+              <span className="text-[10px] sm:text-xs text-white/50 whitespace-nowrap">{t("serticardTemplate") || "Template:"}</span>
+              <select
+                value={selectedTemplateVariant}
+                onChange={(e) => setSelectedTemplateVariant(e.target.value as SerticardVariantId)}
+                className="rounded-full border border-white/15 bg-black/40 px-2.5 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs text-white focus:border-[#FFD700]/50 focus:outline-none focus:ring-1 focus:ring-[#FFD700]/30"
+              >
+                {SERTICARD_VARIANTS.map((v) => (
+                  <option key={v.id} value={v.id} className="bg-[#0a0a0a] text-white">
+                    {v.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             {/* Secondary Action Group - General Actions (Visual Grouping with consistent spacing) */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">

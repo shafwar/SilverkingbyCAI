@@ -5,6 +5,57 @@
 @import "./logo-adaptive.css";
 @import "./nprogress.css";
 
+/* Anti-banding: Multi-stop gradients for smooth transitions (no visible banding) */
+.admin-card-gradient-gold {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 215, 0, 0.06) 0%,
+    rgba(255, 215, 0, 0.045) 15%,
+    rgba(255, 215, 0, 0.03) 30%,
+    rgba(255, 215, 0, 0.02) 45%,
+    rgba(255, 215, 0, 0.012) 60%,
+    rgba(255, 215, 0, 0.006) 75%,
+    transparent 100%
+  );
+}
+.admin-card-gradient-silver {
+  background: linear-gradient(
+    135deg,
+    rgba(192, 192, 192, 0.06) 0%,
+    rgba(192, 192, 192, 0.045) 15%,
+    rgba(192, 192, 192, 0.03) 30%,
+    rgba(192, 192, 192, 0.02) 45%,
+    rgba(192, 192, 192, 0.012) 60%,
+    rgba(192, 192, 192, 0.006) 75%,
+    transparent 100%
+  );
+}
+.admin-card-gradient-emerald {
+  background: linear-gradient(
+    135deg,
+    rgba(52, 211, 153, 0.08) 0%,
+    rgba(52, 211, 153, 0.055) 15%,
+    rgba(52, 211, 153, 0.035) 30%,
+    rgba(52, 211, 153, 0.02) 45%,
+    rgba(52, 211, 153, 0.012) 60%,
+    rgba(52, 211, 153, 0.006) 75%,
+    transparent 100%
+  );
+}
+.admin-card-gradient-blue {
+  background: linear-gradient(
+    135deg,
+    rgba(56, 189, 248, 0.08) 0%,
+    rgba(56, 189, 248, 0.055) 15%,
+    rgba(56, 189, 248, 0.035) 30%,
+    rgba(56, 189, 248, 0.02) 45%,
+    rgba(56, 189, 248, 0.012) 60%,
+    rgba(56, 189, 248, 0.006) 75%,
+    transparent 100%
+  );
+}
+
+
 @layer base {
   * {
     -webkit-font-smoothing: antialiased;

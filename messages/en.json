@@ -710,7 +710,8 @@
       "downloadSelectedSuccess": "Successfully downloaded PNG with {count} selected QR code(s)!",
       "filterByCategory": "Filter by Category",
       "allCategories": "All Categories",
-      "category": "Category"
+      "category": "Category",
+      "serticardTemplate": "Template"
     },
     "qrPreview": "QR Preview",
     "logs": "Logs",

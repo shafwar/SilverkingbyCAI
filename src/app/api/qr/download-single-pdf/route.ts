@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { createCanvas, loadImage } from "canvas";
-import { promises as fs } from "fs";
-import path from "path";
 import { PDFDocument } from "pdf-lib";
+import { loadSerticardTemplates } from "@/lib/load-serticard-templates";
 
 /**
  * Generate a SINGLE Serticard PDF (front + back) for one QR code.
@@ -53,6 +52,7 @@ export async function POST(request: NextRequest) {
     const productName = String(product.name).trim();
     const productSerialCode = String(product.serialCode).trim().toUpperCase();
     const isGram = Boolean(product.isGram);
+    const templateVariant = body?.templateVariant ?? "01";
 
     // Validate inputs
     if (!productName || productName.length === 0) {
@@ -75,86 +75,12 @@ export async function POST(request: NextRequest) {
       productName,
       productSerialCode,
       isGram,
+      templateVariant,
     });
 
-    // --- Load Serticard templates (same strategy as download-multiple-pdf) ---
-    const R2_PUBLIC_URL_ENV = process.env.R2_PUBLIC_URL;
-    const isLocalDev = process.env.NODE_ENV === "development" || !R2_PUBLIC_URL_ENV;
-
-    let frontTemplateImage: any;
-    let backTemplateImage: any;
-
-    if (isLocalDev) {
-      const frontTemplatePath = path.join(
-        process.cwd(),
-        "public",
-        "images",
-        "serticard",
-        "Serticard-01.png"
-      );
-      const backTemplatePath = path.join(
-        process.cwd(),
-        "public",
-        "images",
-        "serticard",
-        "Serticard-02.png"
-      );
-
-      await fs.access(frontTemplatePath);
-      frontTemplateImage = await loadImage(frontTemplatePath);
-      await fs.access(backTemplatePath);
-      backTemplateImage = await loadImage(backTemplatePath);
-    } else {
-      const base = R2_PUBLIC_URL_ENV!.endsWith("/")
-        ? R2_PUBLIC_URL_ENV!.slice(0, -1)
-        : R2_PUBLIC_URL_ENV!;
-      const frontR2Url = `${base}/templates/serticard-01.png`;
-      const backR2Url = `${base}/templates/serticard-02.png`;
-
-      // Front
-      try {
-        const frontResponse = await fetch(frontR2Url);
-        if (!frontResponse.ok) {
-          throw new Error(`Front template not found in R2: ${frontResponse.status}`);
-        }
-        const frontBuffer = Buffer.from(await frontResponse.arrayBuffer());
-        frontTemplateImage = await loadImage(frontBuffer);
-      } catch (r2Error: any) {
-        const frontTemplatePath = path.join(
-          process.cwd(),
-          "public",
-          "images",
-          "serticard",
-          "Serticard-01.png"
-        );
-        await fs.access(frontTemplatePath);
-        frontTemplateImage = await loadImage(frontTemplatePath);
-      }
-
-      // Back
-      try {
-        const backResponse = await fetch(backR2Url);
-        if (!backResponse.ok) {
-          throw new Error(`Back template not found in R2: ${backResponse.status}`);
-        }
-        const backBuffer = Buffer.from(await backResponse.arrayBuffer());
-        backTemplateImage = await loadImage(backBuffer);
-      } catch (r2Error: any) {
-        const backTemplatePath = path.join(
-          process.cwd(),
-          "public",
-          "images",
-          "serticard",
-          "Serticard-02.png"
-        );
-        await fs.access(backTemplatePath);
-        backTemplateImage = await loadImage(backTemplatePath);
-      }
-    }
-
-    if (!frontTemplateImage || !backTemplateImage) {
-      return NextResponse.json({ error: "Failed to load Serticard templates" }, { status: 500 });
-    }
+    // --- Load Serticard templates (variant-aware) ---
+    const { front: frontTemplateImage, back: backTemplateImage } =
+      await loadSerticardTemplates(templateVariant);
 
     // --- Fetch QR-only image for this serial/uniq code ---
     const baseUrl =
