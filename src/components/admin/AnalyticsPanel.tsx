@@ -13,7 +13,8 @@ import {
   Tooltip,
 } from "recharts";
 import { motion } from "framer-motion";
-import { Download } from "lucide-react";
+import { Download, Archive, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { fetcher } from "@/lib/fetcher";
 import { MonthYearPicker } from "./MonthYearPicker";
@@ -40,11 +41,20 @@ export function AnalyticsPanel() {
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1); // 1-indexed
   const [year, setYear] = useState(now.getFullYear());
+  const [purging, setPurging] = useState(false);
 
   // Check if viewing current month - only real-time updates for current month
   const isCurrentMonth = useMemo(() => {
     const currentDate = new Date();
     return year === currentDate.getFullYear() && month === currentDate.getMonth() + 1;
+  }, [month, year]);
+
+  // Can purge only past months (not current month)
+  const canPurgeSelectedMonth = useMemo(() => {
+    const currentDate = new Date();
+    if (year > currentDate.getFullYear()) return false;
+    if (year === currentDate.getFullYear() && month >= currentDate.getMonth() + 1) return false;
+    return true;
   }, [month, year]);
 
   const { data: trend, isLoading: trendLoading, mutate: mutateTrend } = useSWR<TrendResponse>(
@@ -131,7 +141,59 @@ export function AnalyticsPanel() {
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 flex-shrink-0">
             <MonthYearPicker month={month} year={year} onChange={handleMonthYearChange} />
             <button
-              onClick={() => window.open("/api/export/excel", "_blank")}
+              onClick={async () => {
+                setPurging(true);
+                try {
+                  const res = await fetch("/api/admin/export-and-purge-logs", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ month, year }),
+                  });
+                  const data = await res.json();
+                  if (!res.ok) throw new Error(data.error || "Purge failed");
+                  toast.success(`${month}/${year} exported & purged`);
+                  mutateTrend();
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "Purge failed");
+                } finally {
+                  setPurging(false);
+                }
+              }}
+              disabled={purging || !canPurgeSelectedMonth}
+              title={
+                canPurgeSelectedMonth
+                  ? `Export & purge ${month}/${year}`
+                  : "Hanya bulan lalu yang bisa di-purge"
+              }
+              className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/50 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-400 hover:bg-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {purging ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
+              <span className="hidden sm:inline">
+                {purging ? "..." : "Purge bulan terpilih"}
+              </span>
+            </button>
+            <button
+              onClick={async () => {
+                const url = `/api/admin/scans/export?month=${month}&year=${year}`;
+                const res = await fetch(url);
+                if (!res.ok) {
+                  const data = await res.json().catch(() => ({}));
+                  alert(data.error || "Export failed");
+                  return;
+                }
+                const ct = res.headers.get("content-type") || "";
+                if (ct.includes("application/json")) {
+                  const { url: redirectUrl } = await res.json();
+                  if (redirectUrl) window.open(redirectUrl, "_blank");
+                } else {
+                  const blob = await res.blob();
+                  const a = document.createElement("a");
+                  a.href = URL.createObjectURL(blob);
+                  a.download = `${year}-${String(month).padStart(2, "0")}.csv`;
+                  a.click();
+                  URL.revokeObjectURL(a.href);
+                }
+              }}
               className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-[#FFD700]/40 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-white transition hover:border-[#FFD700]"
             >
               <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />

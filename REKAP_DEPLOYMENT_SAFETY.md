@@ -1,11 +1,11 @@
 # Rekap Feature - Deployment Safety
 
-**Tanggal:** Januari 2025  
+**Tanggal:** Januari 2026  
 **Status:** ✅ SAFE FOR DEPLOYMENT
 
 ## Ringkasan
 
-Fitur Rekap bulanan untuk scan logs telah diimplementasikan dengan aman. Dokumen ini menjelaskan langkah deployment dan jaminan keamanan.
+Fitur Rekap bulanan untuk scan logs telah diimplementasikan dengan aman. **Purge bulan terpilih** memungkinkan admin memilih bulan (Nov 2025, Des 2025, Jan 2026, dll) untuk purge manual—berguna karena sistem belum otomatis dan bulan historis bisa catch-up via Analytics.
 
 ---
 
@@ -26,21 +26,29 @@ Fitur Rekap bulanan untuk scan logs telah diimplementasikan dengan aman. Dokumen
 - **Migration:** `20260115000000_add_scan_log_summary`
 
 ### 2. API Baru
-- `POST /api/admin/export-and-purge-logs` — Export + Purge bulan lalu
-- `GET /api/admin/rekap/list` — Daftar laporan dari R2
-- `GET /api/admin/rekap/download?file=YYYY-MM.csv` — URL unduh laporan
+- `POST /api/admin/export-and-purge-logs` — Export + Purge bulan terpilih (body: `{ month, year }`)
+- `GET /api/admin/scans/export?month=&year=` — Export CSV bulan terpilih
+- ~~`GET /api/admin/rekap/list`~~ — Dihapus (centralized ke Analytics)
+- ~~`GET /api/admin/rekap/download`~~ — Dihapus (export via scans/export)
 
 ### 3. Perubahan API
-- `GET /api/admin/scans/trend` — Untuk bulan lalu, baca dari `ScanLogSummary`; bulan berjalan tetap dari raw logs
+- `GET /api/admin/scans/trend` — Fallback ke raw logs jika ScanLogSummary kosong (Nov–Des 2025) + backfill
 
-### 4. Halaman Baru
-- `/admin/rekap` — Daftar laporan + tombol Export & Purge
+### 4. Purge Bulan Terpilih (penting)
+- **Admin bisa memilih bulan** untuk Purge di Analytics → Signal control (Month picker)
+- Tombol Purge hanya aktif untuk **bulan lalu** (tidak untuk bulan berjalan atau masa depan)
+- Cocok untuk Nov 2025, Des 2025, Jan 2026, dll yang sudah lewat tapi belum di-purge otomatis
+- Cron tetap purge bulan lalu tiap tanggal 1; manual Purge untuk catch-up bulan historis
 
-### 5. Filter Bulan di Halaman Log (Update)
+### 5. Halaman
+- ~~`/admin/rekap`~~ — Dihapus; semua di **Analytics → Signal control - Scans over time**
+- Graph, Export CSV, Purge bulan terpilih — semuanya di satu tempat
+
+### 6. Filter Bulan di Halaman Log (Update)
 - `/admin/logs` — Filter pemilihan bulan (Nov 2025 s/d bulan berjalan + 12 bulan)
 - Cross-check apakah log masih ada per bulan sebelum/ setelah purge
 
-### 6. Script Utilitas
+### 7. Script Utilitas
 - `scripts/check-logs-by-month.js` — Cek jumlah scan logs per bulan (Nov, Des, Jan) via CLI
 
 ---
@@ -66,6 +74,14 @@ Fitur Rekap bulanan untuk scan logs telah diimplementasikan dengan aman. Dokumen
 5. **Setup cron** — baca REKAP_CRON_SETUP.md agar log IP hilang otomatis tiap bulan
 
 ---
+
+## Purge Bulan Terpilih (Nov/Des 2025 Catch-up)
+
+- Admin masuk ke **Analytics** → **Signal control - Scans over time**
+- Pilih bulan di Month picker (mis. Nov 2025, Des 2025, Jan 2026)
+- Tombol **Purge bulan terpilih** aktif hanya untuk bulan lalu (tidak untuk bulan berjalan)
+- Untuk Nov/Des 2025 yang sudah lewat: pilih bulan → Export CSV (opsional) → Purge
+- Data graph tetap aman via ScanLogSummary; raw logs dihapus setelah export ke R2
 
 ## Keamanan
 

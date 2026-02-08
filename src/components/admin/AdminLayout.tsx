@@ -22,7 +22,6 @@ import {
   LogOut,
   Edit3,
   MessageSquare,
-  FileSpreadsheet,
 } from "lucide-react";
 import clsx from "clsx";
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
@@ -77,7 +76,6 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
       { label: safeT(t, "qrPreview", "QR Preview"), href: "/admin/qr-preview", icon: QrCode },
       { label: safeT(t, "logs", "Logs"), href: "/admin/logs", icon: ActivitySquare },
       { label: safeT(t, "analyticsLabel", "Analytics"), href: "/admin/analytics", icon: BarChart3 },
-      { label: safeT(t, "rekap.label", "Rekap"), href: "/admin/rekap", icon: FileSpreadsheet },
       {
         label: safeT(t, "feedback.label", "Feedback"),
         href: "/admin/feedback",
@@ -97,7 +95,6 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
       "/admin/qr-preview",
       "/admin/logs",
       "/admin/analytics",
-      "/admin/rekap",
       "/admin/feedback",
     ];
 

@@ -4,7 +4,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { uploadToR2 } from "@/lib/r2-client";
+import { uploadToR2, getSignedUrlFromR2, fileExistsInR2 } from "@/lib/r2-client";
 
 export const REPORTS_PREFIX = "reports/scan-logs";
 
@@ -137,6 +137,21 @@ export async function runExportPurge(
   const filename = `${year}-${String(month).padStart(2, "0")}.csv`;
   const r2Key = `${REPORTS_PREFIX}/${filename}`;
 
+  // Don't overwrite R2 if no data - preserves existing file when run twice
+  if (page1Logs.length === 0 && page2Logs.length === 0) {
+    return {
+      success: true,
+      month,
+      year,
+      summaryInserted: allDates.size,
+      page1Deleted: 0,
+      page2Deleted: 0,
+      csvRows: 0,
+      filename,
+      downloadUrl: "",
+    };
+  }
+
   try {
     await uploadToR2(
       r2Key,
@@ -175,5 +190,105 @@ export async function runExportPurge(
     csvRows: rows.length - 1,
     filename,
     downloadUrl,
+  };
+}
+
+/**
+ * Export scan logs for a month - from raw logs or R2 (if purged)
+ * Returns { type: 'csv', buffer, filename } or { type: 'redirect', url }
+ */
+export async function exportScanLogsForMonth(
+  month: number,
+  year: number
+): Promise<
+  | { type: "csv"; buffer: Buffer; filename: string }
+  | { type: "redirect"; url: string; filename: string }
+  | { type: "empty"; message: string }
+> {
+  const { start, end } = getMonthRange(month, year);
+  const filename = `${year}-${String(month).padStart(2, "0")}.csv`;
+  const r2Key = `${REPORTS_PREFIX}/${filename}`;
+
+  const [page1Logs, page2Logs] = await Promise.all([
+    prisma.qRScanLog.findMany({
+      where: { scannedAt: { gte: start, lte: end } },
+      include: { qrRecord: { include: { product: true } } },
+      orderBy: { scannedAt: "asc" },
+    }),
+    prisma.gramQRScanLog.findMany({
+      where: { scannedAt: { gte: start, lte: end } },
+      include: { qrItem: { include: { batch: true } } },
+      orderBy: { scannedAt: "asc" },
+    }),
+  ]);
+
+  const escape = (v: string | null | undefined): string => {
+    if (v == null) return "";
+    const s = String(v);
+    if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+      return `"${s.replace(/"/g, '""')}"`;
+    }
+    return s;
+  };
+
+  const headers = [
+    "tanggal",
+    "waktu",
+    "serialCode",
+    "namaProduk",
+    "ip",
+    "userAgent",
+    "lokasi",
+    "sumber",
+  ];
+  const rows: string[] = [headers.join(",")];
+  for (const log of page1Logs) {
+    const d = log.scannedAt;
+    rows.push(
+      [
+        d.toISOString().slice(0, 10),
+        d.toTimeString().slice(0, 8),
+        escape(log.qrRecord?.serialCode),
+        escape(log.qrRecord?.product?.name),
+        escape(log.ip),
+        escape(log.userAgent),
+        escape(log.location),
+        "page1",
+      ].join(",")
+    );
+  }
+  for (const log of page2Logs) {
+    const d = log.scannedAt;
+    rows.push(
+      [
+        d.toISOString().slice(0, 10),
+        d.toTimeString().slice(0, 8),
+        escape(log.qrItem?.uniqCode),
+        escape(log.qrItem?.batch?.name ? `${log.qrItem.batch.name} (Page 2)` : ""),
+        escape(log.ip),
+        escape(log.userAgent),
+        escape(log.location),
+        "page2",
+      ].join(",")
+    );
+  }
+
+  if (rows.length > 1) {
+    return {
+      type: "csv",
+      buffer: Buffer.from(rows.join("\n"), "utf-8"),
+      filename,
+    };
+  }
+
+  const exists = await fileExistsInR2(r2Key);
+  if (exists) {
+    const url = await getSignedUrlFromR2(r2Key, 3600);
+    return { type: "redirect", url, filename };
+  }
+
+  return {
+    type: "empty",
+    message: `No scan logs for ${year}-${String(month).padStart(2, "0")}`,
   };
 }

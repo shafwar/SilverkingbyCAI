@@ -89,7 +89,7 @@ export async function GET(request: Request) {
     let gramScanLogs: { scannedAt: Date }[] = [];
 
     if (isHistoricalMonth) {
-      // Read from ScanLogSummary for historical months (raw logs purged after export)
+      // Read from ScanLogSummary for historical months (raw logs may have been purged)
       const summaries = await prisma.scanLogSummary.findMany({
         where: {
           date: {
@@ -98,13 +98,54 @@ export async function GET(request: Request) {
           },
         },
       });
-      // Convert to pseudo-logs for bucket filling: expand each day's counts into virtual entries
-      for (const s of summaries) {
-        for (let i = 0; i < s.page1Scans; i++) {
-          scanLogs.push({ scannedAt: new Date(s.date) });
+
+      // If ScanLogSummary has data, use it
+      if (summaries.length > 0) {
+        for (const s of summaries) {
+          for (let i = 0; i < s.page1Scans; i++) {
+            scanLogs.push({ scannedAt: new Date(s.date) });
+          }
+          for (let i = 0; i < s.page2Scans; i++) {
+            gramScanLogs.push({ scannedAt: new Date(s.date) });
+          }
         }
-        for (let i = 0; i < s.page2Scans; i++) {
-          gramScanLogs.push({ scannedAt: new Date(s.date) });
+      } else {
+        // Fallback: ScanLogSummary empty (e.g. Nov-Dec 2025 never purged) → read from raw logs
+        // Then backfill ScanLogSummary so next request is fast
+        const [page1, page2] = await Promise.all([
+          prisma.qRScanLog.findMany({
+            where: { scannedAt: { gte: startDate, lte: endDate } },
+            select: { scannedAt: true },
+          }),
+          prisma.gramQRScanLog.findMany({
+            where: { scannedAt: { gte: startDate, lte: endDate } },
+            select: { scannedAt: true },
+          }),
+        ]);
+        scanLogs = page1;
+        gramScanLogs = page2;
+
+        // Backfill ScanLogSummary from raw logs (so next request uses summary)
+        const page1Map = new Map<string, number>();
+        for (const log of page1) {
+          const key = log.scannedAt.toISOString().slice(0, 10);
+          page1Map.set(key, (page1Map.get(key) ?? 0) + 1);
+        }
+        const page2Map = new Map<string, number>();
+        for (const log of page2) {
+          const key = log.scannedAt.toISOString().slice(0, 10);
+          page2Map.set(key, (page2Map.get(key) ?? 0) + 1);
+        }
+        const allDates = new Set([...page1Map.keys(), ...page2Map.keys()]);
+        for (const dateStr of allDates) {
+          const page1Scans = page1Map.get(dateStr) ?? 0;
+          const page2Scans = page2Map.get(dateStr) ?? 0;
+          const dateOnly = new Date(dateStr + "T00:00:00Z");
+          await prisma.scanLogSummary.upsert({
+            where: { date: dateOnly },
+            create: { date: dateOnly, page1Scans, page2Scans, totalScans: page1Scans + page2Scans },
+            update: { page1Scans, page2Scans, totalScans: page1Scans + page2Scans },
+          });
         }
       }
     } else {
