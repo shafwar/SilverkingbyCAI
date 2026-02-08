@@ -28,6 +28,8 @@ export async function GET(request: Request) {
     let endDate: Date;
     let isMonthView = false;
 
+    const now = new Date();
+
     if (monthParam && yearParam) {
       // New month/year view - always start from day 1
       isMonthView = true;
@@ -46,7 +48,6 @@ export async function GET(request: Request) {
       startDate = new Date(year, month, 1, 0, 0, 0, 0);
 
       // End date: last day of month, or today if current month
-      const now = new Date();
       const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
 
       if (isCurrentMonth) {
@@ -69,7 +70,6 @@ export async function GET(request: Request) {
     } else {
       // Default: current month
       isMonthView = true;
-      const now = new Date();
       const year = now.getFullYear();
       const month = now.getMonth();
 
@@ -78,27 +78,51 @@ export async function GET(request: Request) {
       endDate.setHours(23, 59, 59, 999);
     }
 
-    // Fetch scan logs (Page 1)
-    const scanLogs = await prisma.qRScanLog.findMany({
-      where: {
-        scannedAt: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
-      select: { scannedAt: true },
-    });
+    // Historical month = past month (raw logs may have been purged) → use ScanLogSummary
+    const isHistoricalMonth =
+      isMonthView &&
+      (startDate.getFullYear() < now.getFullYear() ||
+        (startDate.getFullYear() === now.getFullYear() &&
+          startDate.getMonth() < now.getMonth()));
 
-    // Fetch gram scan logs (Page 2)
-    const gramScanLogs = await prisma.gramQRScanLog.findMany({
-      where: {
-        scannedAt: {
-          gte: startDate,
-          lte: endDate,
+    let scanLogs: { scannedAt: Date }[] = [];
+    let gramScanLogs: { scannedAt: Date }[] = [];
+
+    if (isHistoricalMonth) {
+      // Read from ScanLogSummary for historical months (raw logs purged after export)
+      const summaries = await prisma.scanLogSummary.findMany({
+        where: {
+          date: {
+            gte: new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()),
+            lte: new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()),
+          },
         },
-      },
-      select: { scannedAt: true },
-    });
+      });
+      // Convert to pseudo-logs for bucket filling: expand each day's counts into virtual entries
+      for (const s of summaries) {
+        for (let i = 0; i < s.page1Scans; i++) {
+          scanLogs.push({ scannedAt: new Date(s.date) });
+        }
+        for (let i = 0; i < s.page2Scans; i++) {
+          gramScanLogs.push({ scannedAt: new Date(s.date) });
+        }
+      }
+    } else {
+      // Current month or legacy range: use raw logs
+      const [page1, page2] = await Promise.all([
+        prisma.qRScanLog.findMany({
+          where: { scannedAt: { gte: startDate, lte: endDate } },
+          select: { scannedAt: true },
+        }),
+
+        prisma.gramQRScanLog.findMany({
+          where: { scannedAt: { gte: startDate, lte: endDate } },
+          select: { scannedAt: true },
+        }),
+      ]);
+      scanLogs = page1;
+      gramScanLogs = page2;
+    }
 
     // Create buckets for each day
     const buckets: Array<{

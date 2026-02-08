@@ -762,6 +762,24 @@
       "excelDownloaded": "Excel file has been downloaded",
       "exportFailed": "Failed to export"
     },
+    "rekap": {
+      "label": "Rekap",
+      "eyebrow": "Monthly archive",
+      "title": "Scan Log Rekap",
+      "description": "Export scan logs to CSV, store in R2, and purge raw logs. Download archived monthly reports below.",
+      "reportsTitle": "Archived reports",
+      "tableMonth": "Month",
+      "tableFile": "File",
+      "tableAction": "Action",
+      "download": "Download",
+      "exportPurgeButton": "Export & Purge Last Month",
+      "exporting": "Exporting...",
+      "exportSuccess": "Exported and purged {month}/{year} successfully.",
+      "exportError": "Export failed",
+      "loadError": "Failed to load reports",
+      "downloadError": "Failed to generate download URL",
+      "noReports": "No archived reports yet. Use \"Export & Purge Last Month\" to create one."
+    },
     "login": {
       "title": "Admin Console",
       "signingIn": "Signing in…",

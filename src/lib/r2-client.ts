@@ -20,7 +20,7 @@ const r2Client = new S3Client({
   maxAttempts: 3, // Retry up to 3 times for failed requests
 });
 
-const BUCKET_NAME = process.env.R2_BUCKET_NAME || "silverking-assets";
+const BUCKET_NAME = process.env.R2_BUCKET || process.env.R2_BUCKET_NAME || "silverking-assets";
 const PUBLIC_URL = process.env.R2_PUBLIC_URL || "";
 
 /**

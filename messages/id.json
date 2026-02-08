@@ -768,6 +768,24 @@
       "exportOpening": "Membuka ekspor di jendela baru...",
       "tryAgain": "Silakan coba lagi"
     },
+    "rekap": {
+      "label": "Rekap",
+      "eyebrow": "Arsip bulanan",
+      "title": "Rekap Log Pemindaian",
+      "description": "Ekspor log pemindaian ke CSV, simpan di R2, dan hapus log mentah. Unduh laporan bulanan arsip di bawah.",
+      "reportsTitle": "Laporan arsip",
+      "tableMonth": "Bulan",
+      "tableFile": "File",
+      "tableAction": "Aksi",
+      "download": "Unduh",
+      "exportPurgeButton": "Ekspor & Hapus Bulan Lalu",
+      "exporting": "Mengekspor...",
+      "exportSuccess": "Ekspor dan hapus {month}/{year} berhasil.",
+      "exportError": "Ekspor gagal",
+      "loadError": "Gagal memuat laporan",
+      "downloadError": "Gagal membuat URL unduh",
+      "noReports": "Belum ada laporan arsip. Gunakan \"Ekspor & Hapus Bulan Lalu\" untuk membuat."
+    },
     "login": {
       "title": "Konsol Admin",
       "signingIn": "Masuk…",
