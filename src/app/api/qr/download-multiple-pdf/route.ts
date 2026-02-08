@@ -376,9 +376,9 @@ export async function POST(request: NextRequest) {
         frontCtx.drawImage(frontTemplateImage, 0, 0);
 
         const qrSize = Math.min(
-          frontTemplateImage.width * 0.50,
-          frontTemplateImage.height * 0.50,
-          850
+          frontTemplateImage.width * 0.55,
+          frontTemplateImage.height * 0.55,
+          900
         );
         const qrX = (frontTemplateImage.width - qrSize) / 2;
         const qrY = frontTemplateImage.height * 0.38;
@@ -396,13 +396,13 @@ export async function POST(request: NextRequest) {
         // CRITICAL: Overwrite template placeholder "0000" text with white background BEFORE drawing new text
         // Template may have placeholder text "0000000000000000" that needs to be completely covered
         // Use larger padding to ensure complete coverage of placeholder area
-        const nameOffset = Math.round(frontTemplateImage.height * 0.030);
-        const serialOffset = Math.round(frontTemplateImage.height * 0.030);
+        const nameOffset = Math.round(frontTemplateImage.height * 0.038);
+        const serialOffset = Math.round(frontTemplateImage.height * 0.038);
         const isDarkTemplate = templateVariant !== "01";
         const textColor = isDarkTemplate ? "#ffffff" : "#111111";
 
-        // 1. Nama produk - font lebih besar, proporsional, rapih
-        const nameFontSize = Math.floor(frontTemplateImage.width * (isDarkTemplate ? 0.065 : 0.058));
+        // 1. Nama produk di ATAS QR - no white background, bold & larger
+        const nameFontSize = Math.floor(frontTemplateImage.width * (isDarkTemplate ? 0.044 : 0.040));
         const nameY = qrY - nameOffset;
 
         frontCtx.fillStyle = textColor;
@@ -414,8 +414,8 @@ export async function POST(request: NextRequest) {
           `[QR Multiple] Product name drawn (from DATABASE): "${productName}" at Y=${nameY} for serialCode: ${productSerialCode}`
         );
 
-        // 2. Serial code - font lebih besar, proporsional, rapih
-        const serialFontSize = Math.floor(frontTemplateImage.width * (isDarkTemplate ? 0.075 : 0.065));
+        // 2. Serial code di BAWAH QR - no white background, bold & larger
+        const serialFontSize = Math.floor(frontTemplateImage.width * (isDarkTemplate ? 0.050 : 0.045));
         const serialY = qrY + qrSize + serialOffset;
 
         frontCtx.fillStyle = textColor;
@@ -454,11 +454,8 @@ export async function POST(request: NextRequest) {
         const panelWidth = Math.max(frontTemplateImage.width, backTemplateImage.width);
         const panelHeight = Math.max(frontTemplateImage.height, backTemplateImage.height);
         const gap = 0;
-        const scale = 0.92;
-        const w = panelWidth * scale;
-        const h = panelHeight * scale;
-        const pageWidth = w * 2 + gap;
-        const pageHeight = h;
+        const pageWidth = panelWidth * 2 + gap;
+        const pageHeight = panelHeight;
 
         console.log(`[QR Multiple] PDF dimensions for ${product.serialCode}:`, {
           pageWidth,
@@ -499,9 +496,21 @@ export async function POST(request: NextRequest) {
           backBufferSize: backBuffer.length,
         });
 
-        page.drawImage(frontPngImage, { x: 0, y: 0, width: w, height: h });
-        const backX = w + gap;
-        page.drawImage(backPngImage, { x: backX, y: 0, width: w, height: h });
+        // Both panels at SAME size = 100% balanced (same as Serticard 01-02)
+        page.drawImage(frontPngImage, {
+          x: 0,
+          y: 0,
+          width: panelWidth,
+          height: panelHeight,
+        });
+
+        const backX = panelWidth + gap;
+        page.drawImage(backPngImage, {
+          x: backX,
+          y: 0,
+          width: panelWidth,
+          height: panelHeight,
+        });
 
         // Verify both images are drawn
         console.log(`[QR Multiple] Both templates drawn to PDF for ${product.serialCode}:`, {

@@ -291,7 +291,9 @@ export function QrPreviewGrid() {
         }
       }
 
-      const qrSize = Math.min(frontTemplateImg.width * 0.50, frontTemplateImg.height * 0.50, 850);
+      // Calculate QR position based on template design
+      // From image: QR is centered, serial below, product name above
+      const qrSize = Math.min(frontTemplateImg.width * 0.55, frontTemplateImg.height * 0.55, 900);
       const qrX = (frontTemplateImg.width - qrSize) / 2; // Center horizontally
       const qrY = frontTemplateImg.height * 0.38; // Position vertically
 
@@ -303,13 +305,14 @@ export function QrPreviewGrid() {
       // Draw QR code on front template
       frontCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
 
-      const nameOffset = Math.round(frontTemplateImg.height * 0.030);
-      const serialOffset = Math.round(frontTemplateImg.height * 0.030);
+      // === LAYOUT: Nama produk & serial - no white bg, bold & larger (03-18: white text on dark) ===
+      const nameOffset = Math.round(frontTemplateImg.height * 0.038);
+      const serialOffset = Math.round(frontTemplateImg.height * 0.038);
       const isDarkTemplate = selectedTemplateVariant !== "01";
       const textColor = isDarkTemplate ? "#ffffff" : "#111111";
 
       if (product.name && product.name.trim().length > 0) {
-        const nameFontSize = Math.floor(frontTemplateImg.width * (isDarkTemplate ? 0.065 : 0.058));
+        const nameFontSize = Math.floor(frontTemplateImg.width * (isDarkTemplate ? 0.044 : 0.040));
         const nameY = qrY - nameOffset;
         frontCtx.fillStyle = textColor;
         frontCtx.textAlign = "center";
@@ -319,7 +322,7 @@ export function QrPreviewGrid() {
       }
 
       if (product.serialCode && product.serialCode.trim().length > 0) {
-        const serialFontSize = Math.floor(frontTemplateImg.width * (isDarkTemplate ? 0.075 : 0.065));
+        const serialFontSize = Math.floor(frontTemplateImg.width * (isDarkTemplate ? 0.050 : 0.045));
         const serialY = qrY + qrSize + serialOffset;
         frontCtx.fillStyle = textColor;
         frontCtx.textAlign = "center";
@@ -378,7 +381,8 @@ export function QrPreviewGrid() {
           const fallbackCtx = fallbackCanvas.getContext("2d");
           if (!fallbackCtx) throw new Error("Failed to get canvas context");
           fallbackCtx.drawImage(localFrontImg, 0, 0);
-          const qrSize = Math.min(localFrontImg.width * 0.50, localFrontImg.height * 0.50, 850);
+          // Redraw QR and text on fallback canvas
+          const qrSize = Math.min(localFrontImg.width * 0.55, localFrontImg.height * 0.55, 900);
           const qrX = (localFrontImg.width - qrSize) / 2;
           const qrY = localFrontImg.height * 0.38;
           const padding = 8;
@@ -390,13 +394,13 @@ export function QrPreviewGrid() {
             qrSize + padding * 2
           );
           fallbackCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-          const nameOffsetFb = Math.round(localFrontImg.height * 0.030);
-          const serialOffsetFb = Math.round(localFrontImg.height * 0.030);
+          const nameOffsetFb = Math.round(localFrontImg.height * 0.038);
+          const serialOffsetFb = Math.round(localFrontImg.height * 0.038);
           const isDarkFb = selectedTemplateVariant !== "01";
           const textColorFb = isDarkFb ? "#ffffff" : "#111111";
 
           if (product.name && product.name.trim().length > 0) {
-            const nameFontSize = Math.floor(localFrontImg.width * (isDarkFb ? 0.065 : 0.058));
+            const nameFontSize = Math.floor(localFrontImg.width * (isDarkFb ? 0.044 : 0.040));
             const nameY = qrY - nameOffsetFb;
             fallbackCtx.fillStyle = textColorFb;
             fallbackCtx.textAlign = "center";
@@ -405,7 +409,7 @@ export function QrPreviewGrid() {
             fallbackCtx.fillText(product.name.trim(), localFrontImg.width / 2, nameY);
           }
           if (product.serialCode && product.serialCode.trim().length > 0) {
-            const serialFontSize = Math.floor(localFrontImg.width * (isDarkFb ? 0.075 : 0.065));
+            const serialFontSize = Math.floor(localFrontImg.width * (isDarkFb ? 0.050 : 0.045));
             const serialY = qrY + qrSize + serialOffsetFb;
             fallbackCtx.fillStyle = textColorFb;
             fallbackCtx.textAlign = "center";
@@ -460,11 +464,8 @@ export function QrPreviewGrid() {
       const panelWidth = Math.max(frontTemplateImg.width, backTemplateImg.width);
       const panelHeight = Math.max(frontTemplateImg.height, backTemplateImg.height);
       const gap = 0;
-      const scale = 0.92;
-      const w = panelWidth * scale;
-      const h = panelHeight * scale;
-      const pageWidth = w * 2 + gap;
-      const pageHeight = h;
+      const pageWidth = panelWidth * 2 + gap;
+      const pageHeight = panelHeight;
 
       console.log("[Download] PDF dimensions:", {
         pageWidth,
@@ -495,9 +496,21 @@ export function QrPreviewGrid() {
         pageSize: `${pageWidth}x${pageHeight}`,
       });
 
-      page.drawImage(frontPngImage, { x: 0, y: 0, width: w, height: h });
-      const backX = w + gap;
-      page.drawImage(backPngImage, { x: backX, y: 0, width: w, height: h });
+      // Both panels at SAME size = 100% balanced (same as Serticard 01-02)
+      page.drawImage(frontPngImage, {
+        x: 0,
+        y: 0,
+        width: panelWidth,
+        height: panelHeight,
+      });
+
+      const backX = panelWidth + gap;
+      page.drawImage(backPngImage, {
+        x: backX,
+        y: 0,
+        width: panelWidth,
+        height: panelHeight,
+      });
 
       console.log("[Download] Both templates drawn to PDF:", {
         frontPosition: "(0, 0)",
