@@ -396,71 +396,32 @@ export async function POST(request: NextRequest) {
         // CRITICAL: Overwrite template placeholder "0000" text with white background BEFORE drawing new text
         // Template may have placeholder text "0000000000000000" that needs to be completely covered
         // Use larger padding to ensure complete coverage of placeholder area
-        const textOverwritePadding = 20;
         const nameOffset = Math.round(frontTemplateImage.height * 0.038);
         const serialOffset = Math.round(frontTemplateImage.height * 0.038);
+        const isDarkTemplate = templateVariant !== "01";
+        const textColor = isDarkTemplate ? "#ffffff" : "#111111";
 
-        // 1. Nama produk di ATAS QR
-        const nameFontSize = Math.floor(frontTemplateImage.width * 0.042);
+        // 1. Nama produk di ATAS QR - no white background, bold & larger
+        const nameFontSize = Math.floor(frontTemplateImage.width * (isDarkTemplate ? 0.055 : 0.048));
         const nameY = qrY - nameOffset;
 
-        // CRITICAL: Measure text width to create proper white background
-        // Also measure placeholder width to ensure complete coverage
-        frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
-        const nameTextWidth = frontCtx.measureText(productName).width;
-        const placeholderNameWidth = frontCtx.measureText("0000000000000000").width; // Template placeholder width
-        const nameTextHeight = nameFontSize;
-        const overwriteWidth =
-          Math.max(nameTextWidth, placeholderNameWidth) + textOverwritePadding * 2;
-
-        // Overwrite placeholder area with white background (cover full placeholder width)
-        frontCtx.fillStyle = "#ffffff";
-        frontCtx.fillRect(
-          frontTemplateImage.width / 2 - overwriteWidth / 2,
-          nameY - nameTextHeight - textOverwritePadding,
-          overwriteWidth,
-          nameTextHeight + textOverwritePadding * 2
-        );
-
-        // Draw product name
-        frontCtx.fillStyle = "#222222";
+        frontCtx.fillStyle = textColor;
         frontCtx.textAlign = "center";
-        frontCtx.textBaseline = "bottom"; // SAMA dengan handleDownload (bukan "middle")
-        frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
-        // CRITICAL: Use productName from database (NOT from R2 template)
+        frontCtx.textBaseline = "bottom";
+        frontCtx.font = `bold ${nameFontSize}px Arial, sans-serif`;
         frontCtx.fillText(productName, frontTemplateImage.width / 2, nameY);
         console.log(
           `[QR Multiple] Product name drawn (from DATABASE): "${productName}" at Y=${nameY} for serialCode: ${productSerialCode}`
         );
 
-        // 2. Serial code di BAWAH QR
-        const serialFontSize = Math.floor(frontTemplateImage.width * 0.048);
+        // 2. Serial code di BAWAH QR - no white background, bold & larger
+        const serialFontSize = Math.floor(frontTemplateImage.width * (isDarkTemplate ? 0.062 : 0.054));
         const serialY = qrY + qrSize + serialOffset;
 
-        // CRITICAL: Measure text width to create proper white background
-        // Also measure placeholder width to ensure complete coverage
-        frontCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
-        const serialTextWidth = frontCtx.measureText(productSerialCode).width;
-        const placeholderSerialWidth = frontCtx.measureText("00000000").width; // Template placeholder width
-        const serialTextHeight = serialFontSize;
-        const overwriteSerialWidth =
-          Math.max(serialTextWidth, placeholderSerialWidth) + textOverwritePadding * 2;
-
-        // Overwrite placeholder area with white background (cover full placeholder width)
-        frontCtx.fillStyle = "#ffffff";
-        frontCtx.fillRect(
-          frontTemplateImage.width / 2 - overwriteSerialWidth / 2,
-          serialY - textOverwritePadding,
-          overwriteSerialWidth,
-          serialTextHeight + textOverwritePadding * 2
-        );
-
-        // Draw serial code
-        frontCtx.fillStyle = "#222222";
+        frontCtx.fillStyle = textColor;
         frontCtx.textAlign = "center";
-        frontCtx.textBaseline = "top"; // SAMA dengan handleDownload (bukan "middle")
-        frontCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`; // SAMA dengan handleDownload
-        // CRITICAL: Use productSerialCode from database (NOT from R2 template)
+        frontCtx.textBaseline = "top";
+        frontCtx.font = `bold ${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
         frontCtx.fillText(productSerialCode, frontTemplateImage.width / 2, serialY);
         console.log(
           `[QR Multiple] Serial code drawn (from DATABASE): "${productSerialCode}" at Y=${serialY}`
@@ -492,7 +453,7 @@ export async function POST(request: NextRequest) {
         // Templates 03-18 have mismatched front/back sizes; normalize so left & right are identical.
         const panelWidth = Math.max(frontTemplateImage.width, backTemplateImage.width);
         const panelHeight = Math.max(frontTemplateImage.height, backTemplateImage.height);
-        const gap = 20;
+        const gap = 0;
         const pageWidth = panelWidth * 2 + gap;
         const pageHeight = panelHeight;
 

@@ -305,83 +305,30 @@ export function QrPreviewGrid() {
       // Draw QR code on front template
       frontCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
 
-      // === LAYOUT: Nama produk di ATAS QR, Serial code di BAWAH QR (proportional for 03-18) ===
+      // === LAYOUT: Nama produk & serial - no white bg, bold & larger (03-18: white text on dark) ===
       const nameOffset = Math.round(frontTemplateImg.height * 0.038);
       const serialOffset = Math.round(frontTemplateImg.height * 0.038);
+      const isDarkTemplate = selectedTemplateVariant !== "01";
+      const textColor = isDarkTemplate ? "#ffffff" : "#111111";
 
-      // 1. Nama produk di ATAS QR dengan kotak putih
       if (product.name && product.name.trim().length > 0) {
-        const nameFontSize = Math.floor(frontTemplateImg.width * 0.042);
+        const nameFontSize = Math.floor(frontTemplateImg.width * (isDarkTemplate ? 0.055 : 0.048));
         const nameY = qrY - nameOffset;
-
-        // CRITICAL: Measure text width to create proper white background
-        // Also measure placeholder width to ensure complete coverage
-        frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
-        const nameTextWidth = frontCtx.measureText(product.name.trim()).width;
-        const placeholderNameWidth = frontCtx.measureText("0000000000000000").width; // Template placeholder width
-        const nameTextHeight = nameFontSize;
-        const textOverwritePadding = 20; // Padding untuk kotak putih
-        const overwriteWidth =
-          Math.max(nameTextWidth, placeholderNameWidth) + textOverwritePadding * 2;
-
-        // Overwrite placeholder area with white background (cover full placeholder width)
-        frontCtx.fillStyle = "#ffffff";
-        frontCtx.fillRect(
-          frontTemplateImg.width / 2 - overwriteWidth / 2,
-          nameY - nameTextHeight - textOverwritePadding,
-          overwriteWidth,
-          nameTextHeight + textOverwritePadding * 2
-        );
-
-        // Draw product name
-        frontCtx.fillStyle = "#222222";
+        frontCtx.fillStyle = textColor;
         frontCtx.textAlign = "center";
         frontCtx.textBaseline = "bottom";
-        frontCtx.font = `${nameFontSize}px Arial, sans-serif`;
-        // Gunakan product.name as-is
+        frontCtx.font = `bold ${nameFontSize}px Arial, sans-serif`;
         frontCtx.fillText(product.name.trim(), frontTemplateImg.width / 2, nameY);
-        console.log(
-          `[Download] Product name drawn with white box: "${product.name.trim()}" at Y=${nameY}`
-        );
       }
 
-      // 2. Serial code di BAWAH QR dengan kotak putih
       if (product.serialCode && product.serialCode.trim().length > 0) {
-        const serialFontSize = Math.floor(frontTemplateImg.width * 0.048);
+        const serialFontSize = Math.floor(frontTemplateImg.width * (isDarkTemplate ? 0.062 : 0.054));
         const serialY = qrY + qrSize + serialOffset;
-
-        // CRITICAL: Measure text width to create proper white background
-        // Also measure placeholder width to ensure complete coverage
-        frontCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
-        const serialTextWidth = frontCtx.measureText(product.serialCode.trim().toUpperCase()).width;
-        const placeholderSerialWidth = frontCtx.measureText("00000000").width; // Template placeholder width
-        const serialTextHeight = serialFontSize;
-        const textOverwritePadding = 20; // Padding untuk kotak putih
-        const overwriteSerialWidth =
-          Math.max(serialTextWidth, placeholderSerialWidth) + textOverwritePadding * 2;
-
-        // Overwrite placeholder area with white background (cover full placeholder width)
-        frontCtx.fillStyle = "#ffffff";
-        frontCtx.fillRect(
-          frontTemplateImg.width / 2 - overwriteSerialWidth / 2,
-          serialY - textOverwritePadding,
-          overwriteSerialWidth,
-          serialTextHeight + textOverwritePadding * 2
-        );
-
-        // Draw serial code
-        frontCtx.fillStyle = "#222222";
+        frontCtx.fillStyle = textColor;
         frontCtx.textAlign = "center";
         frontCtx.textBaseline = "top";
-        frontCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
-        frontCtx.fillText(
-          product.serialCode.trim().toUpperCase(),
-          frontTemplateImg.width / 2,
-          serialY
-        );
-        console.log(
-          `[Download] Serial code drawn with white box: "${product.serialCode.trim().toUpperCase()}" at Y=${serialY}`
-        );
+        frontCtx.font = `bold ${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
+        frontCtx.fillText(product.serialCode.trim().toUpperCase(), frontTemplateImg.width / 2, serialY);
       }
       // === END: 2 fillText calls dengan kotak putih - product name di atas QR, serial code di bawah QR ===
 
@@ -449,76 +396,26 @@ export function QrPreviewGrid() {
           fallbackCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
           const nameOffsetFb = Math.round(localFrontImg.height * 0.038);
           const serialOffsetFb = Math.round(localFrontImg.height * 0.038);
+          const isDarkFb = selectedTemplateVariant !== "01";
+          const textColorFb = isDarkFb ? "#ffffff" : "#111111";
 
-          // 1. Nama produk di ATAS QR dengan kotak putih
           if (product.name && product.name.trim().length > 0) {
-            const nameFontSize = Math.floor(localFrontImg.width * 0.042);
+            const nameFontSize = Math.floor(localFrontImg.width * (isDarkFb ? 0.055 : 0.048));
             const nameY = qrY - nameOffsetFb;
-
-            // CRITICAL: Measure text width to create proper white background
-            // Also measure placeholder width to ensure complete coverage
-            fallbackCtx.font = `${nameFontSize}px Arial, sans-serif`;
-            const nameTextWidth = fallbackCtx.measureText(product.name.trim()).width;
-            const placeholderNameWidth = fallbackCtx.measureText("0000000000000000").width; // Template placeholder width
-            const nameTextHeight = nameFontSize;
-            const textOverwritePadding = 20; // Padding untuk kotak putih
-            const overwriteWidth =
-              Math.max(nameTextWidth, placeholderNameWidth) + textOverwritePadding * 2;
-
-            // Overwrite placeholder area with white background (cover full placeholder width)
-            fallbackCtx.fillStyle = "#ffffff";
-            fallbackCtx.fillRect(
-              localFrontImg.width / 2 - overwriteWidth / 2,
-              nameY - nameTextHeight - textOverwritePadding,
-              overwriteWidth,
-              nameTextHeight + textOverwritePadding * 2
-            );
-
-            // Draw product name
-            fallbackCtx.fillStyle = "#222222";
+            fallbackCtx.fillStyle = textColorFb;
             fallbackCtx.textAlign = "center";
             fallbackCtx.textBaseline = "bottom";
-            fallbackCtx.font = `${nameFontSize}px Arial, sans-serif`;
-            // Gunakan product.name as-is
+            fallbackCtx.font = `bold ${nameFontSize}px Arial, sans-serif`;
             fallbackCtx.fillText(product.name.trim(), localFrontImg.width / 2, nameY);
           }
-
-          // 2. Serial code di BAWAH QR dengan kotak putih
           if (product.serialCode && product.serialCode.trim().length > 0) {
-            const serialFontSize = Math.floor(localFrontImg.width * 0.048);
+            const serialFontSize = Math.floor(localFrontImg.width * (isDarkFb ? 0.062 : 0.054));
             const serialY = qrY + qrSize + serialOffsetFb;
-
-            // CRITICAL: Measure text width to create proper white background
-            // Also measure placeholder width to ensure complete coverage
-            fallbackCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
-            const serialTextWidth = fallbackCtx.measureText(
-              product.serialCode.trim().toUpperCase()
-            ).width;
-            const placeholderSerialWidth = fallbackCtx.measureText("00000000").width; // Template placeholder width
-            const serialTextHeight = serialFontSize;
-            const textOverwritePadding = 20; // Padding untuk kotak putih
-            const overwriteSerialWidth =
-              Math.max(serialTextWidth, placeholderSerialWidth) + textOverwritePadding * 2;
-
-            // Overwrite placeholder area with white background (cover full placeholder width)
-            fallbackCtx.fillStyle = "#ffffff";
-            fallbackCtx.fillRect(
-              localFrontImg.width / 2 - overwriteSerialWidth / 2,
-              serialY - textOverwritePadding,
-              overwriteSerialWidth,
-              serialTextHeight + textOverwritePadding * 2
-            );
-
-            // Draw serial code
-            fallbackCtx.fillStyle = "#222222";
+            fallbackCtx.fillStyle = textColorFb;
             fallbackCtx.textAlign = "center";
             fallbackCtx.textBaseline = "top";
-            fallbackCtx.font = `${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
-            fallbackCtx.fillText(
-              product.serialCode.trim().toUpperCase(),
-              localFrontImg.width / 2,
-              serialY
-            );
+            fallbackCtx.font = `bold ${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
+            fallbackCtx.fillText(product.serialCode.trim().toUpperCase(), localFrontImg.width / 2, serialY);
           }
           // === END: 2 fillText calls dengan kotak putih - product name di atas QR, serial code di bawah QR ===
           frontImageData = fallbackCanvas.toDataURL("image/png", 1.0);
@@ -566,7 +463,7 @@ export function QrPreviewGrid() {
 
       const panelWidth = Math.max(frontTemplateImg.width, backTemplateImg.width);
       const panelHeight = Math.max(frontTemplateImg.height, backTemplateImg.height);
-      const gap = 20;
+      const gap = 0;
       const pageWidth = panelWidth * 2 + gap;
       const pageHeight = panelHeight;
 

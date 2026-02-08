@@ -118,36 +118,19 @@ export async function POST(request: NextRequest) {
     frontCtx.fillRect(qrX - padding, qrY - padding, qrSize + padding * 2, qrSize + padding * 2);
     frontCtx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
 
-    const textOverwritePadding = 20;
-    const nameOffset = Math.round(frontTemplateImage.height * 0.038); // ~40px for 1053 height
+    const nameOffset = Math.round(frontTemplateImage.height * 0.038);
     const serialOffset = Math.round(frontTemplateImage.height * 0.038);
+    const isDarkTemplate = templateVariant !== "01";
+    const textColor = isDarkTemplate ? "#ffffff" : "#111111";
 
-    // Product name above QR
-    const nameFontSize = Math.floor(frontTemplateImage.width * 0.042);
+    // Product name above QR - no white background, bold & larger, direct on template
+    const nameFontSize = Math.floor(frontTemplateImage.width * (isDarkTemplate ? 0.055 : 0.048));
     const nameY = qrY - nameOffset;
-    
-    // Set font with proper fallback
     const nameFont = `bold ${nameFontSize}px Arial`;
     frontCtx.font = nameFont;
-    
-    // Ensure text is not empty before measuring
     const displayProductName = productName && productName.length > 0 ? productName : "PRODUCT";
-    const nameTextWidth = frontCtx.measureText(displayProductName).width;
-    const placeholderNameWidth = frontCtx.measureText("0000000000000000").width;
-    const nameTextHeight = nameFontSize;
-    const overwriteWidth = Math.max(nameTextWidth, placeholderNameWidth) + textOverwritePadding * 2;
 
-    // Draw white background for product name
-    frontCtx.fillStyle = "#ffffff";
-    frontCtx.fillRect(
-      frontTemplateImage.width / 2 - overwriteWidth / 2,
-      nameY - nameTextHeight - textOverwritePadding,
-      overwriteWidth,
-      nameTextHeight + textOverwritePadding * 2
-    );
-
-    // Draw product name text
-    frontCtx.fillStyle = "#222222";
+    frontCtx.fillStyle = textColor;
     frontCtx.textAlign = "center";
     frontCtx.textBaseline = "bottom";
     frontCtx.font = nameFont;
@@ -159,33 +142,13 @@ export async function POST(request: NextRequest) {
       font: nameFont,
     });
 
-    // Serial/uniq code below QR
-    const serialFontSize = Math.floor(frontTemplateImage.width * 0.048);
+    // Serial/uniq code below QR - no white background, bold & larger, direct on template
+    const serialFontSize = Math.floor(frontTemplateImage.width * (isDarkTemplate ? 0.062 : 0.054));
     const serialY = qrY + qrSize + serialOffset;
-    
-    // Set monospace font for serial code
-    const serialFont = `bold ${serialFontSize}px 'Courier New'`;
-    frontCtx.font = serialFont;
-    
-    // Ensure serial code is not empty
+    const serialFont = `bold ${serialFontSize}px 'Courier New', monospace`;
     const displaySerialCode = productSerialCode && productSerialCode.length > 0 ? productSerialCode : "UNKNOWN";
-    const serialTextWidth = frontCtx.measureText(displaySerialCode).width;
-    const placeholderSerialWidth = frontCtx.measureText("00000000").width;
-    const serialTextHeight = serialFontSize;
-    const overwriteSerialWidth =
-      Math.max(serialTextWidth, placeholderSerialWidth) + textOverwritePadding * 2;
 
-    // Draw white background for serial code
-    frontCtx.fillStyle = "#ffffff";
-    frontCtx.fillRect(
-      frontTemplateImage.width / 2 - overwriteSerialWidth / 2,
-      serialY - textOverwritePadding,
-      overwriteSerialWidth,
-      serialTextHeight + textOverwritePadding * 2
-    );
-
-    // Draw serial code text
-    frontCtx.fillStyle = "#222222";
+    frontCtx.fillStyle = textColor;
     frontCtx.textAlign = "center";
     frontCtx.textBaseline = "top";
     frontCtx.font = serialFont;
@@ -210,7 +173,7 @@ export async function POST(request: NextRequest) {
     // Use same panel size for both so left & right are identical (like 01-02).
     const panelWidth = Math.max(frontTemplateImage.width, backTemplateImage.width);
     const panelHeight = Math.max(frontTemplateImage.height, backTemplateImage.height);
-    const gap = 20;
+    const gap = 0;
     const pageWidth = panelWidth * 2 + gap;
     const pageHeight = panelHeight;
 
