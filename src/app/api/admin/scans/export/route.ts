@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     const result = await exportScanLogsForMonth(month, year);
 
     if (result.type === "csv") {
-      return new NextResponse(result.buffer, {
+      return new NextResponse(new Uint8Array(result.buffer), {
         status: 200,
         headers: {
           "Content-Type": "text/csv; charset=utf-8",
