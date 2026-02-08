@@ -5,12 +5,42 @@ import useSWR from "swr";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { Search, Download } from "lucide-react";
+import { Search, Download, Calendar } from "lucide-react";
 
 import { fetcher } from "@/lib/fetcher";
 import { DateRangePicker, DateRangeOption } from "./DateRangePicker";
 import { DataTable, TableColumn } from "./DataTable";
 import { AnimatedCard } from "./AnimatedCard";
+
+// Generate month options from Nov 2025 to current month + 12 months (future)
+function generateMonthOptions(
+  tMonths: (key: string) => string
+): { value: string; month: number; year: number; label: string }[] {
+  const options: { value: string; month: number; year: number; label: string }[] = [];
+  const now = new Date();
+  const endDate = new Date(now.getFullYear(), now.getMonth() + 12, 1);
+  let current = new Date(2025, 10, 1); // Nov 2025
+  while (current <= endDate) {
+    const m = current.getMonth() + 1;
+    const y = current.getFullYear();
+    const monthKey = String(m).padStart(2, "0");
+    const monthName = (() => {
+      try {
+        return tMonths(monthKey);
+      } catch {
+        return monthKey;
+      }
+    })();
+    options.push({
+      value: `${y}-${monthKey}`,
+      month: m,
+      year: y,
+      label: `${monthName} ${y}`,
+    });
+    current.setMonth(current.getMonth() + 1);
+  }
+  return options.reverse(); // Newest first
+}
 
 type LogItem = {
   id: string | number;
@@ -40,9 +70,11 @@ export function LogsTable() {
   const tLogs = useTranslations("admin.logsDetail");
   const tPagination = useTranslations("admin.pagination");
   const tCommon = useTranslations("common");
+  const tMonths = useTranslations("admin.months");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [dateRange, setDateRange] = useState<DateRangeOption>("7d");
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -50,7 +82,17 @@ export function LogsTable() {
     return () => clearTimeout(handle);
   }, [search]);
 
+  const monthOptions = useMemo(() => generateMonthOptions(tMonths), [tMonths]);
+
   const dateQuery = useMemo(() => {
+    if (selectedMonth) {
+      const opt = monthOptions.find((o) => o.value === selectedMonth);
+      if (opt) {
+        const start = new Date(opt.year, opt.month - 1, 1, 0, 0, 0, 0);
+        const end = new Date(opt.year, opt.month, 0, 23, 59, 59, 999);
+        return `&from=${start.toISOString()}&to=${end.toISOString()}`;
+      }
+    }
     const now = new Date();
     const to = now.toISOString();
     if (dateRange === "custom") return "";
@@ -58,7 +100,7 @@ export function LogsTable() {
     const fromDate = new Date(now);
     fromDate.setDate(now.getDate() - days);
     return `&from=${fromDate.toISOString()}&to=${to}`;
-  }, [dateRange]);
+  }, [dateRange, selectedMonth, monthOptions]);
 
   const query = `/api/admin/logs?page=${page}&pageSize=10${debouncedSearch ? `&q=${debouncedSearch}` : ""}${
     dateQuery ? dateQuery : ""
@@ -150,10 +192,31 @@ export function LogsTable() {
             value={dateRange}
             onChange={(value) => {
               setDateRange(value);
+              setSelectedMonth("");
               setPage(1);
               mutate();
             }}
           />
+          <div className="flex items-center gap-2">
+            <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white/50 flex-shrink-0" />
+            <select
+              value={selectedMonth}
+              onChange={(e) => {
+                setSelectedMonth(e.target.value);
+                setDateRange("custom");
+                setPage(1);
+                mutate();
+              }}
+              className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 min-w-[120px] sm:min-w-[140px]"
+            >
+              <option value="">{t("analytics.selectMonth")}</option>
+              {monthOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
           <button
             onClick={handleExport}
             className="inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-full border border-[#FFD700]/40 px-3 sm:px-4 py-2 text-xs sm:text-sm text-white transition hover:border-[#FFD700] hover:bg-[#FFD700]/10 active:scale-95 touch-manipulation"

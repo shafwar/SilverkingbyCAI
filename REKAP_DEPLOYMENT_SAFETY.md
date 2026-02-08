@@ -36,6 +36,13 @@ Fitur Rekap bulanan untuk scan logs telah diimplementasikan dengan aman. Dokumen
 ### 4. Halaman Baru
 - `/admin/rekap` — Daftar laporan + tombol Export & Purge
 
+### 5. Filter Bulan di Halaman Log (Update)
+- `/admin/logs` — Filter pemilihan bulan (Nov 2025 s/d bulan berjalan + 12 bulan)
+- Cross-check apakah log masih ada per bulan sebelum/ setelah purge
+
+### 6. Script Utilitas
+- `scripts/check-logs-by-month.js` — Cek jumlah scan logs per bulan (Nov, Des, Jan) via CLI
+
 ---
 
 ## Pre-Deployment Checklist
