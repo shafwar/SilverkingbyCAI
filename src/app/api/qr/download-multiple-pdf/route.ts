@@ -396,12 +396,13 @@ export async function POST(request: NextRequest) {
         // CRITICAL: Overwrite template placeholder "0000" text with white background BEFORE drawing new text
         // Template may have placeholder text "0000000000000000" that needs to be completely covered
         // Use larger padding to ensure complete coverage of placeholder area
-        const textOverwritePadding = 20; // Increased padding to cover full placeholder width
+        const textOverwritePadding = 20;
+        const nameOffset = Math.round(frontTemplateImage.height * 0.038);
+        const serialOffset = Math.round(frontTemplateImage.height * 0.038);
 
-        // 1. Nama produk di ATAS QR (persis seperti handleDownload)
-        // CRITICAL: productName is already validated and trimmed above
-        const nameFontSize = Math.floor(frontTemplateImage.width * 0.042); // SAMA dengan handleDownload
-        const nameY = qrY - 40; // SAMA dengan handleDownload (bukan -35)
+        // 1. Nama produk di ATAS QR
+        const nameFontSize = Math.floor(frontTemplateImage.width * 0.042);
+        const nameY = qrY - nameOffset;
 
         // CRITICAL: Measure text width to create proper white background
         // Also measure placeholder width to ensure complete coverage
@@ -432,10 +433,9 @@ export async function POST(request: NextRequest) {
           `[QR Multiple] Product name drawn (from DATABASE): "${productName}" at Y=${nameY} for serialCode: ${productSerialCode}`
         );
 
-        // 2. Serial code di BAWAH QR (persis seperti handleDownload)
-        // CRITICAL: productSerialCode is already validated, trimmed, and uppercased above
-        const serialFontSize = Math.floor(frontTemplateImage.width * 0.048); // SAMA dengan handleDownload
-        const serialY = qrY + qrSize + 40; // SAMA dengan handleDownload (bukan +35)
+        // 2. Serial code di BAWAH QR
+        const serialFontSize = Math.floor(frontTemplateImage.width * 0.048);
+        const serialY = qrY + qrSize + serialOffset;
 
         // CRITICAL: Measure text width to create proper white background
         // Also measure placeholder width to ensure complete coverage
@@ -488,22 +488,18 @@ export async function POST(request: NextRequest) {
           `[QR Multiple] Back image for ${product.serialCode}: ${backBuffer.length} bytes (${backTemplateImage.width}x${backTemplateImage.height})`
         );
 
-        // 4. Generate PDF with LANDSCAPE orientation, side-by-side layout (same as frontend)
-        // Calculate optimal page size based on template dimensions to avoid white space
-        const templateAspectRatio = frontTemplateImage.width / frontTemplateImage.height;
-        const backAspectRatio = backTemplateImage.width / backTemplateImage.height;
-
-        // Use the height of the taller template as page height
-        const maxTemplateHeight = Math.max(frontTemplateImage.height, backTemplateImage.height);
-        const pageHeight = maxTemplateHeight;
-
-        // Page width = front width + back width + small gap between them
-        const gap = 20; // Small gap between front and back (in pixels/points)
-        const pageWidth = frontTemplateImage.width + backTemplateImage.width + gap;
+        // 4. Generate PDF - UNIFIED PANEL DIMENSIONS for 100% balance (same as Serticard 01-02)
+        // Templates 03-18 have mismatched front/back sizes; normalize so left & right are identical.
+        const panelWidth = Math.max(frontTemplateImage.width, backTemplateImage.width);
+        const panelHeight = Math.max(frontTemplateImage.height, backTemplateImage.height);
+        const gap = 20;
+        const pageWidth = panelWidth * 2 + gap;
+        const pageHeight = panelHeight;
 
         console.log(`[QR Multiple] PDF dimensions for ${product.serialCode}:`, {
           pageWidth,
           pageHeight,
+          panelSize: `${panelWidth}x${panelHeight}`,
           frontSize: `${frontTemplateImage.width}x${frontTemplateImage.height}`,
           backSize: `${backTemplateImage.width}x${backTemplateImage.height}`,
         });
@@ -534,36 +530,31 @@ export async function POST(request: NextRequest) {
         }
 
         console.log(`[QR Multiple] Embedding images to PDF for ${product.serialCode}:`, {
-          frontSize: `${frontTemplateImage.width}x${frontTemplateImage.height}`,
-          backSize: `${backTemplateImage.width}x${backTemplateImage.height}`,
-          pageSize: `${pageWidth}x${pageHeight}`,
+          panelSize: `${panelWidth}x${panelHeight}`,
           frontBufferSize: frontBuffer.length,
           backBufferSize: backBuffer.length,
         });
 
-        // Add front template (left side) - full size, no scaling
+        // Both panels at SAME size = 100% balanced (same as Serticard 01-02)
         page.drawImage(frontPngImage, {
           x: 0,
-          y: pageHeight - frontTemplateImage.height, // Align to top (PDF coordinates start from bottom)
-          width: frontTemplateImage.width,
-          height: frontTemplateImage.height,
+          y: 0,
+          width: panelWidth,
+          height: panelHeight,
         });
 
-        // Add back template (right side) - full size, no scaling
-        // CRITICAL: This must always be executed - no conditions to skip
-        const backX = frontTemplateImage.width + gap;
-        const backY = pageHeight - backTemplateImage.height; // Align to top
+        const backX = panelWidth + gap;
         page.drawImage(backPngImage, {
           x: backX,
-          y: backY,
-          width: backTemplateImage.width,
-          height: backTemplateImage.height,
+          y: 0,
+          width: panelWidth,
+          height: panelHeight,
         });
 
         // Verify both images are drawn
         console.log(`[QR Multiple] Both templates drawn to PDF for ${product.serialCode}:`, {
-          frontPosition: `(0, ${pageHeight - frontTemplateImage.height})`,
-          backPosition: `(${backX}, ${backY})`,
+          frontPosition: "(0, 0)",
+          backPosition: `(${backX}, 0)`,
           frontDrawn: true,
           backDrawn: true,
         });

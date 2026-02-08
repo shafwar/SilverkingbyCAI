@@ -108,6 +108,7 @@ export async function POST(request: NextRequest) {
     const frontCtx = frontCanvas.getContext("2d");
     frontCtx.drawImage(frontTemplateImage, 0, 0);
 
+    // Layout tuned for Serticard 01 (603x1053); scaled proportionally for 03-18
     const qrSize = Math.min(frontTemplateImage.width * 0.55, frontTemplateImage.height * 0.55, 900);
     const qrX = (frontTemplateImage.width - qrSize) / 2;
     const qrY = frontTemplateImage.height * 0.38;
@@ -118,10 +119,12 @@ export async function POST(request: NextRequest) {
     frontCtx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
 
     const textOverwritePadding = 20;
+    const nameOffset = Math.round(frontTemplateImage.height * 0.038); // ~40px for 1053 height
+    const serialOffset = Math.round(frontTemplateImage.height * 0.038);
 
     // Product name above QR
     const nameFontSize = Math.floor(frontTemplateImage.width * 0.042);
-    const nameY = qrY - 40;
+    const nameY = qrY - nameOffset;
     
     // Set font with proper fallback
     const nameFont = `bold ${nameFontSize}px Arial`;
@@ -158,7 +161,7 @@ export async function POST(request: NextRequest) {
 
     // Serial/uniq code below QR
     const serialFontSize = Math.floor(frontTemplateImage.width * 0.048);
-    const serialY = qrY + qrSize + 40;
+    const serialY = qrY + qrSize + serialOffset;
     
     // Set monospace font for serial code
     const serialFont = `bold ${serialFontSize}px 'Courier New'`;
@@ -202,16 +205,14 @@ export async function POST(request: NextRequest) {
     backCtx.drawImage(backTemplateImage, 0, 0);
     const backBuffer = backCanvas.toBuffer("image/png");
 
-    // --- Build single PDF with front+back side-by-side (same as multiple) ---
-    const templateAspectRatio = frontTemplateImage.width / frontTemplateImage.height;
-    const backAspectRatio = backTemplateImage.width / backTemplateImage.height;
-    void templateAspectRatio;
-    void backAspectRatio;
-
-    const maxTemplateHeight = Math.max(frontTemplateImage.height, backTemplateImage.height);
-    const pageHeight = maxTemplateHeight;
+    // --- Build single PDF with front+back side-by-side - UNIFIED DIMENSIONS for 100% balance ---
+    // Serticard 01-02 have matching dimensions; 03-18 have mismatched front/back sizes.
+    // Use same panel size for both so left & right are identical (like 01-02).
+    const panelWidth = Math.max(frontTemplateImage.width, backTemplateImage.width);
+    const panelHeight = Math.max(frontTemplateImage.height, backTemplateImage.height);
     const gap = 20;
-    const pageWidth = frontTemplateImage.width + backTemplateImage.width + gap;
+    const pageWidth = panelWidth * 2 + gap;
+    const pageHeight = panelHeight;
 
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([pageWidth, pageHeight]);
@@ -219,18 +220,19 @@ export async function POST(request: NextRequest) {
     const frontPngImage = await pdfDoc.embedPng(frontBuffer);
     const backPngImage = await pdfDoc.embedPng(backBuffer);
 
+    // Both panels drawn at SAME size = 100% balanced (same as Serticard 01-02)
     page.drawImage(frontPngImage, {
       x: 0,
       y: 0,
-      width: frontTemplateImage.width,
-      height: frontTemplateImage.height,
+      width: panelWidth,
+      height: panelHeight,
     });
 
     page.drawImage(backPngImage, {
-      x: frontTemplateImage.width + gap,
+      x: panelWidth + gap,
       y: 0,
-      width: backTemplateImage.width,
-      height: backTemplateImage.height,
+      width: panelWidth,
+      height: panelHeight,
     });
 
     const pdfBytes = await pdfDoc.save();

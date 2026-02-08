@@ -305,15 +305,14 @@ export function QrPreviewGrid() {
       // Draw QR code on front template
       frontCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
 
-      // === LAYOUT: Nama produk di ATAS QR, Serial code di BAWAH QR (diluar box QR) ===
-      // CRITICAL: Sama seperti gambar ska299 - product name di atas, serial code di bawah (tanpa duplikasi nama)
-      // CRITICAL: Tambahkan kotak putih untuk konsistensi dengan multiple download
+      // === LAYOUT: Nama produk di ATAS QR, Serial code di BAWAH QR (proportional for 03-18) ===
+      const nameOffset = Math.round(frontTemplateImg.height * 0.038);
+      const serialOffset = Math.round(frontTemplateImg.height * 0.038);
 
       // 1. Nama produk di ATAS QR dengan kotak putih
-      // Position: Di atas QR code, dengan spacing yang tepat
       if (product.name && product.name.trim().length > 0) {
         const nameFontSize = Math.floor(frontTemplateImg.width * 0.042);
-        const nameY = qrY - 40; // Fixed spacing above QR
+        const nameY = qrY - nameOffset;
 
         // CRITICAL: Measure text width to create proper white background
         // Also measure placeholder width to ensure complete coverage
@@ -346,11 +345,10 @@ export function QrPreviewGrid() {
         );
       }
 
-      // 2. Serial code di BAWAH QR (diluar dari box QR nya) dengan kotak putih
-      // Position: Di bawah QR code, dengan spacing yang tepat
+      // 2. Serial code di BAWAH QR dengan kotak putih
       if (product.serialCode && product.serialCode.trim().length > 0) {
         const serialFontSize = Math.floor(frontTemplateImg.width * 0.048);
-        const serialY = qrY + qrSize + 40; // Fixed spacing below QR (diluar box QR)
+        const serialY = qrY + qrSize + serialOffset;
 
         // CRITICAL: Measure text width to create proper white background
         // Also measure placeholder width to ensure complete coverage
@@ -449,15 +447,13 @@ export function QrPreviewGrid() {
             qrSize + padding * 2
           );
           fallbackCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-          // === LAYOUT: Nama produk di ATAS QR, Serial code di BAWAH QR (diluar box QR) ===
-          // CRITICAL: Sama seperti gambar ska299 - product name di atas, serial code di bawah (tanpa duplikasi nama)
-          // CRITICAL: Tambahkan kotak putih untuk konsistensi dengan multiple download
-          // SAMA dengan logic utama
+          const nameOffsetFb = Math.round(localFrontImg.height * 0.038);
+          const serialOffsetFb = Math.round(localFrontImg.height * 0.038);
 
           // 1. Nama produk di ATAS QR dengan kotak putih
           if (product.name && product.name.trim().length > 0) {
             const nameFontSize = Math.floor(localFrontImg.width * 0.042);
-            const nameY = qrY - 40; // Fixed spacing above QR (same as main path)
+            const nameY = qrY - nameOffsetFb;
 
             // CRITICAL: Measure text width to create proper white background
             // Also measure placeholder width to ensure complete coverage
@@ -487,10 +483,10 @@ export function QrPreviewGrid() {
             fallbackCtx.fillText(product.name.trim(), localFrontImg.width / 2, nameY);
           }
 
-          // 2. Serial code di BAWAH QR (diluar dari box QR nya) dengan kotak putih
+          // 2. Serial code di BAWAH QR dengan kotak putih
           if (product.serialCode && product.serialCode.trim().length > 0) {
             const serialFontSize = Math.floor(localFrontImg.width * 0.048);
-            const serialY = qrY + qrSize + 40; // Fixed spacing below QR (diluar box QR)
+            const serialY = qrY + qrSize + serialOffsetFb;
 
             // CRITICAL: Measure text width to create proper white background
             // Also measure placeholder width to ensure complete coverage
@@ -565,21 +561,19 @@ export function QrPreviewGrid() {
         throw new Error("Failed to generate image data from canvas");
       }
 
-      // Create PDF using pdf-lib with custom page size (same as multiple download)
-      // Calculate optimal page size based on template dimensions to avoid white space
+      // Create PDF - UNIFIED PANEL DIMENSIONS for 100% balance (same as Serticard 01-02)
       console.log("[Download] Creating PDF with side-by-side layout using pdf-lib...");
 
-      // Use the height of the taller template as page height
-      const maxTemplateHeight = Math.max(frontTemplateImg.height, backTemplateImg.height);
-      const pageHeight = maxTemplateHeight;
-
-      // Page width = front width + back width + small gap between them
-      const gap = 20; // Small gap between front and back (in pixels/points)
-      const pageWidth = frontTemplateImg.width + backTemplateImg.width + gap;
+      const panelWidth = Math.max(frontTemplateImg.width, backTemplateImg.width);
+      const panelHeight = Math.max(frontTemplateImg.height, backTemplateImg.height);
+      const gap = 20;
+      const pageWidth = panelWidth * 2 + gap;
+      const pageHeight = panelHeight;
 
       console.log("[Download] PDF dimensions:", {
         pageWidth,
         pageHeight,
+        panelSize: `${panelWidth}x${panelHeight}`,
         frontSize: `${frontTemplateImg.width}x${frontTemplateImg.height}`,
         backSize: `${backTemplateImg.width}x${backTemplateImg.height}`,
       });
@@ -605,27 +599,25 @@ export function QrPreviewGrid() {
         pageSize: `${pageWidth}x${pageHeight}`,
       });
 
-      // Add front template (left side) - full size, no scaling
+      // Both panels at SAME size = 100% balanced (same as Serticard 01-02)
       page.drawImage(frontPngImage, {
         x: 0,
-        y: pageHeight - frontTemplateImg.height, // Align to top (PDF coordinates start from bottom)
-        width: frontTemplateImg.width,
-        height: frontTemplateImg.height,
+        y: 0,
+        width: panelWidth,
+        height: panelHeight,
       });
 
-      // Add back template (right side) - full size, no scaling
-      const backX = frontTemplateImg.width + gap;
-      const backY = pageHeight - backTemplateImg.height; // Align to top
+      const backX = panelWidth + gap;
       page.drawImage(backPngImage, {
         x: backX,
-        y: backY,
-        width: backTemplateImg.width,
-        height: backTemplateImg.height,
+        y: 0,
+        width: panelWidth,
+        height: panelHeight,
       });
 
       console.log("[Download] Both templates drawn to PDF:", {
-        frontPosition: `(0, ${pageHeight - frontTemplateImg.height})`,
-        backPosition: `(${backX}, ${backY})`,
+        frontPosition: "(0, 0)",
+        backPosition: `(${backX}, 0)`,
         frontDrawn: true,
         backDrawn: true,
       });
