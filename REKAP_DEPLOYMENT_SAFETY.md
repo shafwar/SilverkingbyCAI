@@ -52,12 +52,17 @@ Fitur Rekap bulanan untuk scan logs telah diimplementasikan dengan aman. Dokumen
    - `R2_BUCKET` atau `R2_BUCKET_NAME`
    - `R2_PUBLIC_URL`
 
-3. **Backup database** sebelum pertama kali Export & Purge (opsional, untuk kehati-hatian).
+3. **CRON_SECRET** — tambah di Railway (untuk cron auto, lihat REKAP_CRON_SETUP.md)
+
+4. **Backup database** sebelum pertama kali Export & Purge (opsional)
+
+5. **Setup cron** — baca REKAP_CRON_SETUP.md agar log IP hilang otomatis tiap bulan
 
 ---
 
 ## Keamanan
 
 - Semua endpoint Rekap dilindungi **admin auth**.
+- Cron endpoint dilindungi **CRON_SECRET** (timing-safe comparison).
 - Purge hanya dijalankan **setelah** upload CSV ke R2 berhasil.
 - Tidak ada perubahan pada API publik atau alur verifikasi QR.

@@ -1,0 +1,45 @@
+# ===========================================
+# Auto Export & Purge - Rekap Bulanan
+# ===========================================
+# Log scan (IP, user agent, dll) otomatis hilang dari DB tiap bulan
+# dan menjadi rekapan CSV di halaman Rekap.
+#
+# Jadwal: Tanggal 1 setiap bulan, jam 19:00 UTC (≈ 02:00 WIB)
+#
+# Setup:
+# 1. Railway: tambah env CRON_SECRET (sama dengan GitHub)
+# 2. GitHub: Settings → Secrets and variables → Actions → Secrets
+#    - CRON_SECRET: string rahasia (generate: openssl rand -hex 32)
+# 3. GitHub: Settings → Secrets and variables → Actions → Variables (opsional)
+#    - REKAP_URL: https://cahayasilverking.id (jika domain beda, ubah ini)
+# ===========================================
+name: Rekap Export Purge (Auto)
+on:
+  schedule:
+    - cron: "0 19 1 * *" # 1st of month, 7pm UTC = ~2am WIB
+  workflow_dispatch: # Manual trigger dari GitHub Actions tab
+jobs:
+  export-purge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger export-purge cron
+        env:
+          REKAP_URL: ${{ vars.REKAP_URL || 'https://cahayasilverking.id' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET not set in GitHub Secrets. Add it at Settings → Secrets and variables → Actions"
+            exit 1
+          fi
+          URL="${REKAP_URL%/}/api/cron/export-purge-logs"
+          echo "Calling $URL..."
+          HTTP_CODE=$(curl -s -o /tmp/resp.json -w "%{http_code}" -X GET "$URL" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json")
+          BODY=$(cat /tmp/resp.json)
+          echo "Response ($HTTP_CODE): $BODY"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Cron failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
+          echo "::notice::Export & purge completed successfully"
