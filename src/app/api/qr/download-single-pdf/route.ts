@@ -108,8 +108,8 @@ export async function POST(request: NextRequest) {
     const frontCtx = frontCanvas.getContext("2d");
     frontCtx.drawImage(frontTemplateImage, 0, 0);
 
-    // Layout tuned for Serticard 01 (603x1053); scaled proportionally for 03-18
-    const qrSize = Math.min(frontTemplateImage.width * 0.55, frontTemplateImage.height * 0.55, 900);
+    // Layout: compact & proportional, text besar & terlihat, hasil rapih
+    const qrSize = Math.min(frontTemplateImage.width * 0.50, frontTemplateImage.height * 0.50, 850);
     const qrX = (frontTemplateImage.width - qrSize) / 2;
     const qrY = frontTemplateImage.height * 0.38;
 
@@ -118,13 +118,13 @@ export async function POST(request: NextRequest) {
     frontCtx.fillRect(qrX - padding, qrY - padding, qrSize + padding * 2, qrSize + padding * 2);
     frontCtx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
 
-    const nameOffset = Math.round(frontTemplateImage.height * 0.038);
-    const serialOffset = Math.round(frontTemplateImage.height * 0.038);
+    const nameOffset = Math.round(frontTemplateImage.height * 0.030);
+    const serialOffset = Math.round(frontTemplateImage.height * 0.030);
     const isDarkTemplate = templateVariant !== "01";
     const textColor = isDarkTemplate ? "#ffffff" : "#111111";
 
-    // Product name above QR - no white background, bold & larger, direct on template
-    const nameFontSize = Math.floor(frontTemplateImage.width * (isDarkTemplate ? 0.055 : 0.048));
+    // Product name - font lebih besar, proporsional, rapih
+    const nameFontSize = Math.floor(frontTemplateImage.width * (isDarkTemplate ? 0.065 : 0.058));
     const nameY = qrY - nameOffset;
     const nameFont = `bold ${nameFontSize}px Arial`;
     frontCtx.font = nameFont;
@@ -142,8 +142,8 @@ export async function POST(request: NextRequest) {
       font: nameFont,
     });
 
-    // Serial/uniq code below QR - no white background, bold & larger, direct on template
-    const serialFontSize = Math.floor(frontTemplateImage.width * (isDarkTemplate ? 0.062 : 0.054));
+    // Serial code - font lebih besar, proporsional, rapih
+    const serialFontSize = Math.floor(frontTemplateImage.width * (isDarkTemplate ? 0.075 : 0.065));
     const serialY = qrY + qrSize + serialOffset;
     const serialFont = `bold ${serialFontSize}px 'Courier New', monospace`;
     const displaySerialCode = productSerialCode && productSerialCode.length > 0 ? productSerialCode : "UNKNOWN";
@@ -174,8 +174,11 @@ export async function POST(request: NextRequest) {
     const panelWidth = Math.max(frontTemplateImage.width, backTemplateImage.width);
     const panelHeight = Math.max(frontTemplateImage.height, backTemplateImage.height);
     const gap = 0;
-    const pageWidth = panelWidth * 2 + gap;
-    const pageHeight = panelHeight;
+    const scale = 0.92; // Output lebih kecil, proporsional, font tetap besar & terlihat
+    const w = panelWidth * scale;
+    const h = panelHeight * scale;
+    const pageWidth = w * 2 + gap;
+    const pageHeight = h;
 
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([pageWidth, pageHeight]);
@@ -183,20 +186,8 @@ export async function POST(request: NextRequest) {
     const frontPngImage = await pdfDoc.embedPng(frontBuffer);
     const backPngImage = await pdfDoc.embedPng(backBuffer);
 
-    // Both panels drawn at SAME size = 100% balanced (same as Serticard 01-02)
-    page.drawImage(frontPngImage, {
-      x: 0,
-      y: 0,
-      width: panelWidth,
-      height: panelHeight,
-    });
-
-    page.drawImage(backPngImage, {
-      x: panelWidth + gap,
-      y: 0,
-      width: panelWidth,
-      height: panelHeight,
-    });
+    page.drawImage(frontPngImage, { x: 0, y: 0, width: w, height: h });
+    page.drawImage(backPngImage, { x: w + gap, y: 0, width: w, height: h });
 
     const pdfBytes = await pdfDoc.save();
 
