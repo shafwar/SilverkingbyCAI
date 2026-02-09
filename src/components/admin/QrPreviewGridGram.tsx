@@ -19,6 +19,10 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { SERTICARD_VARIANTS, type SerticardVariantId } from "@/utils/serticard-templates";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 
 type GramPreviewBatch = {
   batchId: number;
@@ -65,6 +69,24 @@ export function QrPreviewGridGram({ batches }: Props) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [downloadDropdownOpen, setDownloadDropdownOpen] = useState<number | null>(null);
   const downloadDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fetch serticard config to check for custom template
+  const { data: fontConfig, mutate: mutateFontConfig } = useSWR<{
+    customFrontR2Key: string | null;
+    customBackR2Key: string | null;
+  }>("/api/admin/serticard/config", fetcher, {
+    revalidateOnFocus: false,
+  });
+  const hasCustomTemplate = fontConfig?.customFrontR2Key && fontConfig?.customBackR2Key;
+
+  // Listen for config updates from SerticardPanel
+  useEffect(() => {
+    const handleConfigUpdate = () => {
+      mutateFontConfig();
+    };
+    window.addEventListener("serticard-config-updated", handleConfigUpdate);
+    return () => window.removeEventListener("serticard-config-updated", handleConfigUpdate);
+  }, [mutateFontConfig]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -160,7 +182,7 @@ export function QrPreviewGridGram({ batches }: Props) {
       weightGroup: string | null;
       hasRootKey?: boolean;
     },
-    variantId: SerticardVariantId
+    variantId: SerticardVariantId | "custom"
   ) => {
     if (!product) return;
     try {
@@ -183,7 +205,8 @@ export function QrPreviewGridGram({ batches }: Props) {
           weight: product.weight,
           isGram: true,
         },
-        templateVariant: variantId,
+        templateVariant: variantId === "custom" ? "01" : variantId,
+        useCustomTemplate: variantId === "custom",
       };
 
       console.log("[GramPreview] Sending download request:", body);
@@ -396,6 +419,16 @@ export function QrPreviewGridGram({ batches }: Props) {
                     <span className="text-[10px] text-white/40">{v.frontNum}-{v.backNum}</span>
                   </button>
                 ))}
+                {hasCustomTemplate && (
+                  <button
+                    onClick={() => handleDownloadSingle(product, "custom")}
+                    disabled={isLoading}
+                    className="w-full px-3 py-2 text-left hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between border-t border-white/5 mt-1 pt-2"
+                  >
+                    <span className="font-medium text-[#FFD700] text-sm">✨ Custom</span>
+                    <span className="text-[10px] text-white/40">Custom</span>
+                  </button>
+                )}
               </div>
               <div className="border-t border-white/5 px-3 py-1 bg-white/[0.02]">
                 <button

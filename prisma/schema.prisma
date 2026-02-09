@@ -187,6 +187,17 @@ model ScanLogSummary {
   @@index([date])
 }
 
+/// Serticard custom config - single row (id=1)
+/// Admin can upload custom templates and configure font
+model SerticardConfig {
+  id               Int       @id @default(1)
+  customFrontR2Key String?   // e.g. templates/serticard-custom-front.png
+  customBackR2Key  String?   // e.g. templates/serticard-custom-back.png
+  fontFamily       String    @default("Arial")   // Arial | Lucida Sans | Times New Roman | SF Mono
+  fontSizePreset   String    @default("BESAR")   // BESAR | KECIL
+  updatedAt        DateTime  @updatedAt
+}
+
 /// Contact form feedback messages from users
 model Feedback {
   id        Int      @id @default(autoincrement())

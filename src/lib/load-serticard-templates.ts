@@ -1,6 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { loadImage } from "canvas";
+import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import {
   getSerticardVariant,
   isValidSerticardVariant,
@@ -8,19 +9,57 @@ import {
   getLocalTemplateFilename,
   getR2TemplateKey,
 } from "@/utils/serticard-templates";
+import { getSerticardConfig } from "@/lib/serticard-config";
+import { fileExistsInR2 } from "@/lib/r2-client";
+
+const r2Client = new S3Client({
+  region: "auto",
+  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID || "",
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || "",
+  },
+  forcePathStyle: true,
+});
+const BUCKET = process.env.R2_BUCKET || process.env.R2_BUCKET_NAME || "silverking-assets";
 
 export type LoadedTemplates = {
   front: Awaited<ReturnType<typeof loadImage>>;
   back: Awaited<ReturnType<typeof loadImage>>;
 };
 
+async function loadImageFromR2(key: string): Promise<Awaited<ReturnType<typeof loadImage>>> {
+  const command = new GetObjectCommand({ Bucket: BUCKET, Key: key });
+  const obj = await r2Client.send(command);
+  const body = obj.Body;
+  if (!body) throw new Error(`Empty object: ${key}`);
+  const buffer = Buffer.from(await body.transformToByteArray());
+  return loadImage(buffer);
+}
+
 /**
- * Load front and back serticard templates based on variant.
- * Supports R2 (production) and local (development) with fallback.
+ * Load front and back serticard templates.
+ * 1. If custom templates are set in SerticardConfig, load those from R2
+ * 2. Else load based on variant (01, 03, etc)
  */
 export async function loadSerticardTemplates(
   variantId?: string
 ): Promise<LoadedTemplates> {
+  const config = await getSerticardConfig();
+  const useCustom =
+    config.customFrontR2Key &&
+    config.customBackR2Key &&
+    (await fileExistsInR2(config.customFrontR2Key)) &&
+    (await fileExistsInR2(config.customBackR2Key));
+
+  if (useCustom) {
+    const [front, back] = await Promise.all([
+      loadImageFromR2(config.customFrontR2Key!),
+      loadImageFromR2(config.customBackR2Key!),
+    ]);
+    return { front, back };
+  }
+
   const vid = variantId && isValidSerticardVariant(variantId) ? variantId : DEFAULT_SERTICARD_VARIANT;
   const variant = getSerticardVariant(vid)!;
 
@@ -63,7 +102,7 @@ export async function loadSerticardTemplates(
     } else {
       throw new Error(`R2 front template not found: ${frontResponse.status}`);
     }
-  } catch (r2Error: any) {
+  } catch {
     await fs.access(frontLocalPath);
     frontTemplateImage = await loadImage(frontLocalPath);
   }
@@ -76,7 +115,7 @@ export async function loadSerticardTemplates(
     } else {
       throw new Error(`R2 back template not found: ${backResponse.status}`);
     }
-  } catch (r2Error: any) {
+  } catch {
     await fs.access(backLocalPath);
     backTemplateImage = await loadImage(backLocalPath);
   }

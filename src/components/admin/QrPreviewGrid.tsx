@@ -63,7 +63,42 @@ export function QrPreviewGrid() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
-  const [selectedTemplateVariant, setSelectedTemplateVariant] = useState<SerticardVariantId>("01");
+  const [selectedTemplateVariant, setSelectedTemplateVariant] = useState<SerticardVariantId | "custom">("01");
+
+  // Fetch serticard config for font settings and custom template availability
+  const { data: fontConfig, mutate: mutateFontConfig } = useSWR<{
+    fontFamily: string;
+    fontSizePreset: string;
+    customFrontR2Key: string | null;
+    customBackR2Key: string | null;
+  }>("/api/admin/serticard/config", fetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: true,
+  });
+
+  const hasCustomTemplate = fontConfig?.customFrontR2Key && fontConfig?.customBackR2Key;
+
+  // Listen for config updates from SerticardPanel
+  useEffect(() => {
+    const handleConfigUpdate = () => {
+      mutateFontConfig();
+    };
+    window.addEventListener("serticard-config-updated", handleConfigUpdate);
+    return () => window.removeEventListener("serticard-config-updated", handleConfigUpdate);
+  }, [mutateFontConfig]);
+
+  // Font size multipliers helper (client-side)
+  const getFontSizeMultipliers = (preset: string) => {
+    if (preset === "KECIL") {
+      return { nameMultiplier: 0.028, serialMultiplier: 0.032 };
+    }
+    return { nameMultiplier: 0.044, serialMultiplier: 0.050 };
+  };
+
+  const fontMultipliers = fontConfig
+    ? getFontSizeMultipliers(fontConfig.fontSizePreset)
+    : { nameMultiplier: 0.044, serialMultiplier: 0.050 }; // Default BESAR
+  const fontFamily = fontConfig?.fontFamily || "Arial";
 
   // Use download context for global state management
   const {
@@ -195,9 +230,15 @@ export function QrPreviewGrid() {
       console.log("[Download] Starting download for:", product.serialCode);
 
       // Use proxy endpoint for templates to avoid CORS/tainted canvas issues
-      // Proxy will fetch from R2 and serve with proper CORS headers, or fallback to local
-      const absoluteFrontUrl = `${window.location.origin}/api/admin/template-proxy?template=front&variant=${selectedTemplateVariant}`;
-      const absoluteBackUrl = `${window.location.origin}/api/admin/template-proxy?template=back&variant=${selectedTemplateVariant}`;
+      // If custom template selected, use custom preview endpoint
+      const absoluteFrontUrl =
+        selectedTemplateVariant === "custom"
+          ? `${window.location.origin}/api/admin/serticard/preview?side=front`
+          : `${window.location.origin}/api/admin/template-proxy?template=front&variant=${selectedTemplateVariant}`;
+      const absoluteBackUrl =
+        selectedTemplateVariant === "custom"
+          ? `${window.location.origin}/api/admin/serticard/preview?side=back`
+          : `${window.location.origin}/api/admin/template-proxy?template=back&variant=${selectedTemplateVariant}`;
 
       console.log("[Download] Using template proxy URLs:", {
         front: absoluteFrontUrl,
@@ -308,26 +349,26 @@ export function QrPreviewGrid() {
       // === LAYOUT: Nama produk & serial - no white bg, bold & larger (03-18: white text on dark) ===
       const nameOffset = Math.round(frontTemplateImg.height * 0.038);
       const serialOffset = Math.round(frontTemplateImg.height * 0.038);
-      const isDarkTemplate = selectedTemplateVariant !== "01";
+        const isDarkTemplate = selectedTemplateVariant !== "01" && selectedTemplateVariant !== "custom";
       const textColor = isDarkTemplate ? "#ffffff" : "#111111";
 
       if (product.name && product.name.trim().length > 0) {
-        const nameFontSize = Math.floor(frontTemplateImg.width * (isDarkTemplate ? 0.044 : 0.040));
+        const nameFontSize = Math.floor(frontTemplateImg.width * fontMultipliers.nameMultiplier);
         const nameY = qrY - nameOffset;
         frontCtx.fillStyle = textColor;
         frontCtx.textAlign = "center";
         frontCtx.textBaseline = "bottom";
-        frontCtx.font = `bold ${nameFontSize}px Arial, sans-serif`;
+        frontCtx.font = `bold ${nameFontSize}px ${fontFamily}, sans-serif`;
         frontCtx.fillText(product.name.trim(), frontTemplateImg.width / 2, nameY);
       }
 
       if (product.serialCode && product.serialCode.trim().length > 0) {
-        const serialFontSize = Math.floor(frontTemplateImg.width * (isDarkTemplate ? 0.050 : 0.045));
+        const serialFontSize = Math.floor(frontTemplateImg.width * fontMultipliers.serialMultiplier);
         const serialY = qrY + qrSize + serialOffset;
         frontCtx.fillStyle = textColor;
         frontCtx.textAlign = "center";
         frontCtx.textBaseline = "top";
-        frontCtx.font = `bold ${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
+        frontCtx.font = `bold ${serialFontSize}px ${fontFamily}, monospace`;
         frontCtx.fillText(product.serialCode.trim().toUpperCase(), frontTemplateImg.width / 2, serialY);
       }
       // === END: 2 fillText calls dengan kotak putih - product name di atas QR, serial code di bawah QR ===
@@ -396,25 +437,25 @@ export function QrPreviewGrid() {
           fallbackCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
           const nameOffsetFb = Math.round(localFrontImg.height * 0.038);
           const serialOffsetFb = Math.round(localFrontImg.height * 0.038);
-          const isDarkFb = selectedTemplateVariant !== "01";
+          const isDarkFb = selectedTemplateVariant !== "01" && selectedTemplateVariant !== "custom";
           const textColorFb = isDarkFb ? "#ffffff" : "#111111";
 
           if (product.name && product.name.trim().length > 0) {
-            const nameFontSize = Math.floor(localFrontImg.width * (isDarkFb ? 0.044 : 0.040));
+            const nameFontSize = Math.floor(localFrontImg.width * fontMultipliers.nameMultiplier);
             const nameY = qrY - nameOffsetFb;
             fallbackCtx.fillStyle = textColorFb;
             fallbackCtx.textAlign = "center";
             fallbackCtx.textBaseline = "bottom";
-            fallbackCtx.font = `bold ${nameFontSize}px Arial, sans-serif`;
+            fallbackCtx.font = `bold ${nameFontSize}px ${fontFamily}, sans-serif`;
             fallbackCtx.fillText(product.name.trim(), localFrontImg.width / 2, nameY);
           }
           if (product.serialCode && product.serialCode.trim().length > 0) {
-            const serialFontSize = Math.floor(localFrontImg.width * (isDarkFb ? 0.050 : 0.045));
+            const serialFontSize = Math.floor(localFrontImg.width * fontMultipliers.serialMultiplier);
             const serialY = qrY + qrSize + serialOffsetFb;
             fallbackCtx.fillStyle = textColorFb;
             fallbackCtx.textAlign = "center";
             fallbackCtx.textBaseline = "top";
-            fallbackCtx.font = `bold ${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
+            fallbackCtx.font = `bold ${serialFontSize}px ${fontFamily}, monospace`;
             fallbackCtx.fillText(product.serialCode.trim().toUpperCase(), localFrontImg.width / 2, serialY);
           }
           // === END: 2 fillText calls dengan kotak putih - product name di atas QR, serial code di bawah QR ===
@@ -641,7 +682,12 @@ export function QrPreviewGrid() {
           // Call endpoint for this batch (100 files) - backend will generate and return 1 ZIP
           // CRITICAL: Send products (full objects) instead of serialCodes
           // Backend will use these products directly, same as handleDownload (single)
-          const requestBody = { products, batchNumber, templateVariant: selectedTemplateVariant };
+          const requestBody = {
+            products,
+            batchNumber,
+            templateVariant: selectedTemplateVariant === "custom" ? "01" : selectedTemplateVariant,
+            useCustomTemplate: selectedTemplateVariant === "custom",
+          };
           console.log(
             `[DownloadAll] Request body size:`,
             JSON.stringify(requestBody).length,
@@ -968,7 +1014,11 @@ export function QrPreviewGrid() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ serialCodes, templateVariant: selectedTemplateVariant }),
+        body: JSON.stringify({
+          serialCodes,
+          templateVariant: selectedTemplateVariant === "custom" ? "01" : selectedTemplateVariant,
+          useCustomTemplate: selectedTemplateVariant === "custom",
+        }),
         signal: abortController.signal,
       });
 
@@ -1594,7 +1644,7 @@ export function QrPreviewGrid() {
               <span className="text-[10px] sm:text-xs text-white/50 whitespace-nowrap">{t("serticardTemplate") || "Template:"}</span>
               <select
                 value={selectedTemplateVariant}
-                onChange={(e) => setSelectedTemplateVariant(e.target.value as SerticardVariantId)}
+                onChange={(e) => setSelectedTemplateVariant(e.target.value as SerticardVariantId | "custom")}
                 className="rounded-full border border-white/15 bg-black/40 px-2.5 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs text-white focus:border-[#FFD700]/50 focus:outline-none focus:ring-1 focus:ring-[#FFD700]/30"
               >
                 {SERTICARD_VARIANTS.map((v) => (
@@ -1602,6 +1652,11 @@ export function QrPreviewGrid() {
                     {v.label}
                   </option>
                 ))}
+                {hasCustomTemplate && (
+                  <option value="custom" className="bg-[#0a0a0a] text-[#FFD700] font-semibold">
+                    ✨ Custom
+                  </option>
+                )}
               </select>
             </div>
 

@@ -82,17 +82,9 @@ export async function runExportPurge(
     });
   }
 
-  const headers = [
-    "tanggal",
-    "waktu",
-    "serialCode",
-    "namaProduk",
-    "ip",
-    "userAgent",
-    "lokasi",
-    "sumber",
-  ];
-  const escape = (v: string | null | undefined): string => {
+  // Structure matches product export: Name, WeightGr, SerialCode, Price, Stock, ScanCount, LastScan, QRImage, IP
+  const headers = ["Name", "WeightGr", "SerialCode", "Price", "Stock", "ScanCount", "LastScan", "QRImage", "IP"];
+  const escape = (v: string | number | null | undefined): string => {
     if (v == null) return "";
     const s = String(v);
     if (s.includes(",") || s.includes('"') || s.includes("\n")) {
@@ -100,35 +92,45 @@ export async function runExportPurge(
     }
     return s;
   };
+  const fmtDate = (d: Date) => {
+    const day = String(d.getDate()).padStart(2, "0");
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const yy = String(d.getFullYear()).slice(-2);
+    return `${day}/${m}/${yy}`;
+  };
 
   const rows: string[] = [headers.join(",")];
   for (const log of page1Logs) {
-    const d = log.scannedAt;
+    const p = log.qrRecord?.product;
+    const r = log.qrRecord;
     rows.push(
       [
-        d.toISOString().slice(0, 10),
-        d.toTimeString().slice(0, 8),
-        escape(log.qrRecord?.serialCode),
-        escape(log.qrRecord?.product?.name),
-        escape(log.ip),
-        escape(log.userAgent),
-        escape(log.location),
-        "page1",
+        escape(p?.name),
+        escape(p?.weight ?? ""),
+        escape(r?.serialCode),
+        escape(p?.price ?? ""),
+        escape(p?.stock ?? ""),
+        1,
+        fmtDate(log.scannedAt),
+        escape(r?.qrImageUrl ?? ""),
+        escape(log.ip ?? ""),
       ].join(",")
     );
   }
   for (const log of page2Logs) {
-    const d = log.scannedAt;
+    const b = log.qrItem?.batch;
+    const item = log.qrItem;
     rows.push(
       [
-        d.toISOString().slice(0, 10),
-        d.toTimeString().slice(0, 8),
-        escape(log.qrItem?.uniqCode),
-        escape(log.qrItem?.batch?.name ? `${log.qrItem.batch.name} (Page 2)` : ""),
-        escape(log.ip),
-        escape(log.userAgent),
-        escape(log.location),
-        "page2",
+        escape(b?.name ?? ""),
+        escape(b?.weight ?? ""),
+        escape(item?.serialCode ?? log.qrItem?.uniqCode),
+        "",
+        "",
+        1,
+        fmtDate(log.scannedAt),
+        escape(item?.qrImageUrl ?? ""),
+        escape(log.ip ?? ""),
       ].join(",")
     );
   }
@@ -222,7 +224,7 @@ export async function exportScanLogsForMonth(
     }),
   ]);
 
-  const escape = (v: string | null | undefined): string => {
+  const escape = (v: string | number | null | undefined): string => {
     if (v == null) return "";
     const s = String(v);
     if (s.includes(",") || s.includes('"') || s.includes("\n")) {
@@ -230,45 +232,47 @@ export async function exportScanLogsForMonth(
     }
     return s;
   };
+  const fmtDate = (d: Date) => {
+    const day = String(d.getDate()).padStart(2, "0");
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const yy = String(d.getFullYear()).slice(-2);
+    return `${day}/${m}/${yy}`;
+  };
 
-  const headers = [
-    "tanggal",
-    "waktu",
-    "serialCode",
-    "namaProduk",
-    "ip",
-    "userAgent",
-    "lokasi",
-    "sumber",
-  ];
+  // Structure matches product export: Name, WeightGr, SerialCode, Price, Stock, ScanCount, LastScan, QRImage, IP
+  const headers = ["Name", "WeightGr", "SerialCode", "Price", "Stock", "ScanCount", "LastScan", "QRImage", "IP"];
   const rows: string[] = [headers.join(",")];
   for (const log of page1Logs) {
-    const d = log.scannedAt;
+    const p = log.qrRecord?.product;
+    const r = log.qrRecord;
     rows.push(
       [
-        d.toISOString().slice(0, 10),
-        d.toTimeString().slice(0, 8),
-        escape(log.qrRecord?.serialCode),
-        escape(log.qrRecord?.product?.name),
-        escape(log.ip),
-        escape(log.userAgent),
-        escape(log.location),
-        "page1",
+        escape(p?.name),
+        escape(p?.weight ?? ""),
+        escape(r?.serialCode),
+        escape(p?.price ?? ""),
+        escape(p?.stock ?? ""),
+        1,
+        fmtDate(log.scannedAt),
+        escape(r?.qrImageUrl ?? ""),
+        escape(log.ip ?? ""),
       ].join(",")
     );
   }
   for (const log of page2Logs) {
-    const d = log.scannedAt;
+    const b = log.qrItem?.batch;
+    const item = log.qrItem;
     rows.push(
       [
-        d.toISOString().slice(0, 10),
-        d.toTimeString().slice(0, 8),
-        escape(log.qrItem?.uniqCode),
-        escape(log.qrItem?.batch?.name ? `${log.qrItem.batch.name} (Page 2)` : ""),
-        escape(log.ip),
-        escape(log.userAgent),
-        escape(log.location),
-        "page2",
+        escape(b?.name ?? ""),
+        escape(b?.weight ?? ""),
+        escape(item?.serialCode ?? log.qrItem?.uniqCode),
+        "",
+        "",
+        1,
+        fmtDate(log.scannedAt),
+        escape(item?.qrImageUrl ?? ""),
+        escape(log.ip ?? ""),
       ].join(",")
     );
   }

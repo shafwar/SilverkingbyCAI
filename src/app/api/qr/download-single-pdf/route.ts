@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { createCanvas, loadImage } from "canvas";
 import { PDFDocument } from "pdf-lib";
 import { loadSerticardTemplates } from "@/lib/load-serticard-templates";
+import { getSerticardConfig, getFontSizeMultipliers } from "@/lib/serticard-config";
 
 /**
  * Generate a SINGLE Serticard PDF (front + back) for one QR code.
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
     const productSerialCode = String(product.serialCode).trim().toUpperCase();
     const isGram = Boolean(product.isGram);
     const templateVariant = body?.templateVariant ?? "01";
+    const useCustom = body?.useCustomTemplate === true;
 
     // Validate inputs
     if (!productName || productName.length === 0) {
@@ -78,9 +80,14 @@ export async function POST(request: NextRequest) {
       templateVariant,
     });
 
-    // --- Load Serticard templates (variant-aware) ---
+    // --- Load Serticard templates (custom or variant) ---
+    // If useCustom flag is set, loadSerticardTemplates will automatically use custom templates
     const { front: frontTemplateImage, back: backTemplateImage } =
-      await loadSerticardTemplates(templateVariant);
+      await loadSerticardTemplates(useCustom ? undefined : templateVariant);
+    const fontConfig = await getSerticardConfig();
+    const sizeMultipliers = getFontSizeMultipliers(
+      fontConfig.fontSizePreset === "KECIL" ? "KECIL" : "BESAR"
+    );
 
     // --- Fetch QR-only image for this serial/uniq code ---
     const baseUrl =
@@ -123,11 +130,9 @@ export async function POST(request: NextRequest) {
     const isDarkTemplate = templateVariant !== "01";
     const textColor = isDarkTemplate ? "#ffffff" : "#111111";
 
-    // Product name above QR - no white background, bold & larger, direct on template
-    const nameFontSize = Math.floor(frontTemplateImage.width * (isDarkTemplate ? 0.044 : 0.040));
+    const nameFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.nameMultiplier);
     const nameY = qrY - nameOffset;
-    const nameFont = `bold ${nameFontSize}px Arial`;
-    frontCtx.font = nameFont;
+    const nameFont = `bold ${nameFontSize}px ${fontConfig.fontFamily}, sans-serif`;
     const displayProductName = productName && productName.length > 0 ? productName : "PRODUCT";
 
     frontCtx.fillStyle = textColor;
@@ -142,10 +147,9 @@ export async function POST(request: NextRequest) {
       font: nameFont,
     });
 
-    // Serial/uniq code below QR - no white background, bold & larger, direct on template
-    const serialFontSize = Math.floor(frontTemplateImage.width * (isDarkTemplate ? 0.050 : 0.045));
+    const serialFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.serialMultiplier);
     const serialY = qrY + qrSize + serialOffset;
-    const serialFont = `bold ${serialFontSize}px 'Courier New', monospace`;
+    const serialFont = `bold ${serialFontSize}px ${fontConfig.fontFamily}, monospace`;
     const displaySerialCode = productSerialCode && productSerialCode.length > 0 ? productSerialCode : "UNKNOWN";
 
     frontCtx.fillStyle = textColor;

@@ -8,6 +8,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { PDFDocument } from "pdf-lib";
 import { loadSerticardTemplates } from "@/lib/load-serticard-templates";
+import { getSerticardConfig, getFontSizeMultipliers } from "@/lib/serticard-config";
 
 /**
  * Generate ZIP file with multiple PDFs (one PDF per QR code)
@@ -37,8 +38,9 @@ export async function POST(request: NextRequest) {
     // CRITICAL: Accept products (full objects) from frontend, same as handleDownload (single)
     // This ensures we use data directly from frontend, not query database again
     // This matches the working handleDownload (single) approach
-    const { products: productsFromFrontend, serialCodes, batchNumber, templateVariant: templateVariantParam } = body;
+    const { products: productsFromFrontend, serialCodes, batchNumber, templateVariant: templateVariantParam, useCustomTemplate } = body;
     const templateVariant = templateVariantParam ?? "01";
+    const useCustom = useCustomTemplate === true;
     const isGramRequest =
       body?.isGram === true ||
       (Array.isArray(productsFromFrontend) && productsFromFrontend.some((p: any) => p?.isGram));
@@ -263,9 +265,14 @@ export async function POST(request: NextRequest) {
     );
     console.log(`[QR Multiple] Template variant: ${templateVariant}`);
 
-    // Pre-load BOTH templates (front and back) once - variant-aware
+    // Pre-load BOTH templates (front and back) - custom or variant
+    // If useCustom flag is set, loadSerticardTemplates will automatically use custom templates
     const { front: frontTemplateImage, back: backTemplateImage } =
-      await loadSerticardTemplates(templateVariant);
+      await loadSerticardTemplates(useCustom ? undefined : templateVariant);
+    const fontConfig = await getSerticardConfig();
+    const sizeMultipliers = getFontSizeMultipliers(
+      fontConfig.fontSizePreset === "KECIL" ? "KECIL" : "BESAR"
+    );
 
     console.log(`[QR Multiple] Both templates loaded successfully:`, {
       front: `${frontTemplateImage.width}x${frontTemplateImage.height}`,
@@ -388,40 +395,31 @@ export async function POST(request: NextRequest) {
         frontCtx.fillRect(qrX - padding, qrY - padding, qrSize + padding * 2, qrSize + padding * 2);
         frontCtx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
 
-        // === MATCH SINGLE DOWNLOAD (handleDownload) EXACTLY ===
-        // CRITICAL: Use EXACT same logic as frontend handleDownload that works correctly
-        // CRITICAL: Use productName and productSerialCode from database (already validated above)
-        // DO NOT use data from R2 template - template only provides the background image
-
-        // CRITICAL: Overwrite template placeholder "0000" text with white background BEFORE drawing new text
-        // Template may have placeholder text "0000000000000000" that needs to be completely covered
-        // Use larger padding to ensure complete coverage of placeholder area
+        // Use Serticard config for font (admin can set font type & size Besar/Kecil)
         const nameOffset = Math.round(frontTemplateImage.height * 0.038);
         const serialOffset = Math.round(frontTemplateImage.height * 0.038);
         const isDarkTemplate = templateVariant !== "01";
         const textColor = isDarkTemplate ? "#ffffff" : "#111111";
 
-        // 1. Nama produk di ATAS QR - no white background, bold & larger
-        const nameFontSize = Math.floor(frontTemplateImage.width * (isDarkTemplate ? 0.044 : 0.040));
+        const nameFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.nameMultiplier);
         const nameY = qrY - nameOffset;
 
         frontCtx.fillStyle = textColor;
         frontCtx.textAlign = "center";
         frontCtx.textBaseline = "bottom";
-        frontCtx.font = `bold ${nameFontSize}px Arial, sans-serif`;
+        frontCtx.font = `bold ${nameFontSize}px ${fontConfig.fontFamily}, sans-serif`;
         frontCtx.fillText(productName, frontTemplateImage.width / 2, nameY);
         console.log(
           `[QR Multiple] Product name drawn (from DATABASE): "${productName}" at Y=${nameY} for serialCode: ${productSerialCode}`
         );
 
-        // 2. Serial code di BAWAH QR - no white background, bold & larger
-        const serialFontSize = Math.floor(frontTemplateImage.width * (isDarkTemplate ? 0.050 : 0.045));
+        const serialFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.serialMultiplier);
         const serialY = qrY + qrSize + serialOffset;
 
         frontCtx.fillStyle = textColor;
         frontCtx.textAlign = "center";
         frontCtx.textBaseline = "top";
-        frontCtx.font = `bold ${serialFontSize}px 'Lucida Console', 'Menlo', 'Courier New', monospace`;
+        frontCtx.font = `bold ${serialFontSize}px ${fontConfig.fontFamily}, monospace`;
         frontCtx.fillText(productSerialCode, frontTemplateImage.width / 2, serialY);
         console.log(
           `[QR Multiple] Serial code drawn (from DATABASE): "${productSerialCode}" at Y=${serialY}`

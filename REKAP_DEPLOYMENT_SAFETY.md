@@ -75,6 +75,22 @@ Fitur Rekap bulanan untuk scan logs telah diimplementasikan dengan aman. **Purge
 
 ---
 
+## Struktur CSV Laporan Bulanan
+
+Format CSV laporan (Nov, Des, Jan, Feb, dll) mengikuti struktur product export + kolom IP:
+
+| Kolom | Keterangan |
+|-------|------------|
+| Name | Nama produk (Page 1) atau batch (Page 2) |
+| WeightGr | Berat dalam gram |
+| SerialCode | Kode serial |
+| Price | Harga (Page 1; kosong untuk Page 2) |
+| Stock | Stok (Page 1; kosong untuk Page 2) |
+| ScanCount | 1 per baris (setiap baris = 1 event scan) |
+| LastScan | Tanggal scan (DD/MM/YY) |
+| QRImage | URL gambar QR |
+| IP | Alamat IP pemindaian (**selalu ada**) |
+
 ## Purge Bulan Terpilih (Nov/Des 2025 Catch-up)
 
 - Admin masuk ke **Analytics** → **Signal control - Scans over time**
