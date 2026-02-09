@@ -21,8 +21,6 @@ import {
 import { SERTICARD_VARIANTS, type SerticardVariantId } from "@/utils/serticard-templates";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
-import useSWR from "swr";
-import { fetcher } from "@/lib/fetcher";
 
 type GramPreviewBatch = {
   batchId: number;
