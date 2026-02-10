@@ -1,0 +1,21 @@
+# Dependencies and build output (we install in Docker)
+node_modules
+.next
+out
+build
+
+# Git and IDE
+.git
+.gitignore
+.cursor
+.vscode
+
+# Env (Railway injects at runtime)
+.env
+.env.*
+
+# Misc
+.DS_Store
+*.log
+coverage
+.vercel
