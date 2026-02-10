@@ -378,6 +378,7 @@ export function QrPreviewGridGram({ batches }: Props) {
     const [dropdownPosition, setDropdownPosition] = useState<"bottom" | "top">("bottom");
 
     // Smart positioning: detect if dropdown should appear above or below
+    // Auto-scroll to ensure dropdown is fully visible
     useEffect(() => {
       if (!isOpen || !buttonRef.current || !dropdownRef.current) return;
 
@@ -405,7 +406,6 @@ export function QrPreviewGridGram({ batches }: Props) {
               setDropdownPosition("top");
             } else {
               // Button is in top 60%, show below
-              // But limit dropdown height to available space
               setDropdownPosition("bottom");
             }
           }
@@ -415,40 +415,69 @@ export function QrPreviewGridGram({ batches }: Props) {
         }
       };
 
+      // Auto-scroll function to ensure dropdown is fully visible
+      const autoScrollToShowDropdown = () => {
+        if (!dropdownRef.current || !buttonRef.current) return;
+
+        // Wait for dropdown to render and position
+        setTimeout(() => {
+          if (!dropdownRef.current || !buttonRef.current) return;
+
+          const dropdownRect = dropdownRef.current.getBoundingClientRect();
+          const buttonRect = buttonRef.current.getBoundingClientRect();
+          const viewportHeight = window.innerHeight;
+          const viewportWidth = window.innerWidth;
+          const dropdownHeight = dropdownRect.height;
+          const dropdownBottom = dropdownRect.bottom;
+          const dropdownTop = dropdownRect.top;
+
+          // Check if dropdown is cut off at the bottom
+          if (dropdownBottom > viewportHeight - 10) {
+            // Calculate how much we need to scroll down
+            const scrollAmount = dropdownBottom - viewportHeight + 20; // 20px buffer
+            
+            // Scroll the page down smoothly to show the full dropdown
+            window.scrollBy({
+              top: scrollAmount,
+              behavior: "smooth",
+            });
+          }
+          
+          // Check if dropdown is cut off at the top
+          if (dropdownTop < 10) {
+            // Calculate how much we need to scroll up
+            const scrollAmount = 10 - dropdownTop;
+            
+            // Scroll the page up smoothly to show the full dropdown
+            window.scrollBy({
+              top: -scrollAmount,
+              behavior: "smooth",
+            });
+          }
+
+          // If dropdown is positioned below button but button is near top of viewport
+          // and dropdown extends beyond viewport, scroll down to show it
+          if (dropdownPosition === "bottom" && buttonRect.top < viewportHeight * 0.3) {
+            const spaceNeeded = dropdownHeight + 20;
+            const currentSpaceBelow = viewportHeight - buttonRect.bottom;
+            
+            if (currentSpaceBelow < spaceNeeded) {
+              // Scroll down to ensure dropdown is fully visible
+              const scrollAmount = spaceNeeded - currentSpaceBelow + 20;
+              window.scrollBy({
+                top: scrollAmount,
+                behavior: "smooth",
+              });
+            }
+          }
+        }, 100); // Delay to ensure dropdown is fully rendered
+      };
+
       // Initial position calculation
       updatePosition();
 
-      // Ensure dropdown is visible in viewport after positioning
-      const ensureVisibility = () => {
-        if (!dropdownRef.current || !buttonRef.current) return;
-        
-        const dropdownRect = dropdownRef.current.getBoundingClientRect();
-        const viewportHeight = window.innerHeight;
-        const viewportWidth = window.innerWidth;
-        
-        // Check if dropdown is outside viewport
-        if (dropdownRect.bottom > viewportHeight) {
-          // Scroll dropdown into view
-          dropdownRef.current.scrollIntoView({
-            behavior: "smooth",
-            block: "nearest",
-            inline: "nearest",
-          });
-        } else if (dropdownRect.top < 0) {
-          // Dropdown is above viewport
-          dropdownRef.current.scrollIntoView({
-            behavior: "smooth",
-            block: "nearest",
-            inline: "nearest",
-          });
-        }
-      };
-
-      // Small delay to ensure DOM is updated
-      setTimeout(() => {
-        updatePosition();
-        ensureVisibility();
-      }, 10);
+      // Auto-scroll after positioning
+      autoScrollToShowDropdown();
 
       // Update on scroll (with throttling for performance)
       let scrollTimeout: NodeJS.Timeout;
@@ -456,14 +485,13 @@ export function QrPreviewGridGram({ batches }: Props) {
         clearTimeout(scrollTimeout);
         scrollTimeout = setTimeout(() => {
           updatePosition();
-          ensureVisibility();
         }, 50);
       };
 
       window.addEventListener("scroll", handleScroll, true);
       window.addEventListener("resize", () => {
         updatePosition();
-        ensureVisibility();
+        autoScrollToShowDropdown();
       });
 
       return () => {
@@ -471,7 +499,7 @@ export function QrPreviewGridGram({ batches }: Props) {
         window.removeEventListener("scroll", handleScroll, true);
         window.removeEventListener("resize", updatePosition);
       };
-    }, [isOpen]);
+    }, [isOpen, dropdownPosition]);
 
     return (
       <div className="relative inline-block w-full">

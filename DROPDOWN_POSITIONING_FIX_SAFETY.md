@@ -1,10 +1,10 @@
-# Safety Deployment: Dropdown Positioning Fix untuk QR Preview Page 2
+# Safety Deployment: Dropdown Positioning Fix dengan Auto-Scroll untuk QR Preview Page 2
 
 ## Tanggal
 10 Februari 2026
 
 ## Ringkasan Perubahan
-Memperbaiki masalah dropdown download di QR Preview Page 2 yang tidak terlihat ketika user scroll ke bawah dan klik tombol Download. Dropdown sekarang menggunakan smart positioning yang lebih baik dan auto-scroll untuk memastikan selalu terlihat di viewport.
+Memperbaiki masalah dropdown download di QR Preview Page 2 yang tidak terlihat ketika user scroll ke bawah dan klik tombol Download. Dropdown sekarang menggunakan smart positioning yang lebih baik dan **auto-scroll otomatis** untuk memastikan dropdown selalu terlihat lengkap di viewport, terutama ketika user berada di bagian atas halaman.
 
 ## Masalah yang Diperbaiki
 - **Masalah**: Dropdown download untuk produk "Silver King Eid Al-Fitr Limited Edition #52" (dan produk lainnya) tidak terlihat ketika user scroll ke bagian bawah halaman dan klik tombol Download. User harus scroll manual untuk melihat dropdown.
@@ -23,11 +23,14 @@ Memperbaiki masalah dropdown download di QR Preview Page 2 yang tidak terlihat k
   - Jika button di bottom 40% viewport, dropdown otomatis muncul di atas
   - Jika button di top 60% viewport, dropdown muncul di bawah
 
-### 2. Auto-Scroll untuk Visibility
-- **scrollIntoView Integration**: 
-  - Menambahkan fungsi `ensureVisibility()` yang memastikan dropdown selalu terlihat di viewport
-  - Auto-scroll dengan `behavior: "smooth"` dan `block: "nearest"` untuk pengalaman yang lebih baik
-  - Dipanggil setelah positioning calculation dengan delay 10ms untuk memastikan DOM sudah ter-update
+### 2. Auto-Scroll untuk Visibility (Enhanced)
+- **Aggressive Auto-Scroll Function**: 
+  - Menambahkan fungsi `autoScrollToShowDropdown()` yang lebih agresif untuk memastikan dropdown selalu terlihat lengkap
+  - **Auto-scroll ke bawah**: Jika dropdown terpotong di bagian bawah viewport, halaman akan otomatis scroll ke bawah dengan smooth behavior
+  - **Auto-scroll ke atas**: Jika dropdown terpotong di bagian atas viewport, halaman akan otomatis scroll ke atas
+  - **Smart Detection**: Khusus untuk button di bagian atas viewport (top 30%), jika dropdown memanjang ke bawah dan terpotong, halaman akan auto-scroll ke bawah untuk memastikan dropdown terlihat lengkap
+  - Delay 100ms untuk memastikan dropdown sudah fully rendered sebelum melakukan scroll calculation
+  - Menggunakan `window.scrollBy()` dengan `behavior: "smooth"` untuk pengalaman yang lebih baik
 
 ### 3. Performance Optimization
 - **Throttled Scroll Handler**: 
