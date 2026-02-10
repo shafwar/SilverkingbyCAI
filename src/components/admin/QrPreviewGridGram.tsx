@@ -375,9 +375,72 @@ export function QrPreviewGridGram({ batches }: Props) {
     const isLoading = downloadingId === product.id;
     const dropdownRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
-    
-    // User requirement: dropdown harus SELALU muncul di bawah dalam kondisi apapun
-    // Dropdown always appears below (top-full mt-1 class)
+    const [dropdownPosition, setDropdownPosition] = useState<"bottom" | "top">("bottom");
+
+    // Smart positioning: 
+    // - Top items: dropdown muncul di bawah
+    // - Bottom items: dropdown muncul di atas
+    // - Middle items: menyesuaikan berdasarkan ruang yang tersedia
+    useEffect(() => {
+      if (!isOpen || !buttonRef.current) return;
+
+      const updatePosition = () => {
+        if (!buttonRef.current) return;
+
+        const buttonRect = buttonRef.current.getBoundingClientRect();
+        const dropdownHeight = 350; // max-h-[320px] + padding
+        const spaceBelow = window.innerHeight - buttonRect.bottom;
+        const spaceAbove = buttonRect.top;
+        const viewportHeight = window.innerHeight;
+        const topThreshold = 200; // Jika button di atas 200px, selalu muncul di bawah
+        const bottomThreshold = viewportHeight - 200; // Jika button di bawah threshold, selalu muncul di atas
+
+        // Logic untuk menentukan posisi dropdown
+        if (buttonRect.top < topThreshold) {
+          // Item di paling atas: selalu muncul di bawah
+          setDropdownPosition("bottom");
+        } else if (buttonRect.bottom > bottomThreshold) {
+          // Item di paling bawah: selalu muncul di atas
+          setDropdownPosition("top");
+        } else {
+          // Item di tengah: pilih berdasarkan ruang yang tersedia
+          if (spaceBelow >= dropdownHeight) {
+            // Cukup ruang di bawah, muncul di bawah
+            setDropdownPosition("bottom");
+          } else if (spaceAbove > spaceBelow) {
+            // Lebih banyak ruang di atas, muncul di atas
+            setDropdownPosition("top");
+          } else {
+            // Default: muncul di bawah
+            setDropdownPosition("bottom");
+          }
+        }
+      };
+
+      // Calculate position immediately
+      updatePosition();
+
+      // Update on scroll and resize
+      let scrollTimeout: NodeJS.Timeout;
+      const handleScroll = () => {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(updatePosition, 50);
+      };
+
+      const handleResize = () => {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(updatePosition, 50);
+      };
+
+      window.addEventListener("scroll", handleScroll, true);
+      window.addEventListener("resize", handleResize);
+
+      return () => {
+        clearTimeout(scrollTimeout);
+        window.removeEventListener("scroll", handleScroll, true);
+        window.removeEventListener("resize", handleResize);
+      };
+    }, [isOpen]);
 
     return (
       <div className="relative inline-block w-full">
@@ -401,11 +464,13 @@ export function QrPreviewGridGram({ batches }: Props) {
             <motion.div
               ref={dropdownRef}
               key="download-dropdown"
-              initial={{ opacity: 0, y: -4, scale: 0.97 }}
+              initial={{ opacity: 0, y: dropdownPosition === "bottom" ? -4 : 4, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -4, scale: 0.97 }}
+              exit={{ opacity: 0, y: dropdownPosition === "bottom" ? -4 : 4, scale: 0.97 }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute right-0 w-64 rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden z-[9999] max-h-[320px] flex flex-col top-full mt-1"
+              className={`absolute right-0 w-64 rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden z-[9999] max-h-[320px] flex flex-col ${
+                dropdownPosition === "top" ? "bottom-full mb-1" : "top-full mt-1"
+              }`}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
