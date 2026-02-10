@@ -377,8 +377,7 @@ export function QrPreviewGridGram({ batches }: Props) {
     const buttonRef = useRef<HTMLButtonElement>(null);
     
     // User requirement: dropdown harus SELALU muncul di bawah dalam kondisi apapun
-    // Simplified: Always use "bottom" position, no dynamic calculation needed
-    const dropdownPosition: "bottom" | "top" = "bottom";
+    // Dropdown always appears below (top-full mt-1 class)
 
     return (
       <div className="relative inline-block w-full">
@@ -402,13 +401,11 @@ export function QrPreviewGridGram({ batches }: Props) {
             <motion.div
               ref={dropdownRef}
               key="download-dropdown"
-              initial={{ opacity: 0, y: dropdownPosition === "bottom" ? -4 : 4, scale: 0.97 }}
+              initial={{ opacity: 0, y: -4, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: dropdownPosition === "bottom" ? -4 : 4, scale: 0.97 }}
+              exit={{ opacity: 0, y: -4, scale: 0.97 }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className={`absolute right-0 w-64 rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden z-[9999] max-h-[320px] flex flex-col ${
-                dropdownPosition === "top" ? "bottom-full mb-1" : "top-full mt-1"
-              }`}
+              className="absolute right-0 w-64 rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden z-[9999] max-h-[320px] flex flex-col top-full mt-1"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
