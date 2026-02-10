@@ -14,15 +14,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Dependencies
+# Prisma schema must exist before npm ci (postinstall runs prisma generate)
 COPY package.json package-lock.json .npmrc* ./
+COPY prisma ./prisma
+
+# Install deps (postinstall runs prisma generate)
 RUN npm ci --legacy-peer-deps
 
-# Prisma
-COPY prisma ./prisma
-RUN npx prisma generate
-
-# App
+# Rest of app
 COPY . .
 
 # Build (Prisma already generated)
