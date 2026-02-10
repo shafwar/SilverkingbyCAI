@@ -385,24 +385,90 @@ export function QrPreviewGridGram({ batches }: Props) {
         if (!buttonRef.current || !dropdownRef.current) return;
 
         const buttonRect = buttonRef.current.getBoundingClientRect();
-        const dropdownHeight = 320; // max-h-[320px]
+        const dropdownHeight = 350; // max-h-[320px] + padding
         const spaceBelow = window.innerHeight - buttonRect.bottom;
         const spaceAbove = buttonRect.top;
+        const viewportHeight = window.innerHeight;
+        const buffer = 30; // Extra buffer for better visibility
 
-        // If not enough space below but enough space above, flip to top
-        if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
-          setDropdownPosition("top");
+        // Enhanced positioning logic for better visibility
+        // If not enough space below (less than dropdown height + buffer)
+        if (spaceBelow < dropdownHeight + buffer) {
+          // Check if we have enough space above
+          if (spaceAbove > dropdownHeight + buffer) {
+            // Enough space above, flip to top
+            setDropdownPosition("top");
+          } else {
+            // Not enough space in either direction - use viewport position
+            // If button is in bottom 40% of viewport, show above
+            if (buttonRect.top > viewportHeight * 0.6) {
+              setDropdownPosition("top");
+            } else {
+              // Button is in top 60%, show below
+              // But limit dropdown height to available space
+              setDropdownPosition("bottom");
+            }
+          }
         } else {
+          // Enough space below, show below
           setDropdownPosition("bottom");
         }
       };
 
+      // Initial position calculation
       updatePosition();
-      window.addEventListener("scroll", updatePosition, true);
-      window.addEventListener("resize", updatePosition);
+
+      // Ensure dropdown is visible in viewport after positioning
+      const ensureVisibility = () => {
+        if (!dropdownRef.current || !buttonRef.current) return;
+        
+        const dropdownRect = dropdownRef.current.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const viewportWidth = window.innerWidth;
+        
+        // Check if dropdown is outside viewport
+        if (dropdownRect.bottom > viewportHeight) {
+          // Scroll dropdown into view
+          dropdownRef.current.scrollIntoView({
+            behavior: "smooth",
+            block: "nearest",
+            inline: "nearest",
+          });
+        } else if (dropdownRect.top < 0) {
+          // Dropdown is above viewport
+          dropdownRef.current.scrollIntoView({
+            behavior: "smooth",
+            block: "nearest",
+            inline: "nearest",
+          });
+        }
+      };
+
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        updatePosition();
+        ensureVisibility();
+      }, 10);
+
+      // Update on scroll (with throttling for performance)
+      let scrollTimeout: NodeJS.Timeout;
+      const handleScroll = () => {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          updatePosition();
+          ensureVisibility();
+        }, 50);
+      };
+
+      window.addEventListener("scroll", handleScroll, true);
+      window.addEventListener("resize", () => {
+        updatePosition();
+        ensureVisibility();
+      });
 
       return () => {
-        window.removeEventListener("scroll", updatePosition, true);
+        clearTimeout(scrollTimeout);
+        window.removeEventListener("scroll", handleScroll, true);
         window.removeEventListener("resize", updatePosition);
       };
     }, [isOpen]);
@@ -434,7 +500,9 @@ export function QrPreviewGridGram({ batches }: Props) {
               exit={{ opacity: 0, y: dropdownPosition === "bottom" ? -4 : 4, scale: 0.97 }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
               className={`absolute right-0 w-64 rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden z-[9999] max-h-[320px] flex flex-col ${
-                dropdownPosition === "top" ? "bottom-full mb-1" : "top-full mt-1"
+                dropdownPosition === "top" 
+                  ? "bottom-full mb-1" 
+                  : "top-full mt-1"
               }`}
               onClick={(e) => e.stopPropagation()}
             >
