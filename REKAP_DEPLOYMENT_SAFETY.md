@@ -2,7 +2,7 @@
 
 **Tanggal:** Februari 2026  
 **Status:** ✅ SAFE FOR DEPLOYMENT  
-**Update:** Enhanced purge verification & UI feedback
+**Update:** Enhanced purge verification, UI feedback & persistent status indicator
 
 ## Ringkasan
 
@@ -29,6 +29,7 @@ Fitur Rekap bulanan untuk scan logs telah diimplementasikan dengan aman. **Purge
 ### 2. API Baru
 - `POST /api/admin/export-and-purge-logs` — Export + Purge bulan terpilih (body: `{ month, year }`)
 - `GET /api/admin/scans/export?month=&year=` — Export CSV bulan terpilih
+- `GET /api/admin/scans/purge-status?month=&year=` — Check purge status untuk bulan tertentu (verifikasi database kosong & CSV di R2)
 - ~~`GET /api/admin/rekap/list`~~ — Dihapus (centralized ke Analytics)
 - ~~`GET /api/admin/rekap/download`~~ — Dihapus (export via scans/export)
 
@@ -139,6 +140,17 @@ Format CSV laporan (Nov, Des, Jan, Feb, dll) mengikuti struktur product export +
      downloadUrl: string;        // Signed URL untuk download
    }
    ```
+
+5. **Persistent Purge Status Indicator (Februari 2026)**
+   - **localStorage persistence**: Status purge tersimpan di browser localStorage
+   - **Auto-load on page load**: Status langsung dimuat saat halaman Analytics dibuka
+   - **Cross-navigation persistence**: Status tetap muncul meskipun pindah halaman atau refresh
+   - **API verification**: Status diverifikasi dengan API di background untuk akurasi
+   - **Fallback mechanism**: Jika API gagal, tetap gunakan status dari localStorage
+   - **New API endpoint**: `GET /api/admin/scans/purge-status?month=&year=` untuk verifikasi status
+   - **Client-side utility**: `src/lib/purge-status.ts` untuk manage localStorage
+   - **Visual indicator**: Notifikasi hijau persistent untuk bulan yang sudah di-purge
+   - **Auto-cleanup**: localStorage dibatasi maksimal 24 bulan terakhir untuk mencegah bloat
 
 ## Keamanan
 

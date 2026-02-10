@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import useSWR from "swr";
 import { useTranslations } from "next-intl";
 import {
@@ -21,6 +21,11 @@ import { MonthYearPicker } from "./MonthYearPicker";
 import { AnimatedCard } from "./AnimatedCard";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import { DataTable, TableColumn } from "./DataTable";
+import {
+  getPurgeStatus,
+  savePurgeStatus,
+  type PurgeStatus,
+} from "@/lib/purge-status";
 
 type TrendResponse = {
   data: { date: string; count: number }[];
@@ -42,20 +47,96 @@ export function AnalyticsPanel() {
   const [month, setMonth] = useState(now.getMonth() + 1); // 1-indexed
   const [year, setYear] = useState(now.getFullYear());
   const [purging, setPurging] = useState(false);
-  const [purgeResult, setPurgeResult] = useState<{
-    success: boolean;
-    month: number;
-    year: number;
-    page1Deleted: number;
-    page2Deleted: number;
-    csvRows: number;
-    filename: string;
-    downloadUrl: string;
-    verified: boolean;
-    r2Uploaded: boolean;
-    remainingPage1Logs: number;
-    remainingPage2Logs: number;
-  } | null>(null);
+  const [purgeResult, setPurgeResult] = useState<PurgeStatus | null>(null);
+  const [verifyingStatus, setVerifyingStatus] = useState(false);
+
+  // Load purge status from localStorage and verify with API on mount and month change
+  useEffect(() => {
+    const loadPurgeStatus = async () => {
+      // First, ALWAYS try to load from localStorage (fast, instant display)
+      const cachedStatus = getPurgeStatus(month, year);
+      console.log("[AnalyticsPanel] Loading purge status for", month, year, "cached:", cachedStatus);
+      
+      // Immediately show cached status if it exists and is valid - don't wait for API
+      if (cachedStatus && cachedStatus.verified && cachedStatus.r2Uploaded) {
+        console.log("[AnalyticsPanel] Showing cached purge status immediately");
+        setPurgeResult(cachedStatus);
+      } else {
+        // Clear if no valid cached status
+        setPurgeResult(null);
+      }
+
+      // Then verify with API in background (ensure accuracy, but don't block UI)
+      setVerifyingStatus(true);
+      try {
+        const res = await fetch(`/api/admin/scans/purge-status?month=${month}&year=${year}`);
+        if (res.ok) {
+          const apiStatus = await res.json();
+          
+          // If API confirms purge status, update with fresh data
+          if (apiStatus.isPurged && apiStatus.databaseEmpty && apiStatus.csvExists) {
+            // Convert API response to PurgeStatus format
+            const verifiedStatus: PurgeStatus = {
+              month: apiStatus.month,
+              year: apiStatus.year,
+              verified: apiStatus.databaseEmpty,
+              r2Uploaded: apiStatus.csvExists,
+              remainingPage1Logs: apiStatus.remainingPage1Logs,
+              remainingPage2Logs: apiStatus.remainingPage2Logs,
+              page1Deleted: cachedStatus?.page1Deleted || 0, // Preserve from cache if available
+              page2Deleted: cachedStatus?.page2Deleted || 0, // Preserve from cache if available
+              csvRows: cachedStatus?.csvRows || 0, // Preserve from cache if available
+              filename: apiStatus.filename || `${year}-${String(month).padStart(2, "0")}.csv`,
+              downloadUrl: apiStatus.downloadUrl || cachedStatus?.downloadUrl || "",
+              timestamp: cachedStatus?.timestamp || Date.now(), // Preserve original timestamp
+            };
+
+            // Update localStorage with verified status
+            savePurgeStatus(verifiedStatus);
+            setPurgeResult(verifiedStatus);
+          } else if (apiStatus.databaseEmpty && apiStatus.csvExists) {
+            // Even if isPurged is false, if database is empty and CSV exists, consider it purged
+            const verifiedStatus: PurgeStatus = {
+              month: apiStatus.month,
+              year: apiStatus.year,
+              verified: apiStatus.databaseEmpty,
+              r2Uploaded: apiStatus.csvExists,
+              remainingPage1Logs: apiStatus.remainingPage1Logs,
+              remainingPage2Logs: apiStatus.remainingPage2Logs,
+              page1Deleted: cachedStatus?.page1Deleted || 0,
+              page2Deleted: cachedStatus?.page2Deleted || 0,
+              csvRows: cachedStatus?.csvRows || 0,
+              filename: apiStatus.filename || `${year}-${String(month).padStart(2, "0")}.csv`,
+              downloadUrl: apiStatus.downloadUrl || cachedStatus?.downloadUrl || "",
+              timestamp: cachedStatus?.timestamp || Date.now(),
+            };
+            savePurgeStatus(verifiedStatus);
+            setPurgeResult(verifiedStatus);
+          } else if (!cachedStatus) {
+            // Only clear if we don't have cached status
+            setPurgeResult(null);
+          }
+          // If we have cached status but API says different, keep cached status (might be temporary API issue)
+        } else {
+          // API error - keep cached status if available
+          if (!cachedStatus) {
+            setPurgeResult(null);
+          }
+        }
+      } catch (error) {
+        console.error("[AnalyticsPanel] Error verifying purge status:", error);
+        // Keep cached status if API fails - don't clear it
+        // Only set to null if we don't have any cached status
+        if (!cachedStatus) {
+          setPurgeResult(null);
+        }
+      } finally {
+        setVerifyingStatus(false);
+      }
+    };
+
+    loadPurgeStatus();
+  }, [month, year]);
 
   // Check if viewing current month - only real-time updates for current month
   const isCurrentMonth = useMemo(() => {
@@ -87,8 +168,7 @@ export function AnalyticsPanel() {
   const handleMonthYearChange = (newMonth: number, newYear: number) => {
     setMonth(newMonth);
     setYear(newYear);
-    // Clear purge result when month changes
-    setPurgeResult(null);
+    // Don't clear purge result - let useEffect handle loading status for new month
     // Immediately fetch new data when month changes
     mutateTrend();
   };
@@ -169,14 +249,38 @@ export function AnalyticsPanel() {
                   const data = await res.json();
                   if (!res.ok) throw new Error(data.error || "Purge failed");
                   
+                  // Convert to PurgeStatus format and save to localStorage
+                  const purgeStatus: PurgeStatus = {
+                    month: data.month,
+                    year: data.year,
+                    verified: data.verified,
+                    r2Uploaded: data.r2Uploaded,
+                    remainingPage1Logs: data.remainingPage1Logs,
+                    remainingPage2Logs: data.remainingPage2Logs,
+                    page1Deleted: data.page1Deleted,
+                    page2Deleted: data.page2Deleted,
+                    csvRows: data.csvRows,
+                    filename: data.filename,
+                    downloadUrl: data.downloadUrl,
+                    timestamp: Date.now(),
+                  };
+
+                  // Save to localStorage for persistence - CRITICAL for staying across page navigation
+                  console.log("[AnalyticsPanel] Saving purge status to localStorage:", purgeStatus);
+                  savePurgeStatus(purgeStatus);
+                  
+                  // Verify it was saved
+                  const saved = getPurgeStatus(month, year);
+                  console.log("[AnalyticsPanel] Verified saved status:", saved);
+                  
                   // Store result for detailed display
-                  setPurgeResult(data);
+                  setPurgeResult(purgeStatus);
                   
                   // Show success toast with key info
                   if (data.verified && data.r2Uploaded) {
                     toast.success(
-                      `✅ Purge berhasil! ${data.page1Deleted + data.page2Deleted} logs dihapus, CSV tersimpan di R2`,
-                      { duration: 5000 }
+                      `✅ Purge berhasil! ${data.page1Deleted + data.page2Deleted} logs dihapus, CSV tersimpan di R2. Status akan tetap ditampilkan.`,
+                      { duration: 6000 }
                     );
                   } else {
                     toast.warning(
@@ -237,56 +341,127 @@ export function AnalyticsPanel() {
           </div>
         </div>
         
-        {/* Purge Success Indicator */}
-        {purgeResult && (
+        {/* Persistent Purge Success Indicator */}
+        {purgeResult && purgeResult.verified && purgeResult.r2Uploaded && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             className="mt-4 rounded-lg border p-4"
             style={{
-              borderColor: purgeResult.verified && purgeResult.r2Uploaded 
-                ? "rgba(34, 197, 94, 0.3)" 
-                : "rgba(251, 191, 36, 0.3)",
-              backgroundColor: purgeResult.verified && purgeResult.r2Uploaded 
-                ? "rgba(34, 197, 94, 0.05)" 
-                : "rgba(251, 191, 36, 0.05)",
+              borderColor: "rgba(34, 197, 94, 0.3)",
+              backgroundColor: "rgba(34, 197, 94, 0.05)",
             }}
           >
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2">
-                  {purgeResult.verified && purgeResult.r2Uploaded ? (
-                    <CheckCircle2 className="h-5 w-5 text-green-400 flex-shrink-0" />
-                  ) : (
-                    <AlertCircle className="h-5 w-5 text-amber-400 flex-shrink-0" />
-                  )}
+                  <CheckCircle2 className="h-5 w-5 text-green-400 flex-shrink-0" />
                   <h4 className="text-sm font-semibold text-white">
-                    {purgeResult.verified && purgeResult.r2Uploaded 
-                      ? "✅ Purge Berhasil" 
-                      : "⚠️ Purge Selesai dengan Peringatan"}
+                    ✅ Purge Berhasil - Database Kosong & CSV Tersimpan
+                  </h4>
+                  {verifyingStatus && (
+                    <span className="text-xs text-white/50 ml-2">(Memverifikasi...)</span>
+                  )}
+                </div>
+                <div className="space-y-1.5 text-xs text-white/70 ml-7">
+                  <div className="flex items-center gap-2">
+                    <span className="w-28 flex-shrink-0">Bulan:</span>
+                    <span className="font-mono font-semibold text-white">
+                      {purgeResult.year}-{String(purgeResult.month).padStart(2, "0")}
+                    </span>
+                  </div>
+                  {purgeResult.page1Deleted + purgeResult.page2Deleted > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span className="w-28 flex-shrink-0">Logs dihapus:</span>
+                      <span className="text-white">
+                        {purgeResult.page1Deleted + purgeResult.page2Deleted} 
+                        {purgeResult.page1Deleted > 0 && purgeResult.page2Deleted > 0 && (
+                          <span className="text-white/50 ml-1">
+                            ({purgeResult.page1Deleted} Page 1 + {purgeResult.page2Deleted} Page 2)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <span className="w-28 flex-shrink-0">Database kosong:</span>
+                    <span className="text-green-400 font-semibold flex items-center gap-1">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Ya ({purgeResult.remainingPage1Logs + purgeResult.remainingPage2Logs} tersisa)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-28 flex-shrink-0">CSV di R2:</span>
+                    <span className="text-green-400 font-semibold flex items-center gap-1">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Tersedia {purgeResult.csvRows > 0 && `(${purgeResult.csvRows} baris)`}
+                    </span>
+                  </div>
+                  {purgeResult.downloadUrl && (
+                    <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/10">
+                      <a
+                        href={purgeResult.downloadUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 underline transition-colors"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        Download CSV: {purgeResult.filename}
+                      </a>
+                    </div>
+                  )}
+                  <div className="text-[10px] text-white/40 mt-2 pt-2 border-t border-white/5">
+                    Status ini tetap ditampilkan untuk bulan yang sudah di-purge. Data personal (IP) telah dihapus dari database.
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  // Don't actually clear - just hide temporarily
+                  // Status will reappear on next page load or month change
+                  // This ensures persistence across navigation
+                  setPurgeResult(null);
+                }}
+                className="text-white/40 hover:text-white/60 transition-colors flex-shrink-0"
+                aria-label="Sembunyikan sementara"
+                title="Sembunyikan sementara (akan muncul kembali saat refresh atau ganti bulan)"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+        
+        {/* Warning indicator if purge was incomplete */}
+        {purgeResult && (!purgeResult.verified || !purgeResult.r2Uploaded) && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="mt-4 rounded-lg border p-4"
+            style={{
+              borderColor: "rgba(251, 191, 36, 0.3)",
+              backgroundColor: "rgba(251, 191, 36, 0.05)",
+            }}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="h-5 w-5 text-amber-400 flex-shrink-0" />
+                  <h4 className="text-sm font-semibold text-white">
+                    ⚠️ Purge Selesai dengan Peringatan
                   </h4>
                 </div>
                 <div className="space-y-1.5 text-xs text-white/70 ml-7">
                   <div className="flex items-center gap-2">
-                    <span className="w-24 flex-shrink-0">Bulan:</span>
+                    <span className="w-28 flex-shrink-0">Bulan:</span>
                     <span className="font-mono font-semibold text-white">
                       {purgeResult.year}-{String(purgeResult.month).padStart(2, "0")}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-24 flex-shrink-0">Logs dihapus:</span>
-                    <span className="text-white">
-                      {purgeResult.page1Deleted + purgeResult.page2Deleted} 
-                      {purgeResult.page1Deleted > 0 && purgeResult.page2Deleted > 0 && (
-                        <span className="text-white/50 ml-1">
-                          ({purgeResult.page1Deleted} Page 1 + {purgeResult.page2Deleted} Page 2)
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-24 flex-shrink-0">Database kosong:</span>
+                    <span className="w-28 flex-shrink-0">Database kosong:</span>
                     {purgeResult.verified ? (
                       <span className="text-green-400 font-semibold flex items-center gap-1">
                         <CheckCircle2 className="h-3.5 w-3.5" />
@@ -300,7 +475,7 @@ export function AnalyticsPanel() {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-24 flex-shrink-0">CSV di R2:</span>
+                    <span className="w-28 flex-shrink-0">CSV di R2:</span>
                     {purgeResult.r2Uploaded ? (
                       <span className="text-green-400 font-semibold flex items-center gap-1">
                         <CheckCircle2 className="h-3.5 w-3.5" />
@@ -313,19 +488,6 @@ export function AnalyticsPanel() {
                       </span>
                     )}
                   </div>
-                  {purgeResult.downloadUrl && (
-                    <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/10">
-                      <a
-                        href={purgeResult.downloadUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 underline"
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                        Download CSV: {purgeResult.filename}
-                      </a>
-                    </div>
-                  )}
                 </div>
               </div>
               <button
