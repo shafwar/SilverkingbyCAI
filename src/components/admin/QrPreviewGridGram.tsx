@@ -378,7 +378,6 @@ export function QrPreviewGridGram({ batches }: Props) {
     const [dropdownPosition, setDropdownPosition] = useState<"bottom" | "top">("bottom");
 
     // Smart positioning: detect if dropdown should appear above or below
-    // Auto-scroll to ensure dropdown is fully visible
     useEffect(() => {
       if (!isOpen || !buttonRef.current || !dropdownRef.current) return;
 
@@ -389,117 +388,41 @@ export function QrPreviewGridGram({ batches }: Props) {
         const dropdownHeight = 350; // max-h-[320px] + padding
         const spaceBelow = window.innerHeight - buttonRect.bottom;
         const spaceAbove = buttonRect.top;
-        const viewportHeight = window.innerHeight;
-        const buffer = 30; // Extra buffer for better visibility
+        const buffer = 20; // Minimal buffer
 
-        // Enhanced positioning logic for better visibility
-        // If not enough space below (less than dropdown height + buffer)
-        if (spaceBelow < dropdownHeight + buffer) {
-          // Check if we have enough space above
-          if (spaceAbove > dropdownHeight + buffer) {
-            // Enough space above, flip to top
-            setDropdownPosition("top");
-          } else {
-            // Not enough space in either direction - use viewport position
-            // If button is in bottom 40% of viewport, show above
-            if (buttonRect.top > viewportHeight * 0.6) {
-              setDropdownPosition("top");
-            } else {
-              // Button is in top 60%, show below
-              setDropdownPosition("bottom");
-            }
-          }
+        // Priority: Always prefer showing below if there's enough space
+        // Only flip to top if there's NOT enough space below AND there's more space above
+        if (spaceBelow >= dropdownHeight + buffer) {
+          // Sufficient space below - always show below (preferred)
+          setDropdownPosition("bottom");
+        } else if (spaceBelow < dropdownHeight + buffer && spaceAbove > spaceBelow) {
+          // Not enough space below, but more space above - flip to top
+          setDropdownPosition("top");
         } else {
-          // Enough space below, show below
+          // Default: show below even if tight (better UX than cutting off)
           setDropdownPosition("bottom");
         }
       };
 
-      // Auto-scroll function to ensure dropdown is fully visible
-      const autoScrollToShowDropdown = () => {
-        if (!dropdownRef.current || !buttonRef.current) return;
-
-        // Wait for dropdown to render and position
-        setTimeout(() => {
-          if (!dropdownRef.current || !buttonRef.current) return;
-
-          const dropdownRect = dropdownRef.current.getBoundingClientRect();
-          const buttonRect = buttonRef.current.getBoundingClientRect();
-          const viewportHeight = window.innerHeight;
-          const viewportWidth = window.innerWidth;
-          const dropdownHeight = dropdownRect.height;
-          const dropdownBottom = dropdownRect.bottom;
-          const dropdownTop = dropdownRect.top;
-
-          // Check if dropdown is cut off at the bottom
-          if (dropdownBottom > viewportHeight - 10) {
-            // Calculate how much we need to scroll down
-            const scrollAmount = dropdownBottom - viewportHeight + 20; // 20px buffer
-            
-            // Scroll the page down smoothly to show the full dropdown
-            window.scrollBy({
-              top: scrollAmount,
-              behavior: "smooth",
-            });
-          }
-          
-          // Check if dropdown is cut off at the top
-          if (dropdownTop < 10) {
-            // Calculate how much we need to scroll up
-            const scrollAmount = 10 - dropdownTop;
-            
-            // Scroll the page up smoothly to show the full dropdown
-            window.scrollBy({
-              top: -scrollAmount,
-              behavior: "smooth",
-            });
-          }
-
-          // If dropdown is positioned below button but button is near top of viewport
-          // and dropdown extends beyond viewport, scroll down to show it
-          if (dropdownPosition === "bottom" && buttonRect.top < viewportHeight * 0.3) {
-            const spaceNeeded = dropdownHeight + 20;
-            const currentSpaceBelow = viewportHeight - buttonRect.bottom;
-            
-            if (currentSpaceBelow < spaceNeeded) {
-              // Scroll down to ensure dropdown is fully visible
-              const scrollAmount = spaceNeeded - currentSpaceBelow + 20;
-              window.scrollBy({
-                top: scrollAmount,
-                behavior: "smooth",
-              });
-            }
-          }
-        }, 100); // Delay to ensure dropdown is fully rendered
-      };
-
-      // Initial position calculation
+      // Initial position calculation - prioritize bottom position
       updatePosition();
-
-      // Auto-scroll after positioning
-      autoScrollToShowDropdown();
 
       // Update on scroll (with throttling for performance)
       let scrollTimeout: NodeJS.Timeout;
       const handleScroll = () => {
         clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(() => {
-          updatePosition();
-        }, 50);
+        scrollTimeout = setTimeout(updatePosition, 50);
       };
 
       window.addEventListener("scroll", handleScroll, true);
-      window.addEventListener("resize", () => {
-        updatePosition();
-        autoScrollToShowDropdown();
-      });
+      window.addEventListener("resize", updatePosition);
 
       return () => {
         clearTimeout(scrollTimeout);
         window.removeEventListener("scroll", handleScroll, true);
         window.removeEventListener("resize", updatePosition);
       };
-    }, [isOpen, dropdownPosition]);
+    }, [isOpen]);
 
     return (
       <div className="relative inline-block w-full">

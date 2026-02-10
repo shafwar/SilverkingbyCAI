@@ -1,36 +1,34 @@
-# Safety Deployment: Dropdown Positioning Fix dengan Auto-Scroll untuk QR Preview Page 2
+# Safety Deployment: Dropdown Positioning Fix untuk QR Preview Page 2
 
 ## Tanggal
 10 Februari 2026
 
 ## Ringkasan Perubahan
-Memperbaiki masalah dropdown download di QR Preview Page 2 yang tidak terlihat ketika user scroll ke bawah dan klik tombol Download. Dropdown sekarang menggunakan smart positioning yang lebih baik dan **auto-scroll otomatis** untuk memastikan dropdown selalu terlihat lengkap di viewport, terutama ketika user berada di bagian atas halaman.
+Memperbaiki masalah dropdown download di QR Preview Page 2 yang tidak terlihat ketika user scroll ke bawah dan klik tombol Download. Dropdown sekarang menggunakan smart positioning yang lebih baik dan auto-scroll untuk memastikan selalu terlihat di viewport.
 
 ## Masalah yang Diperbaiki
-- **Masalah**: Dropdown download untuk produk "Silver King Eid Al-Fitr Limited Edition #52" (dan produk lainnya) tidak terlihat ketika user scroll ke bagian bawah halaman dan klik tombol Download. User harus scroll manual untuk melihat dropdown.
-- **Root Cause**: Positioning logic sebelumnya kurang agresif dalam mendeteksi ruang yang tersedia dan tidak mempertimbangkan posisi button di viewport dengan baik.
+- **Masalah 1**: Dropdown download untuk produk "Silver King Eid Al-Fitr Limited Edition #52" (dan produk lainnya) tidak terlihat ketika user scroll ke bagian bawah halaman dan klik tombol Download. User harus scroll manual untuk melihat dropdown.
+- **Masalah 2**: Dropdown muncul di atas ketika user berada di bagian atas halaman, padahal seharusnya muncul di bawah karena ada cukup ruang di bawah.
+- **Root Cause**: Positioning logic sebelumnya terlalu agresif dalam mem-flip dropdown ke atas dan tidak memprioritaskan posisi bawah sebagai default.
 
 ## Perubahan yang Dilakukan
 
-### 1. Enhanced Positioning Logic (`src/components/admin/QrPreviewGridGram.tsx`)
-- **Improved Space Detection**: 
-  - Menambahkan buffer 30px untuk margin yang lebih aman
-  - Menggunakan threshold 60% viewport height untuk menentukan apakah button berada di bagian bawah
-  - Logic yang lebih agresif untuk flip dropdown ke atas jika button berada di bottom 40% viewport
+### 1. Enhanced Positioning Logic dengan Prioritas Bawah (`src/components/admin/QrPreviewGridGram.tsx`)
+- **Prioritas Posisi Bawah**: 
+  - Dropdown sekarang **selalu muncul di bawah** jika ada cukup ruang (>= dropdownHeight + buffer)
+  - Hanya flip ke atas jika benar-benar tidak ada cukup ruang di bawah DAN ada lebih banyak ruang di atas
+  - Default tetap di bawah untuk UX yang lebih baik
 
-- **Better Viewport Awareness**:
-  - Dropdown sekarang mempertimbangkan posisi button relatif terhadap viewport (60% threshold)
-  - Jika button di bottom 40% viewport, dropdown otomatis muncul di atas
-  - Jika button di top 60% viewport, dropdown muncul di bawah
+- **Simplified Logic**:
+  - Buffer dikurangi menjadi 20px untuk threshold yang lebih akurat
+  - Menghapus logic kompleks berdasarkan viewport percentage
+  - Fokus pada perbandingan langsung antara ruang di atas vs di bawah
 
-### 2. Auto-Scroll untuk Visibility (Enhanced)
-- **Aggressive Auto-Scroll Function**: 
-  - Menambahkan fungsi `autoScrollToShowDropdown()` yang lebih agresif untuk memastikan dropdown selalu terlihat lengkap
-  - **Auto-scroll ke bawah**: Jika dropdown terpotong di bagian bawah viewport, halaman akan otomatis scroll ke bawah dengan smooth behavior
-  - **Auto-scroll ke atas**: Jika dropdown terpotong di bagian atas viewport, halaman akan otomatis scroll ke atas
-  - **Smart Detection**: Khusus untuk button di bagian atas viewport (top 30%), jika dropdown memanjang ke bawah dan terpotong, halaman akan auto-scroll ke bawah untuk memastikan dropdown terlihat lengkap
-  - Delay 100ms untuk memastikan dropdown sudah fully rendered sebelum melakukan scroll calculation
-  - Menggunakan `window.scrollBy()` dengan `behavior: "smooth"` untuk pengalaman yang lebih baik
+### 2. Simplified Scroll Handling
+- **Removed Auto-Scroll**: 
+  - Menghapus fungsi `ensureVisibility()` yang menyebabkan scroll tidak perlu
+  - Positioning logic yang lebih baik membuat auto-scroll tidak diperlukan
+  - Scroll handler sekarang hanya update position, lebih ringan dan performant
 
 ### 3. Performance Optimization
 - **Throttled Scroll Handler**: 
