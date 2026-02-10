@@ -277,73 +277,127 @@ export function FeedbackTable() {
         }
       >
         {selectedMessage && (
-          <div className="space-y-6">
-            {/* Message Details */}
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-                <div className="mb-4 flex items-center justify-between">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className="space-y-6"
+          >
+            {/* Header Card - Sender Info */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.15 }}
+              className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.05] via-white/[0.03] to-transparent p-6 backdrop-blur-sm"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 space-y-4">
+                  {/* Name */}
                   <div>
-                    <h3 className="text-sm font-semibold text-white/60 mb-1">
+                    <p className="text-xs uppercase tracking-[0.2em] text-white/40 mb-2 font-medium">
                       {tFeedback("name")}
-                    </h3>
-                    <p className="text-lg font-medium text-white">{selectedMessage.name}</p>
+                    </p>
+                    <p className="text-xl font-semibold text-white">{selectedMessage.name}</p>
                   </div>
-                  <button
-                    onClick={() => handleToggleRead(selectedMessage.id, selectedMessage.read)}
-                    className={`p-2 rounded-full transition ${
-                      selectedMessage.read
-                        ? "bg-green-500/20 text-green-400 hover:bg-green-500/30"
-                        : "bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30"
-                    }`}
-                    title={selectedMessage.read ? tFeedback("markUnread") : tFeedback("markRead")}
-                  >
-                    {selectedMessage.read ? (
-                      <Check className="h-5 w-5" />
-                    ) : (
-                      <Mail className="h-5 w-5" />
-                    )}
-                  </button>
+
+                  {/* Email */}
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-white/40 mb-2 font-medium">
+                      {tFeedback("email")}
+                    </p>
+                    <a
+                      href={`mailto:${selectedMessage.email}`}
+                      className="inline-flex items-center gap-2 text-base text-[#FFD700] hover:text-[#FFD700]/80 transition-colors break-all font-medium group"
+                    >
+                      <Mail className="h-4 w-4 flex-shrink-0 group-hover:scale-110 transition-transform" />
+                      <span className="break-all">{selectedMessage.email}</span>
+                    </a>
+                  </div>
+
+                  {/* Date */}
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-white/40 mb-2 font-medium">
+                      {tFeedback("date")}
+                    </p>
+                    <p className="text-sm text-white/70 font-mono">
+                      {new Date(selectedMessage.createdAt).toLocaleString("id-ID", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="mb-4">
-                  <h3 className="text-sm font-semibold text-white/60 mb-1">{tFeedback("email")}</h3>
-                  <a
-                    href={`mailto:${selectedMessage.email}`}
-                    className="text-base text-luxury-gold hover:text-luxury-lightGold transition-colors break-all"
-                  >
-                    {selectedMessage.email}
-                  </a>
-                </div>
-
-                <div className="mb-4">
-                  <h3 className="text-sm font-semibold text-white/60 mb-1">{tFeedback("date")}</h3>
-                  <p className="text-base text-white/80">
-                    {new Date(selectedMessage.createdAt).toLocaleString()}
-                  </p>
-                </div>
+                {/* Read Status Toggle */}
+                <motion.button
+                  onClick={() => handleToggleRead(selectedMessage.id, selectedMessage.read)}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`flex-shrink-0 p-3 rounded-xl transition-all ${
+                    selectedMessage.read
+                      ? "bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/30"
+                      : "bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 border border-yellow-500/30"
+                  }`}
+                  title={selectedMessage.read ? tFeedback("markUnread") : tFeedback("markRead")}
+                >
+                  {selectedMessage.read ? (
+                    <Check className="h-5 w-5" />
+                  ) : (
+                    <Mail className="h-5 w-5" />
+                  )}
+                </motion.button>
               </div>
+            </motion.div>
 
-              {/* Full Message */}
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-                <h3 className="text-sm font-semibold text-white/60 mb-3">{tFeedback("message")}</h3>
-                <div className="text-base text-white/90 leading-relaxed whitespace-pre-wrap break-words">
-                  {selectedMessage.message}
-                </div>
+            {/* Message Content Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.2 }}
+              className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.05] via-white/[0.03] to-transparent p-6 backdrop-blur-sm"
+            >
+              <div className="mb-4 flex items-center gap-2">
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                <p className="text-xs uppercase tracking-[0.2em] text-white/40 font-medium px-2">
+                  {tFeedback("message")}
+                </p>
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
               </div>
-            </div>
+              <div className="text-base text-white/90 leading-relaxed whitespace-pre-wrap break-words font-light">
+                {selectedMessage.message}
+              </div>
+            </motion.div>
 
             {/* Action Buttons */}
-            <div className="flex justify-center">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.25 }}
+              className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-2"
+            >
+              <motion.a
+                href={`mailto:${selectedMessage.email}?subject=Re: ${encodeURIComponent(selectedMessage.name)}`}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#FFD700]/40 bg-[#FFD700]/10 px-6 py-3 text-sm font-medium text-[#FFD700] transition hover:border-[#FFD700]/60 hover:bg-[#FFD700]/20"
+              >
+                <Mail className="h-4 w-4" />
+                {tFeedback("reply") || "Reply"}
+              </motion.a>
               <motion.button
                 onClick={() => setSelectedMessage(null)}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="w-full sm:w-auto min-w-[120px] rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-medium text-white transition hover:bg-white/10"
+                className="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/5 px-6 py-3 text-sm font-medium text-white transition hover:border-white/30 hover:bg-white/10"
               >
                 {tFeedback("close") || "Close"}
               </motion.button>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         )}
       </Modal>
     </AnimatedCard>
