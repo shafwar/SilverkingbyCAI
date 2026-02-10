@@ -375,77 +375,10 @@ export function QrPreviewGridGram({ batches }: Props) {
     const isLoading = downloadingId === product.id;
     const dropdownRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
-    const [dropdownPosition, setDropdownPosition] = useState<"bottom" | "top">("bottom");
-
-    // Smart positioning: detect if dropdown should appear above or below
-    useEffect(() => {
-      if (!isOpen || !buttonRef.current) return;
-
-      const updatePosition = () => {
-        if (!buttonRef.current) return;
-
-        const buttonRect = buttonRef.current.getBoundingClientRect();
-        const dropdownHeight = 350; // max-h-[320px] + padding
-        const spaceBelow = window.innerHeight - buttonRect.bottom;
-        const spaceAbove = buttonRect.top;
-        const minRequiredSpace = 200; // Minimum space needed to show dropdown comfortably
-        const topThreshold = 300; // If button is within 300px from top, always show below
-
-        // STRICT LOGIC: Always prefer bottom position
-        // Special handling for items at the top of the page
-        
-        // If button is near the top of viewport (within 300px), ALWAYS show below
-        // This ensures top items (like "Silver King Eid Al-Fitr Limited Edition #52") always show dropdown below
-        if (spaceAbove < topThreshold) {
-          setDropdownPosition("bottom");
-          return;
-        }
-        
-        // For items not at the top, use standard logic
-        // Only flip to top if:
-        // 1. Space below is LESS than minimum required (200px)
-        // 2. AND space above is SIGNIFICANTLY more than space below (at least 150px difference)
-        if (spaceBelow >= minRequiredSpace) {
-          // Enough space below - ALWAYS show below (preferred)
-          setDropdownPosition("bottom");
-        } else if (spaceBelow < minRequiredSpace && spaceAbove > spaceBelow + 150) {
-          // Only flip to top if very little space below AND significantly more space above
-          setDropdownPosition("top");
-        } else {
-          // Default: always show below (even if tight)
-          setDropdownPosition("bottom");
-        }
-      };
-
-      // Delay to ensure DOM is fully rendered before calculating position
-      // This is critical for accurate positioning, especially for top items
-      const timeoutId = setTimeout(() => {
-        updatePosition();
-      }, 0);
-
-      return () => clearTimeout(timeoutId);
-
-      // Update on scroll and resize (with throttling for performance)
-      let scrollTimeout: NodeJS.Timeout;
-      const handleScroll = () => {
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(updatePosition, 50);
-      };
-
-      const handleResize = () => {
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(updatePosition, 50);
-      };
-
-      window.addEventListener("scroll", handleScroll, true);
-      window.addEventListener("resize", handleResize);
-
-      return () => {
-        clearTimeout(scrollTimeout);
-        window.removeEventListener("scroll", handleScroll, true);
-        window.removeEventListener("resize", handleResize);
-      };
-    }, [isOpen]);
+    
+    // User requirement: dropdown harus SELALU muncul di bawah dalam kondisi apapun
+    // Simplified: Always use "bottom" position, no dynamic calculation needed
+    const dropdownPosition: "bottom" | "top" = "bottom";
 
     return (
       <div className="relative inline-block w-full">

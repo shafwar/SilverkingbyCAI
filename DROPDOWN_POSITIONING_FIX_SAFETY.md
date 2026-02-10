@@ -7,31 +7,31 @@
 Memperbaiki masalah dropdown download di QR Preview Page 2 yang tidak terlihat ketika user scroll ke bawah dan klik tombol Download. Dropdown sekarang menggunakan smart positioning yang lebih baik dan auto-scroll untuk memastikan selalu terlihat di viewport.
 
 ## Masalah yang Diperbaiki
-- **Masalah 1**: Dropdown download untuk produk "Silver King Eid Al-Fitr Limited Edition #52" (dan produk lainnya) tidak terlihat ketika user scroll ke bagian bawah halaman dan klik tombol Download. User harus scroll manual untuk melihat dropdown.
-- **Masalah 2**: Dropdown muncul di atas ketika user berada di bagian atas halaman, padahal seharusnya muncul di bawah karena ada cukup ruang di bawah.
-- **Root Cause**: Positioning logic sebelumnya terlalu agresif dalam mem-flip dropdown ke atas dan tidak memprioritaskan posisi bawah sebagai default.
+- **Masalah**: Dropdown selalu muncul di atas ketika user klik tombol Download, padahal user meminta dropdown harus SELALU muncul di bawah dalam kondisi apapun.
+- **Root Cause**: Positioning logic yang kompleks masih memungkinkan dropdown muncul di atas dalam beberapa kondisi. User requirement sangat jelas: dropdown harus selalu muncul di bawah tanpa exception.
 
 ## Perubahan yang Dilakukan
 
-### 1. Enhanced Positioning Logic dengan Prioritas Bawah (`src/components/admin/QrPreviewGridGram.tsx`)
-- **Prioritas Posisi Bawah dengan Special Handling untuk Item di Paling Atas**: 
-  - **Special Rule untuk Top Items**: Jika button berada dalam 300px dari atas viewport, dropdown **SELALU** muncul di bawah, tidak peduli kondisi lainnya
-  - Dropdown sekarang **selalu muncul di bawah** jika ada cukup ruang (>= 200px)
-  - Hanya flip ke atas jika benar-benar tidak ada cukup ruang di bawah (< 200px) DAN ada lebih banyak ruang di atas (selisih >= 150px)
-  - Default tetap di bawah untuk UX yang lebih baik
+### 1. Simplified Positioning Logic - Always Bottom (`src/components/admin/QrPreviewGridGram.tsx`)
+- **Complete Simplification**: 
+  - Dropdown sekarang **SELALU** muncul di bawah tanpa exception
+  - Menghapus semua dynamic positioning calculation
+  - Menghapus useEffect yang menghitung posisi
+  - `dropdownPosition` sekarang adalah konstanta yang selalu bernilai `"bottom"`
+  - Sesuai dengan user requirement: "selalu muncul di bawah dalam kondisi apapun"
 
-- **Strict Logic**:
-  - Minimum required space: 200px untuk muncul di bawah
-  - Threshold untuk top items: 300px dari atas viewport
-  - Selisih minimum untuk flip ke atas: 150px
-  - Menghapus logic kompleks berdasarkan viewport percentage
-  - Fokus pada perbandingan langsung antara ruang di atas vs di bawah dengan threshold yang jelas
+- **Benefits**:
+  - Kode lebih sederhana dan mudah dipahami
+  - Tidak ada race condition atau timing issues
+  - Perilaku konsisten dan dapat diprediksi
+  - Dropdown selalu muncul di bawah seperti yang diminta user
 
-### 2. Simplified Scroll Handling
-- **Removed Auto-Scroll**: 
-  - Menghapus fungsi `ensureVisibility()` yang menyebabkan scroll tidak perlu
-  - Positioning logic yang lebih baik membuat auto-scroll tidak diperlukan
-  - Scroll handler sekarang hanya update position, lebih ringan dan performant
+### 2. Removed All Dynamic Positioning Logic
+- **No useEffect Needed**: 
+  - Menghapus semua useEffect yang menghitung posisi dropdown
+  - Menghapus scroll dan resize event listeners
+  - Menghapus semua logic untuk menentukan apakah dropdown harus muncul di atas atau bawah
+  - Kode lebih ringan dan performant karena tidak ada calculation yang berjalan
 
 ### 3. Performance Optimization
 - **Throttled Scroll Handler**: 
