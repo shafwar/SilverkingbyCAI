@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sendFeedbackNotificationEmail, sendFeedbackAutoReplyEmail } from "@/lib/email";
 
 export async function POST(request: Request) {
   try {
@@ -31,6 +32,27 @@ export async function POST(request: Request) {
         message: message.trim(),
       },
     });
+
+    // Send email notifications (non-blocking - don't fail if email fails)
+    try {
+      // Send notification to admin
+      await sendFeedbackNotificationEmail({
+        name: feedback.name,
+        email: feedback.email,
+        message: feedback.message,
+        createdAt: feedback.createdAt,
+      });
+
+      // Send auto-reply to user
+      await sendFeedbackAutoReplyEmail({
+        name: feedback.name,
+        email: feedback.email,
+      });
+    } catch (emailError: any) {
+      // Log email error but don't fail the request
+      console.error("Email sending failed (non-critical):", emailError);
+      // Continue - feedback is still saved successfully
+    }
 
     return NextResponse.json(
       { success: true, feedback },
