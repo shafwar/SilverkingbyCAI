@@ -4,6 +4,7 @@ import { createCanvas, loadImage } from "canvas";
 import { PDFDocument } from "pdf-lib";
 import { loadSerticardTemplates } from "@/lib/load-serticard-templates";
 import { getSerticardConfig, getFontSizeMultipliers } from "@/lib/serticard-config";
+import { getSerticardAdjustment, type SerticardAdjustmentData } from "@/lib/serticard-adjustment";
 
 /**
  * Generate a SINGLE Serticard PDF (front + back) for one QR code.
@@ -55,6 +56,7 @@ export async function POST(request: NextRequest) {
     const isGram = Boolean(product.isGram);
     const templateVariant = body?.templateVariant ?? "01";
     const useCustom = body?.useCustomTemplate === true;
+    const adjustmentData = body?.adjustment as SerticardAdjustmentData | undefined;
 
     // Validate inputs
     if (!productName || productName.length === 0) {
@@ -84,10 +86,14 @@ export async function POST(request: NextRequest) {
     // If useCustom flag is set, loadSerticardTemplates will automatically use custom templates
     const { front: frontTemplateImage, back: backTemplateImage } =
       await loadSerticardTemplates(useCustom ? undefined : templateVariant);
-    const fontConfig = await getSerticardConfig();
-    const sizeMultipliers = getFontSizeMultipliers(
-      fontConfig.fontSizePreset === "KECIL" ? "KECIL" : "BESAR"
+    
+    // Get adjustment config (from request or database)
+    const adjustment = adjustmentData || await getSerticardAdjustment(
+      useCustom ? "custom" : templateVariant,
+      null // Global adjustment for now
     );
+    
+    const sizeMultipliers = getFontSizeMultipliers(adjustment.fontSizePreset);
 
     // --- Fetch QR-only image for this serial/uniq code ---
     const baseUrl =
@@ -116,7 +122,9 @@ export async function POST(request: NextRequest) {
     frontCtx.drawImage(frontTemplateImage, 0, 0);
 
     // Layout tuned for Serticard 01 (603x1053); scaled proportionally for 03-18
-    const qrSize = Math.min(frontTemplateImage.width * 0.55, frontTemplateImage.height * 0.55, 900);
+    // Apply QR size adjustment
+    const baseQrSize = Math.min(frontTemplateImage.width * 0.55, frontTemplateImage.height * 0.55, 900);
+    const qrSize = baseQrSize * adjustment.qrSize;
     const qrX = (frontTemplateImage.width - qrSize) / 2;
     const qrY = frontTemplateImage.height * 0.38;
 
@@ -130,9 +138,11 @@ export async function POST(request: NextRequest) {
     const isDarkTemplate = templateVariant !== "01";
     const textColor = isDarkTemplate ? "#ffffff" : "#111111";
 
-    const nameFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.nameMultiplier);
+    // Apply product title size adjustment
+    const baseNameFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.nameMultiplier);
+    const nameFontSize = baseNameFontSize * adjustment.productTitleSize;
     const nameY = qrY - nameOffset;
-    const nameFont = `bold ${nameFontSize}px ${fontConfig.fontFamily}, sans-serif`;
+    const nameFont = `bold ${nameFontSize}px ${adjustment.fontFamily}, sans-serif`;
     const displayProductName = productName && productName.length > 0 ? productName : "PRODUCT";
 
     frontCtx.fillStyle = textColor;
@@ -145,11 +155,14 @@ export async function POST(request: NextRequest) {
       text: displayProductName,
       fontSize: nameFontSize,
       font: nameFont,
+      adjustment: adjustment.productTitleSize,
     });
 
-    const serialFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.serialMultiplier);
+    // Apply serialcode size adjustment
+    const baseSerialFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.serialMultiplier);
+    const serialFontSize = baseSerialFontSize * adjustment.serialcodeSize;
     const serialY = qrY + qrSize + serialOffset;
-    const serialFont = `bold ${serialFontSize}px ${fontConfig.fontFamily}, monospace`;
+    const serialFont = `bold ${serialFontSize}px ${adjustment.fontFamily}, monospace`;
     const displaySerialCode = productSerialCode && productSerialCode.length > 0 ? productSerialCode : "UNKNOWN";
 
     frontCtx.fillStyle = textColor;

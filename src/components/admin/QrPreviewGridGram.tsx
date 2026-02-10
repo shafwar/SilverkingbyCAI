@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "./Modal";
+import { SerticardPreviewModal } from "./SerticardPreviewModal";
 import {
   Search,
   X,
@@ -17,10 +18,12 @@ import {
   FileText,
   CheckCircle2,
   ChevronDown,
+  Eye,
 } from "lucide-react";
 import { SERTICARD_VARIANTS, type SerticardVariantId } from "@/utils/serticard-templates";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
+import type { SerticardAdjustmentData } from "@/lib/serticard-adjustment";
 
 type GramPreviewBatch = {
   batchId: number;
@@ -67,6 +70,15 @@ export function QrPreviewGridGram({ batches }: Props) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [downloadDropdownOpen, setDownloadDropdownOpen] = useState<number | null>(null);
   const downloadDropdownRef = useRef<HTMLDivElement>(null);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewProduct, setPreviewProduct] = useState<{
+    id: number;
+    name: string;
+    uniqCode: string;
+    serialCode?: string;
+    qrImageUrl: string | null;
+  } | null>(null);
+  const [previewTemplateVariant, setPreviewTemplateVariant] = useState<string>("01");
 
   // Fetch serticard config to check for custom template
   const { data: fontConfig, mutate: mutateFontConfig } = useSWR<{
@@ -169,6 +181,52 @@ export function QrPreviewGridGram({ batches }: Props) {
     window.URL.revokeObjectURL(url);
   };
 
+  const handlePreview = (
+    product: {
+      id: number;
+      name: string;
+      weight: number;
+      uniqCode: string;
+      serialCode?: string;
+      qrImageUrl: string | null;
+      weightGroup: string | null;
+      hasRootKey?: boolean;
+    },
+    templateVariant: SerticardVariantId | "custom"
+  ) => {
+    setPreviewProduct({
+      id: product.id,
+      name: product.name,
+      uniqCode: product.uniqCode,
+      serialCode: product.serialCode,
+      qrImageUrl: product.qrImageUrl,
+    });
+    setPreviewTemplateVariant(templateVariant);
+    setPreviewModalOpen(true);
+    setDownloadDropdownOpen(null); // Close dropdown
+  };
+
+  const handleDownloadFromPreview = async (adjustment: SerticardAdjustmentData) => {
+    if (!previewProduct) return;
+    
+    // Find the product again for download
+    const batch = filteredBatches.find((b) => b.firstItem.id === previewProduct.id);
+    if (!batch) return;
+
+    const product = {
+      id: batch.firstItem.id,
+      name: batch.name,
+      weight: batch.weight,
+      uniqCode: batch.firstItem.uniqCode,
+      serialCode: batch.firstItem.serialCode,
+      qrImageUrl: batch.firstItem.qrImageUrl,
+      weightGroup: batch.weightGroup,
+      hasRootKey: batch.firstItem.hasRootKey,
+    };
+
+    await handleDownloadSingle(product, previewTemplateVariant as SerticardVariantId | "custom", adjustment);
+  };
+
   const handleDownloadSingle = async (
     product: {
       id: number;
@@ -180,7 +238,8 @@ export function QrPreviewGridGram({ batches }: Props) {
       weightGroup: string | null;
       hasRootKey?: boolean;
     },
-    variantId: SerticardVariantId | "custom"
+    variantId: SerticardVariantId | "custom",
+    adjustment?: SerticardAdjustmentData
   ) => {
     if (!product) return;
     try {
@@ -205,6 +264,7 @@ export function QrPreviewGridGram({ batches }: Props) {
         },
         templateVariant: variantId === "custom" ? "01" : variantId,
         useCustomTemplate: variantId === "custom",
+        adjustment: adjustment, // Include adjustment data
       };
 
       console.log("[GramPreview] Sending download request:", body);
@@ -358,6 +418,7 @@ export function QrPreviewGridGram({ batches }: Props) {
   const DownloadDropdown = ({
     batchId,
     product,
+    isFirstRow = false,
   }: {
     batchId: number;
     product: {
@@ -370,6 +431,7 @@ export function QrPreviewGridGram({ batches }: Props) {
       weightGroup: string | null;
       hasRootKey?: boolean;
     };
+    isFirstRow?: boolean; // Khusus untuk baris paling atas
   }) => {
     const isOpen = downloadDropdownOpen === batchId;
     const isLoading = downloadingId === product.id;
@@ -387,21 +449,23 @@ export function QrPreviewGridGram({ batches }: Props) {
       const updatePosition = () => {
         if (!buttonRef.current) return;
 
+        // PRIORITAS MUTLAK: Baris paling atas HARUS selalu muncul di bawah
+        // FOKUS HANYA UNTUK BARIS YANG PALING ATAS SAJA
+        if (isFirstRow) {
+          // Baris paling atas: SELALU muncul di bawah, tidak peduli kondisi apapun
+          setDropdownPosition("bottom");
+          return; // Langsung return, tidak perlu cek kondisi lain
+        }
+
+        // Untuk baris selain yang paling atas, gunakan smart positioning
         const buttonRect = buttonRef.current.getBoundingClientRect();
         const dropdownHeight = 350; // max-h-[320px] + padding
         const spaceBelow = window.innerHeight - buttonRect.bottom;
         const spaceAbove = buttonRect.top;
         const viewportHeight = window.innerHeight;
-        const topThreshold = 300; // Jika button di atas 300px, SELALU muncul di bawah
         const bottomThreshold = viewportHeight - 300; // Jika button di bawah threshold, selalu muncul di atas
 
-        // PRIORITAS: Item di paling atas HARUS selalu muncul di bawah
-        // Logic untuk menentukan posisi dropdown
-        if (buttonRect.top < topThreshold) {
-          // Item di paling atas (dalam 300px dari atas): SELALU muncul di bawah
-          // Ini adalah requirement utama - tidak peduli kondisi lainnya
-          setDropdownPosition("bottom");
-        } else if (buttonRect.bottom > bottomThreshold) {
+        if (buttonRect.bottom > bottomThreshold) {
           // Item di paling bawah (dalam 300px dari bawah): selalu muncul di atas
           setDropdownPosition("top");
         } else {
@@ -488,13 +552,14 @@ export function QrPreviewGridGram({ batches }: Props) {
                 {SERTICARD_VARIANTS.map((v) => (
                   <motion.button
                     key={v.id}
-                    onClick={() => handleDownloadSingle(product, v.id)}
+                    onClick={() => handlePreview(product, v.id)}
                     disabled={isLoading}
                     className="w-full px-4 py-2.5 text-left hover:bg-white/10 active:bg-white/15 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between group"
                     whileHover={{ x: 2 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <span className="font-medium text-white text-sm group-hover:text-[#FFD700]/90 transition-colors">
+                    <span className="font-medium text-white text-sm group-hover:text-[#FFD700]/90 transition-colors flex items-center gap-2">
+                      <Eye className="h-4 w-4" />
                       {v.label}
                     </span>
                     <span className="text-xs text-white/40 font-mono bg-white/5 px-2 py-0.5 rounded">
@@ -504,13 +569,14 @@ export function QrPreviewGridGram({ batches }: Props) {
                 ))}
                 {hasCustomTemplate && (
                   <motion.button
-                    onClick={() => handleDownloadSingle(product, "custom")}
+                    onClick={() => handlePreview(product, "custom")}
                     disabled={isLoading}
                     className="w-full px-4 py-2.5 text-left hover:bg-white/10 active:bg-white/15 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between border-t border-white/10 mt-1 pt-2 group"
                     whileHover={{ x: 2 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <span className="font-semibold text-[#FFD700] text-sm group-hover:text-[#FFD700] transition-colors">
+                    <span className="font-semibold text-[#FFD700] text-sm group-hover:text-[#FFD700] transition-colors flex items-center gap-2">
+                      <Eye className="h-4 w-4" />
                       ✨ Custom
                     </span>
                     <span className="text-xs text-[#FFD700]/60 font-mono bg-[#FFD700]/10 px-2 py-0.5 rounded">
@@ -761,7 +827,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                     </td>
                   </tr>
                 ) : (
-                  filteredBatches.map((batch) => (
+                  filteredBatches.map((batch, index) => (
                     <tr key={batch.batchId} className="border-t border-white/5">
                       <td className="px-4 lg:px-6 py-4">
                         <p className="font-semibold text-white">{batch.name}</p>
@@ -829,6 +895,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                               weightGroup: batch.weightGroup,
                               hasRootKey: batch.firstItem.hasRootKey,
                             }}
+                            isFirstRow={index === 0}
                           />
                         </div>
                       </td>
@@ -848,7 +915,7 @@ export function QrPreviewGridGram({ batches }: Props) {
           {filteredBatches.length === 0 ? (
             <div className="col-span-full text-center text-white/40 text-sm">{t("noProducts")}</div>
           ) : (
-            filteredBatches.map((batch) => (
+            filteredBatches.map((batch, index) => (
               <div
                 key={batch.batchId}
                 className="group rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4 hover:border-[#FFD700]/40 transition-all"
@@ -912,6 +979,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                         weightGroup: batch.weightGroup,
                         hasRootKey: batch.firstItem.hasRootKey,
                       }}
+                      isFirstRow={index === 0}
                     />
                   </div>
                   <button
@@ -1009,6 +1077,20 @@ export function QrPreviewGridGram({ batches }: Props) {
           </div>
         )}
       </Modal>
+
+      {/* Preview Modal */}
+      {previewProduct && (
+        <SerticardPreviewModal
+          open={previewModalOpen}
+          onClose={() => {
+            setPreviewModalOpen(false);
+            setPreviewProduct(null);
+          }}
+          product={previewProduct}
+          templateVariant={previewTemplateVariant}
+          onDownload={handleDownloadFromPreview}
+        />
+      )}
     </div>
   );
 }

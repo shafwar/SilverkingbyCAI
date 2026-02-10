@@ -177,11 +177,11 @@ model GramQRScanLog {
 /// Daily scan summary for historical months (raw logs exported to R2 and purged)
 /// Used by analytics chart "Scans over time" - reads from here for past months
 model ScanLogSummary {
-  id          Int      @id @default(autoincrement())
-  date        DateTime @db.Date
-  page1Scans  Int      @default(0)
-  page2Scans  Int      @default(0)
-  totalScans  Int      @default(0)
+  id         Int      @id @default(autoincrement())
+  date       DateTime @db.Date
+  page1Scans Int      @default(0)
+  page2Scans Int      @default(0)
+  totalScans Int      @default(0)
 
   @@unique([date])
   @@index([date])
@@ -190,12 +190,32 @@ model ScanLogSummary {
 /// Serticard custom config - single row (id=1)
 /// Admin can upload custom templates and configure font
 model SerticardConfig {
-  id               Int       @id @default(1)
-  customFrontR2Key String?   // e.g. templates/serticard-custom-front.png
-  customBackR2Key  String?   // e.g. templates/serticard-custom-back.png
-  fontFamily       String    @default("Arial")   // Arial | Lucida Sans | Times New Roman | SF Mono
-  fontSizePreset   String    @default("BESAR")   // BESAR | KECIL
-  updatedAt        DateTime  @updatedAt
+  id               Int      @id @default(1)
+  customFrontR2Key String? // e.g. templates/serticard-custom-front.png
+  customBackR2Key  String? // e.g. templates/serticard-custom-back.png
+  fontFamily       String   @default("Arial") // Arial | Lucida Sans | Times New Roman | SF Mono
+  fontSizePreset   String   @default("BESAR") // BESAR | KECIL
+  updatedAt        DateTime @updatedAt
+}
+
+/// Serticard adjustment config - per template variant
+/// Stores adjustment settings for preview and download (font, size, etc.)
+model SerticardAdjustment {
+  id               Int      @id @default(autoincrement())
+  templateVariant  String // "01", "03", "05", ..., "custom"
+  userId           Int? // null = global default, or specific user ID
+  fontFamily       String   @default("Arial")
+  fontSizePreset   String   @default("BESAR") // BESAR | KECIL
+  productTitleSize Float    @default(1.0) // Multiplier for product title size (0.5 - 2.0)
+  uniqcodeSize     Float    @default(1.0) // Multiplier for uniqcode size (0.5 - 2.0)
+  serialcodeSize   Float    @default(1.0) // Multiplier for serialcode size (0.5 - 2.0)
+  qrSize           Float    @default(1.0) // Multiplier for QR size (0.5 - 2.0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([templateVariant, userId])
+  @@index([templateVariant])
+  @@index([userId])
 }
 
 /// Contact form feedback messages from users
