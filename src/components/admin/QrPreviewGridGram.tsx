@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "./Modal";
-import { SerticardPreviewModal } from "./SerticardPreviewModal";
+import { SerticardPreviewModal, prefetchSerticardTemplate } from "./SerticardPreviewModal";
 import {
   Search,
   X,
@@ -97,6 +97,18 @@ export function QrPreviewGridGram({ batches }: Props) {
     window.addEventListener("serticard-config-updated", handleConfigUpdate);
     return () => window.removeEventListener("serticard-config-updated", handleConfigUpdate);
   }, [mutateFontConfig]);
+
+  // Prefetch serticard templates when dropdown opens so preview loads instantly
+  useEffect(() => {
+    if (downloadDropdownOpen == null) return;
+    prefetchSerticardTemplate("01");
+    const rest = SERTICARD_VARIANTS.slice(1).map((v) => v.id);
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
+    rest.forEach((variantId, i) => {
+      timeouts.push(setTimeout(() => prefetchSerticardTemplate(variantId), 80 * (i + 1)));
+    });
+    return () => timeouts.forEach((t) => clearTimeout(t));
+  }, [downloadDropdownOpen]);
 
   // Close dropdown when clicking outside
   useEffect(() => {

@@ -10,7 +10,22 @@ import { getFontSizeMultipliers } from "@/lib/serticard-config";
 import { SERTICARD_VARIANTS } from "@/utils/serticard-templates";
 
 /** Cache template image by variant to avoid re-fetching from R2 on every adjustment change */
-const templateImageCache: Record<string, HTMLImageElement> = {};
+export const templateImageCache: Record<string, HTMLImageElement> = {};
+
+/** Prefetch template into cache so preview opens instantly. Call when dropdown opens. */
+export function prefetchSerticardTemplate(variant: string): void {
+  if (templateImageCache[variant]?.complete && templateImageCache[variant].naturalWidth > 0) return;
+  const url =
+    variant === "custom"
+      ? "/api/admin/serticard/preview?side=front"
+      : `/api/admin/template-proxy?template=front&variant=${variant}`;
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.onload = () => {
+    templateImageCache[variant] = img;
+  };
+  img.src = url;
+}
 
 type PreviewModalProps = {
   open: boolean;

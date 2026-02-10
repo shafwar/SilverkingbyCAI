@@ -8,10 +8,23 @@ import {
   getR2TemplateKey,
 } from "@/utils/serticard-templates";
 
+/** In-memory cache: key = "template-variant" (e.g. "front-01"), value = { buffer, contentType } */
+const templateBufferCache = new Map<string, { buffer: ArrayBuffer; contentType: string }>();
+
+function cacheKey(template: string, variantId: string): string {
+  return `${template}-${variantId}`;
+}
+
+const CACHE_HEADERS = {
+  "Cache-Control": "public, max-age=31536000, immutable",
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+} as const;
+
 /**
  * Proxy endpoint for serticard templates
- * Fetches template from R2 and serves it with proper CORS headers
- * This prevents tainted canvas errors
+ * Fetches template from R2 (or local) and serves with CORS; caches in memory for fast repeat requests
  * Query: template=front|back, variant=01|03|05|... (default 01)
  */
 export async function GET(request: NextRequest) {
@@ -30,8 +43,18 @@ export async function GET(request: NextRequest) {
     }
 
     const variantId = isValidSerticardVariant(variantParam) ? variantParam : DEFAULT_SERTICARD_VARIANT;
-    const variant = getSerticardVariant(variantId)!;
+    const key = cacheKey(template, variantId);
 
+    // Return from memory cache immediately if present (fast path)
+    const cached = templateBufferCache.get(key);
+    if (cached) {
+      return new NextResponse(cached.buffer, {
+        status: 200,
+        headers: { "Content-Type": cached.contentType, ...CACHE_HEADERS },
+      });
+    }
+
+    const variant = getSerticardVariant(variantId)!;
     const num = template === "front" ? variant.frontNum : variant.backNum;
     const ext = variant.ext;
     const fallbackPath = `/${variant.localBase}/${getLocalTemplateFilename(num, ext)}`;
@@ -40,18 +63,12 @@ export async function GET(request: NextRequest) {
     const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL;
     const isLocalDev = process.env.NODE_ENV === "development" || !R2_PUBLIC_URL;
 
-    let templateUrl: string;
-    if (!isLocalDev && R2_PUBLIC_URL) {
-      const base = R2_PUBLIC_URL.endsWith("/") ? R2_PUBLIC_URL.slice(0, -1) : R2_PUBLIC_URL;
-      templateUrl = `${base}/${r2Key}`;
-    } else {
-      templateUrl = fallbackPath;
-    }
-
     const contentType = ext === "png" ? "image/png" : "image/jpeg";
 
-    // Try to fetch from R2 first
-    if (!isLocalDev) {
+    // Try R2 first
+    if (!isLocalDev && R2_PUBLIC_URL) {
+      const base = R2_PUBLIC_URL.endsWith("/") ? R2_PUBLIC_URL.slice(0, -1) : R2_PUBLIC_URL;
+      const templateUrl = `${base}/${r2Key}`;
       try {
         const response = await fetch(templateUrl, {
           headers: { "User-Agent": "SilverKing-Server/1.0" },
@@ -59,19 +76,14 @@ export async function GET(request: NextRequest) {
 
         if (response.ok) {
           const imageBuffer = await response.arrayBuffer();
+          templateBufferCache.set(key, { buffer: imageBuffer, contentType });
           return new NextResponse(imageBuffer, {
             status: 200,
-            headers: {
-              "Content-Type": contentType,
-              "Cache-Control": "public, max-age=31536000, immutable",
-              "Access-Control-Allow-Origin": "*",
-              "Access-Control-Allow-Methods": "GET, OPTIONS",
-              "Access-Control-Allow-Headers": "Content-Type",
-            },
+            headers: { "Content-Type": contentType, ...CACHE_HEADERS },
           });
         }
       } catch (r2Error) {
-        console.warn(`[Template Proxy] Failed to fetch from R2 (${templateUrl}), falling back to local:`, r2Error);
+        console.warn(`[Template Proxy] R2 failed (${templateUrl}), fallback local:`, r2Error);
       }
     }
 
@@ -81,7 +93,12 @@ export async function GET(request: NextRequest) {
     const localPath = path.join(process.cwd(), "public", fallbackPath);
 
     try {
-      const imageBuffer = await fs.readFile(localPath);
+      const fileBuffer = await fs.readFile(localPath);
+      const imageBuffer = fileBuffer.buffer.slice(
+        fileBuffer.byteOffset,
+        fileBuffer.byteOffset + fileBuffer.byteLength
+      );
+      templateBufferCache.set(key, { buffer: imageBuffer, contentType });
       return new NextResponse(imageBuffer, {
         status: 200,
         headers: {
@@ -93,7 +110,7 @@ export async function GET(request: NextRequest) {
         },
       });
     } catch (localError) {
-      console.error(`[Template Proxy] Failed to read local file (${localPath}):`, localError);
+      console.error(`[Template Proxy] Local file failed (${localPath}):`, localError);
       return NextResponse.json({ error: "Template not found" }, { status: 404 });
     }
   } catch (error) {
