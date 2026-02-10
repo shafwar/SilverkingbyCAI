@@ -7,49 +7,24 @@ import { Modal } from "./Modal";
 import { toast } from "sonner";
 import type { SerticardAdjustmentData } from "@/lib/serticard-adjustment";
 import { getFontSizeMultipliers } from "@/lib/serticard-config";
-import {
-  SERTICARD_VARIANTS,
-  getSerticardVariant,
-  getR2TemplateKey,
-} from "@/utils/serticard-templates";
+import { SERTICARD_VARIANTS } from "@/utils/serticard-templates";
 
-/** Cache template image by variant to avoid re-fetching on every adjustment change */
+/** Cache template image by variant to avoid re-fetching from R2 on every adjustment change */
 export const templateImageCache: Record<string, HTMLImageElement> = {};
 
-const R2_PUBLIC_BASE =
-  typeof process.env.NEXT_PUBLIC_R2_PUBLIC_URL === "string" &&
-  process.env.NEXT_PUBLIC_R2_PUBLIC_URL
-    ? process.env.NEXT_PUBLIC_R2_PUBLIC_URL.replace(/\/$/, "")
-    : "";
-
-/** Direct R2 URL = satu hop, lebih cepat. Proxy = dua hop. */
-function getTemplateUrl(variant: string, useProxy = false): string {
-  if (variant === "custom")
-    return "/api/admin/serticard/preview?side=front";
-  if (useProxy || !R2_PUBLIC_BASE)
-    return `/api/admin/template-proxy?template=front&variant=${variant}`;
-  const v = getSerticardVariant(variant);
-  if (!v) return `/api/admin/template-proxy?template=front&variant=${variant}`;
-  const key = getR2TemplateKey(v.frontNum, v.ext);
-  return `${R2_PUBLIC_BASE}/${key}`;
-}
-
-/** Prefetch template so preview opens instantly. Call on page load and when dropdown opens. */
+/** Prefetch template into cache so preview opens instantly. Call when dropdown opens. */
 export function prefetchSerticardTemplate(variant: string): void {
-  if (templateImageCache[variant]?.complete && templateImageCache[variant].naturalWidth > 0)
-    return;
+  if (templateImageCache[variant]?.complete && templateImageCache[variant].naturalWidth > 0) return;
+  const url =
+    variant === "custom"
+      ? "/api/admin/serticard/preview?side=front"
+      : `/api/admin/template-proxy?template=front&variant=${variant}`;
   const img = new Image();
   img.crossOrigin = "anonymous";
   img.onload = () => {
     templateImageCache[variant] = img;
   };
-  img.onerror = () => {
-    const proxyUrl = getTemplateUrl(variant, true);
-    if (proxyUrl === img.src) return;
-    img.onerror = null;
-    img.src = proxyUrl;
-  };
-  img.src = getTemplateUrl(variant, false);
+  img.src = url;
 }
 
 type PreviewModalProps = {
@@ -111,12 +86,16 @@ export function SerticardPreviewModal({
     loadAdjustment();
   }, [open, templateVariant]);
 
-  // Load template: direct R2 URL (fast) first, fallback to proxy if CORS/error
+  // Load template from R2 (via proxy) with cache per variant for fast re-renders
   const getOrLoadTemplate = useCallback((): Promise<HTMLImageElement> => {
     const cached = templateImageCache[templateVariant];
     if (cached && cached.complete && cached.naturalWidth > 0) {
       return Promise.resolve(cached);
     }
+    const templateUrl =
+      templateVariant === "custom"
+        ? "/api/admin/serticard/preview?side=front"
+        : `/api/admin/template-proxy?template=front&variant=${templateVariant}`;
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.crossOrigin = "anonymous";
@@ -124,16 +103,8 @@ export function SerticardPreviewModal({
         templateImageCache[templateVariant] = img;
         resolve(img);
       };
-      img.onerror = () => {
-        const proxyUrl = getTemplateUrl(templateVariant, true);
-        if (proxyUrl === img.src) {
-          reject(new Error("Failed to load template"));
-          return;
-        }
-        img.onerror = () => reject(new Error("Failed to load template"));
-        img.src = proxyUrl;
-      };
-      img.src = getTemplateUrl(templateVariant, false);
+      img.onerror = reject;
+      img.src = templateUrl;
     });
   }, [templateVariant]);
 
@@ -283,14 +254,14 @@ export function SerticardPreviewModal({
     drawTemplateOnly,
   ]);
 
-  // Re-render when adjustment or open changes
+  // Re-render when adjustment or open changes (no delay so preview shows as fast as possible)
   useEffect(() => {
     if (!open) {
       setTemplateDrawn(false);
       return;
     }
     setTemplateDrawn(false);
-    const timeoutId = setTimeout(renderPreview, 80);
+    const timeoutId = setTimeout(renderPreview, 0);
     return () => clearTimeout(timeoutId);
   }, [open, adjustment, renderPreview]);
 

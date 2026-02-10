@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
 
     const contentType = ext === "png" ? "image/png" : "image/jpeg";
 
-    // Try R2 first
+    // Try R2 first: stream body to client immediately so preview appears faster; cache in background
     if (!isLocalDev && R2_PUBLIC_URL) {
       const base = R2_PUBLIC_URL.endsWith("/") ? R2_PUBLIC_URL.slice(0, -1) : R2_PUBLIC_URL;
       const templateUrl = `${base}/${r2Key}`;
@@ -74,10 +74,15 @@ export async function GET(request: NextRequest) {
           headers: { "User-Agent": "SilverKing-Server/1.0" },
         });
 
-        if (response.ok) {
-          const imageBuffer = await response.arrayBuffer();
-          templateBufferCache.set(key, { buffer: imageBuffer, contentType });
-          return new NextResponse(imageBuffer, {
+        if (response.ok && response.body) {
+          response
+            .clone()
+            .arrayBuffer()
+            .then((imageBuffer) => {
+              templateBufferCache.set(key, { buffer: imageBuffer, contentType });
+            })
+            .catch(() => {});
+          return new NextResponse(response.body, {
             status: 200,
             headers: { "Content-Type": contentType, ...CACHE_HEADERS },
           });

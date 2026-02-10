@@ -98,19 +98,23 @@ export function QrPreviewGridGram({ batches }: Props) {
     return () => window.removeEventListener("serticard-config-updated", handleConfigUpdate);
   }, [mutateFontConfig]);
 
-  // Prefetch template 01 on page load so preview is ready before user opens dropdown
+  // Prefetch serticard templates as soon as page loads so preview is ready before user clicks
   useEffect(() => {
-    prefetchSerticardTemplate("01");
-  }, []);
-
-  // Prefetch all templates when dropdown opens so any template choice loads instantly
-  useEffect(() => {
-    if (downloadDropdownOpen == null) return;
     prefetchSerticardTemplate("01");
     const rest = SERTICARD_VARIANTS.slice(1).map((v) => v.id);
     const timeouts: ReturnType<typeof setTimeout>[] = [];
     rest.forEach((variantId, i) => {
-      timeouts.push(setTimeout(() => prefetchSerticardTemplate(variantId), 60 * (i + 1)));
+      timeouts.push(setTimeout(() => prefetchSerticardTemplate(variantId), 50 * (i + 1)));
+    });
+    return () => timeouts.forEach((t) => clearTimeout(t));
+  }, []);
+
+  // Also prefetch when dropdown opens (backup if templates not ready yet)
+  useEffect(() => {
+    if (downloadDropdownOpen == null) return;
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
+    SERTICARD_VARIANTS.forEach((v, i) => {
+      timeouts.push(setTimeout(() => prefetchSerticardTemplate(v.id), i * 30));
     });
     return () => timeouts.forEach((t) => clearTimeout(t));
   }, [downloadDropdownOpen]);
