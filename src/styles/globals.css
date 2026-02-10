@@ -637,11 +637,78 @@
       opacity: 0.9;
     }
 
-    .scrollbar-admin:hover::-webkit-scrollbar-thumb {
-      background: rgba(226, 232, 240, 0.95); /* mendekati slate-100 untuk hover */
-      box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.9), 0 0 16px rgba(148, 163, 184, 0.7);
-    }
+  .scrollbar-admin:hover::-webkit-scrollbar-thumb {
+    background: rgba(226, 232, 240, 0.95); /* mendekati slate-100 untuk hover */
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.9), 0 0 16px rgba(148, 163, 184, 0.7);
   }
+
+  /* Professional Range Slider Styles */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-track {
+    background: rgba(255, 255, 255, 0.1);
+    height: 10px;
+    border-radius: 5px;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    background: #FFD700;
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+    transition: all 0.2s ease;
+    cursor: grab;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover {
+    background: #ffed4e;
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.6);
+    transform: scale(1.1);
+  }
+
+  input[type="range"]::-webkit-slider-thumb:active {
+    cursor: grabbing;
+    transform: scale(0.95);
+  }
+
+  input[type="range"]::-moz-range-track {
+    background: rgba(255, 255, 255, 0.1);
+    height: 10px;
+    border-radius: 5px;
+    border: none;
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    background: #FFD700;
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+    transition: all 0.2s ease;
+    cursor: grab;
+  }
+
+  input[type="range"]::-moz-range-thumb:hover {
+    background: #ffed4e;
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.6);
+    transform: scale(1.1);
+  }
+
+  input[type="range"]::-moz-range-thumb:active {
+    cursor: grabbing;
+    transform: scale(0.95);
+  }
+}
 }
 
 body.modal-active .site-navbar {
