@@ -60,23 +60,41 @@ export function AnalyticsPanel() {
       console.log("[AnalyticsPanel] Loading purge status for", month, year, "cached:", cachedStatus);
       
       // Immediately show cached status if it exists and is valid - don't wait for API
+      // This ensures persistent indicator stays visible
       if (cachedStatus && cachedStatus.verified && cachedStatus.r2Uploaded) {
-        console.log("[AnalyticsPanel] Showing cached purge status immediately");
+        console.log("[AnalyticsPanel] Showing cached purge status immediately (persistent)");
         setPurgeResult(cachedStatus);
       } else {
         // Clear if no valid cached status
         setPurgeResult(null);
       }
+      
+      // Deep verification is manual - clear it when month changes
+      // It should only show when user explicitly clicks "Verifikasi Mendalam"
+      setDeepVerification(null);
 
       // Then verify with API in background (ensure accuracy, but don't block UI)
+      // CRITICAL: This also auto-detects months that were purged by cron (not manual)
       setVerifyingStatus(true);
       try {
         const res = await fetch(`/api/admin/scans/purge-status?month=${month}&year=${year}`);
         if (res.ok) {
           const apiStatus = await res.json();
           
-          // If API confirms purge status, update with fresh data
-          if (apiStatus.isPurged && apiStatus.databaseEmpty && apiStatus.csvExists) {
+          // CRITICAL: Auto-detect if month was purged by cron (even if not in localStorage)
+          // If database is empty AND (CSV exists OR summary exists), it means purge was successful
+          // This handles auto-purge from cron job (Februari auto-purged on March 1st, etc.)
+          // Scenario: User opens Analytics on March 2nd, selects February → API detects purge → saves to localStorage → shows notification
+          if (apiStatus.databaseEmpty && (apiStatus.csvExists || apiStatus.summaryExists)) {
+            console.log("[AnalyticsPanel] ✅ Auto-detected purge status from API (possibly from cron):", {
+              month: apiStatus.month,
+              year: apiStatus.year,
+              databaseEmpty: apiStatus.databaseEmpty,
+              csvExists: apiStatus.csvExists,
+              summaryExists: apiStatus.summaryExists,
+              hadCache: !!cachedStatus,
+            });
+
             // Convert API response to PurgeStatus format
             const verifiedStatus: PurgeStatus = {
               month: apiStatus.month,
@@ -85,37 +103,25 @@ export function AnalyticsPanel() {
               r2Uploaded: apiStatus.csvExists,
               remainingPage1Logs: apiStatus.remainingPage1Logs,
               remainingPage2Logs: apiStatus.remainingPage2Logs,
-              page1Deleted: cachedStatus?.page1Deleted || 0, // Preserve from cache if available
-              page2Deleted: cachedStatus?.page2Deleted || 0, // Preserve from cache if available
-              csvRows: cachedStatus?.csvRows || 0, // Preserve from cache if available
-              filename: apiStatus.filename || `${year}-${String(month).padStart(2, "0")}.csv`,
-              downloadUrl: apiStatus.downloadUrl || cachedStatus?.downloadUrl || "",
-              timestamp: cachedStatus?.timestamp || Date.now(), // Preserve original timestamp
-            };
-
-            // Update localStorage with verified status
-            savePurgeStatus(verifiedStatus);
-            setPurgeResult(verifiedStatus);
-          } else if (apiStatus.databaseEmpty && apiStatus.csvExists) {
-            // Even if isPurged is false, if database is empty and CSV exists, consider it purged
-            const verifiedStatus: PurgeStatus = {
-              month: apiStatus.month,
-              year: apiStatus.year,
-              verified: apiStatus.databaseEmpty,
-              r2Uploaded: apiStatus.csvExists,
-              remainingPage1Logs: apiStatus.remainingPage1Logs,
-              remainingPage2Logs: apiStatus.remainingPage2Logs,
+              // Preserve from cache if available (manual purge), otherwise use defaults (auto-purge)
               page1Deleted: cachedStatus?.page1Deleted || 0,
               page2Deleted: cachedStatus?.page2Deleted || 0,
               csvRows: cachedStatus?.csvRows || 0,
               filename: apiStatus.filename || `${year}-${String(month).padStart(2, "0")}.csv`,
               downloadUrl: apiStatus.downloadUrl || cachedStatus?.downloadUrl || "",
+              // Use current timestamp if no cache (means it was auto-purged by cron)
+              // This ensures the notification appears even for auto-purged months
               timestamp: cachedStatus?.timestamp || Date.now(),
             };
+
+            // CRITICAL: Save to localStorage so it becomes persistent
+            // This ensures that auto-purged months (from cron) also show persistent notification
+            // WITHOUT requiring manual click on "Purge bulan terpilih"
+            console.log("[AnalyticsPanel] 💾 Saving auto-detected purge status to localStorage (will show persistent notification)");
             savePurgeStatus(verifiedStatus);
             setPurgeResult(verifiedStatus);
           } else if (!cachedStatus) {
-            // Only clear if we don't have cached status
+            // Only clear if we don't have cached status and API says not purged
             setPurgeResult(null);
           }
           // If we have cached status but API says different, keep cached status (might be temporary API issue)
@@ -170,6 +176,8 @@ export function AnalyticsPanel() {
   const handleMonthYearChange = (newMonth: number, newYear: number) => {
     setMonth(newMonth);
     setYear(newYear);
+    // Clear deep verification when month changes (manual verification per month)
+    setDeepVerification(null);
     // Don't clear purge result - let useEffect handle loading status for new month
     // Immediately fetch new data when month changes
     mutateTrend();
@@ -343,24 +351,31 @@ export function AnalyticsPanel() {
             <button
               onClick={async () => {
                 setRunningDeepVerification(true);
+                // Clear previous verification result before fetching new one
                 setDeepVerification(null);
                 try {
+                  // Always fetch fresh data for current month (manual verification)
                   const res = await fetch(`/api/admin/verify-purge-deep?month=${month}&year=${year}`);
                   if (!res.ok) {
                     const data = await res.json().catch(() => ({}));
                     throw new Error(data.error || "Verification failed");
                   }
                   const data = await res.json();
-                  setDeepVerification(data);
-                  toast.success("Verifikasi mendalam selesai", { duration: 3000 });
+                  // Set verification result - this is manual, not persistent
+                  // Only set if still on the same month (prevent race condition)
+                  if (data.month === month && data.year === year) {
+                    setDeepVerification(data);
+                    toast.success(`Verifikasi mendalam selesai untuk ${month}/${year}`, { duration: 3000 });
+                  }
                 } catch (e) {
                   toast.error(e instanceof Error ? e.message : "Verification failed");
+                  setDeepVerification(null);
                 } finally {
                   setRunningDeepVerification(false);
                 }
               }}
               className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-blue-500/40 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-white transition hover:border-blue-500 hover:bg-blue-500/10"
-              title="Verifikasi mendalam: cek database kosong, IP addresses, rekapan, dan CSV di R2"
+              title="Verifikasi mendalam (manual): cek database kosong, IP addresses, rekapan, dan CSV di R2 untuk bulan terpilih"
             >
               {runningDeepVerification ? (
                 <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
@@ -373,11 +388,12 @@ export function AnalyticsPanel() {
           </div>
         </div>
         
-        {/* Deep Verification Results */}
-        {deepVerification && (
+        {/* Deep Verification Results - Manual, Not Persistent */}
+        {deepVerification && deepVerification.month === month && deepVerification.year === year && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
             className="mt-4 rounded-lg border p-4"
             style={{
               borderColor: deepVerification.status.fullyPurged
@@ -399,6 +415,7 @@ export function AnalyticsPanel() {
                   <h4 className="text-sm font-semibold text-white">
                     🔍 Verifikasi Mendalam: {deepVerification.month}/{deepVerification.year}
                   </h4>
+                  <span className="text-xs text-white/50 ml-2">(Manual - klik tombol untuk bulan lain)</span>
                 </div>
                 <div className="space-y-2 text-xs text-white/70 ml-7">
                   <div className="grid grid-cols-2 gap-4">
@@ -487,9 +504,13 @@ export function AnalyticsPanel() {
                 </div>
               </div>
               <button
-                onClick={() => setDeepVerification(null)}
+                onClick={() => {
+                  // Clear deep verification - it's manual, not persistent
+                  setDeepVerification(null);
+                }}
                 className="text-white/40 hover:text-white/60 transition-colors flex-shrink-0"
                 aria-label="Tutup"
+                title="Tutup verifikasi mendalam (manual - akan hilang saat ganti bulan)"
               >
                 <X className="h-4 w-4" />
               </button>

@@ -2,7 +2,7 @@
 
 **Tanggal:** Februari 2026  
 **Status:** ✅ SAFE FOR DEPLOYMENT  
-**Update:** Enhanced purge verification, UI feedback, persistent status indicator & deep analysis tools
+**Update:** Enhanced purge verification, UI feedback, persistent status indicator, deep analysis tools & auto-detect cron-purged months
 
 ## Ringkasan
 
@@ -102,6 +102,14 @@ Format CSV laporan (Nov, Des, Jan, Feb, dll) mengikuti struktur product export +
 - Untuk Nov/Des 2025 yang sudah lewat: pilih bulan → Export CSV (opsional) → Purge
 - Data graph tetap aman via ScanLogSummary; raw logs dihapus setelah export ke R2
 
+## Auto-Purge oleh Cron (Mulai Februari 2026)
+
+- **Tanggal 1 setiap bulan**: Cron otomatis purge bulan lalu (mis. 1 Maret → purge Februari)
+- **Tidak perlu manual action**: Admin tidak perlu click "Purge bulan terpilih" untuk bulan yang sudah di-purge oleh cron
+- **Auto-detect & notification**: Sistem auto-detect dari API dan otomatis menampilkan notifikasi hijau "Purge Berhasil"
+- **Persistent indicator**: Notifikasi tetap muncul meskipun refresh atau pindah halaman
+- **Verification**: Deep verification tetap manual - harus click tombol "Verifikasi Mendalam" untuk melihat detail lengkap
+
 ## Perubahan Terbaru (Februari 2026)
 
 ### Enhanced Purge Verification & UI Feedback
@@ -152,14 +160,24 @@ Format CSV laporan (Nov, Des, Jan, Feb, dll) mengikuti struktur product export +
    - **Client-side utility**: `src/lib/purge-status.ts` untuk manage localStorage
    - **Visual indicator**: Notifikasi hijau persistent untuk bulan yang sudah di-purge
    - **Auto-cleanup**: localStorage dibatasi maksimal 24 bulan terakhir untuk mencegah bloat
+   - **Auto-detect cron-purged months**: Sistem auto-detect bulan yang di-purge oleh cron (tanggal 1 setiap bulan) dan otomatis menyimpan status ke localStorage, sehingga notifikasi muncul tanpa manual click
 
 6. **Deep Analysis Tools (Februari 2026)**
    - **API endpoint**: `GET /api/admin/verify-purge-deep?month=&year=` untuk verifikasi mendalam
-   - **UI button**: Tombol "Verifikasi Mendalam" di Analytics Panel
+   - **UI button**: Tombol "Verifikasi Mendalam" di Analytics Panel (manual, tidak persistent)
    - **Multiple verification methods**: Count queries (Prisma & Raw SQL), IP addresses check, ScanLogSummary check, R2 CSV check
    - **Comprehensive report**: Returns detailed verification report dengan kesimpulan lengkap
    - **Scripts**: `verify-purge-deep-analysis.js` (direct DB) dan `verify-purge-all-months.js` (via API)
    - **Documentation**: `VERIFIKASI_PURGE_DEEP_ANALYSIS.md` dengan panduan lengkap
+   - **Manual verification**: Deep verification adalah manual - harus click tombol untuk setiap bulan, tidak stay seperti purge success indicator
+
+7. **Auto-Detect Cron-Purged Months (Februari 2026)**
+   - **Cron auto-purge**: Tanggal 1 setiap bulan, cron otomatis purge bulan lalu (mis. 1 Maret → purge Februari)
+   - **Auto-detect mechanism**: Saat halaman Analytics dibuka, sistem auto-detect dari API apakah bulan sudah di-purge
+   - **Auto-save to localStorage**: Jika database kosong + CSV ada (atau summary ada), status otomatis disimpan ke localStorage
+   - **Auto-show notification**: Notifikasi hijau "Purge Berhasil" muncul otomatis tanpa manual click untuk bulan yang di-purge oleh cron
+   - **No manual action needed**: Admin tidak perlu click "Purge bulan terpilih" untuk bulan yang sudah di-purge oleh cron
+   - **Works for all months**: Berlaku untuk semua bulan yang di-purge oleh cron (Februari, Maret, April, dll)
 
 ## Keamanan
 
