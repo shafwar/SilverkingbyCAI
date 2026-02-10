@@ -483,7 +483,7 @@ export function QrPreviewGridGram({ batches }: Props) {
   };
 
   return (
-    <div className="flex h-full flex-col space-y-6 overflow-hidden">
+    <div className="space-y-6">
       {/* Header section: sama nuansanya dengan Page 1 (Vault QR) */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
@@ -642,11 +642,11 @@ export function QrPreviewGridGram({ batches }: Props) {
       </div>
 
       {layoutView === "table" ? (
-        <div className="flex-1 min-h-0 bg-transparent">
-          <div className="h-full overflow-x-auto overflow-y-auto rounded-3xl">
-            <table className="w-full text-sm text-white/70">
+        <div className="rounded-3xl border border-white/10 bg-white/[0.02] overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1000px] text-sm text-white/70">
               <thead>
-                <tr className="bg-white/[0.03] text-left text-xs uppercase tracking-[0.4em] text-white/40">
+                <tr className="sticky top-0 z-10 bg-[#0a0a0a]/95 backdrop-blur text-left text-xs uppercase tracking-[0.4em] text-white/40 border-b border-white/10">
                   <th className="px-4 lg:px-6 py-4">{t("productName")}</th>
                   <th className="px-4 lg:px-6 py-4">{t("weight")}</th>
                   <th className="px-4 lg:px-6 py-4">{t("qrPreview")}</th>
@@ -743,12 +743,11 @@ export function QrPreviewGridGram({ batches }: Props) {
           </div>
         </div>
       ) : (
-        <div className="flex-1 min-h-0">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="grid h-full grid-cols-1 gap-4 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 scrollbar-admin"
-          >
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        >
             {filteredBatches.length === 0 ? (
               <div className="col-span-full text-center text-white/40 text-sm">
                 {t("noProducts")}
@@ -831,8 +830,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                 </div>
               ))
             )}
-          </motion.div>
-        </div>
+        </motion.div>
       )}
 
       {/* Serial Codes Modal - Shows all serial codes and root keys for a batch */}
