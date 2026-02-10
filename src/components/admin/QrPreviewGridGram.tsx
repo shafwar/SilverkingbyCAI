@@ -373,10 +373,44 @@ export function QrPreviewGridGram({ batches }: Props) {
   }) => {
     const isOpen = downloadDropdownOpen === batchId;
     const isLoading = downloadingId === product.id;
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const buttonRef = useRef<HTMLButtonElement>(null);
+    const [dropdownPosition, setDropdownPosition] = useState<"bottom" | "top">("bottom");
+
+    // Smart positioning: detect if dropdown should appear above or below
+    useEffect(() => {
+      if (!isOpen || !buttonRef.current || !dropdownRef.current) return;
+
+      const updatePosition = () => {
+        if (!buttonRef.current || !dropdownRef.current) return;
+
+        const buttonRect = buttonRef.current.getBoundingClientRect();
+        const dropdownHeight = 320; // max-h-[320px]
+        const spaceBelow = window.innerHeight - buttonRect.bottom;
+        const spaceAbove = buttonRect.top;
+
+        // If not enough space below but enough space above, flip to top
+        if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+          setDropdownPosition("top");
+        } else {
+          setDropdownPosition("bottom");
+        }
+      };
+
+      updatePosition();
+      window.addEventListener("scroll", updatePosition, true);
+      window.addEventListener("resize", updatePosition);
+
+      return () => {
+        window.removeEventListener("scroll", updatePosition, true);
+        window.removeEventListener("resize", updatePosition);
+      };
+    }, [isOpen]);
 
     return (
       <div className="relative inline-block w-full">
         <button
+          ref={buttonRef}
           onClick={() => setDownloadDropdownOpen(isOpen ? null : batchId)}
           disabled={isLoading}
           className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/20 px-3 py-2.5 text-xs text-white/80 hover:border-white/40 hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
@@ -393,50 +427,74 @@ export function QrPreviewGridGram({ batches }: Props) {
         <AnimatePresence mode="wait">
           {isOpen && (
             <motion.div
+              ref={dropdownRef}
               key="download-dropdown"
-              initial={{ opacity: 0, y: -4, scale: 0.97 }}
+              initial={{ opacity: 0, y: dropdownPosition === "bottom" ? -4 : 4, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -4, scale: 0.97 }}
-              transition={{ duration: 0.2 }}
-              className="absolute right-0 top-full mt-1 w-60 rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.08] via-white/[0.05] to-white/[0.02] backdrop-blur-md shadow-2xl overflow-hidden z-[9999] max-h-[320px] flex flex-col"
+              exit={{ opacity: 0, y: dropdownPosition === "bottom" ? -4 : 4, scale: 0.97 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className={`absolute right-0 w-64 rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden z-[9999] max-h-[320px] flex flex-col ${
+                dropdownPosition === "top" ? "bottom-full mb-1" : "top-full mt-1"
+              }`}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="px-3 py-2 border-b border-white/5 bg-white/[0.02]">
-                <div className="font-semibold text-white text-xs">Serticard Template (PDF)</div>
-                <div className="text-[10px] text-white/40">Pilih template yang ingin diunduh</div>
+              {/* Header */}
+              <div className="px-4 py-3 border-b border-white/10 bg-gradient-to-r from-white/[0.05] to-transparent">
+                <div className="font-semibold text-white text-sm">Serticard Template (PDF)</div>
+                <div className="text-xs text-white/50 mt-0.5">Pilih template yang ingin diunduh</div>
               </div>
-              <div className="overflow-y-auto flex-1 min-h-0 py-1">
+
+              {/* Scrollable template list */}
+              <div className="overflow-y-auto flex-1 min-h-0 py-2 scrollbar-show">
                 {SERTICARD_VARIANTS.map((v) => (
-                  <button
+                  <motion.button
                     key={v.id}
                     onClick={() => handleDownloadSingle(product, v.id)}
                     disabled={isLoading}
-                    className="w-full px-3 py-2 text-left hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
+                    className="w-full px-4 py-2.5 text-left hover:bg-white/10 active:bg-white/15 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between group"
+                    whileHover={{ x: 2 }}
+                    whileTap={{ scale: 0.98 }}
                   >
-                    <span className="font-medium text-white text-sm">{v.label}</span>
-                    <span className="text-[10px] text-white/40">{v.frontNum}-{v.backNum}</span>
-                  </button>
+                    <span className="font-medium text-white text-sm group-hover:text-[#FFD700]/90 transition-colors">
+                      {v.label}
+                    </span>
+                    <span className="text-xs text-white/40 font-mono bg-white/5 px-2 py-0.5 rounded">
+                      {v.frontNum}-{v.backNum}
+                    </span>
+                  </motion.button>
                 ))}
                 {hasCustomTemplate && (
-                  <button
+                  <motion.button
                     onClick={() => handleDownloadSingle(product, "custom")}
                     disabled={isLoading}
-                    className="w-full px-3 py-2 text-left hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between border-t border-white/5 mt-1 pt-2"
+                    className="w-full px-4 py-2.5 text-left hover:bg-white/10 active:bg-white/15 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between border-t border-white/10 mt-1 pt-2 group"
+                    whileHover={{ x: 2 }}
+                    whileTap={{ scale: 0.98 }}
                   >
-                    <span className="font-medium text-[#FFD700] text-sm">✨ Custom</span>
-                    <span className="text-[10px] text-white/40">Custom</span>
-                  </button>
+                    <span className="font-semibold text-[#FFD700] text-sm group-hover:text-[#FFD700] transition-colors">
+                      ✨ Custom
+                    </span>
+                    <span className="text-xs text-[#FFD700]/60 font-mono bg-[#FFD700]/10 px-2 py-0.5 rounded">
+                      Custom
+                    </span>
+                  </motion.button>
                 )}
               </div>
-              <div className="border-t border-white/5 px-3 py-1 bg-white/[0.02]">
-                <button
+
+              {/* Footer - Original QR */}
+              <div className="border-t border-white/10 px-4 py-2 bg-gradient-to-r from-white/[0.03] to-transparent">
+                <motion.button
                   onClick={() => handleDownloadOriginal(product)}
                   disabled={isLoading}
-                  className="w-full px-3 py-2.5 text-left hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-3 py-2.5 text-left hover:bg-white/10 active:bg-white/15 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <div className="font-semibold text-white text-sm">Original QR Only</div>
-                  <div className="text-xs text-white/50">PNG dengan judul & nomor seri</div>
-                </button>
+                  <div className="font-semibold text-white text-sm group-hover:text-[#FFD700]/90 transition-colors">
+                    Original QR Only
+                  </div>
+                  <div className="text-xs text-white/50 mt-0.5">PNG dengan judul & nomor seri</div>
+                </motion.button>
               </div>
             </motion.div>
           )}

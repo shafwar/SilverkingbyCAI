@@ -46,6 +46,18 @@ Fokus perubahan: **scrolling & layout** (UX), tanpa mengubah data/logic bisnis.
 
 - Header tabel dibuat `sticky top-0` relatif ke scroll container utama, agar browsing list lebih nyaman.
 
+### 5) Smart Dropdown Positioning (Page 2)
+
+- Dropdown download sekarang **otomatis flip ke atas** jika tidak cukup ruang di bawah viewport.
+- Deteksi posisi real-time saat scroll/resize untuk memastikan dropdown selalu terlihat.
+- Styling lebih profesional:
+  - Background lebih solid (`bg-black/95`) dengan backdrop blur yang lebih kuat.
+  - Shadow lebih dalam untuk depth yang lebih baik.
+  - Hover effects dengan animasi halus (motion.button dengan whileHover/whileTap).
+  - Typography lebih jelas dengan spacing yang lebih baik.
+  - Badge untuk nomor template dengan background subtle.
+  - Scrollbar yang lebih baik untuk daftar template panjang.
+
 ---
 
 ## Dampak & Keamanan
@@ -68,6 +80,11 @@ Fokus perubahan: **scrolling & layout** (UX), tanpa mengubah data/logic bisnis.
      - Table: header sticky saat scroll.
      - Grid: scroll mengikuti halaman, tidak ada scroll internal.
 3. Pastikan dropdown download, modal enlarge, dan refresh tetap berjalan normal.
+4. **Test dropdown positioning (Page 2)**:
+   - Scroll ke bagian bawah halaman, klik "Download" pada produk terakhir.
+   - Pastikan dropdown **muncul di atas** button (tidak terpotong).
+   - Scroll ke bagian atas, klik "Download", pastikan dropdown muncul di bawah.
+   - Pastikan semua opsi template terlihat dengan baik dan scrollable jika perlu.
 
 ---
 
