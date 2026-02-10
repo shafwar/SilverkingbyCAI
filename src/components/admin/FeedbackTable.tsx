@@ -410,10 +410,13 @@ export function FeedbackTable() {
               className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-4 border-t border-white/10"
             >
               <motion.a
-                href={`mailto:${selectedMessage.email}?subject=Re: ${encodeURIComponent(selectedMessage.name)}`}
+                href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(selectedMessage.email)}&su=${encodeURIComponent(`Re: ${selectedMessage.name}`)}&body=${encodeURIComponent(`\n\n---\nOriginal message from ${selectedMessage.name}:\n${selectedMessage.message}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 whileHover={{ scale: 1.02, y: -1 }}
                 whileTap={{ scale: 0.98 }}
                 className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-[#FFD700]/50 bg-[#FFD700]/10 px-6 py-3 text-sm font-semibold text-[#FFD700] transition-all hover:border-[#FFD700] hover:bg-[#FFD700]/20 hover:shadow-[0_4px_12px_rgba(255,215,0,0.2)]"
+                title="Buka Gmail untuk membalas"
               >
                 <Mail className="h-4 w-4" />
                 {tFeedback("reply") || "Reply"}
