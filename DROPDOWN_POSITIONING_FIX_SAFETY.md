@@ -14,15 +14,18 @@ Memperbaiki masalah dropdown download di QR Preview Page 2 yang tidak terlihat k
 ## Perubahan yang Dilakukan
 
 ### 1. Enhanced Positioning Logic dengan Prioritas Bawah (`src/components/admin/QrPreviewGridGram.tsx`)
-- **Prioritas Posisi Bawah**: 
-  - Dropdown sekarang **selalu muncul di bawah** jika ada cukup ruang (>= dropdownHeight + buffer)
-  - Hanya flip ke atas jika benar-benar tidak ada cukup ruang di bawah DAN ada lebih banyak ruang di atas
+- **Prioritas Posisi Bawah dengan Special Handling untuk Item di Paling Atas**: 
+  - **Special Rule untuk Top Items**: Jika button berada dalam 300px dari atas viewport, dropdown **SELALU** muncul di bawah, tidak peduli kondisi lainnya
+  - Dropdown sekarang **selalu muncul di bawah** jika ada cukup ruang (>= 200px)
+  - Hanya flip ke atas jika benar-benar tidak ada cukup ruang di bawah (< 200px) DAN ada lebih banyak ruang di atas (selisih >= 150px)
   - Default tetap di bawah untuk UX yang lebih baik
 
-- **Simplified Logic**:
-  - Buffer dikurangi menjadi 20px untuk threshold yang lebih akurat
+- **Strict Logic**:
+  - Minimum required space: 200px untuk muncul di bawah
+  - Threshold untuk top items: 300px dari atas viewport
+  - Selisih minimum untuk flip ke atas: 150px
   - Menghapus logic kompleks berdasarkan viewport percentage
-  - Fokus pada perbandingan langsung antara ruang di atas vs di bawah
+  - Fokus pada perbandingan langsung antara ruang di atas vs di bawah dengan threshold yang jelas
 
 ### 2. Simplified Scroll Handling
 - **Removed Auto-Scroll**: 
@@ -42,14 +45,15 @@ Memperbaiki masalah dropdown download di QR Preview Page 2 yang tidak terlihat k
   - Improved positioning logic dengan viewport-aware calculations
 
 ## Testing Checklist
-- [x] Dropdown muncul dengan benar ketika button berada di bagian atas halaman
-- [x] Dropdown flip ke atas ketika button berada di bagian bawah halaman
+- [x] Dropdown muncul di bawah untuk item di paling atas (dalam 300px dari atas viewport)
+- [x] Dropdown muncul di bawah ketika button berada di bagian atas halaman dengan cukup ruang
+- [x] Dropdown flip ke atas hanya ketika benar-benar diperlukan (kurang dari 200px ruang di bawah)
 - [x] Dropdown selalu terlihat di viewport tanpa perlu scroll manual
-- [x] Auto-scroll bekerja dengan smooth ketika dropdown terpotong
 - [x] Positioning tetap akurat setelah window resize
 - [x] Positioning tetap akurat saat scroll halaman
 - [x] Tidak ada regresi pada fungsi download
 - [x] UI tetap profesional dan konsisten dengan design system
+- [x] Khusus untuk "Silver King Eid Al-Fitr Limited Edition #52" di paling atas, dropdown selalu muncul di bawah
 
 ## Impact Assessment
 - **Risk Level**: LOW

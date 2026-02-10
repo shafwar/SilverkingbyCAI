@@ -379,48 +379,71 @@ export function QrPreviewGridGram({ batches }: Props) {
 
     // Smart positioning: detect if dropdown should appear above or below
     useEffect(() => {
-      if (!isOpen || !buttonRef.current || !dropdownRef.current) return;
+      if (!isOpen || !buttonRef.current) return;
 
       const updatePosition = () => {
-        if (!buttonRef.current || !dropdownRef.current) return;
+        if (!buttonRef.current) return;
 
         const buttonRect = buttonRef.current.getBoundingClientRect();
         const dropdownHeight = 350; // max-h-[320px] + padding
         const spaceBelow = window.innerHeight - buttonRect.bottom;
         const spaceAbove = buttonRect.top;
-        const buffer = 20; // Minimal buffer
+        const minRequiredSpace = 200; // Minimum space needed to show dropdown comfortably
+        const topThreshold = 300; // If button is within 300px from top, always show below
 
-        // Priority: Always prefer showing below if there's enough space
-        // Only flip to top if there's NOT enough space below AND there's more space above
-        if (spaceBelow >= dropdownHeight + buffer) {
-          // Sufficient space below - always show below (preferred)
+        // STRICT LOGIC: Always prefer bottom position
+        // Special handling for items at the top of the page
+        
+        // If button is near the top of viewport (within 300px), ALWAYS show below
+        // This ensures top items (like "Silver King Eid Al-Fitr Limited Edition #52") always show dropdown below
+        if (spaceAbove < topThreshold) {
           setDropdownPosition("bottom");
-        } else if (spaceBelow < dropdownHeight + buffer && spaceAbove > spaceBelow) {
-          // Not enough space below, but more space above - flip to top
+          return;
+        }
+        
+        // For items not at the top, use standard logic
+        // Only flip to top if:
+        // 1. Space below is LESS than minimum required (200px)
+        // 2. AND space above is SIGNIFICANTLY more than space below (at least 150px difference)
+        if (spaceBelow >= minRequiredSpace) {
+          // Enough space below - ALWAYS show below (preferred)
+          setDropdownPosition("bottom");
+        } else if (spaceBelow < minRequiredSpace && spaceAbove > spaceBelow + 150) {
+          // Only flip to top if very little space below AND significantly more space above
           setDropdownPosition("top");
         } else {
-          // Default: show below even if tight (better UX than cutting off)
+          // Default: always show below (even if tight)
           setDropdownPosition("bottom");
         }
       };
 
-      // Initial position calculation - prioritize bottom position
-      updatePosition();
+      // Delay to ensure DOM is fully rendered before calculating position
+      // This is critical for accurate positioning, especially for top items
+      const timeoutId = setTimeout(() => {
+        updatePosition();
+      }, 0);
 
-      // Update on scroll (with throttling for performance)
+      return () => clearTimeout(timeoutId);
+
+      // Update on scroll and resize (with throttling for performance)
       let scrollTimeout: NodeJS.Timeout;
       const handleScroll = () => {
         clearTimeout(scrollTimeout);
         scrollTimeout = setTimeout(updatePosition, 50);
       };
 
+      const handleResize = () => {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(updatePosition, 50);
+      };
+
       window.addEventListener("scroll", handleScroll, true);
-      window.addEventListener("resize", updatePosition);
+      window.addEventListener("resize", handleResize);
 
       return () => {
         clearTimeout(scrollTimeout);
         window.removeEventListener("scroll", handleScroll, true);
-        window.removeEventListener("resize", updatePosition);
+        window.removeEventListener("resize", handleResize);
       };
     }, [isOpen]);
 
@@ -451,16 +474,16 @@ export function QrPreviewGridGram({ batches }: Props) {
               exit={{ opacity: 0, y: dropdownPosition === "bottom" ? -4 : 4, scale: 0.97 }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
               className={`absolute right-0 w-64 rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden z-[9999] max-h-[320px] flex flex-col ${
-                dropdownPosition === "top" 
-                  ? "bottom-full mb-1" 
-                  : "top-full mt-1"
+                dropdownPosition === "top" ? "bottom-full mb-1" : "top-full mt-1"
               }`}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
               <div className="px-4 py-3 border-b border-white/10 bg-gradient-to-r from-white/[0.05] to-transparent">
                 <div className="font-semibold text-white text-sm">Serticard Template (PDF)</div>
-                <div className="text-xs text-white/50 mt-0.5">Pilih template yang ingin diunduh</div>
+                <div className="text-xs text-white/50 mt-0.5">
+                  Pilih template yang ingin diunduh
+                </div>
               </div>
 
               {/* Scrollable template list */}
@@ -825,88 +848,86 @@ export function QrPreviewGridGram({ batches }: Props) {
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
         >
-            {filteredBatches.length === 0 ? (
-              <div className="col-span-full text-center text-white/40 text-sm">
-                {t("noProducts")}
-              </div>
-            ) : (
-              filteredBatches.map((batch) => (
-                <div
-                  key={batch.batchId}
-                  className="group rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4 hover:border-[#FFD700]/40 transition-all"
-                >
-                  <div className="relative aspect-square w-full rounded-lg border border-white/10 bg-white p-3 mb-3">
-                    <img
-                      src={
-                        batch.firstItem.qrImageUrl ||
-                        `/api/qr-gram/${encodeURIComponent(batch.firstItem.uniqCode)}`
-                      }
-                      alt={batch.name}
-                      className="h-full w-full object-contain"
-                      loading="lazy"
+          {filteredBatches.length === 0 ? (
+            <div className="col-span-full text-center text-white/40 text-sm">{t("noProducts")}</div>
+          ) : (
+            filteredBatches.map((batch) => (
+              <div
+                key={batch.batchId}
+                className="group rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4 hover:border-[#FFD700]/40 transition-all"
+              >
+                <div className="relative aspect-square w-full rounded-lg border border-white/10 bg-white p-3 mb-3">
+                  <img
+                    src={
+                      batch.firstItem.qrImageUrl ||
+                      `/api/qr-gram/${encodeURIComponent(batch.firstItem.uniqCode)}`
+                    }
+                    alt={batch.name}
+                    className="h-full w-full object-contain"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="font-mono text-xs font-semibold text-white truncate">
+                    {batch.firstItem.uniqCode}
+                  </p>
+                  <p className="text-xs text-white/70 line-clamp-2">{batch.name}</p>
+                  <p className="text-xs text-white/50">{batch.weight} gr</p>
+                  <p className="text-xs text-white/40">{batch.itemCount} items</p>
+                </div>
+
+                {/* Root key status */}
+                <div className="mt-2">
+                  {batch.firstItem.hasRootKey ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-green-500/20 px-2 py-1 text-[10px] text-green-300 border border-green-500/30">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Active root key
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-white/40">Root key: —</span>
+                  )}
+                </div>
+
+                {/* Action buttons */}
+                <div className="mt-3 flex flex-col sm:flex-row sm:flex-wrap gap-2">
+                  <button
+                    onClick={() =>
+                      setSelectedQrItem({
+                        name: batch.name,
+                        uniqCode: batch.firstItem.uniqCode,
+                      })
+                    }
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full border border-white/15 px-3 py-2 text-[11px] text-white/80 hover:border-white/40 hover:bg-white/5 transition"
+                  >
+                    <Maximize2 className="h-3.5 w-3.5" />
+                    {t("enlarge")}
+                  </button>
+                  <div className="flex-1 relative" ref={downloadDropdownRef}>
+                    <DownloadDropdown
+                      batchId={batch.batchId}
+                      product={{
+                        id: batch.firstItem.id,
+                        name: batch.name,
+                        weight: batch.weight,
+                        uniqCode: batch.firstItem.uniqCode,
+                        serialCode: batch.firstItem.serialCode,
+                        qrImageUrl: batch.firstItem.qrImageUrl,
+                        weightGroup: batch.weightGroup,
+                        hasRootKey: batch.firstItem.hasRootKey,
+                      }}
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <p className="font-mono text-xs font-semibold text-white truncate">
-                      {batch.firstItem.uniqCode}
-                    </p>
-                    <p className="text-xs text-white/70 line-clamp-2">{batch.name}</p>
-                    <p className="text-xs text-white/50">{batch.weight} gr</p>
-                    <p className="text-xs text-white/40">{batch.itemCount} items</p>
-                  </div>
-
-                  {/* Root key status */}
-                  <div className="mt-2">
-                    {batch.firstItem.hasRootKey ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-green-500/20 px-2 py-1 text-[10px] text-green-300 border border-green-500/30">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Active root key
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-white/40">Root key: —</span>
-                    )}
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="mt-3 flex flex-col sm:flex-row sm:flex-wrap gap-2">
-                    <button
-                      onClick={() =>
-                        setSelectedQrItem({
-                          name: batch.name,
-                          uniqCode: batch.firstItem.uniqCode,
-                        })
-                      }
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full border border-white/15 px-3 py-2 text-[11px] text-white/80 hover:border-white/40 hover:bg-white/5 transition"
-                    >
-                      <Maximize2 className="h-3.5 w-3.5" />
-                      {t("enlarge")}
-                    </button>
-                    <div className="flex-1 relative" ref={downloadDropdownRef}>
-                      <DownloadDropdown
-                        batchId={batch.batchId}
-                        product={{
-                          id: batch.firstItem.id,
-                          name: batch.name,
-                          weight: batch.weight,
-                          uniqCode: batch.firstItem.uniqCode,
-                          serialCode: batch.firstItem.serialCode,
-                          qrImageUrl: batch.firstItem.qrImageUrl,
-                          weightGroup: batch.weightGroup,
-                          hasRootKey: batch.firstItem.hasRootKey,
-                        }}
-                      />
-                    </div>
-                    <button
-                      onClick={() => handleSerialCodeClick(batch)}
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full border border-white/15 px-3 py-2 text-[11px] text-white/80 hover:border-white/40 hover:bg-white/5 transition"
-                    >
-                      <FileText className="h-3.5 w-3.5" />
-                      Root Key / Serial
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => handleSerialCodeClick(batch)}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full border border-white/15 px-3 py-2 text-[11px] text-white/80 hover:border-white/40 hover:bg-white/5 transition"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    Root Key / Serial
+                  </button>
                 </div>
-              ))
-            )}
+              </div>
+            ))
+          )}
         </motion.div>
       )}
 
