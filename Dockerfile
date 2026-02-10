@@ -24,8 +24,10 @@ RUN npm ci --legacy-peer-deps
 # Rest of app
 COPY . .
 
-# Build (Prisma already generated)
+# Build: prisma generate needs DATABASE_URL in config (not used for generate, only validation)
+# Railway injects real DATABASE_URL at runtime
 ENV NODE_ENV=production
+ENV DATABASE_URL="mysql://build:build@localhost:3306/build"
 RUN npm run build
 
 EXPOSE 3000
