@@ -13,7 +13,7 @@ import {
   Tooltip,
 } from "recharts";
 import { motion } from "framer-motion";
-import { Download, Archive, Loader2 } from "lucide-react";
+import { Download, Archive, Loader2, CheckCircle2, AlertCircle, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { fetcher } from "@/lib/fetcher";
@@ -42,6 +42,20 @@ export function AnalyticsPanel() {
   const [month, setMonth] = useState(now.getMonth() + 1); // 1-indexed
   const [year, setYear] = useState(now.getFullYear());
   const [purging, setPurging] = useState(false);
+  const [purgeResult, setPurgeResult] = useState<{
+    success: boolean;
+    month: number;
+    year: number;
+    page1Deleted: number;
+    page2Deleted: number;
+    csvRows: number;
+    filename: string;
+    downloadUrl: string;
+    verified: boolean;
+    r2Uploaded: boolean;
+    remainingPage1Logs: number;
+    remainingPage2Logs: number;
+  } | null>(null);
 
   // Check if viewing current month - only real-time updates for current month
   const isCurrentMonth = useMemo(() => {
@@ -73,6 +87,8 @@ export function AnalyticsPanel() {
   const handleMonthYearChange = (newMonth: number, newYear: number) => {
     setMonth(newMonth);
     setYear(newYear);
+    // Clear purge result when month changes
+    setPurgeResult(null);
     // Immediately fetch new data when month changes
     mutateTrend();
   };
@@ -143,6 +159,7 @@ export function AnalyticsPanel() {
             <button
               onClick={async () => {
                 setPurging(true);
+                setPurgeResult(null);
                 try {
                   const res = await fetch("/api/admin/export-and-purge-logs", {
                     method: "POST",
@@ -151,10 +168,27 @@ export function AnalyticsPanel() {
                   });
                   const data = await res.json();
                   if (!res.ok) throw new Error(data.error || "Purge failed");
-                  toast.success(`${month}/${year} exported & purged`);
+                  
+                  // Store result for detailed display
+                  setPurgeResult(data);
+                  
+                  // Show success toast with key info
+                  if (data.verified && data.r2Uploaded) {
+                    toast.success(
+                      `✅ Purge berhasil! ${data.page1Deleted + data.page2Deleted} logs dihapus, CSV tersimpan di R2`,
+                      { duration: 5000 }
+                    );
+                  } else {
+                    toast.warning(
+                      `⚠️ Purge selesai dengan peringatan. Verifikasi: ${data.verified ? "OK" : "GAGAL"}, R2: ${data.r2Uploaded ? "OK" : "GAGAL"}`,
+                      { duration: 7000 }
+                    );
+                  }
+                  
                   mutateTrend();
                 } catch (e) {
                   toast.error(e instanceof Error ? e.message : "Purge failed");
+                  setPurgeResult(null);
                 } finally {
                   setPurging(false);
                 }
@@ -169,7 +203,7 @@ export function AnalyticsPanel() {
             >
               {purging ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
               <span className="hidden sm:inline">
-                {purging ? "..." : "Purge bulan terpilih"}
+                {purging ? "Memproses..." : "Purge bulan terpilih"}
               </span>
             </button>
             <button
@@ -202,6 +236,109 @@ export function AnalyticsPanel() {
             </button>
           </div>
         </div>
+        
+        {/* Purge Success Indicator */}
+        {purgeResult && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="mt-4 rounded-lg border p-4"
+            style={{
+              borderColor: purgeResult.verified && purgeResult.r2Uploaded 
+                ? "rgba(34, 197, 94, 0.3)" 
+                : "rgba(251, 191, 36, 0.3)",
+              backgroundColor: purgeResult.verified && purgeResult.r2Uploaded 
+                ? "rgba(34, 197, 94, 0.05)" 
+                : "rgba(251, 191, 36, 0.05)",
+            }}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  {purgeResult.verified && purgeResult.r2Uploaded ? (
+                    <CheckCircle2 className="h-5 w-5 text-green-400 flex-shrink-0" />
+                  ) : (
+                    <AlertCircle className="h-5 w-5 text-amber-400 flex-shrink-0" />
+                  )}
+                  <h4 className="text-sm font-semibold text-white">
+                    {purgeResult.verified && purgeResult.r2Uploaded 
+                      ? "✅ Purge Berhasil" 
+                      : "⚠️ Purge Selesai dengan Peringatan"}
+                  </h4>
+                </div>
+                <div className="space-y-1.5 text-xs text-white/70 ml-7">
+                  <div className="flex items-center gap-2">
+                    <span className="w-24 flex-shrink-0">Bulan:</span>
+                    <span className="font-mono font-semibold text-white">
+                      {purgeResult.year}-{String(purgeResult.month).padStart(2, "0")}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-24 flex-shrink-0">Logs dihapus:</span>
+                    <span className="text-white">
+                      {purgeResult.page1Deleted + purgeResult.page2Deleted} 
+                      {purgeResult.page1Deleted > 0 && purgeResult.page2Deleted > 0 && (
+                        <span className="text-white/50 ml-1">
+                          ({purgeResult.page1Deleted} Page 1 + {purgeResult.page2Deleted} Page 2)
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-24 flex-shrink-0">Database kosong:</span>
+                    {purgeResult.verified ? (
+                      <span className="text-green-400 font-semibold flex items-center gap-1">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Ya ({purgeResult.remainingPage1Logs + purgeResult.remainingPage2Logs} tersisa)
+                      </span>
+                    ) : (
+                      <span className="text-red-400 font-semibold flex items-center gap-1">
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        Tidak ({purgeResult.remainingPage1Logs + purgeResult.remainingPage2Logs} masih ada)
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-24 flex-shrink-0">CSV di R2:</span>
+                    {purgeResult.r2Uploaded ? (
+                      <span className="text-green-400 font-semibold flex items-center gap-1">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Tersedia ({purgeResult.csvRows} baris)
+                      </span>
+                    ) : (
+                      <span className="text-red-400 font-semibold flex items-center gap-1">
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        Tidak ditemukan
+                      </span>
+                    )}
+                  </div>
+                  {purgeResult.downloadUrl && (
+                    <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/10">
+                      <a
+                        href={purgeResult.downloadUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 underline"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        Download CSV: {purgeResult.filename}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => setPurgeResult(null)}
+                className="text-white/40 hover:text-white/60 transition-colors flex-shrink-0"
+                aria-label="Tutup"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+        
         <div className="mt-4 sm:mt-5 md:mt-6 h-64 sm:h-72 md:h-80">
           {trendLoadingState && <LoadingSkeleton className="h-full w-full" />}
           {!!trendSeries.length && (

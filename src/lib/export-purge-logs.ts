@@ -30,6 +30,10 @@ export type ExportPurgeResult = {
   csvRows: number;
   filename: string;
   downloadUrl: string;
+  verified: boolean; // Database verified empty after purge
+  r2Uploaded: boolean; // CSV successfully uploaded to R2
+  remainingPage1Logs: number; // Should be 0 after successful purge
+  remainingPage2Logs: number; // Should be 0 after successful purge
 };
 
 export type ExportPurgeError = {
@@ -141,6 +145,30 @@ export async function runExportPurge(
 
   // Don't overwrite R2 if no data - preserves existing file when run twice
   if (page1Logs.length === 0 && page2Logs.length === 0) {
+    // Verify database is empty
+    const [remainingPage1Logs, remainingPage2Logs] = await Promise.all([
+      prisma.qRScanLog.count({
+        where: { scannedAt: { gte: start, lte: end } },
+      }),
+      prisma.gramQRScanLog.count({
+        where: { scannedAt: { gte: start, lte: end } },
+      }),
+    ]);
+
+    // Check if CSV already exists in R2
+    const r2Uploaded = await fileExistsInR2(r2Key);
+    let downloadUrl = "";
+    if (r2Uploaded) {
+      try {
+        downloadUrl = await getSignedUrlFromR2(r2Key, 7 * 24 * 3600); // 7 days
+      } catch (error) {
+        console.error("[ExportPurge] Failed to generate signed URL:", error);
+        // Fallback to public URL if signed URL fails
+        const base = process.env.R2_PUBLIC_URL?.replace(/\/$/, "") ?? "";
+        downloadUrl = base ? `${base}/${r2Key}` : "";
+      }
+    }
+
     return {
       success: true,
       month,
@@ -150,7 +178,11 @@ export async function runExportPurge(
       page2Deleted: 0,
       csvRows: 0,
       filename,
-      downloadUrl: "",
+      downloadUrl,
+      verified: remainingPage1Logs === 0 && remainingPage2Logs === 0,
+      r2Uploaded,
+      remainingPage1Logs,
+      remainingPage2Logs,
     };
   }
 
@@ -179,8 +211,45 @@ export async function runExportPurge(
     }),
   ]);
 
-  const base = process.env.R2_PUBLIC_URL?.replace(/\/$/, "") ?? "";
-  const downloadUrl = base ? `${base}/${r2Key}` : "";
+  // CRITICAL: Verify that database is actually empty after purge
+  const [remainingPage1Logs, remainingPage2Logs] = await Promise.all([
+    prisma.qRScanLog.count({
+      where: { scannedAt: { gte: start, lte: end } },
+    }),
+    prisma.gramQRScanLog.count({
+      where: { scannedAt: { gte: start, lte: end } },
+    }),
+  ]);
+
+  // Verify R2 upload was successful
+  const r2Uploaded = await fileExistsInR2(r2Key);
+  const verified = remainingPage1Logs === 0 && remainingPage2Logs === 0;
+
+  if (!verified) {
+    console.error("[ExportPurge] Verification failed - logs still exist in database:", {
+      remainingPage1Logs,
+      remainingPage2Logs,
+      deletedPage1: page1Deleted.count,
+      deletedPage2: page2Deleted.count,
+    });
+  }
+
+  if (!r2Uploaded) {
+    console.error("[ExportPurge] R2 upload verification failed - file not found:", r2Key);
+  }
+
+  // Generate signed URL for secure download (valid for 7 days)
+  let downloadUrl = "";
+  if (r2Uploaded) {
+    try {
+      downloadUrl = await getSignedUrlFromR2(r2Key, 7 * 24 * 3600); // 7 days
+    } catch (error) {
+      console.error("[ExportPurge] Failed to generate signed URL:", error);
+      // Fallback to public URL if signed URL fails
+      const base = process.env.R2_PUBLIC_URL?.replace(/\/$/, "") ?? "";
+      downloadUrl = base ? `${base}/${r2Key}` : "";
+    }
+  }
 
   return {
     success: true,
@@ -192,6 +261,10 @@ export async function runExportPurge(
     csvRows: rows.length - 1,
     filename,
     downloadUrl,
+    verified,
+    r2Uploaded,
+    remainingPage1Logs,
+    remainingPage2Logs,
   };
 }
 
