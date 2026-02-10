@@ -392,26 +392,28 @@ export function QrPreviewGridGram({ batches }: Props) {
         const spaceBelow = window.innerHeight - buttonRect.bottom;
         const spaceAbove = buttonRect.top;
         const viewportHeight = window.innerHeight;
-        const topThreshold = 200; // Jika button di atas 200px, selalu muncul di bawah
-        const bottomThreshold = viewportHeight - 200; // Jika button di bawah threshold, selalu muncul di atas
+        const topThreshold = 300; // Jika button di atas 300px, SELALU muncul di bawah
+        const bottomThreshold = viewportHeight - 300; // Jika button di bawah threshold, selalu muncul di atas
 
+        // PRIORITAS: Item di paling atas HARUS selalu muncul di bawah
         // Logic untuk menentukan posisi dropdown
         if (buttonRect.top < topThreshold) {
-          // Item di paling atas: selalu muncul di bawah
+          // Item di paling atas (dalam 300px dari atas): SELALU muncul di bawah
+          // Ini adalah requirement utama - tidak peduli kondisi lainnya
           setDropdownPosition("bottom");
         } else if (buttonRect.bottom > bottomThreshold) {
-          // Item di paling bawah: selalu muncul di atas
+          // Item di paling bawah (dalam 300px dari bawah): selalu muncul di atas
           setDropdownPosition("top");
         } else {
           // Item di tengah: pilih berdasarkan ruang yang tersedia
           if (spaceBelow >= dropdownHeight) {
             // Cukup ruang di bawah, muncul di bawah
             setDropdownPosition("bottom");
-          } else if (spaceAbove > spaceBelow) {
-            // Lebih banyak ruang di atas, muncul di atas
+          } else if (spaceAbove > spaceBelow + 100) {
+            // Lebih banyak ruang di atas (selisih minimal 100px), muncul di atas
             setDropdownPosition("top");
           } else {
-            // Default: muncul di bawah
+            // Default: muncul di bawah (lebih aman)
             setDropdownPosition("bottom");
           }
         }
