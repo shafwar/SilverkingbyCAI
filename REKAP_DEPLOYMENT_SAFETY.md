@@ -2,7 +2,7 @@
 
 **Tanggal:** Februari 2026  
 **Status:** ✅ SAFE FOR DEPLOYMENT  
-**Update:** Enhanced purge verification, UI feedback & persistent status indicator
+**Update:** Enhanced purge verification, UI feedback, persistent status indicator & deep analysis tools
 
 ## Ringkasan
 
@@ -30,6 +30,7 @@ Fitur Rekap bulanan untuk scan logs telah diimplementasikan dengan aman. **Purge
 - `POST /api/admin/export-and-purge-logs` — Export + Purge bulan terpilih (body: `{ month, year }`)
 - `GET /api/admin/scans/export?month=&year=` — Export CSV bulan terpilih
 - `GET /api/admin/scans/purge-status?month=&year=` — Check purge status untuk bulan tertentu (verifikasi database kosong & CSV di R2)
+- `GET /api/admin/verify-purge-deep?month=&year=` — Deep analysis untuk verifikasi mendalam (count queries, IP check, summary check, R2 check)
 - ~~`GET /api/admin/rekap/list`~~ — Dihapus (centralized ke Analytics)
 - ~~`GET /api/admin/rekap/download`~~ — Dihapus (export via scans/export)
 
@@ -152,6 +153,14 @@ Format CSV laporan (Nov, Des, Jan, Feb, dll) mengikuti struktur product export +
    - **Visual indicator**: Notifikasi hijau persistent untuk bulan yang sudah di-purge
    - **Auto-cleanup**: localStorage dibatasi maksimal 24 bulan terakhir untuk mencegah bloat
 
+6. **Deep Analysis Tools (Februari 2026)**
+   - **API endpoint**: `GET /api/admin/verify-purge-deep?month=&year=` untuk verifikasi mendalam
+   - **UI button**: Tombol "Verifikasi Mendalam" di Analytics Panel
+   - **Multiple verification methods**: Count queries (Prisma & Raw SQL), IP addresses check, ScanLogSummary check, R2 CSV check
+   - **Comprehensive report**: Returns detailed verification report dengan kesimpulan lengkap
+   - **Scripts**: `verify-purge-deep-analysis.js` (direct DB) dan `verify-purge-all-months.js` (via API)
+   - **Documentation**: `VERIFIKASI_PURGE_DEEP_ANALYSIS.md` dengan panduan lengkap
+
 ## Keamanan
 
 - Semua endpoint Rekap dilindungi **admin auth**.
@@ -159,4 +168,5 @@ Format CSV laporan (Nov, Des, Jan, Feb, dll) mengikuti struktur product export +
 - Purge hanya dijalankan **setelah** upload CSV ke R2 berhasil.
 - **Verifikasi ganda**: Database kosong + file ada di R2 sebelum dianggap sukses.
 - **Signed URL** untuk download CSV (valid 7 hari) untuk keamanan tambahan.
+- **Deep analysis tools**: Read-only queries untuk verifikasi, tidak mengubah data.
 - Tidak ada perubahan pada API publik atau alur verifikasi QR.

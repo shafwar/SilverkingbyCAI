@@ -13,7 +13,7 @@ import {
   Tooltip,
 } from "recharts";
 import { motion } from "framer-motion";
-import { Download, Archive, Loader2, CheckCircle2, AlertCircle, X } from "lucide-react";
+import { Download, Archive, Loader2, CheckCircle2, AlertCircle, X, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { fetcher } from "@/lib/fetcher";
@@ -49,6 +49,8 @@ export function AnalyticsPanel() {
   const [purging, setPurging] = useState(false);
   const [purgeResult, setPurgeResult] = useState<PurgeStatus | null>(null);
   const [verifyingStatus, setVerifyingStatus] = useState(false);
+  const [deepVerification, setDeepVerification] = useState<any>(null);
+  const [runningDeepVerification, setRunningDeepVerification] = useState(false);
 
   // Load purge status from localStorage and verify with API on mount and month change
   useEffect(() => {
@@ -338,9 +340,163 @@ export function AnalyticsPanel() {
               <span className="hidden sm:inline">{t('exportCSV')}</span>
               <span className="sm:hidden">{t('export')}</span>
             </button>
+            <button
+              onClick={async () => {
+                setRunningDeepVerification(true);
+                setDeepVerification(null);
+                try {
+                  const res = await fetch(`/api/admin/verify-purge-deep?month=${month}&year=${year}`);
+                  if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    throw new Error(data.error || "Verification failed");
+                  }
+                  const data = await res.json();
+                  setDeepVerification(data);
+                  toast.success("Verifikasi mendalam selesai", { duration: 3000 });
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "Verification failed");
+                } finally {
+                  setRunningDeepVerification(false);
+                }
+              }}
+              className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-blue-500/40 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-white transition hover:border-blue-500 hover:bg-blue-500/10"
+              title="Verifikasi mendalam: cek database kosong, IP addresses, rekapan, dan CSV di R2"
+            >
+              {runningDeepVerification ? (
+                <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
+              ) : (
+                <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              )}
+              <span className="hidden sm:inline">Verifikasi Mendalam</span>
+              <span className="sm:hidden">Verify</span>
+            </button>
           </div>
         </div>
         
+        {/* Deep Verification Results */}
+        {deepVerification && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 rounded-lg border p-4"
+            style={{
+              borderColor: deepVerification.status.fullyPurged
+                ? "rgba(34, 197, 94, 0.3)"
+                : deepVerification.status.isDatabaseEmpty && deepVerification.status.hasNoIP
+                ? "rgba(251, 191, 36, 0.3)"
+                : "rgba(239, 68, 68, 0.3)",
+              backgroundColor: deepVerification.status.fullyPurged
+                ? "rgba(34, 197, 94, 0.05)"
+                : deepVerification.status.isDatabaseEmpty && deepVerification.status.hasNoIP
+                ? "rgba(251, 191, 36, 0.05)"
+                : "rgba(239, 68, 68, 0.05)",
+            }}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-3">
+                  <Search className="h-5 w-5 text-blue-400 flex-shrink-0" />
+                  <h4 className="text-sm font-semibold text-white">
+                    🔍 Verifikasi Mendalam: {deepVerification.month}/{deepVerification.year}
+                  </h4>
+                </div>
+                <div className="space-y-2 text-xs text-white/70 ml-7">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-white/50 mb-1">Count Query (Prisma):</div>
+                      <div className="text-white">
+                        Page 1: {deepVerification.verification.prismaCount.page1} | Page 2: {deepVerification.verification.prismaCount.page2}
+                      </div>
+                      <div className={`text-xs ${deepVerification.verification.prismaCount.total === 0 ? "text-green-400" : "text-red-400"}`}>
+                        Total: {deepVerification.verification.prismaCount.total} {deepVerification.verification.prismaCount.total === 0 ? "✅" : "❌"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-white/50 mb-1">Count Query (Raw SQL):</div>
+                      <div className="text-white">
+                        Page 1: {deepVerification.verification.rawSqlCount.page1} | Page 2: {deepVerification.verification.rawSqlCount.page2}
+                      </div>
+                      <div className={`text-xs ${deepVerification.verification.rawSqlCount.total === 0 ? "text-green-400" : "text-red-400"}`}>
+                        Total: {deepVerification.verification.rawSqlCount.total} {deepVerification.verification.rawSqlCount.total === 0 ? "✅" : "❌"}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t border-white/10">
+                    <div className="text-white/50 mb-1">IP Addresses Found:</div>
+                    <div className={`text-sm font-semibold ${deepVerification.verification.ipAddresses.totalFound === 0 ? "text-green-400" : "text-red-400"}`}>
+                      {deepVerification.verification.ipAddresses.totalFound === 0 ? (
+                        "✅ Tidak ada IP addresses tersisa"
+                      ) : (
+                        <>
+                          ❌ Ditemukan {deepVerification.verification.ipAddresses.totalFound} records dengan IP:
+                          <div className="mt-1 space-y-1">
+                            {[...deepVerification.verification.ipAddresses.page1, ...deepVerification.verification.ipAddresses.page2].slice(0, 5).map((log: any, idx: number) => (
+                              <div key={idx} className="text-xs font-mono">
+                                - ID: {log.id}, IP: {log.ip}
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t border-white/10">
+                    <div className="text-white/50 mb-1">ScanLogSummary:</div>
+                    <div className={`text-sm ${deepVerification.status.hasSummary ? "text-green-400" : "text-amber-400"}`}>
+                      {deepVerification.status.hasSummary ? (
+                        `✅ Rekapan dibuat (${deepVerification.verification.summary.recordCount} records, ${deepVerification.verification.summary.totalScans} total scans)`
+                      ) : (
+                        "⚠️ Rekapan belum dibuat"
+                      )}
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t border-white/10">
+                    <div className="text-white/50 mb-1">R2 CSV File:</div>
+                    <div className={`text-sm ${deepVerification.status.hasR2File ? "text-green-400" : "text-amber-400"}`}>
+                      {deepVerification.status.hasR2File ? (
+                        <>
+                          ✅ CSV tersimpan di R2: {deepVerification.verification.r2Csv.filename}
+                          {deepVerification.verification.r2Csv.downloadUrl && (
+                            <a
+                              href={deepVerification.verification.r2Csv.downloadUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="ml-2 text-amber-400 hover:text-amber-300 underline text-xs"
+                            >
+                              Download
+                            </a>
+                          )}
+                        </>
+                      ) : (
+                        `⚠️ CSV belum ditemukan di R2`
+                      )}
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t border-white/10 mt-3">
+                    <div className="text-sm font-semibold text-white mb-2">Kesimpulan:</div>
+                    <div className={`text-sm font-semibold ${
+                      deepVerification.status.fullyPurged
+                        ? "text-green-400"
+                        : deepVerification.status.isDatabaseEmpty && deepVerification.status.hasNoIP
+                        ? "text-amber-400"
+                        : "text-red-400"
+                    }`}>
+                      {deepVerification.conclusion}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setDeepVerification(null)}
+                className="text-white/40 hover:text-white/60 transition-colors flex-shrink-0"
+                aria-label="Tutup"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         {/* Persistent Purge Success Indicator */}
         {purgeResult && purgeResult.verified && purgeResult.r2Uploaded && (
           <motion.div
