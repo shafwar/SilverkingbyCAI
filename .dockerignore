@@ -53,7 +53,9 @@ coverage
 !package-lock.json
 
 # Scripts (keep only runtime scripts)
-scripts/**
+# Exclude all scripts first
+scripts/*
+# Then include the one we need
 !scripts/migrate-and-start.js
 
 # Assets folder (large files, not needed in build)
