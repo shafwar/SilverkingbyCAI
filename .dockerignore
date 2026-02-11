@@ -55,8 +55,9 @@ coverage
 # Scripts (keep only runtime scripts)
 # Exclude all scripts first
 scripts/*
-# Then include the one we need
+# Then include the ones we need for runtime
 !scripts/migrate-and-start.js
+!scripts/create-database.js
 
 # Assets folder (large files, not needed in build)
 assets/
