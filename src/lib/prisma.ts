@@ -24,6 +24,7 @@ if (!globalForPrisma.prisma) {
     console.error("❌ Failed to connect to database:", error.message);
     if (error.code === "P1001" || error.message?.includes("ECONNREFUSED") || error.message?.includes("ENOTFOUND")) {
       console.error("💡 MySQL service appears to be down. Please restart MySQL service in Railway.");
+      console.error("💡 DATA IS SAFE - Shutdown does not delete data. Only restarts the service.");
     } else if (error.message?.includes("Access denied")) {
       console.error("💡 Database authentication failed. Check DATABASE_URL credentials.");
     } else if (!process.env.DATABASE_URL) {
