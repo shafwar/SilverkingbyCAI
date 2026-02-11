@@ -1,0 +1,127 @@
+# Dependencies - will be installed via npm ci
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp
+.pnp.js
+.yarn
+.yarn/**
+
+# Build outputs - will be generated during build
+.next
+out
+build
+dist
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment files
+.env
+.env*.local
+.env.production
+
+# Testing
+coverage
+.nyc_output
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+**/__tests__/**
+
+# Development files
+.DS_Store
+*.pem
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.cursor
+
+# Git
+.git
+.gitignore
+.gitattributes
+.git/
+
+# Documentation (not needed in build - exclude all markdown except essential)
+*.md
+!README.md
+!package.json
+!package-lock.json
+
+# Scripts (keep only runtime scripts)
+scripts/**
+!scripts/migrate-and-start.js
+
+# Assets folder (large files, not needed in build)
+assets/
+
+# Exclude large media files but keep essential files for runtime
+# Videos are large (71MB) and should be served from R2/CDN
+public/videos/**
+
+# Exclude large images but keep essential ones
+# Large images should be served from R2/CDN
+public/images/**/*.jpg
+public/images/**/*.jpeg
+public/images/**/*.png
+# Keep essential images that are still referenced directly
+!public/images/serticard/**
+!public/images/cai-logo.png
+!public/images/sertificate.jpeg
+!public/images/hero-fallback.jpg
+
+# Keep fonts (needed for QR code generation)
+!public/fonts/**
+
+# Keep favicon
+!public/favicon.ico
+
+# Temporary files
+tmp/
+temp/
+*.log
+*.tmp
+
+# Prisma (keep schema and migrations, exclude dev files)
+prisma/dev.db
+prisma/*.db
+prisma/*.db-journal
+prisma/migrations/.migrate_lock.toml
+
+# Generated files
+generated/
+.generated/
+
+# Railway specific
+.railway/
+
+# CI/CD
+.github/
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Keep essential files
+!package.json
+!package-lock.json
+!.npmrc
+!nixpacks.toml
+!railway.json
+!tsconfig.json
+!tsconfig.*.json
+!next.config.js
+!tailwind.config.ts
+!postcss.config.mjs
+!.eslintrc.json
+!.prettierrc
+!prisma.config.ts
