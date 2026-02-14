@@ -4,6 +4,7 @@
     "authenticity": "Authenticity",
     "products": "Products",
     "aboutUs": "About us",
+    "distributors": "Distributors",
     "getInTouch": "Get in touch"
   },
   "common": {
@@ -386,6 +387,28 @@
       "backToHome": "Back to Home"
     }
   },
+  "distributors": {
+    "title": "Distributors",
+    "hero": {
+      "badge": "Official Partners",
+      "title": "Find Your Distributor",
+      "subtitle": "Discover official Silver King distributors across Indonesia. Premium precious metals with QR-verified authenticity."
+    },
+    "description": {
+      "title": "Our",
+      "titleBold": "Distributor Network",
+      "body": "Silver King by CAI partners with trusted distributors in key cities to bring you premium precious metal products. Each location offers genuine Silver King bars with full QR verification, ensuring authenticity and quality."
+    },
+    "viewOnMap": "View on Map",
+    "empty": "No distributors listed yet. Contact us for availability.",
+    "contactUs": "Contact Us",
+    "cta": {
+      "title": "Want to become",
+      "titleBold": "a distributor?",
+      "subtitle": "Join our network of trusted partners across Indonesia.",
+      "button": "Get in Touch"
+    }
+  },
   "contact": {
     "title": "Contact Us",
     "subtitle": "This page is under construction.",
@@ -716,6 +739,31 @@
     },
     "qrPreview": "QR Preview",
     "logs": "Logs",
+    "distributors": {
+      "label": "Distributors",
+      "eyebrow": "Partner Locations",
+      "title": "Distributor Management",
+      "description": "Manage official Silver King distributor locations. Add, edit, or remove distributors displayed on the public distributors page.",
+      "add": "Add Distributor",
+      "editTitle": "Edit Distributor",
+      "createTitle": "Add Distributor",
+      "empty": "No distributors yet. Add your first distributor.",
+      "updated": "Distributor updated",
+      "created": "Distributor added",
+      "deleted": "Distributor removed",
+      "error": "Something went wrong",
+      "confirmDelete": "Are you sure you want to remove this distributor?",
+      "viewOnMap": "View on Map",
+      "form": {
+        "name": "Distributor Name",
+        "storeName": "Store Name",
+        "address": "Address",
+        "phone": "Phone",
+        "mapUrl": "Google Maps URL",
+        "city": "City",
+        "displayOrder": "Display Order"
+      }
+    },
     "feedback": {
       "label": "Feedback",
       "eyebrow": "User Messages",

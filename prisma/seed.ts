@@ -76,6 +76,23 @@ async function main() {
     console.log(`✨ Seeded product ${item.serialCode}`);
   }
 
+  // Seed initial distributor if none exist
+  const distributorCount = await prisma.distributor.count();
+  if (distributorCount === 0) {
+    await prisma.distributor.create({
+      data: {
+        name: "Youceu",
+        storeName: "Toko Kang Emas",
+        address: "Jl Ahmad Yani No 161, Sumur Bandung - Kebon Pisang, Kosambi, Bandung",
+        phone: "082297131527",
+        mapUrl: "https://share.google/xBZELvl6oLOztuFlJ",
+        city: "Bandung",
+        displayOrder: 0,
+      },
+    });
+    console.log("✨ Seeded distributor: Youceu (Bandung)");
+  }
+
   console.log("🎉 Seed completed successfully.");
 }
 

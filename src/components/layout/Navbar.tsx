@@ -155,6 +155,7 @@ export default function Navbar() {
       { name: t("authenticity"), href: "/authenticity" },
       { name: t("products"), href: "/products" },
       { name: t("aboutUs"), href: "/about" },
+      { name: t("distributors"), href: "/distributors" },
     ],
     [t]
   );

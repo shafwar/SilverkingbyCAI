@@ -14,6 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/what-we-do',
     '/products',
     '/authenticity',
+    '/distributors',
   ];
 
   // Generate sitemap entries for each locale

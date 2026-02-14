@@ -4,6 +4,7 @@
     "authenticity": "Keaslian",
     "products": "Produk",
     "aboutUs": "Tentang kami",
+    "distributors": "Distributor",
     "getInTouch": "Hubungi kami"
   },
   "common": {
@@ -386,6 +387,28 @@
       "backToHome": "Kembali ke Beranda"
     }
   },
+  "distributors": {
+    "title": "Distributor",
+    "hero": {
+      "badge": "Mitra Resmi",
+      "title": "Temukan Distributor Anda",
+      "subtitle": "Temukan distributor resmi Silver King di seluruh Indonesia. Logam mulia berkualitas dengan verifikasi keaslian QR."
+    },
+    "description": {
+      "title": "Jaringan",
+      "titleBold": "Distributor Kami",
+      "body": "Silver King by CAI bermitra dengan distributor tepercaya di berbagai kota untuk menyediakan produk logam mulia berkualitas. Setiap lokasi menawarkan batangan Silver King asli dengan verifikasi QR lengkap, menjamin keaslian dan kualitas."
+    },
+    "viewOnMap": "Lihat di Peta",
+    "empty": "Belum ada distributor tercantum. Hubungi kami untuk informasi ketersediaan.",
+    "contactUs": "Hubungi Kami",
+    "cta": {
+      "title": "Ingin menjadi",
+      "titleBold": "distributor?",
+      "subtitle": "Bergabunglah dengan jaringan mitra terpercaya kami di seluruh Indonesia.",
+      "button": "Hubungi Kami"
+    }
+  },
   "contact": {
     "title": "Hubungi Kami",
     "subtitle": "Halaman ini sedang dalam pengembangan.",
@@ -720,6 +743,31 @@
     },
     "qrPreview": "Pratinjau QR",
     "logs": "Log",
+    "distributors": {
+      "label": "Distributor",
+      "eyebrow": "Lokasi Mitra",
+      "title": "Kelola Distributor",
+      "description": "Kelola lokasi distributor resmi Silver King. Tambah, sunting, atau hapus distributor yang ditampilkan di halaman distributor publik.",
+      "add": "Tambah Distributor",
+      "editTitle": "Sunting Distributor",
+      "createTitle": "Tambah Distributor",
+      "empty": "Belum ada distributor. Tambah distributor pertama Anda.",
+      "updated": "Distributor diperbarui",
+      "created": "Distributor ditambahkan",
+      "deleted": "Distributor dihapus",
+      "error": "Terjadi kesalahan",
+      "confirmDelete": "Yakin ingin menghapus distributor ini?",
+      "viewOnMap": "Lihat di Peta",
+      "form": {
+        "name": "Nama Distributor",
+        "storeName": "Nama Toko",
+        "address": "Alamat",
+        "phone": "Telepon",
+        "mapUrl": "URL Google Maps",
+        "city": "Kota",
+        "displayOrder": "Urutan Tampilan"
+      }
+    },
     "feedback": {
       "label": "Umpan Balik",
       "eyebrow": "Pesan Pengguna",

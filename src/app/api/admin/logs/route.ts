@@ -110,23 +110,8 @@ export async function GET(request: Request) {
         page2Total: gramTotal,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error fetching logs:", error);
-    
-    // Provide more specific error messages
-    if (error.code === "P1001" || error.message?.includes("Can't reach database")) {
-      return NextResponse.json(
-        { 
-          error: "Database connection failed. MySQL service may be down.",
-          details: "Please check Railway MySQL service status and restart if needed."
-        },
-        { status: 503 }
-      );
-    }
-    
-    return NextResponse.json(
-      { error: "Failed to fetch logs", details: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch logs" }, { status: 500 });
   }
 }

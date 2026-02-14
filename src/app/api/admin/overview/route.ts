@@ -69,23 +69,8 @@ export async function GET() {
       combinedTotalProducts: productCount + gramBatchCount,
       combinedTotalScans: (totalScans._sum.scanCount ?? 0) + (gramTotalScans._sum.scanCount ?? 0),
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error fetching overview:", error);
-    
-    // Provide more specific error messages
-    if (error.code === "P1001" || error.message?.includes("Can't reach database")) {
-      return NextResponse.json(
-        { 
-          error: "Database connection failed. MySQL service may be down.",
-          details: "Please check Railway MySQL service status and restart if needed."
-        },
-        { status: 503 }
-      );
-    }
-    
-    return NextResponse.json(
-      { error: "Failed to fetch overview", details: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch overview" }, { status: 500 });
   }
 }
