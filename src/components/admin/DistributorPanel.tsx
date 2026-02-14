@@ -125,30 +125,27 @@ export function DistributorPanel() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-wider text-white/50">{t("eyebrow")}</p>
-          <h2 className="text-2xl font-bold text-white">{t("title")}</h2>
-          <p className="mt-1 text-sm text-white/70">{t("description")}</p>
-        </div>
+    <div className="space-y-4 sm:space-y-6">
+      {/* Actions bar - consistent with CMS Products */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
         <button
           onClick={openCreate}
-          className="inline-flex items-center justify-center gap-2 rounded-lg border border-luxury-gold/40 bg-luxury-gold/10 px-4 py-3 text-sm font-medium text-luxury-gold hover:bg-luxury-gold/20 transition-colors"
+          className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 px-3 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-sm text-white hover:border-white/40 touch-manipulation whitespace-nowrap"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           {t("add")}
         </button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="rounded-xl sm:rounded-2xl border border-white/5 bg-[#0c0c0c] overflow-hidden shadow-[0_12px_50px_rgba(0,0,0,0.35)]">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 p-4 sm:p-5 md:p-6">
         {distributors.map((d, i) => (
           <motion.div
             key={d.id}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
-            className="group relative rounded-xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm"
+            className="group relative rounded-xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm hover:bg-white/[0.05]"
           >
             <div className="flex items-start justify-between gap-2 mb-4">
               <div>
@@ -208,17 +205,20 @@ export function DistributorPanel() {
       </div>
 
       {distributors.length === 0 && (
-        <div className="rounded-xl border border-dashed border-white/20 bg-white/[0.02] p-12 text-center">
-          <p className="text-white/50">{t("empty")}</p>
-          <button
-            onClick={openCreate}
-            className="mt-4 inline-flex items-center gap-2 rounded-lg border border-luxury-gold/40 bg-luxury-gold/10 px-4 py-2 text-sm text-luxury-gold hover:bg-luxury-gold/20"
-          >
-            <Plus className="h-4 w-4" />
-            {t("add")}
-          </button>
+        <div className="p-4 sm:p-5 md:p-6">
+          <div className="rounded-xl border border-dashed border-white/20 bg-white/[0.02] p-12 text-center">
+            <p className="text-white/50">{t("empty")}</p>
+            <button
+              onClick={openCreate}
+              className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-white hover:border-white/40"
+            >
+              <Plus className="h-4 w-4" />
+              {t("add")}
+            </button>
+          </div>
         </div>
       )}
+      </div>
 
       {/* Modal */}
       {modalOpen && (

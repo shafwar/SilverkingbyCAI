@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { motion } from "framer-motion";
-import Image from "next/image";
 import Navbar from "@/components/layout/Navbar";
 import Link from "next/link";
 import { MapPin, Phone, Store, ExternalLink, Instagram, ArrowRight } from "lucide-react";
@@ -20,15 +19,26 @@ type Distributor = {
   displayOrder: number;
 };
 
+const HERO_IMAGE_PATH = "/images/DSC02998.JPG";
+
 export default function DistributorsPageClient() {
   const t = useTranslations("distributors");
   const tNav = useTranslations("nav");
   const locale = useLocale();
   const [distributors, setDistributors] = useState<Distributor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [heroImageSrc, setHeroImageSrc] = useState<string>(HERO_IMAGE_PATH);
 
   useEffect(() => {
-    fetch("/api/distributors")
+    setHeroImageSrc(getR2UrlClient(HERO_IMAGE_PATH));
+  }, []);
+
+  useEffect(() => {
+    const apiUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/api/distributors`
+        : "/api/distributors";
+    fetch(apiUrl)
       .then((r) => r.json())
       .then((data) => {
         setDistributors(Array.isArray(data) ? data : []);
@@ -37,21 +47,23 @@ export default function DistributorsPageClient() {
       .finally(() => setLoading(false));
   }, []);
 
-  const heroImageUrl = getR2UrlClient("/images/DSC02998.JPG");
+  const handleHeroImageError = () => {
+    setHeroImageSrc(HERO_IMAGE_PATH);
+  };
 
   return (
     <div className="min-h-screen bg-luxury-black text-white">
       <Navbar />
 
-      {/* Hero Section - Silver King card image */}
+      {/* Hero Section - Silver King card image with fallback */}
       <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <Image
-            src={heroImageUrl}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={heroImageSrc}
             alt="Silver King - Premium precious metal"
-            fill
-            className="object-cover brightness-[0.6]"
-            priority
+            onError={handleHeroImageError}
+            className="absolute inset-0 h-full w-full object-cover object-center brightness-[0.6]"
             sizes="100vw"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/90 z-10" />
@@ -115,13 +127,13 @@ export default function DistributorsPageClient() {
             </p>
           </motion.div>
 
-          {/* Distributor Cards */}
+          {/* Distributor Cards - consistent with Contact/About card style */}
           {loading ? (
             <div className="flex justify-center py-16">
               <div className="h-10 w-10 animate-spin rounded-full border-2 border-luxury-gold/30 border-t-luxury-gold" />
             </div>
           ) : distributors.length > 0 ? (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
               {distributors.map((d, i) => (
                 <motion.div
                   key={d.id}
@@ -129,7 +141,7 @@ export default function DistributorsPageClient() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: i * 0.08 }}
-                  className="group relative rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.06] via-white/[0.03] to-transparent p-6 md:p-8 backdrop-blur-xl transition-all duration-300 hover:border-luxury-gold/40 hover:shadow-[0_20px_60px_-30px_rgba(212,175,55,0.25)]"
+                  className="group relative rounded-2xl border border-white/15 bg-gradient-to-br from-white/[0.08] via-white/[0.05] to-white/[0.03] p-6 md:p-8 backdrop-blur-xl shadow-[0_25px_80px_-20px_rgba(0,0,0,0.8)] transition-all duration-300 hover:border-luxury-gold/40 hover:shadow-[0_20px_60px_-30px_rgba(212,175,55,0.25)]"
                 >
                   <div className="mb-5">
                     <span className="inline-block rounded-full bg-luxury-gold/15 px-3 py-1 text-xs font-medium text-luxury-gold uppercase tracking-wider">
