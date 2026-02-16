@@ -394,6 +394,7 @@
     },
     "description": "We work with official distributors in various cities to ensure product availability, service quality, and ease of transaction for customers. Every listed distributor is a trusted partner that has gone through a verification process.",
     "noDistributors": "No distributors to display yet.",
+    "listTitle": "Distributor List",
     "card": {
       "distributor": "Distributor",
       "store": "Store",

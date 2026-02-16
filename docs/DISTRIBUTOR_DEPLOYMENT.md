@@ -16,14 +16,20 @@ npx prisma migrate dev
 
 ## 2. Gambar hero (R2)
 
-Halaman distributor memakai gambar hero dari **R2** saat `NEXT_PUBLIC_R2_PUBLIC_URL` diset.
+Halaman distributor memakai gambar hero **DSC02998.JPG** (Silver King). URL diambil dengan prioritas:
 
-- **Lokal:** Gambar diambil dari `/images/DSC02998.JPG` (fallback jika R2 belum diset).
-- **Production:** Upload file yang sama ke R2:
-  - Path di bucket: `static/images/DSC02998.JPG`
-  - Sumber file: `public/images/DSC02998.JPG`
-- Set env: `NEXT_PUBLIC_R2_PUBLIC_URL=https://your-r2-public-url`
-- Setelah itu, tidak ada referensi lokal ke gambar hero; source final adalah link R2.
+1. **`NEXT_PUBLIC_DISTRIBUTOR_HERO_IMAGE_URL`** (disarankan) – URL penuh ke gambar di R2, contoh:  
+   `https://your-bucket.r2.dev/static/images/DSC02998.JPG`
+2. **`NEXT_PUBLIC_R2_PUBLIC_URL`** – Base URL R2; path otomatis: `{base}/static/images/DSC02998.JPG`
+3. **Lokal** – `/images/DSC02998.JPG` (jika R2 tidak diset)
+
+**Production (hero dari R2):**
+
+- Upload `public/images/DSC02998.JPG` ke R2 path: `static/images/DSC02998.JPG`
+- Set salah satu env:
+  - **Opsi A:** `NEXT_PUBLIC_DISTRIBUTOR_HERO_IMAGE_URL=https://your-r2-url/static/images/DSC02998.JPG`
+  - **Opsi B:** `NEXT_PUBLIC_R2_PUBLIC_URL=https://your-r2-url`
+- Source final hero = link R2 (tidak pakai path lokal).
 
 ## 3. Data awal (opsional)
 

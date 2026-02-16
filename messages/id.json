@@ -394,6 +394,7 @@
     },
     "description": "Kami bekerja sama dengan distributor resmi di berbagai kota untuk memastikan ketersediaan produk, kualitas layanan, serta kemudahan transaksi bagi pelanggan. Setiap distributor yang terdaftar merupakan mitra terpercaya yang telah melalui proses verifikasi.",
     "noDistributors": "Belum ada distributor yang ditampilkan.",
+    "listTitle": "Daftar Distributor",
     "card": {
       "distributor": "Distributor",
       "store": "Toko",

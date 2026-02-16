@@ -1,7 +1,10 @@
 import { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { generatePageMetadata } from "@/lib/seo";
+import { prisma } from "@/lib/prisma";
 import DistributorPageClient from "./DistributorPageClient";
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -26,6 +29,36 @@ export async function generateMetadata({
   });
 }
 
-export default function DistributorPage() {
-  return <DistributorPageClient />;
+export default async function DistributorPage() {
+  let initialDistributors: Array<{
+    id: number;
+    distributorName: string;
+    storeName: string;
+    address: string;
+    city: string;
+    phone: string;
+    mapLink: string | null;
+    status: string;
+  }> = [];
+  try {
+    const rows = await prisma.distributor.findMany({
+      where: { status: "ACTIVE", deletedAt: null },
+      orderBy: [{ city: "asc" }, { storeName: "asc" }],
+    });
+    initialDistributors = rows.map((d) => ({
+      id: d.id,
+      distributorName: d.distributorName,
+      storeName: d.storeName,
+      address: d.address,
+      city: d.city,
+      phone: d.phone,
+      mapLink: d.mapLink,
+      status: d.status,
+    }));
+  } catch (e) {
+    console.error("[DistributorPage] Failed to load distributors:", e);
+  }
+  return (
+    <DistributorPageClient initialDistributors={initialDistributors} />
+  );
 }

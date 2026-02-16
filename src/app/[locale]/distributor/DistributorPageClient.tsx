@@ -3,7 +3,7 @@
 import Navbar from "@/components/layout/Navbar";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { getR2UrlClient } from "@/utils/r2-url";
+import { getDistributorHeroImageUrl } from "@/utils/r2-url";
 import { MapPin, Phone, Store, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
@@ -32,16 +32,27 @@ const cardVariants = {
   }),
 };
 
-const HERO_IMAGE_PATH = "/images/DSC02998.JPG";
 const HERO_FALLBACK_PATH = "/images/hero-fallback.jpg";
 
-export default function DistributorPageClient() {
+type DistributorPageClientProps = {
+  initialDistributors?: DistributorItem[];
+};
+
+export default function DistributorPageClient({
+  initialDistributors = [],
+}: DistributorPageClientProps) {
   const t = useTranslations("distributor");
-  const [distributors, setDistributors] = useState<DistributorItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [distributors, setDistributors] = useState<DistributorItem[]>(
+    initialDistributors
+  );
+  const [loading, setLoading] = useState(initialDistributors.length === 0);
   const [heroImageError, setHeroImageError] = useState(false);
 
   useEffect(() => {
+    if (initialDistributors.length > 0) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     const load = async () => {
       try {
@@ -61,11 +72,11 @@ export default function DistributorPageClient() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialDistributors.length]);
 
   const heroImageUrl = heroImageError
     ? HERO_FALLBACK_PATH
-    : getR2UrlClient(HERO_IMAGE_PATH);
+    : getDistributorHeroImageUrl();
 
   return (
     <div className="min-h-screen bg-luxury-black text-white selection:bg-luxury-gold/20 selection:text-white">
@@ -126,6 +137,14 @@ export default function DistributorPageClient() {
       {/* Distributor Cards */}
       <section className="relative pb-20 md:pb-28">
         <div className="mx-auto max-w-[1400px] px-6 md:px-8 lg:px-12">
+          <motion.h2
+            className="text-xl md:text-2xl font-light text-white mb-8 md:mb-10"
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            {t("listTitle")}
+          </motion.h2>
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
               {[1, 2, 3].map((i) => (
