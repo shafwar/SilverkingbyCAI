@@ -32,10 +32,14 @@ const cardVariants = {
   }),
 };
 
+const HERO_IMAGE_PATH = "/images/DSC02998.JPG";
+const HERO_FALLBACK_PATH = "/images/hero-fallback.jpg";
+
 export default function DistributorPageClient() {
   const t = useTranslations("distributor");
   const [distributors, setDistributors] = useState<DistributorItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [heroImageError, setHeroImageError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,7 +63,9 @@ export default function DistributorPageClient() {
     };
   }, []);
 
-  const heroImageUrl = getR2UrlClient("/images/DSC02998.JPG");
+  const heroImageUrl = heroImageError
+    ? HERO_FALLBACK_PATH
+    : getR2UrlClient(HERO_IMAGE_PATH);
 
   return (
     <div className="min-h-screen bg-luxury-black text-white selection:bg-luxury-gold/20 selection:text-white">
@@ -75,6 +81,7 @@ export default function DistributorPageClient() {
             className="object-cover"
             sizes="100vw"
             priority
+            onError={() => setHeroImageError(true)}
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.6)_100%)]" />

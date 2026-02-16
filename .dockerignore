@@ -89,6 +89,7 @@ public/images/**/*.png
 !public/images/cai-logo.png
 !public/images/sertificate.jpeg
 !public/images/hero-fallback.jpg
+!public/images/DSC02998.JPG
 
 # Keep fonts (needed for QR code generation)
 !public/fonts/**
