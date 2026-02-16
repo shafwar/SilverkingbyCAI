@@ -1,74 +1,73 @@
-/**
- * Admin API for single Distributor
- * PATCH /api/admin/distributors/[id] - Update
- * DELETE /api/admin/distributors/[id] - Delete
- */
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { z } from "zod";
 
-const distributorUpdateSchema = z.object({
-  name: z.string().min(1).optional(),
-  storeName: z.string().optional().nullable(),
-  address: z.string().min(1).optional(),
-  phone: z.string().min(1).optional(),
-  mapUrl: z.string().optional().nullable(),
-  city: z.string().min(1).optional(),
-  displayOrder: z.number().int().optional(),
-});
-
-async function ensureAdmin() {
-  const session = await auth();
-  if (!session || (session.user as { role?: string })?.role !== "ADMIN") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  return null;
-}
-
+/**
+ * Admin: update distributor.
+ */
 export async function PATCH(
-  request: NextRequest,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = await ensureAdmin();
-  if (authError) return authError;
+  const session = await auth();
+
+  if (!session || (session.user as any).role !== "ADMIN") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   try {
     const { id } = await params;
-    const distributorId = parseInt(id, 10);
-    if (isNaN(distributorId)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+    const numId = Number(id);
+    if (Number.isNaN(numId)) {
+      return NextResponse.json({ error: "Invalid id" }, { status: 400 });
     }
 
-    const body = await request.json().catch(() => ({}));
-    const parsed = distributorUpdateSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues?.[0]?.message ?? "Invalid input" },
-        { status: 400 }
-      );
-    }
+    const body = await request.json();
+    const {
+      distributorName,
+      storeName,
+      address,
+      city,
+      phone,
+      mapLink,
+      status,
+    } = body || {};
 
-    const data = parsed.data;
-    const updateData: Record<string, unknown> = {};
-    if (data.name !== undefined) updateData.name = data.name;
-    if (data.storeName !== undefined) updateData.storeName = data.storeName;
-    if (data.address !== undefined) updateData.address = data.address;
-    if (data.phone !== undefined) updateData.phone = data.phone;
-    if (data.mapUrl !== undefined) updateData.mapUrl = data.mapUrl || null;
-    if (data.city !== undefined) updateData.city = data.city;
-    if (data.displayOrder !== undefined) updateData.displayOrder = data.displayOrder;
-
-    const distributor = await prisma.distributor.update({
-      where: { id: distributorId },
-      data: updateData,
+    const existing = await prisma.distributor.findFirst({
+      where: { id: numId, deletedAt: null },
     });
 
-    return NextResponse.json(distributor);
-  } catch (error: unknown) {
-    if (error && typeof error === "object" && "code" in error && error.code === "P2025") {
-      return NextResponse.json({ error: "Distributor not found" }, { status: 404 });
+    if (!existing) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+
+    const updated = await prisma.distributor.update({
+      where: { id: numId },
+      data: {
+        distributorName:
+          distributorName != null
+            ? String(distributorName).trim()
+            : existing.distributorName,
+        storeName:
+          storeName != null ? String(storeName).trim() : existing.storeName,
+        address: address != null ? String(address).trim() : existing.address,
+        city: city != null ? String(city).trim() : existing.city,
+        phone: phone != null ? String(phone).trim() : existing.phone,
+        mapLink:
+          mapLink !== undefined
+            ? mapLink == null || mapLink === ""
+              ? null
+              : String(mapLink).trim()
+            : existing.mapLink,
+        status:
+          status === "INACTIVE" || status === "ACTIVE"
+            ? status
+            : existing.status,
+      },
+    });
+
+    return NextResponse.json({ distributor: updated });
+  } catch (error) {
     console.error("[ADMIN_DISTRIBUTORS_PATCH]", error);
     return NextResponse.json(
       { error: "Failed to update distributor" },
@@ -77,29 +76,41 @@ export async function PATCH(
   }
 }
 
+/**
+ * Admin: soft delete distributor.
+ */
 export async function DELETE(
-  _request: NextRequest,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = await ensureAdmin();
-  if (authError) return authError;
+  const session = await auth();
+
+  if (!session || (session.user as any).role !== "ADMIN") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   try {
     const { id } = await params;
-    const distributorId = parseInt(id, 10);
-    if (isNaN(distributorId)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+    const numId = Number(id);
+    if (Number.isNaN(numId)) {
+      return NextResponse.json({ error: "Invalid id" }, { status: 400 });
     }
 
-    await prisma.distributor.delete({
-      where: { id: distributorId },
+    const existing = await prisma.distributor.findFirst({
+      where: { id: numId, deletedAt: null },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    await prisma.distributor.update({
+      where: { id: numId },
+      data: { deletedAt: new Date(), status: "INACTIVE" },
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: unknown) {
-    if (error && typeof error === "object" && "code" in error && error.code === "P2025") {
-      return NextResponse.json({ error: "Distributor not found" }, { status: 404 });
-    }
+  } catch (error) {
     console.error("[ADMIN_DISTRIBUTORS_DELETE]", error);
     return NextResponse.json(
       { error: "Failed to delete distributor" },

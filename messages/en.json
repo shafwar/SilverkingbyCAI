@@ -3,8 +3,8 @@
     "whatWeDo": "What we do",
     "authenticity": "Authenticity",
     "products": "Products",
+    "distributor": "Distributor",
     "aboutUs": "About us",
-    "distributors": "Distributors",
     "getInTouch": "Get in touch"
   },
   "common": {
@@ -387,26 +387,23 @@
       "backToHome": "Back to Home"
     }
   },
-  "distributors": {
-    "title": "Distributors",
+  "distributor": {
     "hero": {
-      "badge": "Official Partners",
-      "title": "Find Your Distributor",
-      "subtitle": "Discover official Silver King distributors across Indonesia. Premium precious metals with QR-verified authenticity."
+      "title": "Our Official Distributors",
+      "subtitle": "Find our official distributors in various cities for authentic products and the best service."
     },
-    "description": {
-      "title": "Our",
-      "titleBold": "Distributor Network",
-      "body": "Silver King by CAI partners with trusted distributors in key cities to bring you premium precious metal products. Each location offers genuine Silver King bars with full QR verification, ensuring authenticity and quality."
+    "description": "We work with official distributors in various cities to ensure product availability, service quality, and ease of transaction for customers. Every listed distributor is a trusted partner that has gone through a verification process.",
+    "noDistributors": "No distributors to display yet.",
+    "card": {
+      "distributor": "Distributor",
+      "store": "Store",
+      "address": "Address",
+      "phone": "Transaction Number",
+      "map": "Map Location"
     },
-    "viewOnMap": "View on Map",
-    "empty": "No distributors listed yet. Contact us for availability.",
-    "contactUs": "Contact Us",
-    "cta": {
-      "title": "Want to become",
-      "titleBold": "a distributor?",
-      "subtitle": "Join our network of trusted partners across Indonesia.",
-      "button": "Get in Touch"
+    "meta": {
+      "title": "Official Distributors",
+      "description": "Find Silver King official distributors in various cities for authentic products and the best service."
     }
   },
   "contact": {
@@ -442,6 +439,8 @@
     }
   },
   "admin": {
+    "products": "Products",
+    "distributor": "Distributor",
     "logout": "Logout",
     "login": "Login",
     "email": "Email",
@@ -693,6 +692,27 @@
         "saveFailedDescription": "Please check your input and try again"
       }
     },
+    "distributorsDetail": {
+      "title": "Distributors",
+      "addDistributor": "Add Distributor",
+      "distributorName": "Distributor Name",
+      "storeName": "Store Name",
+      "address": "Full Address",
+      "city": "City",
+      "phone": "Phone Number",
+      "mapLink": "Google Maps Link",
+      "status": "Status",
+      "statusActive": "Active",
+      "statusInactive": "Inactive",
+      "actions": "Actions",
+      "edit": "Edit",
+      "delete": "Delete",
+      "noDistributors": "No distributors yet.",
+      "deleteConfirm": "Delete this distributor?",
+      "saving": "Saving…",
+      "saveFailed": "Failed to save",
+      "deleteFailed": "Failed to delete"
+    },
     "products": "Products",
     "qrPreviewDetail": {
       "eyebrow": "QR Vault",
@@ -739,31 +759,6 @@
     },
     "qrPreview": "QR Preview",
     "logs": "Logs",
-    "distributors": {
-      "label": "Distributors",
-      "eyebrow": "Partner Locations",
-      "title": "Distributor Management",
-      "description": "Manage official Silver King distributor locations. Add, edit, or remove distributors displayed on the public distributors page.",
-      "add": "Add Distributor",
-      "editTitle": "Edit Distributor",
-      "createTitle": "Add Distributor",
-      "empty": "No distributors yet. Add your first distributor.",
-      "updated": "Distributor updated",
-      "created": "Distributor added",
-      "deleted": "Distributor removed",
-      "error": "Something went wrong",
-      "confirmDelete": "Are you sure you want to remove this distributor?",
-      "viewOnMap": "View on Map",
-      "form": {
-        "name": "Distributor Name",
-        "storeName": "Store Name",
-        "address": "Address",
-        "phone": "Phone",
-        "mapUrl": "Google Maps URL",
-        "city": "City",
-        "displayOrder": "Display Order"
-      }
-    },
     "feedback": {
       "label": "Feedback",
       "eyebrow": "User Messages",

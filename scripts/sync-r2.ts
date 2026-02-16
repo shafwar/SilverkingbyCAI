@@ -9,13 +9,10 @@
  */
 
 import * as dotenv from "dotenv";
-import * as path from "path";
 import { syncPublicToR2, uploadPublicFolders } from "../src/lib/r2-static-sync";
 
-// Load environment variables: .env.local first, then .env (so either file works)
-const root = path.resolve(process.cwd());
-dotenv.config({ path: path.join(root, ".env.local") });
-dotenv.config({ path: path.join(root, ".env") });
+// Load environment variables
+dotenv.config({ path: ".env.local" });
 
 // Workaround for Windows SSL handshake failure
 // Set NODE_TLS_REJECT_UNAUTHORIZED=0 to bypass SSL verification (testing only)
@@ -54,25 +51,24 @@ async function main() {
   console.log("🚀 Cloudflare R2 Static Assets Sync");
   console.log("=====================================\n");
 
-  // Validate environment variables (accept R2_BUCKET or R2_BUCKET_NAME)
-  const hasBucket = !!(process.env.R2_BUCKET_NAME || process.env.R2_BUCKET);
-  const required = [
-    { key: "R2_ACCOUNT_ID", value: process.env.R2_ACCOUNT_ID },
-    { key: "R2_ACCESS_KEY_ID", value: process.env.R2_ACCESS_KEY_ID },
-    { key: "R2_SECRET_ACCESS_KEY", value: process.env.R2_SECRET_ACCESS_KEY },
-    { key: "R2_BUCKET_NAME or R2_BUCKET", value: hasBucket },
+  // Validate environment variables
+  const requiredEnvVars = [
+    "R2_ACCOUNT_ID",
+    "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY",
+    "R2_BUCKET_NAME",
   ];
 
-  const missing = required.filter((r) => !r.value);
-  if (missing.length > 0) {
+  const missingVars = requiredEnvVars.filter((varName) => !process.env[varName]);
+
+  if (missingVars.length > 0) {
     console.error("❌ Missing required environment variables:");
-    missing.forEach((r) => console.error(`   - ${r.key}`));
-    console.error("\nAdd them to .env or .env.local in the project root.");
+    missingVars.forEach((varName) => console.error(`   - ${varName}`));
+    console.error("\nPlease check your .env.local file.");
     process.exit(1);
   }
 
-  const bucketName = process.env.R2_BUCKET_NAME || process.env.R2_BUCKET || "";
-  console.log(`📦 Bucket: ${bucketName}`);
+  console.log(`📦 Bucket: ${process.env.R2_BUCKET_NAME}`);
   console.log(`🌐 Public URL: ${process.env.R2_PUBLIC_URL || "Not set"}`);
   console.log(`🔄 Mode: ${force ? "Force overwrite" : "Skip existing"}\n`);
 

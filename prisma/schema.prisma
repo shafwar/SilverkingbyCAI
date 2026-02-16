@@ -198,23 +198,6 @@ model SerticardConfig {
   updatedAt        DateTime  @updatedAt
 }
 
-/// Distributor locations - managed via admin
-model Distributor {
-  id          Int      @id @default(autoincrement())
-  name        String   // Nama distributor (e.g. Youceu)
-  storeName   String?  // Nama toko (e.g. Toko Kang Emas)
-  address     String   @db.Text // Alamat lengkap
-  phone       String   // Nomor telepon untuk transaksi
-  mapUrl      String?  @db.Text // Link Google Maps
-  city        String   // Kota/region (e.g. Bandung, Tasikmalaya)
-  displayOrder Int     @default(0) // Urutan tampilan
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([city])
-  @@index([displayOrder])
-}
-
 /// Contact form feedback messages from users
 model Feedback {
   id        Int      @id @default(autoincrement())
@@ -226,4 +209,23 @@ model Feedback {
 
   @@index([createdAt])
   @@index([read])
+}
+
+/// Official distributors – public list + admin CMS (soft delete)
+model Distributor {
+  id               Int       @id @default(autoincrement())
+  distributorName  String
+  storeName        String
+  address          String    @db.Text
+  city             String
+  phone            String
+  mapLink          String?   @db.Text
+  status           String    @default("ACTIVE") // ACTIVE | INACTIVE
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  @@index([status])
+  @@index([city])
+  @@index([deletedAt])
 }
