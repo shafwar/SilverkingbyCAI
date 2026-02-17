@@ -4,6 +4,9 @@ import { uploadToR2, fileExistsInR2, getPublicUrl } from "./r2-client";
 
 const PUBLIC_DIR = path.join(process.cwd(), "public");
 
+/** R2 key prefix - must match getR2Url/getR2UrlClient in src/utils/r2-url.ts */
+const R2_KEY_PREFIX = "static/";
+
 /**
  * Get MIME type based on file extension
  */
@@ -60,8 +63,9 @@ export async function uploadStaticFile(
 ): Promise<{ url: string; skipped: boolean }> {
   const { skipIfExists = false, overwrite = false } = options;
 
-  // Get relative path for R2 key
-  const r2Key = getRelativePath(filePath);
+  // Get relative path for R2 key (prefix with static/ to match frontend getR2Url)
+  const relativePath = getRelativePath(filePath);
+  const r2Key = R2_KEY_PREFIX + relativePath;
 
   // Check if file exists in R2
   if (skipIfExists && !overwrite) {

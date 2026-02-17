@@ -212,7 +212,8 @@ npm run r2:sync
 
 ## ⚠️ Notes
 
-- File paths di R2 akan sama dengan struktur di `/public`
-- Contoh: `public/images/logo.png` → R2 key: `images/logo.png`
-- Public URL akan menggunakan `R2_PUBLIC_URL` dari env
-- Jika `R2_PUBLIC_URL` tidak di-set, akan fallback ke R2.dev subdomain
+- File paths di R2 memakai prefix **`static/`** agar sesuai dengan `getR2Url()` di frontend.
+- Contoh: `public/images/logo.png` → R2 key: **`static/images/logo.png`**
+- Contoh: `public/images/DSC02998.JPG` → R2 key: **`static/images/DSC02998.JPG`** (hero distributor).
+- Public URL: `R2_PUBLIC_URL` + key (mis. `https://.../static/images/DSC02998.JPG`).
+- Untuk memastikan hanya hero distributor ada di R2: `npm run r2:ensure-hero`.

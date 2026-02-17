@@ -24,9 +24,15 @@ Hero distributor memakai **`getR2UrlClient("/images/DSC02998.JPG")`** seperti as
 
 **Production (hero dari R2):**
 
-1. Upload `public/images/DSC02998.JPG` ke R2 dengan path: **`static/images/DSC02998.JPG`**.
+1. **Pastikan gambar ada di R2** (path key: **`static/images/DSC02998.JPG`**):
+   - **Cara 1 – skrip khusus:**  
+     `npm run r2:ensure-hero`  
+     (akan cek R2; kalau belum ada, upload dari `public/images/DSC02998.JPG`).
+   - **Cara 2 – sync penuh:**  
+     `npm run r2:sync`  
+     (sync semua `public/` ke R2 dengan prefix `static/`).
 2. Set env: **`NEXT_PUBLIC_R2_PUBLIC_URL=https://your-r2-public-url`** (tanpa trailing slash).
-3. Hero akan otomatis memakai link R2; fallback ke `hero-fallback.jpg` hanya jika gambar gagal load.
+3. Hero akan memakai link R2; fallback ke `hero-fallback.jpg` hanya jika gambar gagal load.
 
 ## 3. Data awal (opsional)
 
