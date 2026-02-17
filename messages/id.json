@@ -395,12 +395,17 @@
     "description": "Kami bekerja sama dengan distributor resmi di berbagai kota untuk memastikan ketersediaan produk, kualitas layanan, serta kemudahan transaksi bagi pelanggan. Setiap distributor yang terdaftar merupakan mitra terpercaya yang telah melalui proses verifikasi.",
     "noDistributors": "Belum ada distributor yang ditampilkan.",
     "listTitle": "Daftar Distributor",
+    "listSubtitle": "Mitra resmi kami siap melayani Anda di kota terdekat.",
+    "countDistributors": "{count} lokasi",
     "card": {
       "distributor": "Distributor",
       "store": "Toko",
       "address": "Alamat",
       "phone": "Nomor Transaksi",
-      "map": "Lokasi Map"
+      "map": "Lokasi Map",
+      "contact": "Hubungi",
+      "viewMap": "Lihat di Peta",
+      "city": "Kota"
     },
     "meta": {
       "title": "Distributor Resmi",

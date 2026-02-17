@@ -3,10 +3,12 @@
 import Navbar from "@/components/layout/Navbar";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { getDistributorHeroImageUrl } from "@/utils/r2-url";
+import { getR2UrlClient } from "@/utils/r2-url";
 import { MapPin, Phone, Store, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+
+const HERO_IMAGE_PATH = "/images/DSC02998.JPG";
 
 export type DistributorItem = {
   id: number;
@@ -76,7 +78,8 @@ export default function DistributorPageClient({
 
   const heroImageUrl = heroImageError
     ? HERO_FALLBACK_PATH
-    : getDistributorHeroImageUrl();
+    : getR2UrlClient(HERO_IMAGE_PATH);
+  const isExternalHero = heroImageUrl.startsWith("http");
 
   return (
     <div className="min-h-screen bg-luxury-black text-white selection:bg-luxury-gold/20 selection:text-white">
@@ -92,6 +95,7 @@ export default function DistributorPageClient({
             className="object-cover"
             sizes="100vw"
             priority
+            unoptimized={isExternalHero}
             onError={() => setHeroImageError(true)}
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80" />
@@ -137,30 +141,40 @@ export default function DistributorPageClient({
       {/* Distributor Cards */}
       <section className="relative pb-20 md:pb-28">
         <div className="mx-auto max-w-[1400px] px-6 md:px-8 lg:px-12">
-          <motion.h2
-            className="text-xl md:text-2xl font-light text-white mb-8 md:mb-10"
+          <motion.div
+            className="mb-8 md:mb-12"
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            {t("listTitle")}
-          </motion.h2>
+            <h2 className="text-xl md:text-2xl font-light text-white">
+              {t("listTitle")}
+            </h2>
+            <p className="mt-2 text-sm md:text-base text-white/60 max-w-2xl">
+              {t("listSubtitle")}
+            </p>
+            {!loading && distributors.length > 0 && (
+              <p className="mt-1 text-xs uppercase tracking-widest text-white/40">
+                {t("countDistributors", { count: distributors.length })}
+              </p>
+            )}
+          </motion.div>
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-6 md:p-8 h-64 animate-pulse"
+                  className="rounded-2xl border border-white/10 bg-white/5 p-6 md:p-8 h-72 animate-pulse"
                 />
               ))}
             </div>
           ) : distributors.length === 0 ? (
             <motion.div
-              className="text-center py-16 text-white/50"
+              className="text-center py-16 rounded-2xl border border-white/10 bg-white/[0.02]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
-              <p className="text-lg">{t("noDistributors")}</p>
+              <p className="text-lg text-white/50">{t("noDistributors")}</p>
             </motion.div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
@@ -172,43 +186,63 @@ export default function DistributorPageClient({
                   whileInView="animate"
                   viewport={{ once: true, amount: 0.2 }}
                   custom={i}
-                  className="group rounded-2xl border border-white/10 bg-white/[0.04] p-6 md:p-8 shadow-lg shadow-black/20 transition-all duration-300 hover:border-white/20 hover:bg-white/[0.06] hover:shadow-xl hover:shadow-luxury-gold/5"
+                  className="group rounded-2xl border border-white/10 bg-white/[0.04] p-6 md:p-8 shadow-lg shadow-black/20 transition-all duration-300 hover:border-white/20 hover:bg-white/[0.06] hover:shadow-xl hover:shadow-luxury-gold/5 flex flex-col"
                 >
-                  <div className="space-y-4">
-                    <div className="flex items-start gap-3">
-                      <div className="rounded-lg bg-luxury-gold/10 p-2 text-luxury-gold">
-                        <Store className="h-5 w-5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[10px] uppercase tracking-widest text-white/50">
-                          {t("card.distributor")}
-                        </p>
-                        <p className="font-medium text-white mt-0.5">{d.distributorName}</p>
-                        <p className="text-sm text-white/70 mt-1">{d.storeName}</p>
+                  <div className="flex items-center justify-between gap-2 mb-4">
+                    <span className="rounded-full bg-luxury-gold/15 px-3 py-1 text-xs font-medium text-luxury-gold border border-luxury-gold/30">
+                      {d.city}
+                    </span>
+                    <div className="rounded-lg bg-white/5 p-2 text-luxury-gold">
+                      <Store className="h-5 w-5" />
+                    </div>
+                  </div>
+                  <div className="flex-1 space-y-4">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-white/50">
+                        {t("card.distributor")}
+                      </p>
+                      <p className="font-medium text-white mt-0.5">{d.distributorName}</p>
+                      <p className="text-sm text-white/70 mt-1">{d.storeName}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-white/50 mb-1">
+                        {t("card.address")}
+                      </p>
+                      <div className="flex items-start gap-2">
+                        <MapPin className="h-4 w-4 text-white/40 flex-shrink-0 mt-0.5" />
+                        <p className="text-sm text-white/80 leading-relaxed">{d.address}</p>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <MapPin className="h-4 w-4 text-white/40 flex-shrink-0 mt-0.5" />
-                      <p className="text-sm text-white/80 leading-relaxed">{d.address}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Phone className="h-4 w-4 text-white/40 flex-shrink-0" />
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-white/50 mb-1">
+                        {t("card.phone")}
+                      </p>
                       <a
                         href={`tel:${d.phone.replace(/\s/g, "")}`}
-                        className="text-sm text-luxury-gold/90 hover:text-luxury-gold transition-colors"
+                        className="inline-flex items-center gap-2 text-sm text-luxury-gold/90 hover:text-luxury-gold transition-colors"
                       >
+                        <Phone className="h-4 w-4" />
                         {d.phone}
                       </a>
                     </div>
+                  </div>
+                  <div className="mt-6 pt-4 border-t border-white/10 flex flex-wrap gap-2">
+                    <a
+                      href={`tel:${d.phone.replace(/\s/g, "")}`}
+                      className="inline-flex items-center gap-2 rounded-full border border-luxury-gold/40 bg-luxury-gold/10 px-4 py-2 text-xs font-medium text-luxury-gold hover:bg-luxury-gold/20 transition-colors"
+                    >
+                      <Phone className="h-3.5 w-3.5" />
+                      {t("card.contact")}
+                    </a>
                     {d.mapLink && (
                       <a
                         href={d.mapLink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-sm text-white/70 hover:text-luxury-gold transition-colors"
+                        className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-xs font-medium text-white/80 hover:border-white/40 hover:text-white transition-colors"
                       >
-                        <ExternalLink className="h-4 w-4" />
-                        {t("card.map")}
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        {t("card.viewMap")}
                       </a>
                     )}
                   </div>

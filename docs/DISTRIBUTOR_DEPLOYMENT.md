@@ -14,22 +14,19 @@ Atau untuk development:
 npx prisma migrate dev
 ```
 
-## 2. Gambar hero (R2)
+## 2. Gambar hero (R2) – konsisten dengan halaman lain
 
-Halaman distributor memakai gambar hero **DSC02998.JPG** (Silver King). URL diambil dengan prioritas:
+Hero distributor memakai **`getR2UrlClient("/images/DSC02998.JPG")`** seperti aset lain (logo, video, gambar What We Do). Artinya:
 
-1. **`NEXT_PUBLIC_DISTRIBUTOR_HERO_IMAGE_URL`** (disarankan) – URL penuh ke gambar di R2, contoh:  
-   `https://your-bucket.r2.dev/static/images/DSC02998.JPG`
-2. **`NEXT_PUBLIC_R2_PUBLIC_URL`** – Base URL R2; path otomatis: `{base}/static/images/DSC02998.JPG`
-3. **Lokal** – `/images/DSC02998.JPG` (jika R2 tidak diset)
+- Jika **`NEXT_PUBLIC_R2_PUBLIC_URL`** diset → URL hero = `{R2_PUBLIC_URL}/static/images/DSC02998.JPG` (link R2).
+- Jika tidak diset → dipakai path lokal `/images/DSC02998.JPG`.  
+- Untuk URL eksternal (R2), gambar di-load **unoptimized** agar request langsung ke R2 tanpa lewat `_next/image`.
 
 **Production (hero dari R2):**
 
-- Upload `public/images/DSC02998.JPG` ke R2 path: `static/images/DSC02998.JPG`
-- Set salah satu env:
-  - **Opsi A:** `NEXT_PUBLIC_DISTRIBUTOR_HERO_IMAGE_URL=https://your-r2-url/static/images/DSC02998.JPG`
-  - **Opsi B:** `NEXT_PUBLIC_R2_PUBLIC_URL=https://your-r2-url`
-- Source final hero = link R2 (tidak pakai path lokal).
+1. Upload `public/images/DSC02998.JPG` ke R2 dengan path: **`static/images/DSC02998.JPG`**.
+2. Set env: **`NEXT_PUBLIC_R2_PUBLIC_URL=https://your-r2-public-url`** (tanpa trailing slash).
+3. Hero akan otomatis memakai link R2; fallback ke `hero-fallback.jpg` hanya jika gambar gagal load.
 
 ## 3. Data awal (opsional)
 

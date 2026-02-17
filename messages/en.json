@@ -395,12 +395,17 @@
     "description": "We work with official distributors in various cities to ensure product availability, service quality, and ease of transaction for customers. Every listed distributor is a trusted partner that has gone through a verification process.",
     "noDistributors": "No distributors to display yet.",
     "listTitle": "Distributor List",
+    "listSubtitle": "Our official partners are ready to serve you in your city.",
+    "countDistributors": "{count} locations",
     "card": {
       "distributor": "Distributor",
       "store": "Store",
       "address": "Address",
       "phone": "Transaction Number",
-      "map": "Map Location"
+      "map": "Map Location",
+      "contact": "Contact",
+      "viewMap": "View on Map",
+      "city": "City"
     },
     "meta": {
       "title": "Official Distributors",
