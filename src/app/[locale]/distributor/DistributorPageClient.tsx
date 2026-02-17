@@ -3,12 +3,9 @@
 import Navbar from "@/components/layout/Navbar";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { getR2UrlClient } from "@/utils/r2-url";
 import { MapPin, Phone, Store, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-
-const HERO_IMAGE_PATH = "/images/DSC02998.JPG";
 
 export type DistributorItem = {
   id: number;
@@ -38,10 +35,12 @@ const HERO_FALLBACK_PATH = "/images/hero-fallback.jpg";
 
 type DistributorPageClientProps = {
   initialDistributors?: DistributorItem[];
+  heroImageUrl: string;
 };
 
 export default function DistributorPageClient({
   initialDistributors = [],
+  heroImageUrl: initialHeroImageUrl,
 }: DistributorPageClientProps) {
   const t = useTranslations("distributor");
   const [distributors, setDistributors] = useState<DistributorItem[]>(
@@ -78,7 +77,7 @@ export default function DistributorPageClient({
 
   const heroImageUrl = heroImageError
     ? HERO_FALLBACK_PATH
-    : getR2UrlClient(HERO_IMAGE_PATH);
+    : initialHeroImageUrl;
   const isExternalHero = heroImageUrl.startsWith("http");
 
   return (
