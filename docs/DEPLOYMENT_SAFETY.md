@@ -28,6 +28,10 @@ Jika deploy bermasalah:
 ```bash
 git add .
 git status   # review changes
-git commit -m "fix: Distributor page Framer Motion ease type for build"
+git commit -m "feat: Distributor layout dynamic centered + CMS reusable form"
 git push origin main
 ```
+
+Setelah push, pastikan production:
+- Sudah jalankan `npx prisma migrate deploy` bila ada migrasi baru
+- Env `DATABASE_URL` dan (opsional) `NEXT_PUBLIC_R2_PUBLIC_URL` sudah diset

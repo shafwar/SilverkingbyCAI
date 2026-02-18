@@ -1,5 +1,6 @@
 "use client";
 
+import { DistributorForm } from "@/components/admin/DistributorForm";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Pencil, Trash2, Plus, X } from "lucide-react";
@@ -212,92 +213,12 @@ export function DistributorsPageClient() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-white/70 mb-1">{t("distributorName")}</label>
-                <input
-                  name="distributorName"
-                  defaultValue={editing?.distributorName}
-                  required
-                  className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-white/70 mb-1">{t("storeName")}</label>
-                <input
-                  name="storeName"
-                  defaultValue={editing?.storeName}
-                  required
-                  className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-white/70 mb-1">{t("address")}</label>
-                <textarea
-                  name="address"
-                  defaultValue={editing?.address}
-                  required
-                  rows={3}
-                  className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold resize-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-white/70 mb-1">{t("city")}</label>
-                <input
-                  name="city"
-                  defaultValue={editing?.city}
-                  required
-                  className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-white/70 mb-1">{t("phone")}</label>
-                <input
-                  name="phone"
-                  type="tel"
-                  defaultValue={editing?.phone}
-                  required
-                  className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-white/70 mb-1">{t("mapLink")}</label>
-                <input
-                  name="mapLink"
-                  type="url"
-                  defaultValue={editing?.mapLink ?? ""}
-                  placeholder="https://..."
-                  className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-white/70 mb-1">{t("status")}</label>
-                <select
-                  name="status"
-                  defaultValue={editing?.status ?? "ACTIVE"}
-                  className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold"
-                >
-                  <option value="ACTIVE">{t("statusActive")}</option>
-                  <option value="INACTIVE">{t("statusInactive")}</option>
-                </select>
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="rounded-full border border-white/20 px-4 py-2 text-sm text-white/70 hover:border-white/50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="rounded-full bg-luxury-gold px-4 py-2 text-sm font-medium text-black disabled:opacity-60"
-                >
-                  {saving ? t("saving") : "Save"}
-                </button>
-              </div>
-            </form>
+            <DistributorForm
+              defaultValues={editing}
+              onSubmit={handleSubmit}
+              onCancel={closeModal}
+              saving={saving}
+            />
           </div>
         </div>
       )}

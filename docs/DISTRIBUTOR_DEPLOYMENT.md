@@ -19,7 +19,7 @@ npx prisma migrate dev
 Hero distributor memakai **`getR2UrlClient("/images/DSC02998.JPG")`** seperti aset lain (logo, video, gambar What We Do). Artinya:
 
 - Jika **`NEXT_PUBLIC_R2_PUBLIC_URL`** diset → URL hero = `{R2_PUBLIC_URL}/static/images/DSC02998.JPG` (link R2).
-- Jika tidak diset → dipakai path lokal `/images/DSC02998.JPG`.  
+- Jika tidak diset → dipakai path lokal `/images/DSC02998.JPG`.
 - Untuk URL eksternal (R2), gambar di-load **unoptimized** agar request langsung ke R2 tanpa lewat `_next/image`.
 
 **Production (hero dari R2):**
@@ -54,3 +54,8 @@ Pastikan:
 - Env production punya `DATABASE_URL` dan (untuk hero R2) `NEXT_PUBLIC_R2_PUBLIC_URL`.
 - Migrasi sudah dijalankan di production (`prisma migrate deploy`).
 - Responsive (mobile/desktop) dan CRUD admin distributor sudah dicoba, tidak ada error.
+
+## 5. Layout & CMS (update terbaru)
+
+- **Frontend:** Daftar distributor memakai **flex + justify-center** sehingga 1 atau 2 card tetap di tengah (tidak condong kiri). Card memakai `max-w-[380px]` agar tidak stretch.
+- **Admin:** Form tambah/edit distributor pakai komponen reusable `DistributorForm` (mirip pola CMS Products). Lihat `docs/DEPLOYMENT_SAFETY.md` untuk checklist deploy aman.
