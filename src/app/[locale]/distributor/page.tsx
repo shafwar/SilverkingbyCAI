@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getR2Url } from "@/utils/r2-url";
 import DistributorPageClient from "./DistributorPageClient";
 
+/** Hero section selalu menggunakan gambar ini (public/images/DSC02998.JPG). */
 const HERO_IMAGE_PATH = "/images/DSC02998.JPG";
 
 export const dynamic = "force-dynamic";
@@ -63,11 +64,6 @@ export default async function DistributorPage() {
   }
 
   const heroImageUrl = getR2Url(HERO_IMAGE_PATH);
-  if (heroImageUrl.startsWith("http")) {
-    console.log("[DistributorPage] Hero image URL (R2):", heroImageUrl);
-  } else {
-    console.log("[DistributorPage] Hero image URL (local):", heroImageUrl);
-  }
 
   return (
     <DistributorPageClient

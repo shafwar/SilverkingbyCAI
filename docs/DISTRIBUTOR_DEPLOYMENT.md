@@ -59,3 +59,9 @@ Pastikan:
 
 - **Frontend:** Daftar distributor memakai **flex + justify-center** sehingga 1 atau 2 card tetap di tengah (tidak condong kiri). Card memakai `max-w-[380px]` agar tidak stretch.
 - **Admin:** Form tambah/edit distributor pakai komponen reusable `DistributorForm` (mirip pola CMS Products). Lihat `docs/DEPLOYMENT_SAFETY.md` untuk checklist deploy aman.
+
+## 6. Hero section: gambar default + ganti oleh admin
+
+- **Default:** Hero distributor selalu memakai **gambar** (bukan video). Sumber default: **`/images/DSC02998.JPG`** (R2 atau lokal).
+- **Admin ganti gambar/video:** Saat login sebagai admin, di bagian hero muncul tombol **"Replace hero image"** dan **"Replace hero video"**. Upload otomatis ke **R2** (key disimpan di tabel `PageMedia`). Deskripsi/teks halaman bisa dikelola lewat **Admin → Content** (disimpan di database).
+- **Migrasi:** Jalankan migrasi untuk tabel `PageMedia`: `npx prisma migrate deploy` (termasuk migration `20260218100000_add_page_media`).

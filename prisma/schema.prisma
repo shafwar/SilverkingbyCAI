@@ -229,3 +229,35 @@ model Distributor {
   @@index([city])
   @@index([deletedAt])
 }
+
+/// Enterprise CMS: translatable page/section content (ID ↔ EN).
+/// title/description stored as JSON { id: string, en: string } for scalability.
+/// translation_meta marks which fields are auto-translated (vs manually edited).
+model ContentEntry {
+  id                 Int       @id @default(autoincrement())
+  pageName           String    // e.g. what-we-do, authenticity, products, distributor, about
+  sectionName        String    // e.g. hero, intro, features
+  /// Bilingual title: { id: string, en: string }
+  title              Json      // { id: string, en: string }
+  /// Bilingual description (optional): { id: string, en: string }
+  description        Json?     // { id: string, en: string }
+  /// Which fields are auto-translated (true = can be overwritten by Regenerate)
+  translationMeta    Json?     // { titleIdAuto: boolean, titleEnAuto: boolean, descriptionIdAuto: boolean, descriptionEnAuto: boolean }
+  createdBy          String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@unique([pageName, sectionName])
+  @@index([pageName])
+}
+
+/// Hero media per page (image/video). Admin uploads → stored in R2, key saved here.
+model PageMedia {
+  id              Int       @id @default(autoincrement())
+  pageName        String    @unique // e.g. distributor, about, what-we-do
+  heroImageR2Key   String?   // R2 key e.g. static/images/pages/distributor-hero.jpg
+  heroVideoR2Key  String?   // R2 key e.g. static/videos/pages/distributor-hero.mp4
+  updatedAt       DateTime  @updatedAt
+
+  @@index([pageName])
+}

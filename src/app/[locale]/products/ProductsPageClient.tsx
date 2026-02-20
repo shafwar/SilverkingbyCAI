@@ -19,6 +19,7 @@ import ProductCard, { type ProductWithPricing } from "@/components/ui/ProductCar
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import Image from "next/image";
+import { AdminEditContentLink } from "@/components/admin/AdminEditContentLink";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -1907,6 +1908,7 @@ export default function ProductsPageClient() {
 
       {/* Product Detail Modal */}
       <ProductModal product={selectedProduct} isOpen={isModalOpen} onClose={handleCloseModal} />
+      <AdminEditContentLink pageName="products" />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Navbar from "@/components/layout/Navbar";
 import SplashScreen from "@/components/sections/SplashScreen";
 import { PageLoadingSkeleton } from "@/components/ui/PageLoadingSkeleton";
+import { AdminEditContentLink } from "@/components/admin/AdminEditContentLink";
 
 // Lazy load HeroSection to improve initial page load
 const HeroSection = dynamic(() => import("@/components/sections/HeroSection"), {
@@ -99,6 +100,7 @@ export default function HomePageClient() {
         <main className="min-h-screen bg-black">
           <HeroSection shouldAnimate={splashComplete} />
         </main>
+        <AdminEditContentLink pageName="home" />
       </div>
     </>
   );

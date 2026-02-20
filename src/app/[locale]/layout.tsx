@@ -54,11 +54,11 @@ export default async function LocaleLayout({
         <GoogleAnalytics />
         <StructuredData type="Organization" locale={locale} />
         <NextIntlClientProvider messages={messages}>
-            <Providers>
-              <PagePrefetchClient />
-              <Navbar />
-              {children}
-            </Providers>
+          <Providers>
+            <PagePrefetchClient />
+            <Navbar />
+            {children}
+          </Providers>
         </NextIntlClientProvider>
       </body>
     </html>
