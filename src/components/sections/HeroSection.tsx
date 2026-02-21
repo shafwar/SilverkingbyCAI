@@ -13,6 +13,8 @@ import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 
 interface HeroSectionProps {
   shouldAnimate?: boolean;
+  /** When true, video is rendered by layout (PersistentHomeHeroVideo) — no duplicate video, avoids re-mount on navigation */
+  skipVideo?: boolean;
 }
 
 const videoIntroVariants: Variants = {
@@ -110,7 +112,7 @@ const bubbleOrbs = [
   },
 ];
 
-export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) {
+export default function HeroSection({ shouldAnimate = true, skipVideo = false }: HeroSectionProps) {
   const t = useTranslations("home.hero");
   const pathname = usePathname();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -506,91 +508,106 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         // Don't set opacity to 0 if not transitioning to prevent flash
       }}
     >
-      {/* Video Background */}
-      <motion.div
-        style={{ opacity: isLoaded ? videoOpacity : 0, scale }}
-        className="absolute inset-0 z-0 will-change-transform overflow-hidden"
-      >
+      {/* Video Background — skip when PersistentHomeHeroVideo in layout is used (skipVideo) */}
+      {!skipVideo && (
         <motion.div
-          className="absolute inset-0"
-          variants={videoIntroVariants}
-          initial="hidden"
-          animate={animationState}
+          style={{ opacity: isLoaded ? videoOpacity : 0, scale }}
+          className="absolute inset-0 z-0 will-change-transform overflow-hidden"
         >
-          <video
-            ref={videoRef}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            disablePictureInPicture
-            disableRemotePlayback
-            className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
-            style={{
-              pointerEvents: "none",
-              outline: "none",
-              WebkitTapHighlightColor: "transparent",
-              WebkitTouchCallout: "none",
-              userSelect: "none",
-            }}
-            onContextMenu={(e) => e.preventDefault()}
-            onPlay={(e) => {
-              // Ensure video stays playing
-              const video = e.currentTarget;
-              if (video.paused) {
-                video.play().catch(() => {});
-              }
-            }}
+          <motion.div
+            className="absolute inset-0"
+            variants={videoIntroVariants}
+            initial="hidden"
+            animate={animationState}
           >
-            <source src={getR2UrlClient("/videos/hero/hero-background.mp4")} type="video/mp4" />
-          </video>
-          {/* Fallback gradient background if video fails to load */}
-          {videoError && (
-            <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black" />
-          )}
-        </motion.div>
-
-        <motion.div
-          className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/60"
-          variants={gradientIntroVariants}
-          initial="hidden"
-          animate={animationState}
-        />
-
-        <motion.div
-          className="absolute inset-0 bg-gradient-to-r from-black/65 via-transparent to-black/40"
-          variants={secondaryGradientVariants}
-          initial="hidden"
-          animate={animationState}
-        />
-
-        <motion.div
-          className="absolute inset-0 pointer-events-none z-[1]"
-          variants={bubbleLayerVariants}
-          initial="hidden"
-          animate={animationState}
-        >
-          {bubbleOrbs.map((orb) => (
-            <motion.span
-              key={orb.id}
-              className="absolute rounded-full blur-3xl opacity-70"
+            <video
+              ref={videoRef}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="metadata"
+              disablePictureInPicture
+              disableRemotePlayback
+              className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
               style={{
-                width: orb.size,
-                height: orb.size,
-                top: orb.top,
-                left: orb.left,
-                background: orb.gradient,
-                mixBlendMode: "screen",
+                pointerEvents: "none",
+                outline: "none",
+                WebkitTapHighlightColor: "transparent",
+                WebkitTouchCallout: "none",
+                userSelect: "none",
               }}
-              variants={bubbleVariants}
-              custom={{ delay: orb.delay, duration: orb.duration }}
-              initial="hidden"
-              animate={animationState}
-            />
-          ))}
+              onContextMenu={(e) => e.preventDefault()}
+              onPlay={(e) => {
+                const video = e.currentTarget;
+                if (video.paused) video.play().catch(() => {});
+              }}
+            >
+              <source src={getR2UrlClient("/videos/hero/hero-background.mp4")} type="video/mp4" />
+            </video>
+            {videoError && (
+              <div className="absolute inset-0 bg-black" />
+            )}
+          </motion.div>
+
+          <motion.div
+            className="absolute inset-0 pointer-events-none z-[1]"
+            variants={bubbleLayerVariants}
+            initial="hidden"
+            animate={animationState}
+          >
+            {bubbleOrbs.map((orb) => (
+              <motion.span
+                key={orb.id}
+                className="absolute rounded-full blur-3xl opacity-70"
+                style={{
+                  width: orb.size,
+                  height: orb.size,
+                  top: orb.top,
+                  left: orb.left,
+                  background: orb.gradient,
+                  mixBlendMode: "screen",
+                }}
+                variants={bubbleVariants}
+                custom={{ delay: orb.delay, duration: orb.duration }}
+                initial="hidden"
+                animate={animationState}
+              />
+            ))}
+          </motion.div>
         </motion.div>
-      </motion.div>
+      )}
+
+      {/* When skipVideo: overlays only (video from PersistentHomeHeroVideo in layout) — no vignette */}
+      {skipVideo && (
+        <>
+          <motion.div
+            className="absolute inset-0 pointer-events-none z-[1]"
+            variants={bubbleLayerVariants}
+            initial="hidden"
+            animate={animationState}
+          >
+            {bubbleOrbs.map((orb) => (
+              <motion.span
+                key={orb.id}
+                className="absolute rounded-full blur-3xl opacity-70"
+                style={{
+                  width: orb.size,
+                  height: orb.size,
+                  top: orb.top,
+                  left: orb.left,
+                  background: orb.gradient,
+                  mixBlendMode: "screen",
+                }}
+                variants={bubbleVariants}
+                custom={{ delay: orb.delay, duration: orb.duration }}
+                initial="hidden"
+                animate={animationState}
+              />
+            ))}
+          </motion.div>
+        </>
+      )}
 
       {/* Content - UNIVERSAL untuk SEMUA device mobile */}
       <div className="relative z-10 flex h-full items-center pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:pt-8 md:pt-0 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-16 md:pb-0 pointer-events-none">
@@ -735,13 +752,6 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         </OptimizedLink>
       </motion.div>
 
-      {/* Bottom Fade */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 2, delay: 1 }}
-        className="absolute bottom-0 left-0 right-0 h-20 sm:h-24 md:h-36 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none"
-      />
     </section>
   );
 }

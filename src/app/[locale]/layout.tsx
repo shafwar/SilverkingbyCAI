@@ -8,6 +8,7 @@ import "@/styles/globals.css";
 import { Providers } from "../providers";
 import Navbar from "@/components/layout/Navbar";
 import { PagePrefetchClient } from "@/components/layout/PagePrefetchClient";
+import { PersistentHomeHeroVideo } from "@/components/layout/PersistentHomeHeroVideo";
 import { StructuredData } from "@/components/seo/StructuredData";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 
@@ -56,6 +57,7 @@ export default async function LocaleLayout({
         <NextIntlClientProvider messages={messages}>
           <Providers>
             <PagePrefetchClient />
+            <PersistentHomeHeroVideo />
             <Navbar />
             {children}
           </Providers>

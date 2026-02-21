@@ -131,7 +131,7 @@ export default function ContactPageClient() {
       <section className="relative overflow-hidden border-b border-white/5 px-6 py-24 md:py-36">
         {/* Animated Background Gradients */}
         <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-b from-luxury-black via-luxury-black/98 to-luxury-black" />
+          <div className="absolute inset-0 bg-luxury-black" />
           <motion.div
             className="absolute inset-0 bg-gradient-to-br from-luxury-gold/10 via-transparent to-transparent"
             animate={{

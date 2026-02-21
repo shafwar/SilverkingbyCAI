@@ -96,7 +96,7 @@ export default function HomePageClient() {
       >
         <Navbar />
         <main className="min-h-screen bg-black">
-          <HeroSection shouldAnimate={splashComplete} />
+          <HeroSection shouldAnimate={splashComplete} skipVideo />
         </main>
       </div>
     </>

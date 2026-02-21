@@ -1,7 +1,5 @@
 "use client";
 
-"use client";
-
 import { useState, useRef, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useGSAP } from "@gsap/react";
@@ -30,6 +28,8 @@ import { useRouter } from "next/navigation";
 import { APP_NAME } from "@/utils/constants";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
+import { usePageSections } from "@/hooks/usePageSections";
+import { EditableMedia } from "@/components/editable-media";
 
 // workflowSteps will be created inside AuthenticityPage component using translations
 
@@ -355,6 +355,8 @@ export default function AuthenticityPageClient() {
   const heroRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const router = useRouter();
+  const { sections: pageSections, refetch: refetchPageSections } = usePageSections("authenticity");
+  const heroVideoUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/mobile scanning qr.mp4");
 
   // Register ScrollTrigger only on the client to avoid SSR/window issues
   useEffect(() => {
@@ -553,8 +555,7 @@ export default function AuthenticityPageClient() {
 
   return (
     <div ref={pageRef} className="min-h-screen bg-luxury-black text-white">
-      {/* Simplified Background */}
-      <div className="pointer-events-none fixed inset-0 bg-gradient-to-b from-luxury-black via-[#0a0a0a] to-luxury-black" />
+      <div className="pointer-events-none fixed inset-0 bg-luxury-black" />
 
       <Navbar />
 
@@ -570,7 +571,7 @@ export default function AuthenticityPageClient() {
         
         {/* Video Background */}
         <div className="absolute inset-0 z-0 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-luxury-black via-luxury-black/95 to-luxury-black z-0" />
+          <div className="absolute inset-0 bg-luxury-black z-0" />
 
           <video
             ref={videoRef}
@@ -601,13 +602,17 @@ export default function AuthenticityPageClient() {
               }
             }}
           >
-            <source src={getR2UrlClient("/videos/hero/mobile scanning qr.mp4")} type="video/mp4" />
+            <source src={heroVideoUrl} type="video/mp4" />
           </video>
-
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70 z-20" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(10,10,10,0.6)_100%)] z-20" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.8)_100%)] z-20" />
-          <div className="absolute inset-x-0 bottom-0 h-40 md:h-52 lg:h-64 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-transparent pointer-events-none z-20" />
+          <div className="absolute top-3 right-3 z-20 pointer-events-auto">
+            <EditableMedia
+              page="authenticity"
+              section="hero"
+              type="video"
+              overlayOnly
+              onUploadDone={refetchPageSections}
+            />
+          </div>
         </div>
 
         {/* Minimal Particles */}

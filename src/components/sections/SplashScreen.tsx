@@ -120,8 +120,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
         opacity: 1, // CRITICAL: Ensure container is visible from start
       }}
     >
-      {/* Subtle gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-black via-black to-gray-900/50" />
+      <div className="absolute inset-0 bg-black" />
 
       {/* Main text */}
       <div

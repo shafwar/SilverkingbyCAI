@@ -3,11 +3,13 @@
 import Navbar from "@/components/layout/Navbar";
 import { DistributorCard, type DistributorItem } from "@/components/distributor/DistributorCard";
 import { DistributorForm } from "@/components/admin/DistributorForm";
+import { EditableMedia } from "@/components/editable-media";
 import { motion, type Variants } from "framer-motion";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Plus, X } from "lucide-react";
+import { usePageSections } from "@/hooks/usePageSections";
 
 const HERO_FALLBACK_PATH = "/images/hero-fallback.jpg";
 
@@ -37,6 +39,10 @@ export default function DistributorPageClient({
   const [heroImageError, setHeroImageError] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const { sections: pageSections, refetch: refetchPageSections } = usePageSections("distributor");
+  const displayHeroUrl = heroImageError
+    ? HERO_FALLBACK_PATH
+    : (pageSections.hero?.url ?? initialHeroImageUrl);
   const [editing, setEditing] = useState<DistributorItem | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -152,9 +158,6 @@ export default function DistributorPageClient({
     }
   };
 
-  const displayHeroUrl = heroImageError ? HERO_FALLBACK_PATH : initialHeroImageUrl;
-  const isExternalHero = displayHeroUrl.startsWith("http");
-
   return (
     <div className="min-h-screen bg-luxury-black text-white selection:bg-luxury-gold/20 selection:text-white">
       {/* Hero background: selalu gambar public/images/DSC02998.JPG (via R2 atau path lokal) */}
@@ -168,7 +171,7 @@ export default function DistributorPageClient({
           WebkitTransform: "translateZ(0)",
         }}
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-luxury-black via-luxury-black/95 to-luxury-black z-0" />
+        <div className="absolute inset-0 bg-luxury-black z-0" />
 
         <Image
           src={displayHeroUrl}
@@ -177,17 +180,16 @@ export default function DistributorPageClient({
           className="object-cover z-10"
           sizes="100vw"
           priority
-          unoptimized={isExternalHero}
+          unoptimized={displayHeroUrl.startsWith("http")}
           onError={() => setHeroImageError(true)}
         />
-
-        {/* Vignette and overlays */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80 z-20" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.5)_60%,rgba(0,0,0,0.85)_100%)] z-20" />
-        <div className="absolute inset-x-0 top-0 h-32 md:h-40 lg:h-48 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none z-20" />
-        <div className="absolute inset-x-0 bottom-0 h-48 md:h-56 lg:h-64 bg-gradient-to-t from-black/90 via-black/60 to-transparent pointer-events-none z-20" />
-        <div className="absolute inset-y-0 left-0 w-32 md:w-40 lg:w-48 bg-gradient-to-r from-black/70 via-black/30 to-transparent pointer-events-none z-20" />
-        <div className="absolute inset-y-0 right-0 w-32 md:w-40 lg:w-48 bg-gradient-to-l from-black/70 via-black/30 to-transparent pointer-events-none z-20" />
+        <EditableMedia
+          page="distributor"
+          section="hero"
+          type="image"
+          overlayOnly
+          onUploadDone={refetchPageSections}
+        />
       </div>
 
       <Navbar />

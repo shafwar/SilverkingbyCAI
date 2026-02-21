@@ -7,6 +7,8 @@ import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
+import { usePageSections } from "@/hooks/usePageSections";
+import { EditableMedia } from "@/components/editable-media";
 import { PageLoadingSkeleton } from "@/components/ui/PageLoadingSkeleton";
 // Lazy load CertificateCard to improve initial page load
 const CertificateCard = dynamic(() => import("@/components/ui/CertificateCard"), {
@@ -187,6 +189,8 @@ export default function AboutPageClient() {
   const noiseOverlay = useRef<HTMLDivElement | null>(null);
   const gradientOverlay = useRef<HTMLDivElement | null>(null);
   const heroVideoRef = useRef<HTMLVideoElement | null>(null);
+  const { sections: pageSections, refetch: refetchPageSections } = usePageSections("about");
+  const heroVideoUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/gold-footage.mp4");
 
   // Ensure about-page hero video autoplays reliably on all devices
   useReliableVideoAutoplay(heroVideoRef);
@@ -327,7 +331,7 @@ export default function AboutPageClient() {
           <video
             ref={heroVideoRef}
             className="absolute inset-0 h-full w-full object-cover brightness-[0.85] scale-105 pointer-events-none select-none"
-            src={getR2UrlClient("/videos/hero/gold-footage.mp4")}
+            src={heroVideoUrl}
             autoPlay
             loop
             muted
@@ -350,13 +354,15 @@ export default function AboutPageClient() {
               }
             }}
           />
-          {/* Optimized Vignette Layer - Stable, optimal, and consistent */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80 z-20" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.5)_60%,rgba(0,0,0,0.85)_100%)] z-20" />
-          <div className="absolute inset-x-0 top-0 h-32 md:h-40 lg:h-48 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none z-20" />
-          <div className="absolute inset-x-0 bottom-0 h-48 md:h-56 lg:h-64 bg-gradient-to-t from-black/90 via-black/60 to-transparent pointer-events-none z-20" />
-          <div className="absolute inset-y-0 left-0 w-32 md:w-40 lg:w-48 bg-gradient-to-r from-black/70 via-black/30 to-transparent pointer-events-none z-20" />
-          <div className="absolute inset-y-0 right-0 w-32 md:w-40 lg:w-48 bg-gradient-to-l from-black/70 via-black/30 to-transparent pointer-events-none z-20" />
+          <div className="absolute top-3 right-3 z-20 pointer-events-auto">
+            <EditableMedia
+              page="about"
+              section="hero"
+              type="video"
+              overlayOnly
+              onUploadDone={refetchPageSections}
+            />
+          </div>
         </div>
 
         {/* Subtle light overlay */}
@@ -389,8 +395,6 @@ export default function AboutPageClient() {
       {/* Why Choose Us Section */}
       <section className="relative overflow-hidden py-28 md:py-36 px-6">
         <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#171717] via-[#0f0f0f] to-[#060606]" />
-        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-luxury-black via-transparent to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-luxury-black via-transparent to-transparent" />
 
         <div className="relative z-10 mx-auto max-w-[1320px]">
           <div className="mb-20 text-center fade-in">
@@ -415,10 +419,7 @@ export default function AboutPageClient() {
 
       {/* Certificate Section - Improved spacing and responsive layout */}
       <section className="relative py-12 sm:py-16 md:py-20 lg:py-24 px-4 sm:px-6 md:px-8 flex flex-col items-center justify-center w-full">
-        {/* Subtle gradient background */}
         <div className="absolute inset-0 bg-gradient-to-b from-[#161616] via-[#0f0f0f] to-[#0a0a0a]" />
-        <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-luxury-black via-transparent to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-luxury-black via-transparent to-transparent" />
 
         {/* Container with proper max-width and responsive padding */}
         <div className="relative z-10 mx-auto w-full max-w-5xl px-2 sm:px-4 md:px-6">
@@ -431,8 +432,6 @@ export default function AboutPageClient() {
       {/* How It Works Section */}
       <section className="relative py-28 md:py-36 px-6">
         <div className="absolute inset-0 bg-gradient-to-b from-[#151515] via-[#0e0e0e] to-[#050505]" />
-        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-luxury-black via-transparent to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-luxury-black via-transparent to-transparent" />
 
         <div className="relative mx-auto max-w-[1320px]">
           <div className="mb-20 text-center space-y-5 fade-in">
@@ -459,8 +458,6 @@ export default function AboutPageClient() {
       <section className="relative py-28 md:py-36 px-6">
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-[#141414] via-[#0c0c0c] to-[#050505]" />
-          <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-luxury-black via-transparent to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-luxury-black via-transparent to-transparent" />
         </div>
 
         <div className="relative mx-auto grid max-w-[1320px] grid-cols-1 items-center gap-16 lg:grid-cols-[1.1fr_0.9fr]">

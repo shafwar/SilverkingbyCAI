@@ -8,6 +8,8 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { motion, useInView, AnimatePresence, type Variants } from "framer-motion";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
+import { usePageSections } from "@/hooks/usePageSections";
+import { EditableMedia } from "@/components/editable-media";
 import {
   Sparkles,
   FlaskConical,
@@ -122,7 +124,7 @@ const FeatureCard = ({
   );
 };
 
-// Narrative Section with Dynamic Images & Mobile Swipe
+// Narrative Section with Dynamic Images & Mobile Swipe (CMS: sectionKeys + refetchSections for edit overlay)
 const NarrativeImageSection = forwardRef<
   HTMLDivElement,
   {
@@ -134,8 +136,10 @@ const NarrativeImageSection = forwardRef<
     }>;
     title?: string;
     description?: string;
+    sectionKeys?: readonly [string, string, string];
+    refetchSections?: () => void;
   }
->(({ columns, cards, title, description }, ref) => {
+>(({ columns, cards, title, description, sectionKeys, refetchSections }, ref) => {
   // Track which images have finished loading so we can fade them in smoothly
   const [imageLoaded, setImageLoaded] = useState<{ [key: string]: boolean }>({});
 
@@ -255,6 +259,17 @@ const NarrativeImageSection = forwardRef<
                         }}
                       />
                     </div>
+                    {sectionKeys?.[idx] && refetchSections && (
+                      <div className="absolute top-2 right-2 z-20 pointer-events-auto">
+                        <EditableMedia
+                          page="what-we-do"
+                          section={sectionKeys[idx]}
+                          type="image"
+                          overlayOnly
+                          onUploadDone={refetchSections}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Content section - Logo and text below image */}
@@ -295,6 +310,9 @@ export default function WhatWeDoPageClient() {
   const gradientOverlay = useRef<HTMLDivElement | null>(null);
   const sectionsRef = useRef<(HTMLDivElement | null)[]>([]);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const { sections: pageSections, refetch: refetchPageSections } = usePageSections("what-we-do");
+  const heroVideoUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/metal crafting hands.mp4");
+  const footerVideoUrl = pageSections.section_footer_video?.url ?? getR2UrlClient("/videos/hero/molten metal slow motion.mp4");
 
   // Ensure what-we-do hero video autoplays reliably on all devices
   useReliableVideoAutoplay(videoRef);
@@ -344,35 +362,38 @@ export default function WhatWeDoPageClient() {
     },
   ] as const;
 
-  const narrativeCards = [
-    {
-      label: t("card1.label"),
-      caption: t("card1.caption"),
-      images: [
-        getR2UrlClient("/images/pexels-3d-render-1058120333-33539240.jpg"),
-        getR2UrlClient("/images/pexels-sejio402-29336321.jpg"),
-        getR2UrlClient("/images/silverking-gold.jpeg"),
-      ],
-    },
-    {
-      label: t("card2.label"),
-      caption: t("card2.caption"),
-      images: [
-        getR2UrlClient("/images/pexels-michael-steinberg-95604-386318.jpg"),
-        getR2UrlClient("/images/pexels-sejio402-29336326.jpg"),
-        getR2UrlClient("/images/silverking-gold.jpeg"),
-      ],
-    },
-    {
-      label: t("card3.label"),
-      caption: t("card3.caption"),
-      images: [
-        getR2UrlClient("/images/pexels-sejio402-29336327.jpg"),
-        getR2UrlClient("/images/pexels-sejio402-29336321.jpg"),
-        getR2UrlClient("/images/silverking-gold.jpeg"),
-      ],
-    },
-  ] as const;
+  const narrativeCards = useMemo(
+    () => [
+      {
+        label: t("card1.label"),
+        caption: t("card1.caption"),
+        images: [
+          pageSections.craft_card_1?.url ?? getR2UrlClient("/images/pexels-3d-render-1058120333-33539240.jpg"),
+          getR2UrlClient("/images/pexels-sejio402-29336321.jpg"),
+          getR2UrlClient("/images/silverking-gold.jpeg"),
+        ],
+      },
+      {
+        label: t("card2.label"),
+        caption: t("card2.caption"),
+        images: [
+          pageSections.craft_card_2?.url ?? getR2UrlClient("/images/pexels-michael-steinberg-95604-386318.jpg"),
+          getR2UrlClient("/images/pexels-sejio402-29336326.jpg"),
+          getR2UrlClient("/images/silverking-gold.jpeg"),
+        ],
+      },
+      {
+        label: t("card3.label"),
+        caption: t("card3.caption"),
+        images: [
+          pageSections.craft_card_3?.url ?? getR2UrlClient("/images/pexels-sejio402-29336327.jpg"),
+          getR2UrlClient("/images/pexels-sejio402-29336321.jpg"),
+          getR2UrlClient("/images/silverking-gold.jpeg"),
+        ],
+      },
+    ],
+    [t, pageSections.craft_card_1?.url, pageSections.craft_card_2?.url, pageSections.craft_card_3?.url]
+  );
 
   useGSAP(
     () => {
@@ -450,7 +471,7 @@ export default function WhatWeDoPageClient() {
       >
         {/* Full Screen Video Background - No Zoom */}
         <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-luxury-black via-luxury-black/95 to-luxury-black z-0" />
+          <div className="absolute inset-0 bg-luxury-black z-0" />
 
           <video
             ref={videoRef}
@@ -475,19 +496,17 @@ export default function WhatWeDoPageClient() {
             disablePictureInPicture
             disableRemotePlayback
           >
-            <source
-              src={getR2UrlClient("/videos/hero/metal crafting hands.mp4")}
-              type="video/mp4"
-            />
+            <source src={heroVideoUrl} type="video/mp4" />
           </video>
-
-          {/* Optimized Vignette Layer - Stable, optimal, and consistent */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80 z-20" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.5)_60%,rgba(0,0,0,0.85)_100%)] z-20" />
-          <div className="absolute inset-x-0 top-0 h-32 md:h-40 lg:h-48 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none z-20" />
-          <div className="absolute inset-x-0 bottom-0 h-48 md:h-56 lg:h-64 bg-gradient-to-t from-black/90 via-black/60 to-transparent pointer-events-none z-20" />
-          <div className="absolute inset-y-0 left-0 w-32 md:w-40 lg:w-48 bg-gradient-to-r from-black/70 via-black/30 to-transparent pointer-events-none z-20" />
-          <div className="absolute inset-y-0 right-0 w-32 md:w-40 lg:w-48 bg-gradient-to-l from-black/70 via-black/30 to-transparent pointer-events-none z-20" />
+          <div className="absolute top-3 right-3 z-20 pointer-events-auto">
+            <EditableMedia
+              page="what-we-do"
+              section="hero"
+              type="video"
+              overlayOnly
+              onUploadDone={refetchPageSections}
+            />
+          </div>
         </div>
 
         {/* Hero Content - Full left alignment, flush to left edge */}
@@ -526,6 +545,8 @@ export default function WhatWeDoPageClient() {
         cards={narrativeCards}
         title={t("title")}
         description={t("description")}
+        sectionKeys={["craft_card_1", "craft_card_2", "craft_card_3"]}
+        refetchSections={refetchPageSections}
       />
 
       {/* Impact Section – similar to Pixelmatters "The impact you can expect" - Mobile optimized */}
@@ -775,13 +796,17 @@ export default function WhatWeDoPageClient() {
               }
             }}
           >
-            <source
-              src={getR2UrlClient("/videos/hero/molten metal slow motion.mp4")}
-              type="video/mp4"
-            />
+            <source src={footerVideoUrl} type="video/mp4" />
           </video>
-          {/* ENHANCED: Dark overlay for text readability - properly contained */}
-          <div className="absolute inset-0 bg-gradient-to-b from-luxury-black/85 via-luxury-black/75 to-luxury-black/85 z-10" />
+          <div className="absolute top-3 right-3 z-20 pointer-events-auto">
+            <EditableMedia
+              page="what-we-do"
+              section="section_footer_video"
+              type="video"
+              overlayOnly
+              onUploadDone={refetchPageSections}
+            />
+          </div>
         </div>
 
         {/* Main Content - Centered - Mobile optimized */}

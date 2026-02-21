@@ -261,3 +261,16 @@ model PageMedia {
 
   @@index([pageName])
 }
+
+/// Per-section media (inline CMS). One row per page+section. Admin edits from frontend.
+model PageSection {
+  id         Int       @id @default(autoincrement())
+  pageName   String    // e.g. home, what-we-do, authenticity, products, distributor, about
+  sectionKey String    // e.g. hero, craft_card_1, craft_card_2
+  mediaType  String    // IMAGE | VIDEO
+  r2Key      String?   // R2 object key; null = use fallback
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([pageName, sectionKey])
+  @@index([pageName])
+}
