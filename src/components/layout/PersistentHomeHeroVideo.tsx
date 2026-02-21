@@ -71,7 +71,8 @@ export function PersistentHomeHeroVideo() {
       <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-transparent to-black/40 pointer-events-none" />
       {isHome && (
         <div className="absolute inset-0 pointer-events-none z-10">
-          <div className="absolute top-3 right-3 pointer-events-auto">
+          {/* Icon pensil di bawah navbar agar terlihat di area video */}
+          <div className="absolute top-20 right-4 sm:right-6 pointer-events-auto z-[101]">
             <EditableMedia
               page="home"
               section="hero"
