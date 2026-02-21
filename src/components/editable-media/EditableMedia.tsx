@@ -29,6 +29,8 @@ type EditableMediaProps = {
   overlayOnly?: boolean;
   /** When provided (e.g. overlayOnly), called after successful upload so parent can refetch */
   onUploadDone?: () => void;
+  /** Optional label next to pencil (e.g. "Edit video") for visibility on dark backgrounds */
+  editLabel?: string;
 };
 
 export function EditableMedia({
@@ -44,6 +46,7 @@ export function EditableMedia({
   videoAttrs = {},
   overlayOnly = false,
   onUploadDone,
+  editLabel,
 }: EditableMediaProps) {
   const isAdmin = useIsAdmin();
   const { sections, refetch } = usePageSections(page);
@@ -101,16 +104,20 @@ export function EditableMedia({
   };
 
   if (overlayOnly) {
+    const btnClass = editLabel
+      ? "flex h-11 items-center gap-2 rounded-xl border-2 border-luxury-gold bg-luxury-gold/25 px-3 py-2.5 text-luxury-gold shadow-lg backdrop-blur-sm transition hover:bg-luxury-gold/40 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50"
+      : "flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-black/50 text-white/80 backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50";
     return (
       <>
         {isAdmin && (
           <button
             type="button"
             onClick={handleEditClick}
-            className="absolute top-3 right-3 z-20 flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-black/50 text-white/80 backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50"
-            aria-label="Edit media"
+            className={`z-20 ${btnClass}`}
+            aria-label={editLabel ?? "Edit media"}
           >
-            <Pencil className="h-4 w-4" />
+            <Pencil className={editLabel ? "h-5 w-5 flex-shrink-0" : "h-4 w-4"} />
+            {editLabel && <span className="text-sm font-medium whitespace-nowrap">{editLabel}</span>}
           </button>
         )}
         {modalOpen && (

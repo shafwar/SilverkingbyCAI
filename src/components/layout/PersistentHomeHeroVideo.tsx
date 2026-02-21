@@ -79,6 +79,7 @@ export function PersistentHomeHeroVideo() {
               type="video"
               overlayOnly
               onUploadDone={refetch}
+              editLabel="Edit video"
             />
           </div>
         </div>
