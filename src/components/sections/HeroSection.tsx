@@ -578,9 +578,21 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
         </motion.div>
       )}
 
-      {/* When skipVideo: overlays only (video from PersistentHomeHeroVideo in layout) — no vignette */}
+      {/* When skipVideo: overlays only (video from PersistentHomeHeroVideo) + vignette dark motif */}
       {skipVideo && (
         <>
+          <motion.div
+            className="absolute inset-0 z-0 bg-gradient-to-b from-black/55 via-black/25 to-black/60"
+            variants={gradientIntroVariants}
+            initial="hidden"
+            animate={animationState}
+          />
+          <motion.div
+            className="absolute inset-0 z-0 bg-gradient-to-r from-black/65 via-transparent to-black/40"
+            variants={secondaryGradientVariants}
+            initial="hidden"
+            animate={animationState}
+          />
           <motion.div
             className="absolute inset-0 pointer-events-none z-[1]"
             variants={bubbleLayerVariants}
@@ -752,6 +764,13 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
         </OptimizedLink>
       </motion.div>
 
+      {/* Bottom fade - dark vignette (Home only) */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 2, delay: 1 }}
+        className="absolute bottom-0 left-0 right-0 h-20 sm:h-24 md:h-36 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none"
+      />
     </section>
   );
 }

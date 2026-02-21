@@ -66,6 +66,9 @@ export function PersistentHomeHeroVideo() {
       >
         <source src={src} type="video/mp4" />
       </video>
+      {/* Vignette / dark motif - Home only */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/60 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-transparent to-black/40 pointer-events-none" />
       {isHome && (
         <div className="absolute inset-0 pointer-events-none z-10">
           <div className="absolute top-3 right-3 pointer-events-auto">
