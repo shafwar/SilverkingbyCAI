@@ -559,69 +559,52 @@ export default function AuthenticityPageClient() {
 
       <Navbar />
 
-      {/* Hero Section with Video Background */}
-      <section
-        ref={(element) => {
-          const divElement = element as HTMLDivElement | null;
-          sectionsRef.current[0] = divElement;
-          heroRef.current = divElement;
-        }}
-        className="relative flex min-h-[80vh] md:min-h-[85vh] lg:min-h-[90vh] items-center justify-center overflow-hidden px-6 pt-24 pb-12"
-      >
-        
-        {/* Video Background */}
-        <div className="absolute inset-0 z-0 overflow-hidden">
-          <div className="absolute inset-0 bg-luxury-black z-0" />
-
-          <video
-            ref={videoRef}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            disablePictureInPicture
-            disableRemotePlayback
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 will-change-transform z-10 pointer-events-none select-none ${
-              isVideoLoaded ? "opacity-100" : "opacity-0"
-            }`}
-            style={{
-              transform: "scale(1.05)",
-              transformOrigin: "center center",
-              pointerEvents: "none",
-              outline: "none",
-              WebkitTapHighlightColor: "transparent",
-              WebkitTouchCallout: "none",
-              userSelect: "none",
-            }}
-            onContextMenu={(e) => e.preventDefault()}
-            onPlay={(e) => {
-              const video = e.currentTarget;
-              if (video.paused) {
-                video.play().catch(() => {});
-              }
-            }}
-          >
-            <source src={heroVideoUrl} type="video/mp4" />
-          </video>
-          <div className="absolute top-3 right-3 z-20 pointer-events-auto">
-            <EditableMedia
-              page="authenticity"
-              section="hero"
-              type="video"
-              overlayOnly
-              onUploadDone={refetchPageSections}
-            />
-          </div>
+      {/* Hero: fixed full-viewport background (match Distributor) */}
+      <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
+        <div className="absolute inset-0 bg-luxury-black z-0" />
+        <video
+          ref={videoRef}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          disablePictureInPicture
+          disableRemotePlayback
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 z-10 pointer-events-none select-none ${
+            isVideoLoaded ? "opacity-100" : "opacity-0"
+          }`}
+          style={{
+            pointerEvents: "none",
+            outline: "none",
+            WebkitTapHighlightColor: "transparent",
+            userSelect: "none",
+          }}
+          onContextMenu={(e) => e.preventDefault()}
+          onPlay={(e) => {
+            const video = e.currentTarget;
+            if (video.paused) video.play().catch(() => {});
+          }}
+        >
+          <source src={heroVideoUrl} type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
+        <div className="absolute inset-0 z-20 pointer-events-auto">
+          <EditableMedia
+            page="authenticity"
+            section="hero"
+            type="video"
+            overlayOnly
+            fullAreaClickable
+            onUploadDone={refetchPageSections}
+          />
         </div>
-
-        {/* Minimal Particles */}
         <div className="absolute inset-0 pointer-events-none z-[15]">
           {Array.from({ length: 6 }).map((_, i) => (
             <motion.div
               key={i}
               data-particle
-              className="absolute h-1.5 w-1.5 rounded-full bg-luxury-gold/30 pointer-events-none"
+              className="absolute h-1.5 w-1.5 rounded-full bg-luxury-gold/30"
               style={{
                 left: `${((i * 17) % 90) + 5}%`,
                 top: `${((i * 23) % 80) + 10}%`,
@@ -629,60 +612,70 @@ export default function AuthenticityPageClient() {
             />
           ))}
         </div>
+      </div>
 
-        {/* Content */}
-        <div className="relative z-20 mx-auto w-full max-w-3xl text-center">
-          <motion.div data-hero className="mb-4">
-            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-luxury-gold/30 bg-luxury-gold/5">
+      {/* Hero Section – same size & layout as Distributor (min-h-screen, left-aligned, scroll button) */}
+      <section
+        ref={(element) => {
+          const divElement = element as HTMLDivElement | null;
+          sectionsRef.current[0] = divElement;
+          heroRef.current = divElement;
+        }}
+        className="relative flex min-h-screen items-center justify-start overflow-hidden"
+      >
+        <div className="relative z-20 w-full text-left pl-4 sm:pl-6 md:pl-8 lg:pl-12 xl:pl-16 2xl:pl-20 pr-4 sm:pr-6 md:pr-8 lg:pr-12">
+          <motion.div data-hero className="space-y-6 sm:space-y-8 max-w-4xl">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full border border-luxury-gold/30 bg-luxury-gold/5">
               <QrCode className="h-10 w-10 text-luxury-gold" />
             </div>
-          </motion.div>
-
-          <motion.h1
-            data-hero
-            className="mb-4 text-4xl font-sans font-light leading-tight text-white sm:text-5xl md:text-6xl"
-          >
-            {t("authenticateYour")}
-            <span className="block bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text font-sans font-semibold text-transparent">
-              {t("silverKingBar")}
-            </span>
-          </motion.h1>
-
-          <motion.p
-            data-hero
-            className="mx-auto mb-8 max-w-xl text-base leading-relaxed text-luxury-silver/70 sm:text-lg"
-          >
-            {t("heroDescription")}
-          </motion.p>
-
-          <motion.div
-            data-hero
-            className="relative z-20 flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:items-center"
-          >
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleOpenScanner}
-              className="group relative z-20 inline-flex w-full items-center justify-center gap-2 rounded-full bg-luxury-gold px-8 py-3.5 text-sm font-semibold text-black transition-all hover:bg-luxury-lightGold sm:w-auto cursor-pointer active:scale-95"
+            <motion.h1
+              data-hero
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-semibold md:font-bold leading-[1.1] tracking-tight text-white drop-shadow-sm"
             >
-              <QrCode className="h-4 w-4" />
-              {t("scanQR")}
-            </motion.button>
-
-            <span className="relative z-20 text-sm text-white/40 font-light">{t("or")}</span>
-
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleOpenManualInput}
-              className="relative z-20 inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-8 py-3.5 text-sm font-semibold text-white transition-all hover:border-white/30 hover:bg-white/10 sm:w-auto cursor-pointer active:scale-95"
+              {t("authenticateYour")}{" "}
+              <span className="bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text text-transparent">
+                {t("silverKingBar")}
+              </span>
+            </motion.h1>
+            <motion.p
+              data-hero
+              className="text-base sm:text-lg md:text-xl font-sans font-light leading-relaxed text-luxury-silver/90 max-w-2xl"
             >
-              <Search className="h-4 w-4" />
-              {t("enterSerial")}
-            </motion.button>
+              {t("heroDescription")}
+            </motion.p>
+            <motion.div
+              data-hero
+              className="flex flex-col items-start gap-3 sm:flex-row sm:items-center"
+            >
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleOpenScanner}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-luxury-gold px-8 py-3.5 text-sm font-semibold text-black transition-all hover:bg-luxury-lightGold cursor-pointer"
+              >
+                <QrCode className="h-4 w-4" />
+                {t("scanQR")}
+              </motion.button>
+              <span className="text-sm text-white/40 font-light">{t("or")}</span>
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleOpenManualInput}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-8 py-3.5 text-sm font-semibold text-white transition-all hover:border-white/30 hover:bg-white/10 cursor-pointer"
+              >
+                <Search className="h-4 w-4" />
+                {t("enterSerial")}
+              </motion.button>
+            </motion.div>
           </motion.div>
+        </div>
+        {/* Scroll indicator – same as Distributor */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-3 pointer-events-none">
+          <div className="relative w-5 h-8 border border-white/50 rounded-full flex items-start justify-center pt-2.5">
+            <div className="w-1 h-1.5 bg-white/70 rounded-full" />
+          </div>
         </div>
       </section>
 

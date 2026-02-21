@@ -324,71 +324,67 @@ export default function AboutPageClient() {
       {/* Navbar */}
       <Navbar />
 
-      {/* Hero Section */}
-      <section className="relative flex min-h-[100vh] items-center px-6 pb-24 pt-24 md:pt-32">
-        {/* Fullscreen Video Background */}
-        <div className="absolute inset-0 z-0 overflow-hidden">
-          <video
-            ref={heroVideoRef}
-            className="absolute inset-0 h-full w-full object-cover brightness-[0.85] scale-105 pointer-events-none select-none"
-            src={heroVideoUrl}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            disablePictureInPicture
-            disableRemotePlayback
-            style={{
-              pointerEvents: "none",
-              outline: "none",
-              WebkitTapHighlightColor: "transparent",
-              WebkitTouchCallout: "none",
-              userSelect: "none",
-            }}
-            onContextMenu={(e) => e.preventDefault()}
-            onPlay={(e) => {
-              const video = e.currentTarget;
-              if (video.paused) {
-                video.play().catch(() => {});
-              }
-            }}
+      {/* Hero: fixed full-viewport background (match Distributor) */}
+      <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
+        <div className="absolute inset-0 bg-luxury-black z-0" />
+        <video
+          ref={heroVideoRef}
+          className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
+          src={heroVideoUrl}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          disablePictureInPicture
+          disableRemotePlayback
+          style={{
+            pointerEvents: "none",
+            outline: "none",
+            WebkitTapHighlightColor: "transparent",
+            userSelect: "none",
+          }}
+          onContextMenu={(e) => e.preventDefault()}
+          onPlay={(e) => {
+            const video = e.currentTarget;
+            if (video.paused) video.play().catch(() => {});
+          }}
+        />
+        <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
+        <div className="absolute inset-0 z-20 pointer-events-auto">
+          <EditableMedia
+            page="about"
+            section="hero"
+            type="video"
+            overlayOnly
+            fullAreaClickable
+            onUploadDone={refetchPageSections}
           />
-          <div className="absolute top-3 right-3 z-20 pointer-events-auto">
-            <EditableMedia
-              page="about"
-              section="hero"
-              type="video"
-              overlayOnly
-              onUploadDone={refetchPageSections}
-            />
-          </div>
         </div>
+      </div>
 
-        {/* Subtle light overlay */}
-        <div className="absolute inset-0 z-0 bg-gradient-to-b from-white/5 via-transparent to-transparent" />
-
-        <div
-          className="relative z-10 mx-auto flex w-full max-w-[1200px] flex-col items-center text-center"
-          ref={heroRef}
-        >
-          <div className="space-y-10 md:max-w-[680px] hero-fade-in">
-            <div className="inline-flex items-center justify-center gap-3 rounded-full border border-white/10 bg-white/5 px-6 py-2 text-[12px] uppercase tracking-[0.45em] text-luxury-silver/60 backdrop-blur">
+      {/* Hero Section – same size & layout as Distributor (min-h-screen, left-aligned, scroll button) */}
+      <section className="relative flex min-h-screen items-center justify-start overflow-hidden">
+        <div className="relative z-20 w-full text-left pl-4 sm:pl-6 md:pl-8 lg:pl-12 xl:pl-16 2xl:pl-20 pr-4 sm:pr-6 md:pr-8 lg:pr-12">
+          <div className="space-y-6 sm:space-y-8 max-w-4xl hero-fade-in" ref={heroRef}>
+            <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-6 py-2 text-[12px] uppercase tracking-[0.45em] text-luxury-silver/60 backdrop-blur w-fit">
               <span className="h-1 w-1 rounded-full bg-luxury-gold" />
               {t("hero.badge")}
               <span className="h-1 w-1 rounded-full bg-luxury-gold" />
             </div>
-            <h1 className="text-[40px] font-sans font-semibold leading-tight tracking-[0.01em] text-white md:text-[68px] lg:text-[88px]">
-              <span className="block text-base uppercase ml-5 tracking-[0.75em] text-luxury-silver/70 md:text-3xl font-sans">
-                {t("hero.title")}
-              </span>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-semibold md:font-bold leading-[1.1] tracking-tight text-white drop-shadow-sm">
+              {t("hero.title")}
             </h1>
-            <p className="mx-auto max-w-3xl text-sm font-sans font-light leading-relaxed text-luxury-silver/70 md:text-base">
+            <p className="text-base sm:text-lg md:text-xl font-sans font-light leading-relaxed text-luxury-silver/90 max-w-2xl">
               {t("hero.subtitle")}
             </p>
           </div>
-
-          <div className="pointer-events-none absolute left-1/2 top-full z-0 h-45 w-[70%] -translate-x-1/2 -translate-y-20 rounded-full bg-gradient-to-r from-white/10 via-transparent to-transparent blur-xl" />
+        </div>
+        {/* Scroll indicator – same as Distributor */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-3 pointer-events-none">
+          <div className="relative w-5 h-8 border border-white/50 rounded-full flex items-start justify-center pt-2.5">
+            <div className="w-1 h-1.5 bg-white/70 rounded-full" />
+          </div>
         </div>
       </section>
 

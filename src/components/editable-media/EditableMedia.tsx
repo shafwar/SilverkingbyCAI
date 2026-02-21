@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { Pencil } from "lucide-react";
+import { Pencil, RotateCcw } from "lucide-react";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { usePageSections } from "@/hooks/usePageSections";
 import { getR2UrlClient } from "@/utils/r2-url";
@@ -31,6 +31,8 @@ type EditableMediaProps = {
   onUploadDone?: () => void;
   /** Optional label next to pencil (e.g. "Edit video") for visibility on dark backgrounds */
   editLabel?: string;
+  /** When true with overlayOnly, the whole video/hero area is clickable to open edit modal */
+  fullAreaClickable?: boolean;
 };
 
 export function EditableMedia({
@@ -47,6 +49,7 @@ export function EditableMedia({
   overlayOnly = false,
   onUploadDone,
   editLabel,
+  fullAreaClickable = false,
 }: EditableMediaProps) {
   const isAdmin = useIsAdmin();
   const { sections, refetch } = usePageSections(page);
@@ -56,15 +59,41 @@ export function EditableMedia({
   };
   const [modalOpen, setModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const url = sections[section]?.url ?? fallbackUrl ?? (type === "image" ? getR2UrlClient("/images/placeholder-hero.jpg") : undefined);
+  const hasCustomMedia = Boolean(sections[section]);
 
   const handleEditClick = () => {
     if (!isAdmin) return;
     setError(null);
     setModalOpen(true);
+  };
+
+  const handleRestore = async () => {
+    if (!isAdmin || !hasCustomMedia) return;
+    setError(null);
+    setRestoring(true);
+    try {
+      const res = await fetch("/api/admin/page-sections/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ page, section }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data?.error ?? "Restore failed.");
+        return;
+      }
+      setModalOpen(false);
+      await refetchAll();
+    } catch {
+      setError("Restore failed.");
+    } finally {
+      setRestoring(false);
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,31 +136,61 @@ export function EditableMedia({
     const btnClass = editLabel
       ? "flex h-11 items-center gap-2 rounded-xl border-2 border-luxury-gold bg-luxury-gold/25 px-3 py-2.5 text-luxury-gold shadow-lg backdrop-blur-sm transition hover:bg-luxury-gold/40 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50"
       : "flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-black/50 text-white/80 backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50";
-    return (
-      <>
-        {isAdmin && (
+    const buttons = isAdmin ? (
+      <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+        {hasCustomMedia && (
           <button
             type="button"
-            onClick={handleEditClick}
-            className={`z-20 ${btnClass}`}
-            aria-label={editLabel ?? "Edit media"}
+            onClick={handleRestore}
+            disabled={restoring}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-black/50 text-white/80 backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 disabled:opacity-50"
+            aria-label="Restore original"
+            title="Restore original"
           >
-            <Pencil className={editLabel ? "h-5 w-5 flex-shrink-0" : "h-4 w-4"} />
-            {editLabel && <span className="text-sm font-medium whitespace-nowrap">{editLabel}</span>}
+            <RotateCcw className="h-4 w-4" />
           </button>
         )}
+        <button
+          type="button"
+          onClick={handleEditClick}
+          className={btnClass}
+          aria-label={editLabel ?? "Edit media"}
+        >
+          <Pencil className={editLabel ? "h-5 w-5 flex-shrink-0" : "h-4 w-4"} />
+          {editLabel && <span className="text-sm font-medium whitespace-nowrap">{editLabel}</span>}
+        </button>
+      </div>
+    ) : null;
+
+    const content = (
+      <>
+        {isAdmin && fullAreaClickable && (
+          <div
+            className="absolute inset-0 z-10 cursor-pointer"
+            onClick={handleEditClick}
+            aria-hidden
+          />
+        )}
+        {buttons}
         {modalOpen && (
           <EditableMediaModal
             onClose={() => setModalOpen(false)}
             type={type}
             fileInputRef={fileInputRef}
             handleFileChange={handleFileChange}
+            handleRestore={hasCustomMedia ? handleRestore : undefined}
+            restoring={restoring}
             uploading={uploading}
             error={error}
           />
         )}
       </>
     );
+
+    if (fullAreaClickable) {
+      return <div className="absolute inset-0 pointer-events-auto">{content}</div>;
+    }
+    return content;
   }
 
   return (
@@ -166,14 +225,28 @@ export function EditableMedia({
         />
       )}
       {isAdmin && (
-        <button
-          type="button"
-          onClick={handleEditClick}
-          className="absolute top-3 right-3 z-20 flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-black/50 text-white/80 backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50"
-          aria-label="Edit media"
-        >
-          <Pencil className="h-4 w-4" />
-        </button>
+        <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+          {hasCustomMedia && (
+            <button
+              type="button"
+              onClick={handleRestore}
+              disabled={restoring}
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-black/50 text-white/80 backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 disabled:opacity-50"
+              aria-label="Restore original"
+              title="Restore original"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleEditClick}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-black/50 text-white/80 backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50"
+            aria-label="Edit media"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+        </div>
       )}
       {modalOpen && (
         <EditableMediaModal
@@ -181,6 +254,8 @@ export function EditableMedia({
           type={type}
           fileInputRef={fileInputRef}
           handleFileChange={handleFileChange}
+          handleRestore={hasCustomMedia ? handleRestore : undefined}
+          restoring={restoring}
           uploading={uploading}
           error={error}
         />
@@ -194,6 +269,8 @@ function EditableMediaModal({
   type,
   fileInputRef,
   handleFileChange,
+  handleRestore,
+  restoring,
   uploading,
   error,
 }: {
@@ -201,16 +278,27 @@ function EditableMediaModal({
   type: string;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleRestore?: () => void;
+  restoring: boolean;
   uploading: boolean;
   error: string | null;
 }) {
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto"
+      style={{ position: "fixed", left: 0, right: 0, top: 0, bottom: 0 }}
       onClick={onClose}
     >
       <div
         className="w-full max-w-md rounded-2xl border border-white/15 bg-[#0a0a0a] p-6 shadow-2xl"
+        style={{
+          position: "fixed",
+          left: "50%",
+          top: "50%",
+          transform: "translate(-50%, -50%)",
+          maxHeight: "min(90vh, 420px)",
+          overflow: "auto",
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-lg font-semibold text-white mb-4">
@@ -227,7 +315,18 @@ function EditableMediaModal({
           {type === "image" ? "JPEG, PNG or WebP. Max 3 MB." : "MP4 or WebM. Max 80 MB."}
         </p>
         {error && <p className="text-sm text-red-400 mb-2">{error}</p>}
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
+          {handleRestore && (
+            <button
+              type="button"
+              onClick={handleRestore}
+              disabled={restoring || uploading}
+              className="rounded-xl border border-white/20 px-4 py-2 text-sm text-white/80 hover:bg-white/10 disabled:opacity-50 inline-flex items-center gap-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              {restoring ? "Restoring…" : "Restore original"}
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}

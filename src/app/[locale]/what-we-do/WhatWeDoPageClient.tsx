@@ -314,6 +314,19 @@ export default function WhatWeDoPageClient() {
   const heroVideoUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/metal crafting hands.mp4");
   const footerVideoUrl = pageSections.section_footer_video?.url ?? getR2UrlClient("/videos/hero/molten metal slow motion.mp4");
 
+  // Preload first craft card image for faster perceived load
+  const firstCraftImageUrl =
+    pageSections.craft_card_1?.url ?? getR2UrlClient("/images/pexels-3d-render-1058120333-33539240.jpg");
+  useEffect(() => {
+    if (!firstCraftImageUrl) return;
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "image";
+    link.href = firstCraftImageUrl;
+    document.head.appendChild(link);
+    return () => link.remove();
+  }, [firstCraftImageUrl]);
+
   // Ensure what-we-do hero video autoplays reliably on all devices
   useReliableVideoAutoplay(videoRef);
 
@@ -462,16 +475,17 @@ export default function WhatWeDoPageClient() {
       {/* Shared Navbar */}
       <Navbar />
 
-      {/* Hero Section with Full Screen Video Background */}
+      {/* Hero Section – same size & layout as Distributor (fixed full viewport, gradient, scroll button) */}
       <section
         ref={(element) => {
           sectionsRef.current[0] = element as HTMLDivElement | null;
         }}
         className="relative flex min-h-screen items-center justify-start overflow-hidden"
       >
-        {/* Full Screen Video Background - No Zoom */}
+        {/* Full Screen Video Background – gradient overlay match Distributor */}
         <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
           <div className="absolute inset-0 bg-luxury-black z-0" />
+          <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
 
           <video
             ref={videoRef}
@@ -498,12 +512,13 @@ export default function WhatWeDoPageClient() {
           >
             <source src={heroVideoUrl} type="video/mp4" />
           </video>
-          <div className="absolute top-3 right-3 z-20 pointer-events-auto">
+          <div className="absolute inset-0 z-20 pointer-events-auto">
             <EditableMedia
               page="what-we-do"
               section="hero"
               type="video"
               overlayOnly
+              fullAreaClickable
               onUploadDone={refetchPageSections}
             />
           </div>
@@ -519,12 +534,12 @@ export default function WhatWeDoPageClient() {
             className="space-y-6 sm:space-y-8 max-w-4xl"
           >
             <motion.h1
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-light leading-[1.1] tracking-tight text-white"
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-semibold md:font-bold leading-[1.1] tracking-tight text-white drop-shadow-sm"
               data-hero
             >
               {t("hero.title")}
               <br />
-              <span className="font-sans font-normal">{t("hero.titleBold")}</span>
+              <span className="font-sans font-semibold md:font-bold">{t("hero.titleBold")}</span>
             </motion.h1>
             <motion.p
               data-hero
@@ -533,6 +548,12 @@ export default function WhatWeDoPageClient() {
               {t("hero.subtitle")}
             </motion.p>
           </motion.div>
+        </div>
+        {/* Scroll indicator – same as Distributor */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-3 pointer-events-none">
+          <div className="relative w-5 h-8 border border-white/50 rounded-full flex items-start justify-center pt-2.5">
+            <div className="w-1 h-1.5 bg-white/70 rounded-full" />
+          </div>
         </div>
       </section>
 

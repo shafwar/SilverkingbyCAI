@@ -46,6 +46,7 @@ export function PersistentHomeHeroVideo() {
         transition: "opacity 0.25s ease",
       }}
     >
+      {/* Mobile: zoom out (scale down) so more of video visible; desktop: full cover */}
       <video
         ref={videoRef}
         key={src}
@@ -56,11 +57,9 @@ export function PersistentHomeHeroVideo() {
         preload="metadata"
         disablePictureInPicture
         disableRemotePlayback
-        className="absolute inset-0 w-full h-full object-cover"
+        className="absolute inset-0 w-[112%] h-[112%] min-w-full min-h-full left-[-6%] top-[-6%] object-cover origin-center scale-90 md:w-full md:h-full md:left-0 md:top-0 md:scale-100"
         style={{
           pointerEvents: "none",
-          width: "100vw",
-          height: "100vh",
         }}
         onContextMenu={(e) => e.preventDefault()}
       >

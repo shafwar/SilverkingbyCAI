@@ -580,12 +580,12 @@ export default function Navbar() {
                     ))}
                   </nav>
 
-                  {/* Language Switcher in Mobile Menu - Prominent Position */}
+                  {/* Language Switcher in Mobile Menu - EN mentok kiri when not admin */}
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3, duration: 0.4 }}
-                    className="mb-8 sm:mb-10 flex justify-center gap-3"
+                    className={`mb-8 sm:mb-10 flex gap-3 ${isAdmin === true ? "justify-center" : "justify-start"}`}
                   >
                     <LanguageSwitcher />
                     

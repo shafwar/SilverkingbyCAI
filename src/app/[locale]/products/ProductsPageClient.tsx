@@ -1085,6 +1085,7 @@ export default function ProductsPageClient() {
         }}
       >
         <div className="absolute inset-0 bg-luxury-black z-0" />
+        <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
 
         <video
           ref={videoRef}
@@ -1132,12 +1133,13 @@ export default function ProductsPageClient() {
         >
           <source src={heroVideoUrl} type="video/mp4" />
         </video>
-        <div className="absolute top-3 right-3 z-20 pointer-events-auto">
+        <div className="absolute inset-0 z-20 pointer-events-auto">
           <EditableMedia
             page="products"
             section="hero"
             type="video"
             overlayOnly
+            fullAreaClickable
             onUploadDone={refetchPageSections}
           />
         </div>
@@ -1169,12 +1171,12 @@ export default function ProductsPageClient() {
             className="space-y-6 sm:space-y-8 max-w-4xl"
           >
             <motion.h1
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-light leading-[1.1] tracking-tight text-white"
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-semibold md:font-bold leading-[1.1] tracking-tight text-white drop-shadow-sm"
               data-hero
             >
               {t("hero.title")}
               <br />
-              <span className="font-sans font-normal">{t("hero.titleBold")}</span>
+              <span className="font-sans font-semibold md:font-bold">{t("hero.titleBold")}</span>
             </motion.h1>
             <motion.p
               data-hero
@@ -1186,17 +1188,15 @@ export default function ProductsPageClient() {
           </motion.div>
         </div>
 
-        {/* Scroll Indicator - Minimalist with GSAP Fluid Scroll Animation */}
+        {/* Scroll indicator – same as Distributor */}
         <div
           ref={scrollIndicatorRef}
           className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-3 pointer-events-none"
         >
-          {/* Minimalist Mouse Icon */}
           <div
             data-mouse-icon
             className="relative w-5 h-8 border border-white/50 rounded-full flex items-start justify-center pt-2.5"
           >
-            {/* Scroll wheel indicator - animated */}
             <div data-scroll-wheel className="w-1 h-1.5 bg-white/70 rounded-full" />
           </div>
         </div>

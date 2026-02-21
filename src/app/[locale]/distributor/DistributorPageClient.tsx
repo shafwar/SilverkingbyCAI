@@ -173,16 +173,21 @@ export default function DistributorPageClient({
       >
         <div className="absolute inset-0 bg-luxury-black z-0" />
 
-        <Image
-          src={displayHeroUrl}
-          alt=""
-          fill
-          className="object-cover z-10"
-          sizes="100vw"
-          priority
-          unoptimized={displayHeroUrl.startsWith("http")}
-          onError={() => setHeroImageError(true)}
-        />
+        {/* Mobile: zoom out (wrapper scale); desktop: full cover */}
+        <div className="absolute inset-[-6%] z-10 scale-90 md:scale-100 md:inset-0 origin-center overflow-hidden">
+          <Image
+            src={displayHeroUrl}
+            alt=""
+            fill
+            className="object-cover"
+            sizes="100vw"
+            priority
+            unoptimized={displayHeroUrl.startsWith("http")}
+            onError={() => setHeroImageError(true)}
+          />
+        </div>
+        {/* Subtle dark gradient overlay for readability and professional look */}
+        <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
         <EditableMedia
           page="distributor"
           section="hero"
@@ -204,9 +209,9 @@ export default function DistributorPageClient({
             className="space-y-6 sm:space-y-8 max-w-4xl"
           >
             <motion.h1
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-light leading-[1.1] tracking-tight text-white"
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-semibold md:font-bold leading-[1.1] tracking-tight text-white drop-shadow-sm"
             >
-              {t("hero.title")}
+              <span className="text-white">{t("hero.title")}</span>
             </motion.h1>
             <motion.p
               className="text-base sm:text-lg md:text-xl font-sans font-light leading-relaxed text-luxury-silver/90 max-w-2xl"
