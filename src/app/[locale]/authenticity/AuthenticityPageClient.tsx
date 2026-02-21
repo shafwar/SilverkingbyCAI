@@ -25,7 +25,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
-import { AdminEditContentLink } from "@/components/admin/AdminEditContentLink";
 import { Scanner } from "@/components/shared/Scanner";
 import { useRouter } from "next/navigation";
 import { APP_NAME } from "@/utils/constants";
@@ -996,7 +995,6 @@ export default function AuthenticityPageClient() {
           </motion.div>
         </motion.section>
       </AnimatePresence>
-      <AdminEditContentLink pageName="authenticity" />
     </div>
   );
 }

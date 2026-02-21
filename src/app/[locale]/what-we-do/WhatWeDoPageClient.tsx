@@ -21,7 +21,6 @@ import {
 import Navbar from "@/components/layout/Navbar";
 import Link from "next/link";
 import Image from "next/image";
-import { AdminEditContentLink } from "@/components/admin/AdminEditContentLink";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -890,7 +889,6 @@ export default function WhatWeDoPageClient() {
           </motion.div>
         </div>
       </section>
-      <AdminEditContentLink pageName="what-we-do" />
     </div>
   );
 }

@@ -3,7 +3,6 @@
 import Navbar from "@/components/layout/Navbar";
 import { DistributorCard, type DistributorItem } from "@/components/distributor/DistributorCard";
 import { DistributorForm } from "@/components/admin/DistributorForm";
-import { AdminEditContentLink } from "@/components/admin/AdminEditContentLink";
 import { motion, type Variants } from "framer-motion";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
@@ -318,10 +317,10 @@ export default function DistributorPageClient({
         </div>
       </section>
 
-      {/* Modal Add / Edit (admin only) */}
+      {/* Modal Add / Edit (admin only) – posisi agak ke bawah agar lebih nyaman */}
       {modalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 pt-24 sm:pt-28"
           onClick={closeModal}
         >
           <div
@@ -350,7 +349,6 @@ export default function DistributorPageClient({
           </div>
         </div>
       )}
-      <AdminEditContentLink pageName="distributor" />
     </div>
   );
 }

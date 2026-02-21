@@ -8,8 +8,6 @@ import { useTranslations, useLocale } from "next-intl";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { PageLoadingSkeleton } from "@/components/ui/PageLoadingSkeleton";
-import { AdminEditContentLink } from "@/components/admin/AdminEditContentLink";
-
 // Lazy load CertificateCard to improve initial page load
 const CertificateCard = dynamic(() => import("@/components/ui/CertificateCard"), {
   loading: () => null, // Don't show loader for this small component
@@ -623,7 +621,6 @@ export default function AboutPageClient() {
           </div>
         </div>
       </section>
-      <AdminEditContentLink pageName="about" />
     </div>
   );
 }
