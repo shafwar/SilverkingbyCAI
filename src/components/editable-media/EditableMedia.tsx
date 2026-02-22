@@ -364,10 +364,9 @@ function EditableMediaModal({
       data-cms-replace-modal
       style={{
         position: "fixed",
-        left: 0,
-        top: 0,
-        right: 0,
-        bottom: 0,
+        inset: 0,
+        width: "100vw",
+        height: "100dvh",
         zIndex: CMS_MODAL_Z,
         display: "flex",
         alignItems: "center",
@@ -381,16 +380,21 @@ function EditableMediaModal({
       <div
         role="document"
         style={{
-          position: "relative",
+          position: "absolute",
+          left: "50%",
+          top: "50%",
+          transform: "translate(-50%, -50%)",
           zIndex: 1,
-          width: "100%",
+          width: "calc(100vw - 32px)",
           maxWidth: 448,
-          maxHeight: "min(420px, calc(100vh - 32px))",
+          minWidth: 280,
+          maxHeight: "min(420px, calc(100dvh - 32px))",
           overflow: "auto",
           borderRadius: 16,
           border: "1px solid rgba(255,255,255,0.15)",
           background: "#0a0a0a",
           padding: 24,
+          boxSizing: "border-box",
           boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
         }}
         onClick={(e) => e.stopPropagation()}
