@@ -67,9 +67,21 @@ export function EditableMedia({
   const url = sections[section]?.url ?? fallbackUrl ?? (type === "image" ? getR2UrlClient("/images/placeholder-hero.jpg") : undefined);
   const hasCustomMedia = Boolean(sections[section]);
 
-  const handleEditClick = () => {
+  const closeModal = () => {
+    if (typeof document !== "undefined") {
+      document.body.removeAttribute("data-cms-modal-open");
+      document.body.style.overflow = "";
+    }
+    setModalOpen(false);
+  };
+
+  const handleEditClick = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (!isAdmin) return;
     setError(null);
+    if (typeof document !== "undefined") {
+      document.body.setAttribute("data-cms-modal-open", "true");
+    }
     setModalOpen(true);
   };
 
@@ -88,7 +100,7 @@ export function EditableMedia({
         setError(data?.error ?? "Restore failed.");
         return;
       }
-      setModalOpen(false);
+      closeModal();
       await refetchAll();
     } catch {
       setError("Restore failed.");
@@ -124,7 +136,7 @@ export function EditableMedia({
         return;
       }
       await refetchAll();
-      setModalOpen(false);
+      closeModal();
     } catch {
       setError("Upload failed.");
     } finally {
@@ -153,7 +165,7 @@ export function EditableMedia({
         )}
         <button
           type="button"
-          onClick={handleEditClick}
+          onClick={(e) => handleEditClick(e)}
           className={btnClass}
           aria-label={editLabel ?? "Edit media"}
         >
@@ -168,16 +180,17 @@ export function EditableMedia({
         {isAdmin && fullAreaClickable && (
           <div
             className="absolute inset-0 z-[10001] cursor-pointer"
-            onClick={handleEditClick}
+            onClick={(e) => handleEditClick(e)}
             aria-hidden
           />
         )}
         {buttons}
         {modalOpen &&
           typeof document !== "undefined" &&
+          document.body &&
           createPortal(
             <EditableMediaModal
-              onClose={() => setModalOpen(false)}
+              onClose={closeModal}
               type={type}
               fileInputRef={fileInputRef}
               handleFileChange={handleFileChange}
@@ -258,9 +271,10 @@ export function EditableMedia({
       )}
       {modalOpen &&
         typeof document !== "undefined" &&
+        document.body &&
         createPortal(
           <EditableMediaModal
-            onClose={() => setModalOpen(false)}
+            onClose={closeModal}
             type={type}
             fileInputRef={fileInputRef}
             handleFileChange={handleFileChange}
@@ -275,11 +289,12 @@ export function EditableMedia({
   );
 }
 
+const CMS_MODAL_Z = 100000;
+
 /**
- * CMS replace media modal. Used on ALL pages: Home, What We Do (hero + footer + craft cards),
- * Authenticity, Products, About, Distributor. Renders via portal to body.
- * No backdrop-blur to avoid conflict with page transition overlay (no blur/freeze).
- * Sets data-cms-modal-open on body so PageTransitionOverlay skips blur while open.
+ * CMS replace media modal. Used on ALL pages. Portal to body; no backdrop-blur.
+ * Parent sets data-cms-modal-open before open so PageTransitionOverlay does not blur.
+ * Inline styles + z above NProgress so box always visible and on top.
  */
 function EditableMediaModal({
   onClose,
@@ -306,11 +321,8 @@ function EditableMediaModal({
     };
     document.addEventListener("keydown", onEscape);
     document.body.style.overflow = "hidden";
-    document.body.setAttribute("data-cms-modal-open", "true");
     return () => {
       document.removeEventListener("keydown", onEscape);
-      document.body.style.overflow = "";
-      document.body.removeAttribute("data-cms-modal-open");
     };
   }, [onClose]);
 
@@ -320,22 +332,36 @@ function EditableMediaModal({
       aria-modal="true"
       aria-labelledby="editable-media-modal-title"
       data-cms-replace-modal
-      className="fixed inset-0 z-[10003] flex items-center justify-center p-4 box-border"
       style={{
+        position: "fixed",
         left: 0,
         top: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "rgba(0,0,0,0.82)",
+        zIndex: CMS_MODAL_Z,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+        boxSizing: "border-box",
+        backgroundColor: "rgba(0,0,0,0.85)",
       }}
       onClick={onClose}
     >
       <div
         role="document"
-        className="relative z-10 w-full max-w-md rounded-2xl border border-white/15 bg-[#0a0a0a] p-6 shadow-2xl"
         style={{
-          maxHeight: "min(420px, calc(100vh - 2rem))",
+          position: "relative",
+          zIndex: 1,
+          width: "100%",
+          maxWidth: 448,
+          maxHeight: "min(420px, calc(100vh - 32px))",
           overflow: "auto",
+          borderRadius: 16,
+          border: "1px solid rgba(255,255,255,0.15)",
+          background: "#0a0a0a",
+          padding: 24,
+          boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
         }}
         onClick={(e) => e.stopPropagation()}
       >

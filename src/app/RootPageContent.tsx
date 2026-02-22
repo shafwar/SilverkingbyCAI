@@ -2,6 +2,7 @@
 
 import { useState, useLayoutEffect, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
+import { PersistentHomeHeroVideo } from "@/components/layout/PersistentHomeHeroVideo";
 import HeroSection from "@/components/sections/HeroSection";
 import SplashScreen from "@/components/sections/SplashScreen";
 
@@ -78,6 +79,8 @@ export default function RootPageContent() {
         </div>
       )}
 
+      {/* Same as [locale] home: hero video + edit icon from PersistentHomeHeroVideo, HeroSection skips video */}
+      <PersistentHomeHeroVideo />
       {/* Main Content - Always render, control visibility */}
       <div
         style={{
@@ -90,7 +93,7 @@ export default function RootPageContent() {
       >
         <Navbar />
         <main className="min-h-screen bg-black">
-          <HeroSection shouldAnimate={splashComplete} />
+          <HeroSection shouldAnimate={splashComplete} skipVideo />
         </main>
       </div>
     </>
