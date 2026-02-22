@@ -19,11 +19,14 @@ function isHomePath(pathname: string | null): boolean {
  * when navigating away. Video URL from page-sections (CMS) or fallback.
  * Admin sees edit icon and can replace video (upload to R2).
  */
+const EDIT_BUTTON_DELAY_MS = 2000;
+
 export function PersistentHomeHeroVideo() {
   const pathname = usePathname();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isHome, setIsHome] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [showEditButton, setShowEditButton] = useState(false);
   const { sections, refetch } = usePageSections("home");
   const src = sections.hero?.url ?? getR2UrlClient(HERO_VIDEO_FALLBACK);
 
@@ -34,6 +37,16 @@ export function PersistentHomeHeroVideo() {
   useEffect(() => {
     setIsHome(isHomePath(pathname));
   }, [pathname]);
+
+  // Show "Edit video" only after delay so it doesn’t appear on first paint (admin experience)
+  useEffect(() => {
+    if (!mounted || !isHome) {
+      setShowEditButton(false);
+      return;
+    }
+    const t = setTimeout(() => setShowEditButton(true), EDIT_BUTTON_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [mounted, isHome]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -77,14 +90,15 @@ export function PersistentHomeHeroVideo() {
       {/* Vignette / dark motif - Home only */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/60 pointer-events-none" />
       <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-transparent to-black/40 pointer-events-none" />
-      {/* Edit video button: portal to body so always above main content (z-1), only after client mount */}
+      {/* Edit video button: show after delay so it doesn’t appear on first open */}
       {mounted &&
         isHome &&
+        showEditButton &&
         typeof document !== "undefined" &&
         document.body &&
         createPortal(
           <div
-            className="fixed top-20 right-4 sm:right-6 z-[10002] pointer-events-auto"
+            className="fixed top-20 right-4 sm:right-6 z-[10002] pointer-events-auto animate-fade-in"
             data-home-edit-video
           >
             <EditableMedia
