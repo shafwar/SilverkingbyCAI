@@ -1,6 +1,5 @@
 "use client";
 
-
 "use client";
 
 import Navbar from "@/components/layout/Navbar";
@@ -1143,18 +1142,16 @@ export default function ProductsPageClient() {
 
       <Navbar />
 
-      {/* Hero edit overlay: above content so icon is clickable */}
-      <div className="fixed inset-0 z-[10002] pointer-events-none">
-        <div className="absolute inset-0 pointer-events-auto">
-          <EditableMedia
-            page="products"
-            section="hero"
-            type="video"
-            overlayOnly
-            fullAreaClickable
-            onUploadDone={refetchPageSections}
-          />
-        </div>
+      {/* Hero edit: small corner box only – no full-screen overlay so navbar/buttons stay clickable */}
+      <div className="fixed top-20 right-4 sm:right-6 z-[10002] pointer-events-auto">
+        <EditableMedia
+          page="products"
+          section="hero"
+          type="video"
+          overlayOnly
+          onUploadDone={refetchPageSections}
+          editLabel="Edit video"
+        />
       </div>
 
       {/* ENHANCED: Hero Section - Full Screen, matching What We Do exactly */}
@@ -1792,7 +1789,6 @@ export default function ProductsPageClient() {
               ))}
             </motion.div>
           </div>
-
         </div>
       </section>
 

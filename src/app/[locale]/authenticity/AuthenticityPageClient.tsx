@@ -604,18 +604,16 @@ export default function AuthenticityPageClient() {
         </div>
       </div>
 
-      {/* Hero edit overlay: above content so icon is clickable */}
-      <div className="fixed inset-0 z-[10002] pointer-events-none">
-        <div className="absolute inset-0 pointer-events-auto">
-          <EditableMedia
-            page="authenticity"
-            section="hero"
-            type="video"
-            overlayOnly
-            fullAreaClickable
-            onUploadDone={refetchPageSections}
-          />
-        </div>
+      {/* Hero edit: small corner box only – no full-screen overlay so navbar/buttons stay clickable */}
+      <div className="fixed top-20 right-4 sm:right-6 z-[10002] pointer-events-auto">
+        <EditableMedia
+          page="authenticity"
+          section="hero"
+          type="video"
+          overlayOnly
+          onUploadDone={refetchPageSections}
+          editLabel="Edit video"
+        />
       </div>
 
       {/* Hero Section – same size & layout as Distributor (min-h-screen, left-aligned, scroll button) */}

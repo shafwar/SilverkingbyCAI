@@ -75,13 +75,19 @@ export function EditableMedia({
     setModalOpen(false);
   };
 
+  /** Set attribute immediately so PageTransitionOverlay never blurs when opening modal (same as home). */
+  const setModalOpenAttribute = () => {
+    if (typeof document !== "undefined" && document.body) {
+      document.body.setAttribute("data-cms-modal-open", "true");
+    }
+  };
+
   const handleEditClick = (e?: React.MouseEvent) => {
+    e?.preventDefault();
     e?.stopPropagation();
     if (!isAdmin) return;
     setError(null);
-    if (typeof document !== "undefined") {
-      document.body.setAttribute("data-cms-modal-open", "true");
-    }
+    setModalOpenAttribute();
     setModalOpen(true);
   };
 
@@ -154,11 +160,15 @@ export function EditableMedia({
         {hasCustomMedia && (
           <button
             type="button"
-            onClick={handleRestore}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleRestore();
+            }}
             disabled={restoring}
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-black/50 text-white/80 backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 disabled:opacity-50"
-            aria-label="Restore original"
-            title="Restore original"
+            aria-label="Restore to default"
+            title="Restore to default video/image"
           >
             <RotateCcw className="h-4 w-4" />
           </button>
@@ -180,7 +190,13 @@ export function EditableMedia({
         {isAdmin && fullAreaClickable && (
           <div
             className="absolute inset-0 z-[10001] cursor-pointer"
-            onClick={(e) => handleEditClick(e)}
+            onMouseDown={setModalOpenAttribute}
+            onTouchStart={setModalOpenAttribute}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleEditClick(e);
+            }}
             aria-hidden
           />
         )}
@@ -250,18 +266,26 @@ export function EditableMedia({
           {hasCustomMedia && (
             <button
               type="button"
-              onClick={handleRestore}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleRestore();
+              }}
               disabled={restoring}
               className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-black/50 text-white/80 backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 disabled:opacity-50"
-              aria-label="Restore original"
-              title="Restore original"
+              aria-label="Restore to default"
+              title="Restore to default video/image"
             >
               <RotateCcw className="h-4 w-4" />
             </button>
           )}
           <button
             type="button"
-            onClick={handleEditClick}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleEditClick(e);
+            }}
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-black/50 text-white/80 backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50"
             aria-label="Edit media"
           >
