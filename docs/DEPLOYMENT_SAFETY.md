@@ -40,4 +40,5 @@ Setelah push, pastikan production:
 
 ## Last deployment note
 
-- **Video hero edit (clickable + modal):** Home edit button via portal; What We Do, Authenticity, Products, About hero edit overlay above content (z-10002); replace-video modal rendered to `document.body` (portal) for correct on-screen position. No DB migration required.
+- **Home edit video icon:** Edit button for hero video now always visible on Home when admin: portal after client mount, robust home path detection (`/`, `/en`, `/id`), `useIsAdmin` uses sessionStorage cache (same as Navbar) so icon shows immediately. No DB migration.
+- **Video hero edit (all pages):** Replace-video modal without backdrop-blur (no conflict with page transition); `data-cms-modal-open` prevents blur when modal open. Hero edit overlays z-10002 on What We Do, Authenticity, Products, About.

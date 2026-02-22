@@ -9,6 +9,11 @@ import { EditableMedia } from "@/components/editable-media";
 
 const HERO_VIDEO_FALLBACK = "/videos/hero/hero-background.mp4";
 
+function isHomePath(pathname: string | null): boolean {
+  const path = (pathname ?? "").replace(/\/$/, "").trim() || "/";
+  return path === "/" || path === "/en" || path === "/id";
+}
+
 /**
  * Persistent hero video for Home. Rendered in layout so it does NOT unmount
  * when navigating away. Video URL from page-sections (CMS) or fallback.
@@ -18,13 +23,16 @@ export function PersistentHomeHeroVideo() {
   const pathname = usePathname();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isHome, setIsHome] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { sections, refetch } = usePageSections("home");
   const src = sections.hero?.url ?? getR2UrlClient(HERO_VIDEO_FALLBACK);
 
   useEffect(() => {
-    const path = pathname ?? "";
-    const home = path === "" || path === "/" || path === "/en" || path === "/id";
-    setIsHome(home);
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    setIsHome(isHomePath(pathname));
   }, [pathname]);
 
   useEffect(() => {
@@ -69,11 +77,16 @@ export function PersistentHomeHeroVideo() {
       {/* Vignette / dark motif - Home only */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/60 pointer-events-none" />
       <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-transparent to-black/40 pointer-events-none" />
-      {/* Edit button via portal so it sits above page content (z-1) and is always clickable */}
-      {isHome &&
+      {/* Edit video button: portal to body so always above main content (z-1), only after client mount */}
+      {mounted &&
+        isHome &&
         typeof document !== "undefined" &&
+        document.body &&
         createPortal(
-          <div className="fixed top-20 right-4 sm:right-6 z-[10002] pointer-events-auto">
+          <div
+            className="fixed top-20 right-4 sm:right-6 z-[10002] pointer-events-auto"
+            data-home-edit-video
+          >
             <EditableMedia
               page="home"
               section="hero"

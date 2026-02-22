@@ -275,6 +275,12 @@ export function EditableMedia({
   );
 }
 
+/**
+ * CMS replace media modal. Used on ALL pages: Home, What We Do (hero + footer + craft cards),
+ * Authenticity, Products, About, Distributor. Renders via portal to body.
+ * No backdrop-blur to avoid conflict with page transition overlay (no blur/freeze).
+ * Sets data-cms-modal-open on body so PageTransitionOverlay skips blur while open.
+ */
 function EditableMediaModal({
   onClose,
   type,
@@ -300,9 +306,11 @@ function EditableMediaModal({
     };
     document.addEventListener("keydown", onEscape);
     document.body.style.overflow = "hidden";
+    document.body.setAttribute("data-cms-modal-open", "true");
     return () => {
       document.removeEventListener("keydown", onEscape);
       document.body.style.overflow = "";
+      document.body.removeAttribute("data-cms-modal-open");
     };
   }, [onClose]);
 
@@ -311,23 +319,23 @@ function EditableMediaModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="editable-media-modal-title"
-      className="fixed inset-0 z-[10003] flex items-center justify-center p-4"
+      data-cms-replace-modal
+      className="fixed inset-0 z-[10003] flex items-center justify-center p-4 box-border"
       style={{
         left: 0,
-        right: 0,
         top: 0,
+        right: 0,
         bottom: 0,
-        backgroundColor: "rgba(0,0,0,0.75)",
-        backdropFilter: "blur(8px)",
+        backgroundColor: "rgba(0,0,0,0.82)",
       }}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl border border-white/15 bg-[#0a0a0a] p-6 shadow-2xl"
+        role="document"
+        className="relative z-10 w-full max-w-md rounded-2xl border border-white/15 bg-[#0a0a0a] p-6 shadow-2xl"
         style={{
-          maxHeight: "calc(100vh - 2rem)",
+          maxHeight: "min(420px, calc(100vh - 2rem))",
           overflow: "auto",
-          margin: "auto",
         }}
         onClick={(e) => e.stopPropagation()}
       >
