@@ -48,14 +48,14 @@ export function PersistentHomeHeroVideo() {
   return (
     <div
       aria-hidden="true"
-      className="fixed inset-0 z-0 pointer-events-none"
+      className="fixed inset-0 z-0 min-h-dvh pointer-events-none overflow-hidden"
       style={{
         visibility: isHome ? "visible" : "hidden",
         opacity: isHome ? 1 : 0,
         transition: "opacity 0.25s ease",
       }}
     >
-      {/* Mobile: zoom out (scale down) so more of video visible; desktop: full cover */}
+      {/* Full viewport cover on all devices: no black gaps on mobile */}
       <video
         ref={videoRef}
         key={src}
@@ -66,7 +66,7 @@ export function PersistentHomeHeroVideo() {
         preload="metadata"
         disablePictureInPicture
         disableRemotePlayback
-        className="absolute inset-0 w-[112%] h-[112%] min-w-full min-h-full left-[-6%] top-[-6%] object-cover origin-center scale-90 md:w-full md:h-full md:left-0 md:top-0 md:scale-100"
+        className="absolute left-1/2 top-1/2 min-w-full min-h-full w-full h-full -translate-x-1/2 -translate-y-1/2 object-cover"
         style={{
           pointerEvents: "none",
         }}
