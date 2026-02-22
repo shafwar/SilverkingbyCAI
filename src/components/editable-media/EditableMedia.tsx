@@ -157,6 +157,7 @@ export function EditableMedia({
       : "flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-black/50 text-white/80 backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50";
     const buttons = isAdmin ? (
       <div className="absolute top-3 right-3 z-[10002] flex items-center gap-2">
+        {/* Restore: shown only when admin has replaced media; reverts to current/default website assets */}
         {hasCustomMedia && (
           <button
             type="button"
@@ -166,11 +167,16 @@ export function EditableMedia({
               handleRestore();
             }}
             disabled={restoring}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-black/50 text-white/80 backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 disabled:opacity-50"
+            className={
+              editLabel
+                ? "flex h-11 items-center gap-2 rounded-xl border-2 border-white/30 bg-black/50 px-3 py-2.5 text-white/90 shadow-lg backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 disabled:opacity-50"
+                : "flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-black/50 text-white/80 backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 disabled:opacity-50"
+            }
             aria-label="Restore to default"
             title="Restore to default video/image"
           >
-            <RotateCcw className="h-4 w-4" />
+            <RotateCcw className={editLabel ? "h-5 w-5 flex-shrink-0" : "h-4 w-4"} />
+            {editLabel && <span className="text-sm font-medium whitespace-nowrap">Restore</span>}
           </button>
         )}
         <button
