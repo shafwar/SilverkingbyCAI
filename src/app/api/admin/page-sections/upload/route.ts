@@ -1,17 +1,22 @@
 /**
  * Admin API: upload section media. File stored in R2, key saved in PageSection.
+ * Images: compressed with sharp (quality preserved, max 1920px) then uploaded to R2.
+ * Video: uploaded as-is to R2 (max 50 MB).
  * POST formData: page, section, type (image|video), file
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import sharp from "sharp";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { uploadFileToR2 } from "@/lib/r2-client";
+import { uploadToR2, uploadFileToR2 } from "@/lib/r2-client";
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm"];
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024; // 3 MB
-const MAX_VIDEO_BYTES = 80 * 1024 * 1024; // 80 MB
+const MAX_VIDEO_BYTES = 10 * 1024 * 1024; // 10 MB
+const IMAGE_MAX_WIDTH = 1920;
+const IMAGE_QUALITY = 88; // high quality, minimal visible loss
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -52,7 +57,7 @@ export async function POST(request: NextRequest) {
           error:
             type === "image"
               ? "Image too large. Max 3 MB."
-              : "Video too large. Max 80 MB.",
+              : "Video too large. Max 10 MB.",
         },
         { status: 400 }
       );
@@ -71,21 +76,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const ext =
-      type === "image"
-        ? file.type === "image/png"
-          ? "png"
-          : file.type === "image/webp"
-            ? "webp"
-            : "jpg"
-        : file.name.endsWith(".webm")
-          ? "webm"
-          : "mp4";
     const ts = Date.now();
     const safeSection = section.replace(/[^a-z0-9_-]/gi, "_");
-    const key = `static/page-media/${page}/${safeSection}_${ts}.${ext}`;
+    let url: string;
+    let key: string;
 
-    const url = await uploadFileToR2(file, key);
+    if (type === "image") {
+      const buf = Buffer.from(await file.arrayBuffer());
+      const pipeline = sharp(buf)
+        .resize(IMAGE_MAX_WIDTH, undefined, { withoutEnlargement: true })
+        .rotate(); // auto-orient from EXIF
+      const outFormat = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpeg";
+      const ext = outFormat === "png" ? "png" : outFormat === "webp" ? "webp" : "jpg";
+      key = `static/page-media/${page}/${safeSection}_${ts}.${ext}`;
+      const outBuf =
+        outFormat === "png"
+          ? await pipeline.png({ compressionLevel: 6 }).toBuffer()
+          : outFormat === "webp"
+            ? await pipeline.webp({ quality: IMAGE_QUALITY }).toBuffer()
+            : await pipeline.jpeg({ quality: IMAGE_QUALITY, mozjpeg: true }).toBuffer();
+      const contentType = outFormat === "png" ? "image/png" : outFormat === "webp" ? "image/webp" : "image/jpeg";
+      url = await uploadToR2(key, outBuf, contentType, {
+        originalName: file.name,
+        uploadedAt: new Date().toISOString(),
+      });
+    } else {
+      const ext = file.name.endsWith(".webm") ? "webm" : "mp4";
+      key = `static/page-media/${page}/${safeSection}_${ts}.${ext}`;
+      url = await uploadFileToR2(file, key);
+    }
 
     const mediaType = type === "image" ? "IMAGE" : "VIDEO";
     await prisma.pageSection.upsert({

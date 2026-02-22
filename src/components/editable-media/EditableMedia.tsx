@@ -9,7 +9,7 @@ import { usePageSections } from "@/hooks/usePageSections";
 import { getR2UrlClient } from "@/utils/r2-url";
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
-const MAX_VIDEO_BYTES = 80 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 10 * 1024 * 1024; // 10 MB
 
 type EditableMediaProps = {
   page: string;
@@ -60,6 +60,7 @@ export function EditableMedia({
   };
   const [modalOpen, setModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0); // 0–100
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -120,35 +121,58 @@ export function EditableMedia({
     if (!file) return;
     const limit = type === "image" ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
     if (file.size > limit) {
-      setError(type === "image" ? "Max 3 MB." : "Max 80 MB.");
+      setError(type === "image" ? "Max 3 MB." : "Max 10 MB.");
       e.target.value = "";
       return;
     }
     setError(null);
     setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.set("page", page);
-      formData.set("section", section);
-      formData.set("type", type);
-      formData.set("file", file);
-      const res = await fetch("/api/admin/page-sections/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data?.error ?? "Upload failed.");
-        return;
+    setUploadProgress(0);
+    const formData = new FormData();
+    formData.set("page", page);
+    formData.set("section", section);
+    formData.set("type", type);
+    formData.set("file", file);
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/admin/page-sections/upload");
+    xhr.upload.addEventListener("progress", (ev) => {
+      if (ev.lengthComputable) {
+        const pct = Math.round((ev.loaded / ev.total) * 100);
+        setUploadProgress(pct);
+      } else {
+        setUploadProgress((prev) => Math.min(prev + 10, 90));
       }
-      await refetchAll();
-      closeModal();
-    } catch {
+    });
+    xhr.addEventListener("load", async () => {
+      try {
+        setUploadProgress(100);
+        const data = JSON.parse(xhr.responseText || "{}");
+        if (xhr.status >= 200 && xhr.status < 300) {
+          await refetchAll();
+          closeModal();
+        } else {
+          setError(data?.error ?? "Upload failed.");
+        }
+      } catch {
+        setError("Upload failed.");
+      } finally {
+        setUploading(false);
+        setUploadProgress(0);
+        e.target.value = "";
+      }
+    });
+    xhr.addEventListener("error", () => {
       setError("Upload failed.");
-    } finally {
       setUploading(false);
+      setUploadProgress(0);
       e.target.value = "";
-    }
+    });
+    xhr.addEventListener("abort", () => {
+      setUploading(false);
+      setUploadProgress(0);
+      e.target.value = "";
+    });
+    xhr.send(formData);
   };
 
   if (overlayOnly) {
@@ -219,6 +243,7 @@ export function EditableMedia({
               handleRestore={hasCustomMedia ? handleRestore : undefined}
               restoring={restoring}
               uploading={uploading}
+              uploadProgress={uploadProgress}
               error={error}
             />,
             document.body
@@ -311,6 +336,7 @@ export function EditableMedia({
             handleRestore={hasCustomMedia ? handleRestore : undefined}
             restoring={restoring}
             uploading={uploading}
+            uploadProgress={uploadProgress}
             error={error}
           />,
           document.body
@@ -334,6 +360,7 @@ function EditableMediaModal({
   handleRestore,
   restoring,
   uploading,
+  uploadProgress,
   error,
 }: {
   onClose: () => void;
@@ -343,6 +370,7 @@ function EditableMediaModal({
   handleRestore?: () => void;
   restoring: boolean;
   uploading: boolean;
+  uploadProgress: number;
   error: string | null;
 }) {
   useEffect(() => {
@@ -410,8 +438,22 @@ function EditableMediaModal({
           onChange={handleFileChange}
         />
         <p className="text-sm text-white/60 mb-4">
-          {type === "image" ? "JPEG, PNG or WebP. Max 3 MB." : "MP4 or WebM. Max 80 MB."}
+          {type === "image" ? "JPEG, PNG or WebP. Max 3 MB. (Compressed for web.)" : "MP4 or WebM. Max 10 MB."}
         </p>
+        {uploading && (
+          <div className="mb-4">
+            <div className="flex justify-between text-xs text-white/60 mb-1">
+              <span>Uploading to R2…</span>
+              <span>{uploadProgress}%</span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
+              <div
+                className="h-full bg-luxury-gold/80 transition-all duration-300 ease-out"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
         {error && <p className="text-sm text-red-400 mb-2">{error}</p>}
         <div className="flex flex-wrap justify-end gap-2">
           {handleRestore && (
@@ -438,7 +480,7 @@ function EditableMediaModal({
             disabled={uploading}
             className="rounded-xl bg-luxury-gold/20 text-luxury-gold px-4 py-2 text-sm font-medium hover:bg-luxury-gold/30 disabled:opacity-50"
           >
-            {uploading ? "Uploading…" : "Choose file"}
+            {uploading ? `${uploadProgress}%` : "Choose file"}
           </button>
         </div>
       </div>

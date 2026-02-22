@@ -79,8 +79,8 @@ export default function RootPageContent() {
         </div>
       )}
 
-      {/* Same as [locale] home: hero video + edit icon from PersistentHomeHeroVideo, HeroSection skips video */}
-      <PersistentHomeHeroVideo />
+      {/* Hero video + edit icon only after splash complete */}
+      <PersistentHomeHeroVideo splashComplete={splashComplete} />
       {/* Main Content - Always render, control visibility */}
       <div
         style={{
