@@ -92,7 +92,7 @@ export default function RootPageContent() {
         }}
       >
         <Navbar />
-        <main className="min-h-screen bg-black">
+        <main className="min-h-screen bg-transparent">
           <HeroSection shouldAnimate={splashComplete} skipVideo />
         </main>
       </div>

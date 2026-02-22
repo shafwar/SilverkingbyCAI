@@ -499,7 +499,7 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
   return (
     <section
       ref={containerRef}
-      className="relative h-screen w-full overflow-hidden bg-black hero-section-transition"
+      className={`relative h-screen w-full overflow-hidden hero-section-transition ${skipVideo ? "bg-transparent" : "bg-black"}`}
       style={{
         pointerEvents: "auto",
         // ALWAYS ensure HeroSection participates in page transition blur
