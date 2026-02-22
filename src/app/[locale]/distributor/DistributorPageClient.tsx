@@ -3,7 +3,7 @@
 import Navbar from "@/components/layout/Navbar";
 import { DistributorCard, type DistributorItem } from "@/components/distributor/DistributorCard";
 import { DistributorForm } from "@/components/admin/DistributorForm";
-import { EditableMedia } from "@/components/editable-media";
+import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import { motion, type Variants } from "framer-motion";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
@@ -188,16 +188,18 @@ export default function DistributorPageClient({
         </div>
         {/* Subtle dark gradient overlay for readability and professional look */}
         <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
-        <EditableMedia
-          page="distributor"
-          section="hero"
-          type="image"
-          overlayOnly
-          onUploadDone={refetchPageSections}
-        />
       </div>
 
       <Navbar />
+
+      {/* Hero edit: same pattern as Home (portal + delay, same Replace image pop-up) */}
+      <HeroEditPortal
+        page="distributor"
+        section="hero"
+        type="image"
+        onUploadDone={refetchPageSections}
+        editLabel="Edit photo"
+      />
 
       {/* Hero Section – same height and layout as Products (min-h-screen, left-aligned) */}
       <section className="relative flex min-h-screen items-center justify-start overflow-hidden">

@@ -10,6 +10,7 @@ import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { usePageSections } from "@/hooks/usePageSections";
 import { EditableMedia } from "@/components/editable-media";
+import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import {
   Sparkles,
   FlaskConical,
@@ -514,17 +515,14 @@ export default function WhatWeDoPageClient() {
           </video>
         </div>
 
-        {/* Hero edit: small corner box only – no full-screen overlay so navbar/buttons stay clickable */}
-        <div className="fixed top-20 right-4 sm:right-6 z-[10002] pointer-events-auto">
-          <EditableMedia
-            page="what-we-do"
-            section="hero"
-            type="video"
-            overlayOnly
-            onUploadDone={refetchPageSections}
-            editLabel="Edit video"
-          />
-        </div>
+        {/* Hero edit: same pattern as Home (portal + delay, same Replace video pop-up) */}
+        <HeroEditPortal
+          page="what-we-do"
+          section="hero"
+          type="video"
+          onUploadDone={refetchPageSections}
+          editLabel="Edit video"
+        />
 
         {/* Hero Content - Full left alignment, flush to left edge */}
         <div className="relative z-20 w-full text-left pl-4 sm:pl-6 md:pl-8 lg:pl-12 xl:pl-16 2xl:pl-20 pr-4 sm:pr-6 md:pr-8 lg:pr-12">

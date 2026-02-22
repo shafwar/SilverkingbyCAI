@@ -29,7 +29,7 @@ import { APP_NAME } from "@/utils/constants";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { usePageSections } from "@/hooks/usePageSections";
-import { EditableMedia } from "@/components/editable-media";
+import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 
 // workflowSteps will be created inside AuthenticityPage component using translations
 
@@ -604,17 +604,14 @@ export default function AuthenticityPageClient() {
         </div>
       </div>
 
-      {/* Hero edit: small corner box only – no full-screen overlay so navbar/buttons stay clickable */}
-      <div className="fixed top-20 right-4 sm:right-6 z-[10002] pointer-events-auto">
-        <EditableMedia
-          page="authenticity"
-          section="hero"
-          type="video"
-          overlayOnly
-          onUploadDone={refetchPageSections}
-          editLabel="Edit video"
-        />
-      </div>
+      {/* Hero edit: same pattern as Home (portal + delay, same Replace video pop-up) */}
+      <HeroEditPortal
+        page="authenticity"
+        section="hero"
+        type="video"
+        onUploadDone={refetchPageSections}
+        editLabel="Edit video"
+      />
 
       {/* Hero Section – same size & layout as Distributor (min-h-screen, left-aligned, scroll button) */}
       <section

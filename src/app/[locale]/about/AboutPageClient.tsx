@@ -8,7 +8,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { usePageSections } from "@/hooks/usePageSections";
-import { EditableMedia } from "@/components/editable-media";
+import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import { PageLoadingSkeleton } from "@/components/ui/PageLoadingSkeleton";
 // Lazy load CertificateCard to improve initial page load
 const CertificateCard = dynamic(() => import("@/components/ui/CertificateCard"), {
@@ -353,17 +353,14 @@ export default function AboutPageClient() {
         <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
       </div>
 
-      {/* Hero edit: small corner box only – no full-screen overlay so navbar/buttons stay clickable */}
-      <div className="fixed top-20 right-4 sm:right-6 z-[10002] pointer-events-auto">
-        <EditableMedia
-          page="about"
-          section="hero"
-          type="video"
-          overlayOnly
-          onUploadDone={refetchPageSections}
-          editLabel="Edit video"
-        />
-      </div>
+      {/* Hero edit: same pattern as Home (portal + delay, same Replace video pop-up) */}
+      <HeroEditPortal
+        page="about"
+        section="hero"
+        type="video"
+        onUploadDone={refetchPageSections}
+        editLabel="Edit video"
+      />
 
       {/* Hero Section – same size & layout as Distributor (min-h-screen, left-aligned, scroll button) */}
       <section className="relative flex min-h-screen items-center justify-start overflow-hidden">
