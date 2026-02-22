@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useRef, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { usePageSections } from "@/hooks/usePageSections";
 import { EditableMedia } from "@/components/editable-media";
@@ -68,10 +69,11 @@ export function PersistentHomeHeroVideo() {
       {/* Vignette / dark motif - Home only */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/60 pointer-events-none" />
       <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-transparent to-black/40 pointer-events-none" />
-      {isHome && (
-        <div className="absolute inset-0 pointer-events-none z-10">
-          {/* Icon pensil di bawah navbar agar terlihat di area video */}
-          <div className="absolute top-20 right-4 sm:right-6 pointer-events-auto z-[101]">
+      {/* Edit button via portal so it sits above page content (z-1) and is always clickable */}
+      {isHome &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="fixed top-20 right-4 sm:right-6 z-[10002] pointer-events-auto">
             <EditableMedia
               page="home"
               section="hero"
@@ -80,9 +82,9 @@ export function PersistentHomeHeroVideo() {
               onUploadDone={refetch}
               editLabel="Edit video"
             />
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

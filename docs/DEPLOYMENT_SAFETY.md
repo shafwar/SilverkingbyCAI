@@ -35,3 +35,9 @@ git push origin main
 Setelah push, pastikan production:
 - Sudah jalankan `npx prisma migrate deploy` bila ada migrasi baru
 - Env `DATABASE_URL` dan (opsional) `NEXT_PUBLIC_R2_PUBLIC_URL` sudah diset
+
+---
+
+## Last deployment note
+
+- **Video hero edit (clickable + modal):** Home edit button via portal; What We Do, Authenticity, Products, About hero edit overlay above content (z-10002); replace-video modal rendered to `document.body` (portal) for correct on-screen position. No DB migration required.

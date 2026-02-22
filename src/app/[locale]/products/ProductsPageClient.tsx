@@ -1133,17 +1133,6 @@ export default function ProductsPageClient() {
         >
           <source src={heroVideoUrl} type="video/mp4" />
         </video>
-        <div className="absolute inset-0 z-20 pointer-events-auto">
-          <EditableMedia
-            page="products"
-            section="hero"
-            type="video"
-            overlayOnly
-            fullAreaClickable
-            onUploadDone={refetchPageSections}
-          />
-        </div>
-
         {/* Fade to Black Overlay - Controlled by ScrollTrigger */}
         <div
           ref={fadeOverlayRef}
@@ -1153,6 +1142,20 @@ export default function ProductsPageClient() {
       </div>
 
       <Navbar />
+
+      {/* Hero edit overlay: above content so icon is clickable */}
+      <div className="fixed inset-0 z-[10002] pointer-events-none">
+        <div className="absolute inset-0 pointer-events-auto">
+          <EditableMedia
+            page="products"
+            section="hero"
+            type="video"
+            overlayOnly
+            fullAreaClickable
+            onUploadDone={refetchPageSections}
+          />
+        </div>
+      </div>
 
       {/* ENHANCED: Hero Section - Full Screen, matching What We Do exactly */}
       <section

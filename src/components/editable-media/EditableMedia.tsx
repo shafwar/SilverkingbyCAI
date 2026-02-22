@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { Pencil, RotateCcw } from "lucide-react";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
@@ -137,7 +138,7 @@ export function EditableMedia({
       ? "flex h-11 items-center gap-2 rounded-xl border-2 border-luxury-gold bg-luxury-gold/25 px-3 py-2.5 text-luxury-gold shadow-lg backdrop-blur-sm transition hover:bg-luxury-gold/40 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50"
       : "flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-black/50 text-white/80 backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50";
     const buttons = isAdmin ? (
-      <div className="absolute top-3 right-3 z-20 flex items-center gap-2">
+      <div className="absolute top-3 right-3 z-[10002] flex items-center gap-2">
         {hasCustomMedia && (
           <button
             type="button"
@@ -166,29 +167,36 @@ export function EditableMedia({
       <>
         {isAdmin && fullAreaClickable && (
           <div
-            className="absolute inset-0 z-10 cursor-pointer"
+            className="absolute inset-0 z-[10001] cursor-pointer"
             onClick={handleEditClick}
             aria-hidden
           />
         )}
         {buttons}
-        {modalOpen && (
-          <EditableMediaModal
-            onClose={() => setModalOpen(false)}
-            type={type}
-            fileInputRef={fileInputRef}
-            handleFileChange={handleFileChange}
-            handleRestore={hasCustomMedia ? handleRestore : undefined}
-            restoring={restoring}
-            uploading={uploading}
-            error={error}
-          />
-        )}
+        {modalOpen &&
+          typeof document !== "undefined" &&
+          createPortal(
+            <EditableMediaModal
+              onClose={() => setModalOpen(false)}
+              type={type}
+              fileInputRef={fileInputRef}
+              handleFileChange={handleFileChange}
+              handleRestore={hasCustomMedia ? handleRestore : undefined}
+              restoring={restoring}
+              uploading={uploading}
+              error={error}
+            />,
+            document.body
+          )}
       </>
     );
 
     if (fullAreaClickable) {
-      return <div className="absolute inset-0 pointer-events-auto">{content}</div>;
+      return (
+        <div className="absolute inset-0 pointer-events-auto z-[10002]">
+          {content}
+        </div>
+      );
     }
     return content;
   }
@@ -248,18 +256,21 @@ export function EditableMedia({
           </button>
         </div>
       )}
-      {modalOpen && (
-        <EditableMediaModal
-          onClose={() => setModalOpen(false)}
-          type={type}
-          fileInputRef={fileInputRef}
-          handleFileChange={handleFileChange}
-          handleRestore={hasCustomMedia ? handleRestore : undefined}
-          restoring={restoring}
-          uploading={uploading}
-          error={error}
-        />
-      )}
+      {modalOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <EditableMediaModal
+            onClose={() => setModalOpen(false)}
+            type={type}
+            fileInputRef={fileInputRef}
+            handleFileChange={handleFileChange}
+            handleRestore={hasCustomMedia ? handleRestore : undefined}
+            restoring={restoring}
+            uploading={uploading}
+            error={error}
+          />,
+          document.body
+        )}
     </div>
   );
 }
@@ -283,25 +294,44 @@ function EditableMediaModal({
   uploading: boolean;
   error: string | null;
 }) {
+  useEffect(() => {
+    const onEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onEscape);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onEscape);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto"
-      style={{ position: "fixed", left: 0, right: 0, top: 0, bottom: 0 }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="editable-media-modal-title"
+      className="fixed inset-0 z-[10003] flex items-center justify-center p-4"
+      style={{
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0,0,0,0.75)",
+        backdropFilter: "blur(8px)",
+      }}
       onClick={onClose}
     >
       <div
         className="w-full max-w-md rounded-2xl border border-white/15 bg-[#0a0a0a] p-6 shadow-2xl"
         style={{
-          position: "fixed",
-          left: "50%",
-          top: "50%",
-          transform: "translate(-50%, -50%)",
-          maxHeight: "min(90vh, 420px)",
+          maxHeight: "calc(100vh - 2rem)",
           overflow: "auto",
+          margin: "auto",
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-semibold text-white mb-4">
+        <h3 id="editable-media-modal-title" className="text-lg font-semibold text-white mb-4">
           Replace {type === "image" ? "image" : "video"}
         </h3>
         <input

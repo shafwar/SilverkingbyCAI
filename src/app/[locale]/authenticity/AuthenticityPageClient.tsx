@@ -589,16 +589,6 @@ export default function AuthenticityPageClient() {
           <source src={heroVideoUrl} type="video/mp4" />
         </video>
         <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
-        <div className="absolute inset-0 z-20 pointer-events-auto">
-          <EditableMedia
-            page="authenticity"
-            section="hero"
-            type="video"
-            overlayOnly
-            fullAreaClickable
-            onUploadDone={refetchPageSections}
-          />
-        </div>
         <div className="absolute inset-0 pointer-events-none z-[15]">
           {Array.from({ length: 6 }).map((_, i) => (
             <motion.div
@@ -611,6 +601,20 @@ export default function AuthenticityPageClient() {
               }}
             />
           ))}
+        </div>
+      </div>
+
+      {/* Hero edit overlay: above content so icon is clickable */}
+      <div className="fixed inset-0 z-[10002] pointer-events-none">
+        <div className="absolute inset-0 pointer-events-auto">
+          <EditableMedia
+            page="authenticity"
+            section="hero"
+            type="video"
+            overlayOnly
+            fullAreaClickable
+            onUploadDone={refetchPageSections}
+          />
         </div>
       </div>
 

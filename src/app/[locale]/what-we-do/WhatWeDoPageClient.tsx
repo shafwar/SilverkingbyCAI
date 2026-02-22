@@ -512,7 +512,11 @@ export default function WhatWeDoPageClient() {
           >
             <source src={heroVideoUrl} type="video/mp4" />
           </video>
-          <div className="absolute inset-0 z-20 pointer-events-auto">
+        </div>
+
+        {/* Hero edit overlay: above content so icon is clickable */}
+        <div className="fixed inset-0 z-[10002] pointer-events-none">
+          <div className="absolute inset-0 pointer-events-auto">
             <EditableMedia
               page="what-we-do"
               section="hero"

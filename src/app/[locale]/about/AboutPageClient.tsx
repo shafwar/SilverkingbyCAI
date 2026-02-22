@@ -351,7 +351,11 @@ export default function AboutPageClient() {
           }}
         />
         <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
-        <div className="absolute inset-0 z-20 pointer-events-auto">
+      </div>
+
+      {/* Hero edit overlay: above content so icon is clickable */}
+      <div className="fixed inset-0 z-[10002] pointer-events-none">
+        <div className="absolute inset-0 pointer-events-auto">
           <EditableMedia
             page="about"
             section="hero"
