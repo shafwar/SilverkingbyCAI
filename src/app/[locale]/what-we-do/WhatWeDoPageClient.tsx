@@ -133,6 +133,7 @@ const NarrativeImageSection = forwardRef<
     cards: ReadonlyArray<{
       readonly label: string;
       readonly caption: string;
+      readonly mediaType?: string;
       readonly images: readonly string[];
     }>;
     title?: string;
@@ -193,7 +194,8 @@ const NarrativeImageSection = forwardRef<
         {/* Enhanced Cards - Pixelmatters style - aligned properly */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 lg:gap-8 pb-6 md:pb-0">
           {cards.map((card, idx) => {
-            const currentImage = card.images[0];
+            const mediaUrl = card.images[0];
+            const isVideo = card.mediaType?.toUpperCase() === "VIDEO";
             const imageKey = `${idx}-0`;
             const isImageLoaded = imageLoaded[imageKey];
 
@@ -222,43 +224,54 @@ const NarrativeImageSection = forwardRef<
                     e.currentTarget.style.boxShadow = "";
                   }}
                 >
-                  {/* Image container - large image at top */}
+                  {/* Media container - image or video at top */}
                   <div className="relative w-full flex-[0_0_65%] overflow-hidden bg-black/40">
-                    {/* Loading placeholder */}
-                    {!isImageLoaded && (
+                    {/* Loading placeholder (images only) */}
+                    {!isVideo && !isImageLoaded && (
                       <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-black/60 to-black/40 z-10">
                         <div className="h-6 w-6 sm:h-8 sm:w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
                       </div>
                     )}
 
-                    {/* Image */}
+                    {/* Image or video (flexible replace) */}
                     <div
                       className={`absolute inset-0 transition-opacity duration-300 ease-out ${
-                        isImageLoaded ? "opacity-100" : "opacity-0"
+                        isVideo || isImageLoaded ? "opacity-100" : "opacity-0"
                       }`}
                       style={{
-                        willChange: isImageLoaded ? "auto" : "opacity",
+                        willChange: isVideo || isImageLoaded ? "auto" : "opacity",
                       }}
                     >
-                      <Image
-                        src={currentImage}
-                        alt={card.label}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 440px"
-                        priority
-                        loading="eager"
-                        quality={isMobile ? 75 : 92}
-                        fetchPriority="high"
-                        placeholder="blur"
-                        blurDataURL="data:image/svg+xml,%3Csvg width='16' height='12' xmlns='http://www.w3.org/2000/svg'%3E%3ClinearGradient id='g'%3E%3Cstop stop-color='%23090'/%3E%3Cstop offset='1' stop-color='%23000'/%3E%3C/linearGradient%3E%3Crect width='16' height='12' fill='url(%23g)'/%3E%3C/svg%3E"
-                        onLoadingComplete={() => {
-                          setImageLoaded((prev) => ({
-                            ...prev,
-                            [imageKey]: true,
-                          }));
-                        }}
-                      />
+                      {isVideo ? (
+                        <video
+                          src={mediaUrl}
+                          className="absolute inset-0 w-full h-full object-cover"
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                        />
+                      ) : (
+                        <Image
+                          src={mediaUrl}
+                          alt={card.label}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 440px"
+                          priority
+                          loading="eager"
+                          quality={isMobile ? 75 : 92}
+                          fetchPriority="high"
+                          placeholder="blur"
+                          blurDataURL="data:image/svg+xml,%3Csvg width='16' height='12' xmlns='http://www.w3.org/2000/svg'%3E%3ClinearGradient id='g'%3E%3Cstop stop-color='%23090'/%3E%3Cstop offset='1' stop-color='%23000'/%3E%3C/linearGradient%3E%3Crect width='16' height='12' fill='url(%23g)'/%3E%3C/svg%3E"
+                          onLoadingComplete={() => {
+                            setImageLoaded((prev) => ({
+                              ...prev,
+                              [imageKey]: true,
+                            }));
+                          }}
+                        />
+                      )}
                     </div>
                     {sectionKeys?.[idx] && refetchSections && (
                       <div className="absolute top-2 right-2 z-20 pointer-events-auto">
@@ -312,21 +325,24 @@ export default function WhatWeDoPageClient() {
   const sectionsRef = useRef<(HTMLDivElement | null)[]>([]);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const { sections: pageSections, refetch: refetchPageSections } = usePageSections("what-we-do");
-  const heroVideoUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/metal crafting hands.mp4");
-  const footerVideoUrl = pageSections.section_footer_video?.url ?? getR2UrlClient("/videos/hero/molten metal slow motion.mp4");
+  const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
+  const heroMediaUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/metal crafting hands.mp4");
+  const footerMediaType = pageSections.section_footer_video?.mediaType?.toUpperCase() ?? "VIDEO";
+  const footerMediaUrl = pageSections.section_footer_video?.url ?? getR2UrlClient("/videos/hero/molten metal slow motion.mp4");
 
-  // Preload first craft card image for faster perceived load
-  const firstCraftImageUrl =
+  // Preload first craft card image when it's an image (flexible replace)
+  const firstCraftIsImage = (pageSections.craft_card_1?.mediaType?.toUpperCase() ?? "IMAGE") === "IMAGE";
+  const firstCraftMediaUrl =
     pageSections.craft_card_1?.url ?? getR2UrlClient("/images/pexels-3d-render-1058120333-33539240.jpg");
   useEffect(() => {
-    if (!firstCraftImageUrl) return;
+    if (!firstCraftIsImage || !firstCraftMediaUrl) return;
     const link = document.createElement("link");
     link.rel = "preload";
     link.as = "image";
-    link.href = firstCraftImageUrl;
+    link.href = firstCraftMediaUrl;
     document.head.appendChild(link);
     return () => link.remove();
-  }, [firstCraftImageUrl]);
+  }, [firstCraftIsImage, firstCraftMediaUrl]);
 
   // Ensure what-we-do hero video autoplays reliably on all devices
   useReliableVideoAutoplay(videoRef);
@@ -381,6 +397,7 @@ export default function WhatWeDoPageClient() {
       {
         label: t("card1.label"),
         caption: t("card1.caption"),
+        mediaType: pageSections.craft_card_1?.mediaType ?? "IMAGE",
         images: [
           pageSections.craft_card_1?.url ?? getR2UrlClient("/images/pexels-3d-render-1058120333-33539240.jpg"),
           getR2UrlClient("/images/pexels-sejio402-29336321.jpg"),
@@ -390,6 +407,7 @@ export default function WhatWeDoPageClient() {
       {
         label: t("card2.label"),
         caption: t("card2.caption"),
+        mediaType: pageSections.craft_card_2?.mediaType ?? "IMAGE",
         images: [
           pageSections.craft_card_2?.url ?? getR2UrlClient("/images/pexels-michael-steinberg-95604-386318.jpg"),
           getR2UrlClient("/images/pexels-sejio402-29336326.jpg"),
@@ -399,6 +417,7 @@ export default function WhatWeDoPageClient() {
       {
         label: t("card3.label"),
         caption: t("card3.caption"),
+        mediaType: pageSections.craft_card_3?.mediaType ?? "IMAGE",
         images: [
           pageSections.craft_card_3?.url ?? getR2UrlClient("/images/pexels-sejio402-29336327.jpg"),
           getR2UrlClient("/images/pexels-sejio402-29336321.jpg"),
@@ -406,7 +425,7 @@ export default function WhatWeDoPageClient() {
         ],
       },
     ],
-    [t, pageSections.craft_card_1?.url, pageSections.craft_card_2?.url, pageSections.craft_card_3?.url]
+    [t, pageSections.craft_card_1?.url, pageSections.craft_card_1?.mediaType, pageSections.craft_card_2?.url, pageSections.craft_card_2?.mediaType, pageSections.craft_card_3?.url, pageSections.craft_card_3?.mediaType]
   );
 
   useGSAP(
@@ -483,37 +502,53 @@ export default function WhatWeDoPageClient() {
         }}
         className="relative flex min-h-screen items-center justify-start overflow-hidden"
       >
-        {/* Full Screen Video Background – gradient overlay match Distributor */}
+        {/* Full Screen Hero Background – video or image (flexible replace) */}
         <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
           <div className="absolute inset-0 bg-luxury-black z-0" />
           <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
 
-          <video
-            key={heroVideoUrl}
-            ref={videoRef}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            className="absolute inset-0 w-screen h-screen object-cover transition-opacity duration-1000 z-10 pointer-events-none select-none"
-            style={{
-              objectFit: "cover",
-              objectPosition: "center center",
-              width: "100vw",
-              height: "100vh",
-              pointerEvents: "none",
-              outline: "none",
-              WebkitTapHighlightColor: "transparent",
-              WebkitTouchCallout: "none",
-              userSelect: "none",
-              transform: "none",
-            }}
-            disablePictureInPicture
-            disableRemotePlayback
-          >
-            <source src={heroVideoUrl} type="video/mp4" />
-          </video>
+          {heroMediaType === "VIDEO" ? (
+            <video
+              key={heroMediaUrl}
+              ref={videoRef}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="auto"
+              className="absolute inset-0 w-screen h-screen object-cover transition-opacity duration-1000 z-10 pointer-events-none select-none"
+              style={{
+                objectFit: "cover",
+                objectPosition: "center center",
+                width: "100vw",
+                height: "100vh",
+                pointerEvents: "none",
+                outline: "none",
+                WebkitTapHighlightColor: "transparent",
+                WebkitTouchCallout: "none",
+                userSelect: "none",
+                transform: "none",
+              }}
+              disablePictureInPicture
+              disableRemotePlayback
+            >
+              <source src={heroMediaUrl} type="video/mp4" />
+            </video>
+          ) : (
+            <img
+              key={heroMediaUrl}
+              src={heroMediaUrl}
+              alt=""
+              className="absolute inset-0 w-screen h-screen object-cover transition-opacity duration-1000 z-10 pointer-events-none select-none"
+              style={{
+                objectFit: "cover",
+                objectPosition: "center center",
+                width: "100vw",
+                height: "100vh",
+                pointerEvents: "none",
+              }}
+            />
+          )}
         </div>
 
         {/* Hero edit: same pattern as Home (portal + delay, same Replace video pop-up) */}
@@ -679,147 +714,107 @@ export default function WhatWeDoPageClient() {
         }}
         className="relative min-h-[50vh] sm:min-h-[60vh] md:min-h-[70vh] flex flex-col justify-between px-4 sm:px-6 md:px-8 lg:px-12 py-12 sm:py-16 md:py-20 lg:py-24 overflow-hidden isolate"
       >
-        {/* Video Background - properly contained */}
+        {/* Footer background – video or image (flexible replace) */}
         <div className="absolute inset-0 z-0 overflow-hidden">
-          <video
-            ref={(video) => {
-              if (video) {
-                // Optimal video autoplay handling - ensure video never pauses or breaks
-                const forcePlay = async () => {
-                  try {
-                    if (video.paused && !video.ended) {
-                      await video.play();
+          {footerMediaType === "VIDEO" ? (
+            <video
+              key={footerMediaUrl}
+              ref={(video) => {
+                if (video) {
+                  const forcePlay = async () => {
+                    try {
+                      if (video.paused && !video.ended) await video.play();
+                    } catch (error) {
+                      console.warn("[WhatWeDoPage] Video autoplay prevented, retrying:", error);
+                      setTimeout(() => {
+                        video.play().catch(() => {
+                          setTimeout(() => video.play().catch(() => {}), 500);
+                        });
+                      }, 100);
                     }
-                  } catch (error) {
-                    console.warn("[WhatWeDoPage] Video autoplay prevented, retrying:", error);
-                    // Retry after a short delay with exponential backoff
-                    setTimeout(() => {
-                      video.play().catch(() => {
-                        // Second retry after longer delay
-                        setTimeout(() => {
-                          video.play().catch(() => {
-                            console.warn(
-                              "[WhatWeDoPage] Video autoplay failed after multiple retries"
-                            );
-                          });
-                        }, 500);
-                      });
-                    }, 100);
-                  }
-                };
-
-                // Handle video ready states
-                const handleCanPlay = () => {
-                  forcePlay();
-                };
-
-                const handleLoadedData = () => {
-                  forcePlay();
-                };
-
-                // Handle video errors
-                const handleError = () => {
-                  console.warn("[WhatWeDoPage] Video error occurred");
-                };
-
-                // Resume video if it pauses (prevent breaks)
-                const handlePause = () => {
-                  if (!video.ended) {
-                    // Small delay to avoid infinite loop
-                    setTimeout(() => {
-                      if (video.paused && !video.ended) {
-                        forcePlay();
-                      }
-                    }, 50);
-                  }
-                };
-
-                // Handle visibility change - resume video when page becomes visible
-                const handleVisibilityChange = () => {
-                  if (!document.hidden && video.paused && !video.ended) {
+                  };
+                  const handleCanPlay = () => forcePlay();
+                  const handleLoadedData = () => forcePlay();
+                  const handleError = () => console.warn("[WhatWeDoPage] Video error occurred");
+                  const handlePause = () => {
+                    if (!video.ended) {
+                      setTimeout(() => {
+                        if (video.paused && !video.ended) forcePlay();
+                      }, 50);
+                    }
+                  };
+                  const handleVisibilityChange = () => {
+                    if (!document.hidden && video.paused && !video.ended) forcePlay();
+                  };
+                  const handleEnded = () => {
+                    video.currentTime = 0;
                     forcePlay();
-                  }
-                };
-
-                // Handle video end - restart immediately for seamless loop
-                const handleEnded = () => {
-                  video.currentTime = 0;
+                  };
+                  const handleWaiting = () => {
+                    if (video.paused && !video.ended) setTimeout(() => forcePlay(), 100);
+                  };
                   forcePlay();
-                };
-
-                // Handle video waiting/buffering - resume when ready
-                const handleWaiting = () => {
-                  // Video is buffering, will resume automatically when ready
-                  // But we can also try to play if it's paused
-                  if (video.paused && !video.ended) {
-                    setTimeout(() => {
-                      forcePlay();
-                    }, 100);
-                  }
-                };
-
-                // Initial play attempt
-                forcePlay();
-
-                // Event listeners
-                video.addEventListener("canplay", handleCanPlay);
-                video.addEventListener("loadeddata", handleLoadedData);
-                video.addEventListener("error", handleError);
-                video.addEventListener("pause", handlePause);
-                video.addEventListener("ended", handleEnded);
-                video.addEventListener("waiting", handleWaiting);
-                document.addEventListener("visibilitychange", handleVisibilityChange);
-
-                // Force load video to ensure it starts loading immediately
-                video.load();
-
-                // Periodic check to ensure video is playing (fallback mechanism)
-                const playCheckInterval = setInterval(() => {
-                  if (video.paused && !video.ended && !document.hidden) {
-                    forcePlay();
-                  }
-                }, 2000); // Check every 2 seconds
-
-                // Cleanup stored on video element
-                (video as any).__cleanup = () => {
-                  video.removeEventListener("canplay", handleCanPlay);
-                  video.removeEventListener("loadeddata", handleLoadedData);
-                  video.removeEventListener("error", handleError);
-                  video.removeEventListener("pause", handlePause);
-                  video.removeEventListener("ended", handleEnded);
-                  video.removeEventListener("waiting", handleWaiting);
-                  document.removeEventListener("visibilitychange", handleVisibilityChange);
-                  clearInterval(playCheckInterval);
-                };
-              }
-            }}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            className="absolute inset-0 w-full h-full transition-opacity duration-1000 z-10"
-            style={{
-              // ENHANCED: Better proportional scaling for footer video - NO zoom
-              objectFit: "cover",
-              objectPosition: "center center",
-              width: "100%",
-              height: "100%",
-              transform: "scale(1)", // Explicitly set scale to 1 (no zoom)
-              transformOrigin: "center center",
-            }}
-            disablePictureInPicture
-            disableRemotePlayback
-            onContextMenu={(e) => e.preventDefault()}
-            onPlay={(e) => {
-              const video = e.currentTarget;
-              if (video.paused) {
-                video.play().catch(() => {});
-              }
-            }}
-          >
-            <source src={footerVideoUrl} type="video/mp4" />
-          </video>
+                  video.addEventListener("canplay", handleCanPlay);
+                  video.addEventListener("loadeddata", handleLoadedData);
+                  video.addEventListener("error", handleError);
+                  video.addEventListener("pause", handlePause);
+                  video.addEventListener("ended", handleEnded);
+                  video.addEventListener("waiting", handleWaiting);
+                  document.addEventListener("visibilitychange", handleVisibilityChange);
+                  video.load();
+                  const playCheckInterval = setInterval(() => {
+                    if (video.paused && !video.ended && !document.hidden) forcePlay();
+                  }, 2000);
+                  (video as any).__cleanup = () => {
+                    video.removeEventListener("canplay", handleCanPlay);
+                    video.removeEventListener("loadeddata", handleLoadedData);
+                    video.removeEventListener("error", handleError);
+                    video.removeEventListener("pause", handlePause);
+                    video.removeEventListener("ended", handleEnded);
+                    video.removeEventListener("waiting", handleWaiting);
+                    document.removeEventListener("visibilitychange", handleVisibilityChange);
+                    clearInterval(playCheckInterval);
+                  };
+                }
+              }}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="auto"
+              className="absolute inset-0 w-full h-full transition-opacity duration-1000 z-10"
+              style={{
+                objectFit: "cover",
+                objectPosition: "center center",
+                width: "100%",
+                height: "100%",
+                transform: "scale(1)",
+                transformOrigin: "center center",
+              }}
+              disablePictureInPicture
+              disableRemotePlayback
+              onContextMenu={(e) => e.preventDefault()}
+              onPlay={(e) => {
+                const v = e.currentTarget;
+                if (v.paused) v.play().catch(() => {});
+              }}
+            >
+              <source src={footerMediaUrl} type="video/mp4" />
+            </video>
+          ) : (
+            <img
+              key={footerMediaUrl}
+              src={footerMediaUrl}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 z-10"
+              style={{
+                objectFit: "cover",
+                objectPosition: "center center",
+                width: "100%",
+                height: "100%",
+              }}
+            />
+          )}
           <div className="absolute top-3 right-3 z-20 pointer-events-auto">
             <EditableMedia
               page="what-we-do"

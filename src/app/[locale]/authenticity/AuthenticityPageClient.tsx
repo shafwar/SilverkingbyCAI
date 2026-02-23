@@ -356,7 +356,8 @@ export default function AuthenticityPageClient() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const router = useRouter();
   const { sections: pageSections, refetch: refetchPageSections } = usePageSections("authenticity");
-  const heroVideoUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/mobile scanning qr.mp4");
+  const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
+  const heroMediaUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/mobile scanning qr.mp4");
 
   // Register ScrollTrigger only on the client to avoid SSR/window issues
   useEffect(() => {
@@ -559,36 +560,46 @@ export default function AuthenticityPageClient() {
 
       <Navbar />
 
-      {/* Hero: fixed full-viewport background (match Distributor) */}
+      {/* Hero: fixed full-viewport background – video or image (flexible replace) */}
       <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
         <div className="absolute inset-0 bg-luxury-black z-0" />
-        <video
-          key={heroVideoUrl}
-          ref={videoRef}
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          disablePictureInPicture
-          disableRemotePlayback
-          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 z-10 pointer-events-none select-none ${
-            isVideoLoaded ? "opacity-100" : "opacity-0"
-          }`}
-          style={{
-            pointerEvents: "none",
-            outline: "none",
-            WebkitTapHighlightColor: "transparent",
-            userSelect: "none",
-          }}
-          onContextMenu={(e) => e.preventDefault()}
-          onPlay={(e) => {
-            const video = e.currentTarget;
-            if (video.paused) video.play().catch(() => {});
-          }}
-        >
-          <source src={heroVideoUrl} type="video/mp4" />
-        </video>
+        {heroMediaType === "VIDEO" ? (
+          <video
+            key={heroMediaUrl}
+            ref={videoRef}
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+            disablePictureInPicture
+            disableRemotePlayback
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 z-10 pointer-events-none select-none ${
+              isVideoLoaded ? "opacity-100" : "opacity-0"
+            }`}
+            style={{
+              pointerEvents: "none",
+              outline: "none",
+              WebkitTapHighlightColor: "transparent",
+              userSelect: "none",
+            }}
+            onContextMenu={(e) => e.preventDefault()}
+            onPlay={(e) => {
+              const video = e.currentTarget;
+              if (video.paused) video.play().catch(() => {});
+            }}
+          >
+            <source src={heroMediaUrl} type="video/mp4" />
+          </video>
+        ) : (
+          <img
+            key={heroMediaUrl}
+            src={heroMediaUrl}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 z-10 pointer-events-none select-none opacity-100"
+            style={{ pointerEvents: "none" }}
+          />
+        )}
         <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
         <div className="absolute inset-0 pointer-events-none z-[15]">
           {Array.from({ length: 6 }).map((_, i) => (

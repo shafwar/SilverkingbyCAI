@@ -190,7 +190,8 @@ export default function AboutPageClient() {
   const gradientOverlay = useRef<HTMLDivElement | null>(null);
   const heroVideoRef = useRef<HTMLVideoElement | null>(null);
   const { sections: pageSections, refetch: refetchPageSections } = usePageSections("about");
-  const heroVideoUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/gold-footage.mp4");
+  const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
+  const heroMediaUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/gold-footage.mp4");
 
   // Ensure about-page hero video autoplays reliably on all devices
   useReliableVideoAutoplay(heroVideoRef);
@@ -324,33 +325,43 @@ export default function AboutPageClient() {
       {/* Navbar */}
       <Navbar />
 
-      {/* Hero: fixed full-viewport background (match Distributor) */}
+      {/* Hero: fixed full-viewport background – video or image (flexible replace) */}
       <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
         <div className="absolute inset-0 bg-luxury-black z-0" />
-        <video
-          key={heroVideoUrl}
-          ref={heroVideoRef}
-          className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
-          src={heroVideoUrl}
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          disablePictureInPicture
-          disableRemotePlayback
-          style={{
-            pointerEvents: "none",
-            outline: "none",
-            WebkitTapHighlightColor: "transparent",
-            userSelect: "none",
-          }}
-          onContextMenu={(e) => e.preventDefault()}
-          onPlay={(e) => {
-            const video = e.currentTarget;
-            if (video.paused) video.play().catch(() => {});
-          }}
-        />
+        {heroMediaType === "VIDEO" ? (
+          <video
+            key={heroMediaUrl}
+            ref={heroVideoRef}
+            className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
+            src={heroMediaUrl}
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+            disablePictureInPicture
+            disableRemotePlayback
+            style={{
+              pointerEvents: "none",
+              outline: "none",
+              WebkitTapHighlightColor: "transparent",
+              userSelect: "none",
+            }}
+            onContextMenu={(e) => e.preventDefault()}
+            onPlay={(e) => {
+              const video = e.currentTarget;
+              if (video.paused) video.play().catch(() => {});
+            }}
+          />
+        ) : (
+          <img
+            key={heroMediaUrl}
+            src={heroMediaUrl}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
+            style={{ pointerEvents: "none" }}
+          />
+        )}
         <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
       </div>
 

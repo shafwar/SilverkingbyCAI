@@ -67,6 +67,13 @@ export function EditableMedia({
 
   const url = sections[section]?.url ?? fallbackUrl ?? (type === "image" ? getR2UrlClient("/images/placeholder-hero.jpg") : undefined);
   const hasCustomMedia = Boolean(sections[section]);
+  /** Resolved type for display: use stored mediaType when present (flexible replace), else section default */
+  const displayType: "image" | "video" =
+    sections[section]?.mediaType?.toUpperCase() === "VIDEO"
+      ? "video"
+      : sections[section]?.mediaType?.toUpperCase() === "IMAGE"
+        ? "image"
+        : type;
 
   const closeModal = () => {
     if (typeof document !== "undefined") {
@@ -116,12 +123,25 @@ export function EditableMedia({
     }
   };
 
+  /** Detect upload type from selected file (flexible: section can accept image or video). */
+  const getFileMediaType = (file: File): "image" | "video" | null => {
+    if (file.type.startsWith("image/")) return "image";
+    if (file.type.startsWith("video/")) return "video";
+    return null;
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const limit = type === "image" ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
+    const uploadType = getFileMediaType(file);
+    if (!uploadType) {
+      setError("Use image (JPEG, PNG, WebP) or video (MP4, WebM).");
+      e.target.value = "";
+      return;
+    }
+    const limit = uploadType === "image" ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
     if (file.size > limit) {
-      setError(type === "image" ? "Max 3 MB." : "Max 10 MB.");
+      setError(uploadType === "image" ? "Image max 3 MB." : "Video max 10 MB.");
       e.target.value = "";
       return;
     }
@@ -131,7 +151,7 @@ export function EditableMedia({
     const formData = new FormData();
     formData.set("page", page);
     formData.set("section", section);
-    formData.set("type", type);
+    formData.set("type", uploadType);
     formData.set("file", file);
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/admin/page-sections/upload");
@@ -266,7 +286,7 @@ export function EditableMedia({
 
   return (
     <div className="relative">
-      {type === "image" && url &&
+      {displayType === "image" && url &&
         (fill ? (
           <Image
             src={url}
@@ -283,7 +303,7 @@ export function EditableMedia({
             className={className}
           />
         ))}
-      {type === "video" && url && (
+      {displayType === "video" && url && (
         <video
           src={url}
           className={className}
@@ -395,7 +415,7 @@ function EditableMediaModal({
     };
   }, [onClose]);
 
-  // Same precise container for hero, craft cards, and footer (portal to #cms-modal-root or body)
+  // Same precise container as Home Edit video: viewport-centered so it never appears "too high" (craft/footer)
   return (
     <div
       role="dialog"
@@ -404,12 +424,10 @@ function EditableMediaModal({
       data-cms-replace-modal
       style={{
         position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
+        inset: 0,
         width: "100vw",
         height: "100dvh",
+        minHeight: "100vh",
         zIndex: 1,
         display: "flex",
         alignItems: "center",
@@ -426,11 +444,11 @@ function EditableMediaModal({
         role="document"
         data-cms-replace-modal-inner
         style={{
-          position: "absolute",
+          position: "fixed",
           left: "50%",
           top: "50%",
           transform: "translate(-50%, -50%)",
-          zIndex: 1,
+          zIndex: 2,
           width: "calc(100vw - 32px)",
           maxWidth: 448,
           minWidth: 280,
@@ -446,17 +464,17 @@ function EditableMediaModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h3 id="editable-media-modal-title" className="text-lg font-semibold text-white mb-4">
-          Replace {type === "image" ? "image" : "video"}
+          Replace media
         </h3>
         <input
           ref={fileInputRef as React.RefObject<HTMLInputElement>}
           type="file"
-          accept={type === "image" ? "image/jpeg,image/png,image/webp" : "video/mp4,video/webm"}
+          accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
           className="hidden"
           onChange={handleFileChange}
         />
         <p className="text-sm text-white/60 mb-4">
-          {type === "image" ? "JPEG, PNG or WebP. Max 3 MB. (Compressed for web.)" : "MP4 or WebM. Max 10 MB."}
+          Image: JPEG, PNG or WebP. Max 3 MB. Video: MP4 or WebM. Max 10 MB.
         </p>
         {uploading && (
           <div className="mb-4">

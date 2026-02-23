@@ -278,7 +278,8 @@ export default function ProductsPageClient() {
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
   const [isMounted, setIsMounted] = useState(false);
   const { sections: pageSections, refetch: refetchPageSections } = usePageSections("products");
-  const heroVideoUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/gold-stone.mp4");
+  const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
+  const heroMediaUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/gold-stone.mp4");
 
   // Ensure products hero video autoplays reliably on all devices
   useReliableVideoAutoplay(videoRef);
@@ -1086,53 +1087,69 @@ export default function ProductsPageClient() {
         <div className="absolute inset-0 bg-luxury-black z-0" />
         <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
 
-        <video
-          key={heroVideoUrl}
-          ref={videoRef}
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          className={`absolute inset-0 w-screen h-screen object-cover transition-opacity duration-1000 z-10 pointer-events-none select-none ${
-            isVideoLoaded ? "opacity-100" : "opacity-0"
-          }`}
-          style={{
-            objectFit: "cover",
-            objectPosition: "center center",
-            width: "100vw",
-            height: "100vh",
-            transform: "translateZ(0)",
-            WebkitTransform: "translateZ(0)",
-            willChange: "opacity, transform",
-            backfaceVisibility: "hidden",
-            WebkitBackfaceVisibility: "hidden",
-            filter: "none",
-            WebkitFilter: "none",
-            pointerEvents: "none",
-            outline: "none",
-            WebkitTapHighlightColor: "transparent",
-            WebkitTouchCallout: "none",
-            userSelect: "none",
-          }}
-          disablePictureInPicture
-          disableRemotePlayback
-          onContextMenu={(e) => e.preventDefault()}
-          onCanPlay={() => setIsVideoLoaded(true)}
-          onLoadedData={() => setIsVideoLoaded(true)}
-          onError={() => {
-            setIsVideoLoaded(false);
-            console.warn("[ProductsPage] Video error occurred");
-          }}
-          onPlay={(e) => {
-            const video = e.currentTarget;
-            if (video.paused) {
-              video.play().catch(() => {});
-            }
-          }}
-        >
-          <source src={heroVideoUrl} type="video/mp4" />
-        </video>
+        {heroMediaType === "VIDEO" ? (
+          <video
+            key={heroMediaUrl}
+            ref={videoRef}
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+            className={`absolute inset-0 w-screen h-screen object-cover transition-opacity duration-1000 z-10 pointer-events-none select-none ${
+              isVideoLoaded ? "opacity-100" : "opacity-0"
+            }`}
+            style={{
+              objectFit: "cover",
+              objectPosition: "center center",
+              width: "100vw",
+              height: "100vh",
+              transform: "translateZ(0)",
+              WebkitTransform: "translateZ(0)",
+              willChange: "opacity, transform",
+              backfaceVisibility: "hidden",
+              WebkitBackfaceVisibility: "hidden",
+              filter: "none",
+              WebkitFilter: "none",
+              pointerEvents: "none",
+              outline: "none",
+              WebkitTapHighlightColor: "transparent",
+              WebkitTouchCallout: "none",
+              userSelect: "none",
+            }}
+            disablePictureInPicture
+            disableRemotePlayback
+            onContextMenu={(e) => e.preventDefault()}
+            onCanPlay={() => setIsVideoLoaded(true)}
+            onLoadedData={() => setIsVideoLoaded(true)}
+            onError={() => {
+              setIsVideoLoaded(false);
+              console.warn("[ProductsPage] Video error occurred");
+            }}
+            onPlay={(e) => {
+              const video = e.currentTarget;
+              if (video.paused) {
+                video.play().catch(() => {});
+              }
+            }}
+          >
+            <source src={heroMediaUrl} type="video/mp4" />
+          </video>
+        ) : (
+          <img
+            key={heroMediaUrl}
+            src={heroMediaUrl}
+            alt=""
+            className="absolute inset-0 w-screen h-screen object-cover transition-opacity duration-1000 z-10 pointer-events-none select-none opacity-100"
+            style={{
+              objectFit: "cover",
+              objectPosition: "center center",
+              width: "100vw",
+              height: "100vh",
+              pointerEvents: "none",
+            }}
+          />
+        )}
         {/* Fade to Black Overlay - Controlled by ScrollTrigger */}
         <div
           ref={fadeOverlayRef}

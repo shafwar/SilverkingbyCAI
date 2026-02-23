@@ -40,6 +40,7 @@ export default function DistributorPageClient({
   const [isAdmin, setIsAdmin] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const { sections: pageSections, refetch: refetchPageSections } = usePageSections("distributor");
+  const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "IMAGE";
   const displayHeroUrl = heroImageError
     ? HERO_FALLBACK_PATH
     : (pageSections.hero?.url ?? initialHeroImageUrl);
@@ -173,18 +174,31 @@ export default function DistributorPageClient({
       >
         <div className="absolute inset-0 bg-luxury-black z-0" />
 
-        {/* Mobile: zoom out (wrapper scale); desktop: full cover */}
+        {/* Hero: image or video (flexible replace) */}
         <div className="absolute inset-[-6%] z-10 scale-90 md:scale-100 md:inset-0 origin-center overflow-hidden">
-          <Image
-            src={displayHeroUrl}
-            alt=""
-            fill
-            className="object-cover"
-            sizes="100vw"
-            priority
-            unoptimized={displayHeroUrl.startsWith("http")}
-            onError={() => setHeroImageError(true)}
-          />
+          {heroMediaType === "VIDEO" ? (
+            <video
+              key={displayHeroUrl}
+              src={displayHeroUrl}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{ objectFit: "cover" }}
+            />
+          ) : (
+            <Image
+              src={displayHeroUrl}
+              alt=""
+              fill
+              className="object-cover"
+              sizes="100vw"
+              priority
+              unoptimized={displayHeroUrl.startsWith("http")}
+              onError={() => setHeroImageError(true)}
+            />
+          )}
         </div>
         {/* Subtle dark gradient overlay for readability and professional look */}
         <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
