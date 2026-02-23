@@ -2,7 +2,9 @@
  * Public API: get all section media for a page.
  * GET /api/page-sections?page=home
  * Returns { sections: Record<string, { url: string; mediaType: string }> }
+ * force-dynamic so uploads always see fresh data (no cached response).
  */
+export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -33,7 +35,11 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.json({ page, sections });
+    return NextResponse.json({ page, sections }, {
+      headers: {
+        "Cache-Control": "no-store, max-age=0",
+      },
+    });
   } catch (error) {
     console.error("[PAGE_SECTIONS_GET]", error);
     return NextResponse.json(

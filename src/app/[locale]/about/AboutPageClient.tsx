@@ -328,6 +328,7 @@ export default function AboutPageClient() {
       <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
         <div className="absolute inset-0 bg-luxury-black z-0" />
         <video
+          key={heroVideoUrl}
           ref={heroVideoRef}
           className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
           src={heroVideoUrl}

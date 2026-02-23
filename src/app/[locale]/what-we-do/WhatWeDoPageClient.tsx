@@ -489,6 +489,7 @@ export default function WhatWeDoPageClient() {
           <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
 
           <video
+            key={heroVideoUrl}
             ref={videoRef}
             autoPlay
             loop

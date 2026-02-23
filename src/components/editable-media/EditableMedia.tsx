@@ -384,6 +384,7 @@ function EditableMediaModal({
     };
   }, [onClose]);
 
+  // Same precise container for hero, craft cards, and footer (portal to body)
   return (
     <div
       role="dialog"
@@ -392,7 +393,10 @@ function EditableMediaModal({
       data-cms-replace-modal
       style={{
         position: "fixed",
-        inset: 0,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
         width: "100vw",
         height: "100dvh",
         zIndex: CMS_MODAL_Z,
@@ -402,11 +406,13 @@ function EditableMediaModal({
         padding: 16,
         boxSizing: "border-box",
         backgroundColor: "rgba(0,0,0,0.85)",
+        isolation: "isolate",
       }}
       onClick={onClose}
     >
       <div
         role="document"
+        data-cms-replace-modal-inner
         style={{
           position: "absolute",
           left: "50%",

@@ -563,6 +563,7 @@ export default function AuthenticityPageClient() {
       <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
         <div className="absolute inset-0 bg-luxury-black z-0" />
         <video
+          key={heroVideoUrl}
           ref={videoRef}
           autoPlay
           loop

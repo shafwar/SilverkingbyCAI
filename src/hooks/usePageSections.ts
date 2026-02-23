@@ -16,7 +16,8 @@ export function usePageSections(page: string) {
     }
     setLoading(true);
     try {
-      const res = await fetch(`/api/page-sections?page=${encodeURIComponent(page)}`);
+      const url = `/api/page-sections?page=${encodeURIComponent(page)}&_t=${Date.now()}`;
+      const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) {
         setSections({});
         return;
