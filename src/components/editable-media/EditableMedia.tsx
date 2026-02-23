@@ -232,22 +232,25 @@ export function EditableMedia({
         )}
         {buttons}
         {modalOpen &&
-          typeof document !== "undefined" &&
-          document.body &&
-          createPortal(
-            <EditableMediaModal
-              onClose={closeModal}
-              type={type}
-              fileInputRef={fileInputRef}
-              handleFileChange={handleFileChange}
-              handleRestore={hasCustomMedia ? handleRestore : undefined}
-              restoring={restoring}
-              uploading={uploading}
-              uploadProgress={uploadProgress}
-              error={error}
-            />,
-            document.body
-          )}
+          (() => {
+            const target = getModalPortalTarget();
+            return target
+              ? createPortal(
+                  <EditableMediaModal
+                    onClose={closeModal}
+                    type={type}
+                    fileInputRef={fileInputRef}
+                    handleFileChange={handleFileChange}
+                    handleRestore={hasCustomMedia ? handleRestore : undefined}
+                    restoring={restoring}
+                    uploading={uploading}
+                    uploadProgress={uploadProgress}
+                    error={error}
+                  />,
+                  target
+                )
+              : null;
+          })()}
       </>
     );
 
@@ -325,32 +328,40 @@ export function EditableMedia({
         </div>
       )}
       {modalOpen &&
-        typeof document !== "undefined" &&
-        document.body &&
-        createPortal(
-          <EditableMediaModal
-            onClose={closeModal}
-            type={type}
-            fileInputRef={fileInputRef}
-            handleFileChange={handleFileChange}
-            handleRestore={hasCustomMedia ? handleRestore : undefined}
-            restoring={restoring}
-            uploading={uploading}
-            uploadProgress={uploadProgress}
-            error={error}
-          />,
-          document.body
-        )}
+        (() => {
+          const target = getModalPortalTarget();
+          return target
+            ? createPortal(
+                <EditableMediaModal
+                  onClose={closeModal}
+                  type={type}
+                  fileInputRef={fileInputRef}
+                  handleFileChange={handleFileChange}
+                  handleRestore={hasCustomMedia ? handleRestore : undefined}
+                  restoring={restoring}
+                  uploading={uploading}
+                  uploadProgress={uploadProgress}
+                  error={error}
+                />,
+                target
+              )
+            : null;
+        })()}
     </div>
   );
 }
 
 const CMS_MODAL_Z = 100000;
+const CMS_MODAL_ROOT_ID = "cms-modal-root";
+
+function getModalPortalTarget(): HTMLElement | null {
+  if (typeof document === "undefined" || !document.body) return null;
+  return document.getElementById(CMS_MODAL_ROOT_ID) || document.body;
+}
 
 /**
- * CMS replace media modal. Used on ALL pages. Portal to body; no backdrop-blur.
+ * CMS replace media modal. Used on ALL pages. Portal to #cms-modal-root or body so same stacking as Home edit video.
  * Parent sets data-cms-modal-open before open so PageTransitionOverlay does not blur.
- * Inline styles + z above NProgress so box always visible and on top.
  */
 function EditableMediaModal({
   onClose,
@@ -384,7 +395,7 @@ function EditableMediaModal({
     };
   }, [onClose]);
 
-  // Same precise container for hero, craft cards, and footer (portal to body)
+  // Same precise container for hero, craft cards, and footer (portal to #cms-modal-root or body)
   return (
     <div
       role="dialog"
@@ -399,7 +410,7 @@ function EditableMediaModal({
         bottom: 0,
         width: "100vw",
         height: "100dvh",
-        zIndex: CMS_MODAL_Z,
+        zIndex: 1,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -407,6 +418,7 @@ function EditableMediaModal({
         boxSizing: "border-box",
         backgroundColor: "rgba(0,0,0,0.85)",
         isolation: "isolate",
+        pointerEvents: "auto",
       }}
       onClick={onClose}
     >

@@ -61,6 +61,12 @@ export default async function LocaleLayout({
             <Navbar />
             {children}
           </Providers>
+          {/* CMS Replace image/video modal root – same stacking as Home edit video pop-up */}
+          <div
+            id="cms-modal-root"
+            className="fixed inset-0 z-[100000] pointer-events-none"
+            aria-hidden
+          />
         </NextIntlClientProvider>
       </body>
     </html>
