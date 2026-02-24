@@ -8,6 +8,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { usePageSections } from "@/hooks/usePageSections";
+import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import { PageLoadingSkeleton } from "@/components/ui/PageLoadingSkeleton";
 // Lazy load CertificateCard to improve initial page load
@@ -189,7 +190,7 @@ export default function AboutPageClient() {
   const noiseOverlay = useRef<HTMLDivElement | null>(null);
   const gradientOverlay = useRef<HTMLDivElement | null>(null);
   const heroVideoRef = useRef<HTMLVideoElement | null>(null);
-  const { sections: pageSections, refetch: refetchPageSections } = usePageSections("about");
+  const { sections: pageSections, loading: sectionsLoading, refetch: refetchPageSections } = usePageSections("about");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
   const heroMediaUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/gold-footage.mp4");
 
@@ -325,15 +326,24 @@ export default function AboutPageClient() {
       {/* Navbar */}
       <Navbar />
 
-      {/* Hero: fixed full-viewport background – video or image (flexible replace) */}
+      {/* Hero: no media until section data loaded (prevents flash of wrong asset) */}
       <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
         <div className="absolute inset-0 bg-luxury-black z-0" />
-        {heroMediaType === "VIDEO" ? (
-          <video
-            key={heroMediaUrl}
+        {sectionsLoading ? (
+          <div className="absolute inset-0 z-10 bg-luxury-black" aria-hidden />
+        ) : heroMediaType === "VIDEO" ? (
+          <VideoLoadGuard
             ref={heroVideoRef}
+            url={heroMediaUrl}
+            version={pageSections.hero?.version}
+            containerClassName="absolute inset-0 z-10 h-full w-full"
             className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
-            src={heroMediaUrl}
+            style={{
+              pointerEvents: "none",
+              outline: "none",
+              WebkitTapHighlightColor: "transparent",
+              userSelect: "none",
+            }}
             autoPlay
             loop
             muted
@@ -341,12 +351,6 @@ export default function AboutPageClient() {
             preload="auto"
             disablePictureInPicture
             disableRemotePlayback
-            style={{
-              pointerEvents: "none",
-              outline: "none",
-              WebkitTapHighlightColor: "transparent",
-              userSelect: "none",
-            }}
             onContextMenu={(e) => e.preventDefault()}
             onPlay={(e) => {
               const video = e.currentTarget;
@@ -354,12 +358,13 @@ export default function AboutPageClient() {
             }}
           />
         ) : (
-          <img
-            key={heroMediaUrl}
-            src={heroMediaUrl}
-            alt=""
+          <ImageLoadGuard
+            url={heroMediaUrl}
+            version={pageSections.hero?.version}
+            containerClassName="absolute inset-0 z-10 h-full w-full"
             className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
             style={{ pointerEvents: "none" }}
+            alt=""
           />
         )}
         <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />

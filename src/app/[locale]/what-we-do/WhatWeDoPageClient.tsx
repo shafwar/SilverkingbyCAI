@@ -8,8 +8,9 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { motion, useInView, AnimatePresence, type Variants } from "framer-motion";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
-import { usePageSections } from "@/hooks/usePageSections";
+import { usePageSections, getCacheBustedMediaUrl } from "@/hooks/usePageSections";
 import { EditableMedia } from "@/components/editable-media";
+import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import {
   Sparkles,
@@ -134,14 +135,17 @@ const NarrativeImageSection = forwardRef<
       readonly label: string;
       readonly caption: string;
       readonly mediaType?: string;
+      readonly version?: number;
       readonly images: readonly string[];
     }>;
     title?: string;
     description?: string;
     sectionKeys?: readonly [string, string, string];
     refetchSections?: () => void;
+    /** When true, show placeholder for card media until section data is loaded (prevents flash of wrong asset) */
+    sectionsLoading?: boolean;
   }
->(({ columns, cards, title, description, sectionKeys, refetchSections }, ref) => {
+>(({ columns, cards, title, description, sectionKeys, refetchSections, sectionsLoading }, ref) => {
   // Track which images have finished loading so we can fade them in smoothly
   const [imageLoaded, setImageLoaded] = useState<{ [key: string]: boolean }>({});
 
@@ -194,7 +198,7 @@ const NarrativeImageSection = forwardRef<
         {/* Enhanced Cards - Pixelmatters style - aligned properly */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 lg:gap-8 pb-6 md:pb-0">
           {cards.map((card, idx) => {
-            const mediaUrl = card.images[0];
+            const mediaUrl = getCacheBustedMediaUrl(card.images[0], card.version);
             const isVideo = card.mediaType?.toUpperCase() === "VIDEO";
             const imageKey = `${idx}-0`;
             const isImageLoaded = imageLoaded[imageKey];
@@ -224,27 +228,33 @@ const NarrativeImageSection = forwardRef<
                     e.currentTarget.style.boxShadow = "";
                   }}
                 >
-                  {/* Media container - image or video at top */}
+                    {/* Media container - image or video at top */}
                   <div className="relative w-full flex-[0_0_65%] overflow-hidden bg-black/40">
-                    {/* Loading placeholder (images only) */}
-                    {!isVideo && !isImageLoaded && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-black/60 to-black/40 z-10">
-                        <div className="h-6 w-6 sm:h-8 sm:w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+                    {/* Loading placeholder (images only); or black when sections loading to prevent flash */}
+                    {(sectionsLoading || (!isVideo && !isImageLoaded)) && (
+                      <div className="absolute inset-0 z-10 flex items-center justify-center bg-luxury-black">
+                        {!sectionsLoading && (
+                          <div className="h-6 w-6 sm:h-8 sm:w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+                        )}
                       </div>
                     )}
 
-                    {/* Image or video (flexible replace) */}
+                    {/* Image or video (flexible replace); placeholder when sections still loading to prevent flash */}
                     <div
                       className={`absolute inset-0 transition-opacity duration-300 ease-out ${
-                        isVideo || isImageLoaded ? "opacity-100" : "opacity-0"
+                        sectionsLoading ? "opacity-0" : isVideo || isImageLoaded ? "opacity-100" : "opacity-0"
                       }`}
                       style={{
-                        willChange: isVideo || isImageLoaded ? "auto" : "opacity",
+                        willChange: sectionsLoading ? "auto" : isVideo || isImageLoaded ? "auto" : "opacity",
                       }}
                     >
-                      {isVideo ? (
-                        <video
-                          src={mediaUrl}
+                      {sectionsLoading ? (
+                        <div className="absolute inset-0 bg-luxury-black" aria-hidden />
+                      ) : isVideo ? (
+                        <VideoLoadGuard
+                          url={card.images[0]}
+                          version={card.version}
+                          containerClassName="absolute inset-0 w-full h-full"
                           className="absolute inset-0 w-full h-full object-cover"
                           autoPlay
                           loop
@@ -324,7 +334,8 @@ export default function WhatWeDoPageClient() {
   const gradientOverlay = useRef<HTMLDivElement | null>(null);
   const sectionsRef = useRef<(HTMLDivElement | null)[]>([]);
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const { sections: pageSections, refetch: refetchPageSections } = usePageSections("what-we-do");
+  const footerVideoRef = useRef<HTMLVideoElement | null>(null);
+  const { sections: pageSections, loading: sectionsLoading, refetch: refetchPageSections } = usePageSections("what-we-do");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
   const heroMediaUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/metal crafting hands.mp4");
   const footerMediaType = pageSections.section_footer_video?.mediaType?.toUpperCase() ?? "VIDEO";
@@ -346,6 +357,42 @@ export default function WhatWeDoPageClient() {
 
   // Ensure what-we-do hero video autoplays reliably on all devices
   useReliableVideoAutoplay(videoRef);
+
+  // Footer video autoplay (same pattern as hero)
+  useEffect(() => {
+    const video = footerVideoRef.current;
+    if (!video || footerMediaType !== "VIDEO") return;
+    const forcePlay = async () => {
+      try {
+        if (video.paused && !video.ended) await video.play();
+      } catch {
+        setTimeout(() => video.play().catch(() => {}), 100);
+      }
+    };
+    const onCanPlay = () => forcePlay();
+    const onPause = () => {
+      if (!video.ended) setTimeout(() => { if (video.paused && !video.ended) forcePlay(); }, 50);
+    };
+    const onVisibility = () => {
+      if (!document.hidden && video.paused && !video.ended) forcePlay();
+    };
+    const onEnded = () => { video.currentTime = 0; forcePlay(); };
+    forcePlay();
+    video.addEventListener("canplay", onCanPlay);
+    video.addEventListener("loadeddata", onCanPlay);
+    video.addEventListener("pause", onPause);
+    video.addEventListener("ended", onEnded);
+    document.addEventListener("visibilitychange", onVisibility);
+    const t = setInterval(() => { if (video.paused && !video.ended && !document.hidden) forcePlay(); }, 2000);
+    return () => {
+      video.removeEventListener("canplay", onCanPlay);
+      video.removeEventListener("loadeddata", onCanPlay);
+      video.removeEventListener("pause", onPause);
+      video.removeEventListener("ended", onEnded);
+      document.removeEventListener("visibilitychange", onVisibility);
+      clearInterval(t);
+    };
+  }, [footerMediaUrl, footerMediaType]);
 
   const featureItems = useMemo(
     () => [
@@ -398,6 +445,7 @@ export default function WhatWeDoPageClient() {
         label: t("card1.label"),
         caption: t("card1.caption"),
         mediaType: pageSections.craft_card_1?.mediaType ?? "IMAGE",
+        version: pageSections.craft_card_1?.version,
         images: [
           pageSections.craft_card_1?.url ?? getR2UrlClient("/images/pexels-3d-render-1058120333-33539240.jpg"),
           getR2UrlClient("/images/pexels-sejio402-29336321.jpg"),
@@ -408,6 +456,7 @@ export default function WhatWeDoPageClient() {
         label: t("card2.label"),
         caption: t("card2.caption"),
         mediaType: pageSections.craft_card_2?.mediaType ?? "IMAGE",
+        version: pageSections.craft_card_2?.version,
         images: [
           pageSections.craft_card_2?.url ?? getR2UrlClient("/images/pexels-michael-steinberg-95604-386318.jpg"),
           getR2UrlClient("/images/pexels-sejio402-29336326.jpg"),
@@ -418,6 +467,7 @@ export default function WhatWeDoPageClient() {
         label: t("card3.label"),
         caption: t("card3.caption"),
         mediaType: pageSections.craft_card_3?.mediaType ?? "IMAGE",
+        version: pageSections.craft_card_3?.version,
         images: [
           pageSections.craft_card_3?.url ?? getR2UrlClient("/images/pexels-sejio402-29336327.jpg"),
           getR2UrlClient("/images/pexels-sejio402-29336321.jpg"),
@@ -425,7 +475,7 @@ export default function WhatWeDoPageClient() {
         ],
       },
     ],
-    [t, pageSections.craft_card_1?.url, pageSections.craft_card_1?.mediaType, pageSections.craft_card_2?.url, pageSections.craft_card_2?.mediaType, pageSections.craft_card_3?.url, pageSections.craft_card_3?.mediaType]
+    [t, pageSections.craft_card_1?.url, pageSections.craft_card_1?.mediaType, pageSections.craft_card_1?.version, pageSections.craft_card_2?.url, pageSections.craft_card_2?.mediaType, pageSections.craft_card_2?.version, pageSections.craft_card_3?.url, pageSections.craft_card_3?.mediaType, pageSections.craft_card_3?.version]
   );
 
   useGSAP(
@@ -502,51 +552,53 @@ export default function WhatWeDoPageClient() {
         }}
         className="relative flex min-h-screen items-center justify-start overflow-hidden"
       >
-        {/* Full Screen Hero Background – video or image (flexible replace) */}
+        {/* Full Screen Hero Background – no media until section data loaded (prevents any flash of wrong asset) */}
         <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
           <div className="absolute inset-0 bg-luxury-black z-0" />
           <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
 
-          {heroMediaType === "VIDEO" ? (
-            <video
-              key={heroMediaUrl}
+          {sectionsLoading ? (
+            <div className="absolute inset-0 z-10 bg-luxury-black" aria-hidden />
+          ) : heroMediaType === "VIDEO" ? (
+            <VideoLoadGuard
               ref={videoRef}
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="auto"
-              className="absolute inset-0 w-screen h-screen object-cover transition-opacity duration-1000 z-10 pointer-events-none select-none"
+              url={heroMediaUrl}
+              version={pageSections.hero?.version}
+              containerClassName="absolute inset-0 w-screen h-screen z-10"
+              className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
               style={{
                 objectFit: "cover",
                 objectPosition: "center center",
-                width: "100vw",
-                height: "100vh",
+                width: "100%",
+                height: "100%",
                 pointerEvents: "none",
                 outline: "none",
                 WebkitTapHighlightColor: "transparent",
                 WebkitTouchCallout: "none",
                 userSelect: "none",
-                transform: "none",
               }}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="auto"
               disablePictureInPicture
               disableRemotePlayback
-            >
-              <source src={heroMediaUrl} type="video/mp4" />
-            </video>
+            />
           ) : (
-            <img
-              key={heroMediaUrl}
-              src={heroMediaUrl}
-              alt=""
-              className="absolute inset-0 w-screen h-screen object-cover transition-opacity duration-1000 z-10 pointer-events-none select-none"
+            <ImageLoadGuard
+              url={heroMediaUrl}
+              version={pageSections.hero?.version}
+              containerClassName="absolute inset-0 w-screen h-screen z-10"
+              className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
               style={{
                 objectFit: "cover",
                 objectPosition: "center center",
-                width: "100vw",
-                height: "100vh",
+                width: "100%",
+                height: "100%",
                 pointerEvents: "none",
               }}
+              alt=""
             />
           )}
         </div>
@@ -593,7 +645,7 @@ export default function WhatWeDoPageClient() {
         </div>
       </section>
 
-      {/* Narrative + Image Grid – Pixelmatters-style with dynamic images */}
+      {/* Narrative + Image Grid – no card media until section data loaded (prevents flash) */}
       <NarrativeImageSection
         ref={(element: HTMLDivElement | null) => {
           sectionsRef.current[1] = element;
@@ -604,6 +656,7 @@ export default function WhatWeDoPageClient() {
         description={t("description")}
         sectionKeys={["craft_card_1", "craft_card_2", "craft_card_3"]}
         refetchSections={refetchPageSections}
+        sectionsLoading={sectionsLoading}
       />
 
       {/* Impact Section – similar to Pixelmatters "The impact you can expect" - Mobile optimized */}
@@ -714,75 +767,17 @@ export default function WhatWeDoPageClient() {
         }}
         className="relative min-h-[50vh] sm:min-h-[60vh] md:min-h-[70vh] flex flex-col justify-between px-4 sm:px-6 md:px-8 lg:px-12 py-12 sm:py-16 md:py-20 lg:py-24 overflow-hidden isolate"
       >
-        {/* Footer background – video or image (flexible replace) */}
+        {/* Footer background – no media until section data loaded (prevents flash of wrong asset) */}
         <div className="absolute inset-0 z-0 overflow-hidden">
-          {footerMediaType === "VIDEO" ? (
-            <video
-              key={footerMediaUrl}
-              ref={(video) => {
-                if (video) {
-                  const forcePlay = async () => {
-                    try {
-                      if (video.paused && !video.ended) await video.play();
-                    } catch (error) {
-                      console.warn("[WhatWeDoPage] Video autoplay prevented, retrying:", error);
-                      setTimeout(() => {
-                        video.play().catch(() => {
-                          setTimeout(() => video.play().catch(() => {}), 500);
-                        });
-                      }, 100);
-                    }
-                  };
-                  const handleCanPlay = () => forcePlay();
-                  const handleLoadedData = () => forcePlay();
-                  const handleError = () => console.warn("[WhatWeDoPage] Video error occurred");
-                  const handlePause = () => {
-                    if (!video.ended) {
-                      setTimeout(() => {
-                        if (video.paused && !video.ended) forcePlay();
-                      }, 50);
-                    }
-                  };
-                  const handleVisibilityChange = () => {
-                    if (!document.hidden && video.paused && !video.ended) forcePlay();
-                  };
-                  const handleEnded = () => {
-                    video.currentTime = 0;
-                    forcePlay();
-                  };
-                  const handleWaiting = () => {
-                    if (video.paused && !video.ended) setTimeout(() => forcePlay(), 100);
-                  };
-                  forcePlay();
-                  video.addEventListener("canplay", handleCanPlay);
-                  video.addEventListener("loadeddata", handleLoadedData);
-                  video.addEventListener("error", handleError);
-                  video.addEventListener("pause", handlePause);
-                  video.addEventListener("ended", handleEnded);
-                  video.addEventListener("waiting", handleWaiting);
-                  document.addEventListener("visibilitychange", handleVisibilityChange);
-                  video.load();
-                  const playCheckInterval = setInterval(() => {
-                    if (video.paused && !video.ended && !document.hidden) forcePlay();
-                  }, 2000);
-                  (video as any).__cleanup = () => {
-                    video.removeEventListener("canplay", handleCanPlay);
-                    video.removeEventListener("loadeddata", handleLoadedData);
-                    video.removeEventListener("error", handleError);
-                    video.removeEventListener("pause", handlePause);
-                    video.removeEventListener("ended", handleEnded);
-                    video.removeEventListener("waiting", handleWaiting);
-                    document.removeEventListener("visibilitychange", handleVisibilityChange);
-                    clearInterval(playCheckInterval);
-                  };
-                }
-              }}
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="auto"
-              className="absolute inset-0 w-full h-full transition-opacity duration-1000 z-10"
+          {sectionsLoading ? (
+            <div className="absolute inset-0 z-10 bg-luxury-black" aria-hidden />
+          ) : footerMediaType === "VIDEO" ? (
+            <VideoLoadGuard
+              ref={footerVideoRef}
+              url={footerMediaUrl}
+              version={pageSections.section_footer_video?.version}
+              containerClassName="absolute inset-0 w-full h-full z-10"
+              className="absolute inset-0 w-full h-full object-cover"
               style={{
                 objectFit: "cover",
                 objectPosition: "center center",
@@ -791,6 +786,11 @@ export default function WhatWeDoPageClient() {
                 transform: "scale(1)",
                 transformOrigin: "center center",
               }}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="auto"
               disablePictureInPicture
               disableRemotePlayback
               onContextMenu={(e) => e.preventDefault()}
@@ -798,21 +798,20 @@ export default function WhatWeDoPageClient() {
                 const v = e.currentTarget;
                 if (v.paused) v.play().catch(() => {});
               }}
-            >
-              <source src={footerMediaUrl} type="video/mp4" />
-            </video>
+            />
           ) : (
-            <img
-              key={footerMediaUrl}
-              src={footerMediaUrl}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 z-10"
+            <ImageLoadGuard
+              url={footerMediaUrl}
+              version={pageSections.section_footer_video?.version}
+              containerClassName="absolute inset-0 w-full h-full z-10"
+              className="absolute inset-0 w-full h-full object-cover"
               style={{
                 objectFit: "cover",
                 objectPosition: "center center",
                 width: "100%",
                 height: "100%",
               }}
+              alt=""
             />
           )}
           <div className="absolute top-3 right-3 z-20 pointer-events-auto">

@@ -18,6 +18,7 @@ import ProductCard, { type ProductWithPricing } from "@/components/ui/ProductCar
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { usePageSections } from "@/hooks/usePageSections";
+import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import Image from "next/image";
 
@@ -277,7 +278,7 @@ export default function ProductsPageClient() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
   const [isMounted, setIsMounted] = useState(false);
-  const { sections: pageSections, refetch: refetchPageSections } = usePageSections("products");
+  const { sections: pageSections, loading: sectionsLoading, refetch: refetchPageSections } = usePageSections("products");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
   const heroMediaUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/gold-stone.mp4");
 
@@ -1087,67 +1088,55 @@ export default function ProductsPageClient() {
         <div className="absolute inset-0 bg-luxury-black z-0" />
         <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
 
-        {heroMediaType === "VIDEO" ? (
-          <video
-            key={heroMediaUrl}
+        {sectionsLoading ? (
+          <div className="absolute inset-0 z-10 bg-luxury-black" aria-hidden />
+        ) : heroMediaType === "VIDEO" ? (
+          <VideoLoadGuard
             ref={videoRef}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            className={`absolute inset-0 w-screen h-screen object-cover transition-opacity duration-1000 z-10 pointer-events-none select-none ${
-              isVideoLoaded ? "opacity-100" : "opacity-0"
-            }`}
+            url={heroMediaUrl}
+            version={pageSections.hero?.version}
+            containerClassName="absolute inset-0 w-screen h-screen z-10"
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
             style={{
               objectFit: "cover",
               objectPosition: "center center",
-              width: "100vw",
-              height: "100vh",
+              width: "100%",
+              height: "100%",
               transform: "translateZ(0)",
               WebkitTransform: "translateZ(0)",
-              willChange: "opacity, transform",
-              backfaceVisibility: "hidden",
-              WebkitBackfaceVisibility: "hidden",
-              filter: "none",
-              WebkitFilter: "none",
               pointerEvents: "none",
               outline: "none",
               WebkitTapHighlightColor: "transparent",
               WebkitTouchCallout: "none",
               userSelect: "none",
             }}
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
             disablePictureInPicture
             disableRemotePlayback
             onContextMenu={(e) => e.preventDefault()}
-            onCanPlay={() => setIsVideoLoaded(true)}
-            onLoadedData={() => setIsVideoLoaded(true)}
-            onError={() => {
-              setIsVideoLoaded(false);
-              console.warn("[ProductsPage] Video error occurred");
-            }}
             onPlay={(e) => {
               const video = e.currentTarget;
-              if (video.paused) {
-                video.play().catch(() => {});
-              }
+              if (video.paused) video.play().catch(() => {});
             }}
-          >
-            <source src={heroMediaUrl} type="video/mp4" />
-          </video>
+          />
         ) : (
-          <img
-            key={heroMediaUrl}
-            src={heroMediaUrl}
-            alt=""
-            className="absolute inset-0 w-screen h-screen object-cover transition-opacity duration-1000 z-10 pointer-events-none select-none opacity-100"
+          <ImageLoadGuard
+            url={heroMediaUrl}
+            version={pageSections.hero?.version}
+            containerClassName="absolute inset-0 w-screen h-screen z-10"
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
             style={{
               objectFit: "cover",
               objectPosition: "center center",
-              width: "100vw",
-              height: "100vh",
+              width: "100%",
+              height: "100%",
               pointerEvents: "none",
             }}
+            alt=""
           />
         )}
         {/* Fade to Black Overlay - Controlled by ScrollTrigger */}

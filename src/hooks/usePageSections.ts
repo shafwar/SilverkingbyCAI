@@ -2,7 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export type PageSectionEntry = { url: string; mediaType: string };
+export type PageSectionEntry = { url: string; mediaType: string; version?: number };
+
+/** Cache-bust media URL so browser never serves stale file after replace/restore */
+export function getCacheBustedMediaUrl(url: string, version?: number): string {
+  if (url == null || url === "") return url;
+  if (version == null) return url;
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}v=${version}`;
+}
 
 export function usePageSections(page: string) {
   const [sections, setSections] = useState<Record<string, PageSectionEntry>>({});

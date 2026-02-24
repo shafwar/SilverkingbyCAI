@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 import { Pencil, RotateCcw } from "lucide-react";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
-import { usePageSections } from "@/hooks/usePageSections";
+import { usePageSections, getCacheBustedMediaUrl } from "@/hooks/usePageSections";
 import { getR2UrlClient } from "@/utils/r2-url";
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
@@ -53,7 +53,7 @@ export function EditableMedia({
   fullAreaClickable = false,
 }: EditableMediaProps) {
   const isAdmin = useIsAdmin();
-  const { sections, refetch } = usePageSections(page);
+  const { sections, loading: sectionsLoading, refetch } = usePageSections(page);
   const refetchAll = async () => {
     await refetch();
     onUploadDone?.();
@@ -65,7 +65,8 @@ export function EditableMedia({
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const url = sections[section]?.url ?? fallbackUrl ?? (type === "image" ? getR2UrlClient("/images/placeholder-hero.jpg") : undefined);
+  const rawUrl = sections[section]?.url ?? fallbackUrl ?? (type === "image" ? getR2UrlClient("/images/placeholder-hero.jpg") : undefined);
+  const url = rawUrl != null ? getCacheBustedMediaUrl(rawUrl, sections[section]?.version) : undefined;
   const hasCustomMedia = Boolean(sections[section]);
   /** Resolved type for display: use stored mediaType when present (flexible replace), else section default */
   const displayType: "image" | "video" =
@@ -286,34 +287,40 @@ export function EditableMedia({
 
   return (
     <div className="relative">
-      {displayType === "image" && url &&
-        (fill ? (
-          <Image
-            src={url}
-            alt={alt}
-            fill
-            className={className}
-            sizes={sizes ?? "100vw"}
-            unoptimized={url.startsWith("http")}
-          />
-        ) : (
-          <img
-            src={url}
-            alt={alt}
-            className={className}
-          />
-        ))}
-      {displayType === "video" && url && (
-        <video
-          src={url}
-          className={className}
-          poster={poster}
-          autoPlay
-          loop
-          muted
-          playsInline
-          {...videoAttrs}
-        />
+      {sectionsLoading ? (
+        <div className="absolute inset-0 bg-luxury-black" aria-hidden />
+      ) : (
+        <>
+          {displayType === "image" && url &&
+            (fill ? (
+              <Image
+                src={url}
+                alt={alt}
+                fill
+                className={className}
+                sizes={sizes ?? "100vw"}
+                unoptimized={url.startsWith("http")}
+              />
+            ) : (
+              <img
+                src={url}
+                alt={alt}
+                className={className}
+              />
+            ))}
+          {displayType === "video" && url && (
+            <video
+              src={url}
+              className={className}
+              poster={poster}
+              autoPlay
+              loop
+              muted
+              playsInline
+              {...videoAttrs}
+            />
+          )}
+        </>
       )}
       {isAdmin && (
         <div className="absolute top-3 right-3 z-20 flex items-center gap-2">

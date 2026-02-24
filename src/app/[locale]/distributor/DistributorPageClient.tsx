@@ -5,11 +5,11 @@ import { DistributorCard, type DistributorItem } from "@/components/distributor/
 import { DistributorForm } from "@/components/admin/DistributorForm";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import { motion, type Variants } from "framer-motion";
-import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Plus, X } from "lucide-react";
 import { usePageSections } from "@/hooks/usePageSections";
+import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 
 const HERO_FALLBACK_PATH = "/images/hero-fallback.jpg";
 
@@ -39,7 +39,7 @@ export default function DistributorPageClient({
   const [heroImageError, setHeroImageError] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
-  const { sections: pageSections, refetch: refetchPageSections } = usePageSections("distributor");
+  const { sections: pageSections, loading: sectionsLoading, refetch: refetchPageSections } = usePageSections("distributor");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "IMAGE";
   const displayHeroUrl = heroImageError
     ? HERO_FALLBACK_PATH
@@ -174,28 +174,30 @@ export default function DistributorPageClient({
       >
         <div className="absolute inset-0 bg-luxury-black z-0" />
 
-        {/* Hero: image or video (flexible replace) */}
+        {/* Hero: no media until section data loaded (prevents flash of wrong asset) */}
         <div className="absolute inset-[-6%] z-10 scale-90 md:scale-100 md:inset-0 origin-center overflow-hidden">
-          {heroMediaType === "VIDEO" ? (
-            <video
-              key={displayHeroUrl}
-              src={displayHeroUrl}
+          {sectionsLoading ? (
+            <div className="absolute inset-0 bg-luxury-black" aria-hidden />
+          ) : heroMediaType === "VIDEO" ? (
+            <VideoLoadGuard
+              url={displayHeroUrl}
+              version={pageSections.hero?.version}
+              containerClassName="absolute inset-0 w-full h-full"
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{ objectFit: "cover" }}
               autoPlay
               loop
               muted
               playsInline
-              className="absolute inset-0 w-full h-full object-cover"
-              style={{ objectFit: "cover" }}
             />
           ) : (
-            <Image
-              src={displayHeroUrl}
+            <ImageLoadGuard
+              url={displayHeroUrl}
+              version={pageSections.hero?.version}
+              containerClassName="absolute inset-0 w-full h-full"
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{ objectFit: "cover" }}
               alt=""
-              fill
-              className="object-cover"
-              sizes="100vw"
-              priority
-              unoptimized={displayHeroUrl.startsWith("http")}
               onError={() => setHeroImageError(true)}
             />
           )}

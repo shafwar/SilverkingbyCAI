@@ -1,8 +1,8 @@
 /**
  * Public API: get all section media for a page.
  * GET /api/page-sections?page=home
- * Returns { sections: Record<string, { url: string; mediaType: string }> }
- * force-dynamic so uploads always see fresh data (no cached response).
+ * Returns { sections: Record<string, { url, mediaType, version }> }
+ * version = updatedAt timestamp for cache-busting so browser never serves stale media.
  */
 export const dynamic = "force-dynamic";
 
@@ -25,12 +25,13 @@ export async function GET(request: Request) {
       where: { pageName: page },
     });
 
-    const sections: Record<string, { url: string; mediaType: string }> = {};
+    const sections: Record<string, { url: string; mediaType: string; version: number }> = {};
     for (const row of rows) {
       if (row.r2Key) {
         sections[row.sectionKey] = {
           url: getPublicUrl(row.r2Key),
           mediaType: row.mediaType,
+          version: row.updatedAt.getTime(),
         };
       }
     }
