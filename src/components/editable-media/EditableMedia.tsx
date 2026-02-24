@@ -96,12 +96,7 @@ export function EditableMedia({
     if (!isAdmin) return;
     setError(null);
     setModalOpenAttribute();
-    // Defer open so portal target (body) is stable and modal appears precisely centered (craft + footer)
-    if (typeof requestAnimationFrame !== "undefined") {
-      requestAnimationFrame(() => setModalOpen(true));
-    } else {
-      setModalOpen(true);
-    }
+    setModalOpen(true);
   };
 
   const handleRestore = async () => {
@@ -376,22 +371,17 @@ export function EditableMedia({
   );
 }
 
-/** z-index so Replace media modal is always on top and delivery is consistent (craft cards + footer + hero). */
-const CMS_MODAL_Z = 999999;
+const CMS_MODAL_Z = 100000;
+const CMS_MODAL_ROOT_ID = "cms-modal-root";
 
-/**
- * Portal target: always document.body so the modal is a direct child of body.
- * This guarantees viewport-centered positioning (no layout/transform ancestor affecting fixed).
- * Same delivery for: hero (Home/What we do), craft cards (What we do), footer (What we do).
- */
 function getModalPortalTarget(): HTMLElement | null {
   if (typeof document === "undefined" || !document.body) return null;
-  return document.body;
+  return document.getElementById(CMS_MODAL_ROOT_ID) || document.body;
 }
 
 /**
- * CMS Replace media modal. Rendered via createPortal into document.body only.
- * Backdrop and inner box use fixed + viewport units so container appears precisely centered on screen.
+ * CMS replace media modal. Used on ALL pages. Portal to #cms-modal-root or body so same stacking as Home edit video.
+ * Parent sets data-cms-modal-open before open so PageTransitionOverlay does not blur.
  */
 function EditableMediaModal({
   onClose,
@@ -425,7 +415,7 @@ function EditableMediaModal({
     };
   }, [onClose]);
 
-  // Backdrop: full viewport, fixed, topmost. Inner box: fixed + 50% + translate for precise center (craft + footer)
+  // Same precise container for hero, craft cards, and footer (portal to #cms-modal-root or body)
   return (
     <div
       role="dialog"
@@ -439,12 +429,15 @@ function EditableMediaModal({
         right: 0,
         bottom: 0,
         width: "100vw",
-        height: "100vh",
-        minHeight: "100vh",
-        maxHeight: "100dvh",
-        zIndex: CMS_MODAL_Z,
+        height: "100dvh",
+        zIndex: 1,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
         boxSizing: "border-box",
         backgroundColor: "rgba(0,0,0,0.85)",
+        isolation: "isolate",
         pointerEvents: "auto",
       }}
       onClick={onClose}
@@ -453,15 +446,15 @@ function EditableMediaModal({
         role="document"
         data-cms-replace-modal-inner
         style={{
-          position: "fixed",
+          position: "absolute",
           left: "50%",
           top: "50%",
+          transform: "translate(-50%, -50%)",
+          zIndex: 1,
           width: "calc(100vw - 32px)",
           maxWidth: 448,
           minWidth: 280,
-          maxHeight: "min(420px, calc(100vh - 32px))",
-          transform: "translate(-50%, -50%)",
-          zIndex: CMS_MODAL_Z + 1,
+          maxHeight: "min(420px, calc(100dvh - 32px))",
           overflow: "auto",
           borderRadius: 16,
           border: "1px solid rgba(255,255,255,0.15)",
@@ -469,7 +462,6 @@ function EditableMediaModal({
           padding: 24,
           boxSizing: "border-box",
           boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
-          pointerEvents: "auto",
         }}
         onClick={(e) => e.stopPropagation()}
       >

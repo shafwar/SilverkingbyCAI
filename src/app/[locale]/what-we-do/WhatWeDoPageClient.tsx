@@ -273,7 +273,6 @@ const NarrativeImageSection = forwardRef<
                         />
                       )}
                     </div>
-                    {/* Replace media (edit photo): modal portaled to body → appears precisely centered like Home */}
                     {sectionKeys?.[idx] && refetchSections && (
                       <div className="absolute top-2 right-2 z-20 pointer-events-auto">
                         <EditableMedia
@@ -816,7 +815,6 @@ export default function WhatWeDoPageClient() {
               }}
             />
           )}
-          {/* Replace media (edit video): modal portaled to body → same precise centered container as craft/hero */}
           <div className="absolute top-3 right-3 z-20 pointer-events-auto">
             <EditableMedia
               page="what-we-do"
