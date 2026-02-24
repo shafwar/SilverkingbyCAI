@@ -284,13 +284,14 @@ const NarrativeImageSection = forwardRef<
                       )}
                     </div>
                     {sectionKeys?.[idx] && refetchSections && (
-                      <div className="absolute top-2 right-2 z-20 pointer-events-auto">
+                      <div className="absolute top-2 right-2 z-20 pointer-events-auto rounded-xl border border-white/15 bg-black/60 px-2 py-1.5 shadow-lg backdrop-blur-sm">
                         <EditableMedia
                           page="what-we-do"
                           section={sectionKeys[idx]}
                           type="image"
                           overlayOnly
                           onUploadDone={refetchSections}
+                          editLabel="Edit foto"
                         />
                       </div>
                     )}
@@ -814,13 +815,14 @@ export default function WhatWeDoPageClient() {
               alt=""
             />
           )}
-          <div className="absolute top-3 right-3 z-20 pointer-events-auto">
+          <div className="absolute top-3 right-3 z-20 pointer-events-auto rounded-xl border border-white/15 bg-black/60 px-2 py-1.5 shadow-lg backdrop-blur-sm">
             <EditableMedia
               page="what-we-do"
               section="section_footer_video"
               type="video"
               overlayOnly
               onUploadDone={refetchPageSections}
+              editLabel="Edit video"
             />
           </div>
         </div>

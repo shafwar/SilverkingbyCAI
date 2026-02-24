@@ -260,6 +260,7 @@ export function EditableMedia({
                   <EditableMediaModal
                     onClose={closeModal}
                     type={type}
+                    title={editLabel ?? (type === "image" ? "Edit foto" : "Edit video")}
                     fileInputRef={fileInputRef}
                     handleFileChange={handleFileChange}
                     handleRestore={hasCustomMedia ? handleRestore : undefined}
@@ -362,6 +363,7 @@ export function EditableMedia({
                 <EditableMediaModal
                   onClose={closeModal}
                   type={type}
+                  title={editLabel ?? (type === "image" ? "Edit foto" : "Edit video")}
                   fileInputRef={fileInputRef}
                   handleFileChange={handleFileChange}
                   handleRestore={hasCustomMedia ? handleRestore : undefined}
@@ -393,6 +395,7 @@ function getModalPortalTarget(): HTMLElement | null {
 function EditableMediaModal({
   onClose,
   type,
+  title = "Replace media",
   fileInputRef,
   handleFileChange,
   handleRestore,
@@ -403,6 +406,7 @@ function EditableMediaModal({
 }: {
   onClose: () => void;
   type: string;
+  title?: string;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleRestore?: () => void;
@@ -472,9 +476,12 @@ function EditableMediaModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 id="editable-media-modal-title" className="text-lg font-semibold text-white mb-4">
-          Replace media
+        <h3 id="editable-media-modal-title" className="text-lg font-semibold text-white mb-1">
+          {title}
         </h3>
+        <p className="text-sm text-white/50 mb-4">
+          Pilih foto atau video yang ingin ditampilkan. Image: JPEG, PNG, WebP (maks. 3 MB). Video: MP4, WebM (maks. 10 MB).
+        </p>
         <input
           ref={fileInputRef as React.RefObject<HTMLInputElement>}
           type="file"
@@ -482,9 +489,17 @@ function EditableMediaModal({
           className="hidden"
           onChange={handleFileChange}
         />
-        <p className="text-sm text-white/60 mb-4">
-          Image: JPEG, PNG or WebP. Max 3 MB. Video: MP4 or WebM. Max 10 MB.
-        </p>
+        <div
+          className="mb-4 rounded-xl border-2 border-dashed border-white/20 bg-white/5 p-6 text-center transition hover:border-luxury-gold/40 hover:bg-white/10"
+          onClick={() => fileInputRef.current?.click()}
+          onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
+          role="button"
+          tabIndex={0}
+          aria-label="Klik untuk memilih file"
+        >
+          <p className="text-sm font-medium text-white/90 mb-1">Klik untuk memilih file</p>
+          <p className="text-xs text-white/50">atau drag & drop foto/video di sini</p>
+        </div>
         {uploading && (
           <div className="mb-4">
             <div className="flex justify-between text-xs text-white/60 mb-1">
@@ -523,9 +538,9 @@ function EditableMediaModal({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="rounded-xl bg-luxury-gold/20 text-luxury-gold px-4 py-2 text-sm font-medium hover:bg-luxury-gold/30 disabled:opacity-50"
+            className="rounded-xl bg-luxury-gold/20 text-luxury-gold px-4 py-2.5 text-sm font-medium hover:bg-luxury-gold/30 disabled:opacity-50"
           >
-            {uploading ? `${uploadProgress}%` : "Choose file"}
+            {uploading ? `Upload ${uploadProgress}%` : "Pilih file"}
           </button>
         </div>
       </div>
