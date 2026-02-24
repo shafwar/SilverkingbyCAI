@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type PageSectionEntry = { url: string; mediaType: string };
 
 export function usePageSections(page: string) {
   const [sections, setSections] = useState<Record<string, PageSectionEntry>>({});
   const [loading, setLoading] = useState(true);
+  const refetchRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
   const refetch = useCallback(async () => {
     if (!page) {
@@ -31,6 +32,9 @@ export function usePageSections(page: string) {
     }
   }, [page]);
 
+  refetchRef.current = refetch;
+
+  // Always fetch fresh on mount (no cache) so replaced assets never flash old version when returning to page
   useEffect(() => {
     let cancelled = false;
     if (!page) {
@@ -39,7 +43,8 @@ export function usePageSections(page: string) {
       return;
     }
     setLoading(true);
-    fetch(`/api/page-sections?page=${encodeURIComponent(page)}`)
+    const url = `/api/page-sections?page=${encodeURIComponent(page)}&_t=${Date.now()}`;
+    fetch(url, { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : { sections: {} }))
       .then((data) => {
         if (!cancelled) setSections(data.sections ?? {});
@@ -53,6 +58,15 @@ export function usePageSections(page: string) {
     return () => {
       cancelled = true;
     };
+  }, [page]);
+
+  // When page is restored from bfcache (back/forward), refetch so we never show stale asset
+  useEffect(() => {
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted && page) refetchRef.current();
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
   }, [page]);
 
   return { sections, loading, refetch };
