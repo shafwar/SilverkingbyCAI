@@ -10,6 +10,11 @@ import { getR2UrlClient } from "@/utils/r2-url";
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 10 * 1024 * 1024; // 10 MB
+const UPLOAD_PROGRESS_CAP = 90; // 100% only after server confirms success
+const IMAGE_UPLOAD_TIMEOUT_MS = 90_000; // 90s
+const VIDEO_UPLOAD_TIMEOUT_MS = 120_000; // 120s
+const UPLOAD_MAX_ATTEMPTS = 3; // initial + 2 retries
+const UPLOAD_RETRY_DELAY_MS = 1500;
 
 type EditableMediaProps = {
   page: string;
@@ -131,7 +136,7 @@ export function EditableMedia({
     return null;
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const uploadType = getFileMediaType(file);
@@ -154,46 +159,157 @@ export function EditableMedia({
     formData.set("section", section);
     formData.set("type", uploadType);
     formData.set("file", file);
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/api/admin/page-sections/upload");
-    xhr.upload.addEventListener("progress", (ev) => {
-      if (ev.lengthComputable) {
-        const pct = Math.round((ev.loaded / ev.total) * 100);
-        setUploadProgress(pct);
-      } else {
-        setUploadProgress((prev) => Math.min(prev + 10, 90));
-      }
-    });
-    xhr.addEventListener("load", async () => {
-      try {
-        setUploadProgress(100);
-        const data = JSON.parse(xhr.responseText || "{}");
-        if (xhr.status >= 200 && xhr.status < 300) {
-          await refetchAll();
-          closeModal();
-        } else {
-          setError(data?.error ?? "Upload failed.");
-        }
-      } catch {
-        setError("Upload failed.");
-      } finally {
+    const timeoutMs = uploadType === "image" ? IMAGE_UPLOAD_TIMEOUT_MS : VIDEO_UPLOAD_TIMEOUT_MS;
+
+    const runAttempt = (attempt: number): Promise<boolean> => {
+      return new Promise((resolve) => {
+        let handled = false;
+        const finish = (success: boolean) => {
+          if (handled) return;
+          handled = true;
+          resolve(success);
+        };
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/admin/page-sections/upload");
+        xhr.timeout = timeoutMs;
+
+        xhr.upload.addEventListener("progress", (ev) => {
+          if (ev.lengthComputable) {
+            const pct = Math.round((ev.loaded / ev.total) * 100);
+            setUploadProgress(Math.min(pct, UPLOAD_PROGRESS_CAP));
+          } else {
+            setUploadProgress((prev) => Math.min(prev + 10, UPLOAD_PROGRESS_CAP));
+          }
+        });
+
+        xhr.addEventListener("load", async () => {
+          try {
+            const data: { url?: string; error?: string } = (() => {
+              try {
+                return JSON.parse(xhr.responseText || "{}");
+              } catch {
+                return {};
+              }
+            })();
+            const ok = xhr.status >= 200 && xhr.status < 300 && typeof data?.url === "string";
+            if (ok) {
+              setUploadProgress(100);
+              await refetchAll();
+              closeModal();
+              finish(true);
+              return;
+            }
+            const is5xx = xhr.status >= 500 && xhr.status < 600;
+            const canRetry = is5xx && attempt + 1 < UPLOAD_MAX_ATTEMPTS;
+            if (canRetry) {
+              setUploadProgress(0);
+              setTimeout(() => runAttempt(attempt + 1).then((success) => finish(success)), UPLOAD_RETRY_DELAY_MS);
+              return;
+            }
+            setError(data?.error ?? "Upload gagal. Coba lagi.");
+            setUploading(false);
+            setUploadProgress(0);
+            e.target.value = "";
+            finish(false);
+          } catch {
+            const canRetry = attempt + 1 < UPLOAD_MAX_ATTEMPTS;
+            if (canRetry) {
+              setUploadProgress(0);
+              setTimeout(() => runAttempt(attempt + 1).then((success) => finish(success)), UPLOAD_RETRY_DELAY_MS);
+              return;
+            }
+            setError("Upload gagal. Coba lagi.");
+            setUploading(false);
+            setUploadProgress(0);
+            e.target.value = "";
+            finish(false);
+          }
+        });
+
+        xhr.addEventListener("error", () => {
+          if (handled) return;
+          handled = true;
+          const canRetry = attempt + 1 < UPLOAD_MAX_ATTEMPTS;
+          if (canRetry) {
+            setUploadProgress(0);
+            setError(null);
+            setTimeout(() => runAttempt(attempt + 1).then((success) => {
+              if (!success) {
+                setUploading(false);
+                setUploadProgress(0);
+                e.target.value = "";
+              }
+              finish(success);
+            }), UPLOAD_RETRY_DELAY_MS);
+            return;
+          }
+          setError("Upload gagal. Coba lagi.");
+          setUploading(false);
+          setUploadProgress(0);
+          e.target.value = "";
+          finish(false);
+        });
+
+        xhr.addEventListener("timeout", () => {
+          if (handled) return;
+          handled = true;
+          xhr.abort();
+          const canRetry = attempt + 1 < UPLOAD_MAX_ATTEMPTS;
+          if (canRetry) {
+            setUploadProgress(0);
+            setError(null);
+            setTimeout(() => runAttempt(attempt + 1).then((success) => {
+              if (!success) {
+                setUploading(false);
+                setUploadProgress(0);
+                e.target.value = "";
+              }
+              finish(success);
+            }), UPLOAD_RETRY_DELAY_MS);
+            return;
+          }
+          setError("Upload timeout. Coba lagi.");
+          setUploading(false);
+          setUploadProgress(0);
+          e.target.value = "";
+          finish(false);
+        });
+
+        xhr.addEventListener("abort", () => {
+          if (handled) return;
+          handled = true;
+          const canRetry = attempt + 1 < UPLOAD_MAX_ATTEMPTS;
+          if (canRetry) {
+            setUploadProgress(0);
+            setError(null);
+            setTimeout(() => runAttempt(attempt + 1).then((success) => {
+              if (!success) {
+                setUploading(false);
+                setUploadProgress(0);
+                e.target.value = "";
+              }
+              finish(success);
+            }), UPLOAD_RETRY_DELAY_MS);
+            return;
+          }
+          setError("Upload gagal. Coba lagi.");
+          setUploading(false);
+          setUploadProgress(0);
+          e.target.value = "";
+          finish(false);
+        });
+
+        xhr.send(formData);
+      });
+    };
+
+    runAttempt(0).then((success) => {
+      if (!success) {
         setUploading(false);
         setUploadProgress(0);
         e.target.value = "";
       }
     });
-    xhr.addEventListener("error", () => {
-      setError("Upload failed.");
-      setUploading(false);
-      setUploadProgress(0);
-      e.target.value = "";
-    });
-    xhr.addEventListener("abort", () => {
-      setUploading(false);
-      setUploadProgress(0);
-      e.target.value = "";
-    });
-    xhr.send(formData);
   };
 
   if (overlayOnly) {
@@ -503,7 +619,7 @@ function EditableMediaModal({
         {uploading && (
           <div className="mb-4">
             <div className="flex justify-between text-xs text-white/60 mb-1">
-              <span>Uploading to R2…</span>
+              <span>{uploadProgress >= UPLOAD_PROGRESS_CAP ? "Menyimpan ke R2…" : "Uploading to R2…"}</span>
               <span>{uploadProgress}%</span>
             </div>
             <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
