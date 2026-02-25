@@ -228,7 +228,7 @@ const NarrativeImageSection = forwardRef<
                     e.currentTarget.style.boxShadow = "";
                   }}
                 >
-                    {/* Media container - image or video at top */}
+                  {/* Media container - image or video at top */}
                   <div className="relative w-full flex-[0_0_65%] overflow-hidden bg-black/40">
                     {/* Loading placeholder (images only); or black when sections loading to prevent flash */}
                     {(sectionsLoading || (!isVideo && !isImageLoaded)) && (
@@ -242,10 +242,18 @@ const NarrativeImageSection = forwardRef<
                     {/* Image or video (flexible replace); placeholder when sections still loading to prevent flash */}
                     <div
                       className={`absolute inset-0 transition-opacity duration-300 ease-out ${
-                        sectionsLoading ? "opacity-0" : isVideo || isImageLoaded ? "opacity-100" : "opacity-0"
+                        sectionsLoading
+                          ? "opacity-0"
+                          : isVideo || isImageLoaded
+                            ? "opacity-100"
+                            : "opacity-0"
                       }`}
                       style={{
-                        willChange: sectionsLoading ? "auto" : isVideo || isImageLoaded ? "auto" : "opacity",
+                        willChange: sectionsLoading
+                          ? "auto"
+                          : isVideo || isImageLoaded
+                            ? "auto"
+                            : "opacity",
                       }}
                     >
                       {sectionsLoading ? (
@@ -292,6 +300,7 @@ const NarrativeImageSection = forwardRef<
                           overlayOnly
                           onUploadDone={refetchSections}
                           editLabel="Edit foto"
+                          directFilePicker
                         />
                       </div>
                     )}
@@ -336,16 +345,25 @@ export default function WhatWeDoPageClient() {
   const sectionsRef = useRef<(HTMLDivElement | null)[]>([]);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const footerVideoRef = useRef<HTMLVideoElement | null>(null);
-  const { sections: pageSections, loading: sectionsLoading, refetch: refetchPageSections } = usePageSections("what-we-do");
+  const {
+    sections: pageSections,
+    loading: sectionsLoading,
+    refetch: refetchPageSections,
+  } = usePageSections("what-we-do");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
-  const heroMediaUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/metal crafting hands.mp4");
+  const heroMediaUrl =
+    pageSections.hero?.url ?? getR2UrlClient("/videos/hero/metal crafting hands.mp4");
   const footerMediaType = pageSections.section_footer_video?.mediaType?.toUpperCase() ?? "VIDEO";
-  const footerMediaUrl = pageSections.section_footer_video?.url ?? getR2UrlClient("/videos/hero/molten metal slow motion.mp4");
+  const footerMediaUrl =
+    pageSections.section_footer_video?.url ??
+    getR2UrlClient("/videos/hero/molten metal slow motion.mp4");
 
   // Preload first craft card image when it's an image (flexible replace)
-  const firstCraftIsImage = (pageSections.craft_card_1?.mediaType?.toUpperCase() ?? "IMAGE") === "IMAGE";
+  const firstCraftIsImage =
+    (pageSections.craft_card_1?.mediaType?.toUpperCase() ?? "IMAGE") === "IMAGE";
   const firstCraftMediaUrl =
-    pageSections.craft_card_1?.url ?? getR2UrlClient("/images/pexels-3d-render-1058120333-33539240.jpg");
+    pageSections.craft_card_1?.url ??
+    getR2UrlClient("/images/pexels-3d-render-1058120333-33539240.jpg");
   useEffect(() => {
     if (!firstCraftIsImage || !firstCraftMediaUrl) return;
     const link = document.createElement("link");
@@ -372,19 +390,27 @@ export default function WhatWeDoPageClient() {
     };
     const onCanPlay = () => forcePlay();
     const onPause = () => {
-      if (!video.ended) setTimeout(() => { if (video.paused && !video.ended) forcePlay(); }, 50);
+      if (!video.ended)
+        setTimeout(() => {
+          if (video.paused && !video.ended) forcePlay();
+        }, 50);
     };
     const onVisibility = () => {
       if (!document.hidden && video.paused && !video.ended) forcePlay();
     };
-    const onEnded = () => { video.currentTime = 0; forcePlay(); };
+    const onEnded = () => {
+      video.currentTime = 0;
+      forcePlay();
+    };
     forcePlay();
     video.addEventListener("canplay", onCanPlay);
     video.addEventListener("loadeddata", onCanPlay);
     video.addEventListener("pause", onPause);
     video.addEventListener("ended", onEnded);
     document.addEventListener("visibilitychange", onVisibility);
-    const t = setInterval(() => { if (video.paused && !video.ended && !document.hidden) forcePlay(); }, 2000);
+    const t = setInterval(() => {
+      if (video.paused && !video.ended && !document.hidden) forcePlay();
+    }, 2000);
     return () => {
       video.removeEventListener("canplay", onCanPlay);
       video.removeEventListener("loadeddata", onCanPlay);
@@ -448,7 +474,8 @@ export default function WhatWeDoPageClient() {
         mediaType: pageSections.craft_card_1?.mediaType ?? "IMAGE",
         version: pageSections.craft_card_1?.version,
         images: [
-          pageSections.craft_card_1?.url ?? getR2UrlClient("/images/pexels-3d-render-1058120333-33539240.jpg"),
+          pageSections.craft_card_1?.url ??
+            getR2UrlClient("/images/pexels-3d-render-1058120333-33539240.jpg"),
           getR2UrlClient("/images/pexels-sejio402-29336321.jpg"),
           getR2UrlClient("/images/silverking-gold.jpeg"),
         ],
@@ -459,7 +486,8 @@ export default function WhatWeDoPageClient() {
         mediaType: pageSections.craft_card_2?.mediaType ?? "IMAGE",
         version: pageSections.craft_card_2?.version,
         images: [
-          pageSections.craft_card_2?.url ?? getR2UrlClient("/images/pexels-michael-steinberg-95604-386318.jpg"),
+          pageSections.craft_card_2?.url ??
+            getR2UrlClient("/images/pexels-michael-steinberg-95604-386318.jpg"),
           getR2UrlClient("/images/pexels-sejio402-29336326.jpg"),
           getR2UrlClient("/images/silverking-gold.jpeg"),
         ],
@@ -476,7 +504,18 @@ export default function WhatWeDoPageClient() {
         ],
       },
     ],
-    [t, pageSections.craft_card_1?.url, pageSections.craft_card_1?.mediaType, pageSections.craft_card_1?.version, pageSections.craft_card_2?.url, pageSections.craft_card_2?.mediaType, pageSections.craft_card_2?.version, pageSections.craft_card_3?.url, pageSections.craft_card_3?.mediaType, pageSections.craft_card_3?.version]
+    [
+      t,
+      pageSections.craft_card_1?.url,
+      pageSections.craft_card_1?.mediaType,
+      pageSections.craft_card_1?.version,
+      pageSections.craft_card_2?.url,
+      pageSections.craft_card_2?.mediaType,
+      pageSections.craft_card_2?.version,
+      pageSections.craft_card_3?.url,
+      pageSections.craft_card_3?.mediaType,
+      pageSections.craft_card_3?.version,
+    ]
   );
 
   useGSAP(
@@ -761,12 +800,12 @@ export default function WhatWeDoPageClient() {
         </div>
       </section>
 
-      {/* Footer Section – Pixelmatters style with video background; stable min-height so CTA centers without resize */}
+      {/* Footer Section – Pixelmatters style with video background - Mobile optimized */}
       <section
         ref={(element) => {
           sectionsRef.current[4] = element as HTMLDivElement | null;
         }}
-        className="relative min-h-[60vh] sm:min-h-[65vh] md:min-h-[70vh] flex flex-col justify-between px-4 sm:px-6 md:px-8 lg:px-12 py-12 sm:py-16 md:py-20 lg:py-24 overflow-hidden isolate"
+        className="relative min-h-[50vh] sm:min-h-[60vh] md:min-h-[70vh] flex flex-col justify-between px-4 sm:px-6 md:px-8 lg:px-12 py-12 sm:py-16 md:py-20 lg:py-24 overflow-hidden isolate"
       >
         {/* Footer background – no media until section data loaded (prevents flash of wrong asset) */}
         <div className="absolute inset-0 z-0 overflow-hidden">
@@ -823,12 +862,13 @@ export default function WhatWeDoPageClient() {
               overlayOnly
               onUploadDone={refetchPageSections}
               editLabel="Edit video"
+              directFilePicker
             />
           </div>
         </div>
 
-        {/* Main Content - Centered; min-h-0 so flex-1 gets correct height from first paint (fixes resize-only centering) */}
-        <div className="relative z-10 mx-auto max-w-4xl text-center flex-1 flex min-h-0 items-center justify-center px-4 sm:px-6">
+        {/* Main Content - Centered - Mobile optimized */}
+        <div className="relative z-10 mx-auto max-w-4xl text-center flex-1 flex items-center justify-center px-4 sm:px-6">
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}

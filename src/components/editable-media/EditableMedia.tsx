@@ -39,6 +39,8 @@ type EditableMediaProps = {
   editLabel?: string;
   /** When true with overlayOnly, the whole video/hero area is clickable to open edit modal */
   fullAreaClickable?: boolean;
+  /** When true (e.g. craft cards, footer), click opens file picker directly — no modal, no scroll lock. Hero unchanged. */
+  directFilePicker?: boolean;
 };
 
 export function EditableMedia({
@@ -56,6 +58,7 @@ export function EditableMedia({
   onUploadDone,
   editLabel,
   fullAreaClickable = false,
+  directFilePicker = false,
 }: EditableMediaProps) {
   const isAdmin = useIsAdmin();
   const { sections, loading: sectionsLoading, refetch } = usePageSections(page);
@@ -104,6 +107,12 @@ export function EditableMedia({
     e?.preventDefault();
     e?.stopPropagation();
     if (!isAdmin) return;
+    if (directFilePicker) {
+      setError(null);
+      setUploadProgress(0);
+      fileInputRef.current?.click();
+      return;
+    }
     setError(null);
     setUploading(false);
     setUploadProgress(0);
@@ -325,7 +334,6 @@ export function EditableMedia({
       : "flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-black/50 text-white/80 backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50";
     const buttons = isAdmin ? (
       <div className="absolute top-3 right-3 z-[10002] flex items-center gap-2">
-        {/* Restore: shown only when admin has replaced media; reverts to current/default website assets */}
         {hasCustomMedia && (
           <button
             type="button"
@@ -334,7 +342,7 @@ export function EditableMedia({
               e.stopPropagation();
               handleRestore();
             }}
-            disabled={restoring}
+            disabled={restoring || (directFilePicker && uploading)}
             className={
               editLabel
                 ? "flex h-11 items-center gap-2 rounded-xl border-2 border-white/30 bg-black/50 px-3 py-2.5 text-white/90 shadow-lg backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 disabled:opacity-50"
@@ -350,18 +358,33 @@ export function EditableMedia({
         <button
           type="button"
           onClick={(e) => handleEditClick(e)}
+          disabled={directFilePicker && uploading}
           className={btnClass}
           aria-label={editLabel ?? "Edit media"}
         >
           <Pencil className={editLabel ? "h-5 w-5 flex-shrink-0" : "h-4 w-4"} />
-          {editLabel && <span className="text-sm font-medium whitespace-nowrap">{editLabel}</span>}
+          {editLabel && (
+            <span className="text-sm font-medium whitespace-nowrap">
+              {directFilePicker && uploading ? `${uploadProgress}%` : editLabel}
+            </span>
+          )}
         </button>
       </div>
     ) : null;
 
     const content = (
       <>
-        {isAdmin && fullAreaClickable && (
+        {directFilePicker && (
+          <input
+            ref={fileInputRef as React.RefObject<HTMLInputElement>}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
+            className="hidden"
+            onChange={handleFileChange}
+            aria-hidden
+          />
+        )}
+        {isAdmin && fullAreaClickable && !directFilePicker && (
           <div
             className="absolute inset-0 z-[10001] cursor-pointer"
             onMouseDown={setModalOpenAttribute}
@@ -374,8 +397,19 @@ export function EditableMedia({
             aria-hidden
           />
         )}
+        {isAdmin && fullAreaClickable && directFilePicker && (
+          <div
+            className="absolute inset-0 z-[10001] cursor-pointer"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleEditClick(e);
+            }}
+            aria-hidden
+          />
+        )}
         {buttons}
-        {modalOpen &&
+        {!directFilePicker && modalOpen &&
           (() => {
             const target = getModalPortalTarget();
             return target
@@ -478,7 +512,17 @@ export function EditableMedia({
           </button>
         </div>
       )}
-      {modalOpen &&
+      {!overlayOnly && directFilePicker && (
+        <input
+          ref={fileInputRef as React.RefObject<HTMLInputElement>}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
+          className="hidden"
+          onChange={handleFileChange}
+          aria-hidden
+        />
+      )}
+      {!directFilePicker && modalOpen &&
         (() => {
           const target = getModalPortalTarget();
           return target
@@ -538,38 +582,63 @@ function EditableMediaModal({
   uploadProgress: number;
   error: string | null;
 }) {
-  // Scroll lock only while modal is mounted; cleanup always restores so page never stays frozen (close, unmount, or error)
   useEffect(() => {
-    if (typeof document === "undefined" || !document.body) return;
-    document.body.style.overflow = "hidden";
-
     const onEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     document.addEventListener("keydown", onEscape);
-
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onEscape);
-      document.body.style.overflow = "";
-      document.body.removeAttribute("data-cms-modal-open");
+      document.body.style.overflow = prevOverflow || "";
     };
   }, [onClose]);
 
-  // Overlay: fixed inset-0, flex center only (no overflow-y here — keeps modal truly viewport-centered).
-  // Inner: max-h-[90vh] overflow-y-auto so only the modal content scrolls; no translate/margin hacks.
+  // Fixed overlay: flex center so modal is always vertically and horizontally centered (no transform/position drift)
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="editable-media-modal-title"
       data-cms-replace-modal
-      className="fixed inset-0 z-[100002] flex items-center justify-center bg-black/60 p-4 box-border isolate pointer-events-auto"
+      style={{
+        position: "fixed",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        minHeight: "100dvh",
+        zIndex: 1,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+        boxSizing: "border-box",
+        backgroundColor: "rgba(0,0,0,0.85)",
+        isolation: "isolate",
+        pointerEvents: "auto",
+        overflowY: "auto",
+      }}
       onClick={onClose}
     >
       <div
         role="document"
         data-cms-replace-modal-inner
-        className="relative z-[100003] w-full max-w-md min-w-[280px] max-h-[90vh] overflow-y-auto rounded-xl border border-white/15 bg-neutral-900 p-6 shadow-xl"
+        style={{
+          margin: "auto",
+          width: "calc(100vw - 32px)",
+          maxWidth: 448,
+          minWidth: 280,
+          maxHeight: "min(420px, calc(100dvh - 32px))",
+          overflow: "auto",
+          borderRadius: 16,
+          border: "1px solid rgba(255,255,255,0.15)",
+          background: "#0a0a0a",
+          padding: 24,
+          boxSizing: "border-box",
+          boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
+          flexShrink: 0,
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <h3 id="editable-media-modal-title" className="text-lg font-semibold text-white mb-1">
