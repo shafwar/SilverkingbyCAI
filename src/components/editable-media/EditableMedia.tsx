@@ -555,27 +555,21 @@ function EditableMediaModal({
     };
   }, [onClose]);
 
-  // Same precise container for hero, craft cards, and footer (portal to #cms-modal-root or body)
+  // Overlay: fixed inset-0, flex center only (no overflow-y here — keeps modal truly viewport-centered).
+  // Inner: max-h-[90vh] overflow-y-auto so only the modal content scrolls; no translate/margin hacks.
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="editable-media-modal-title"
       data-cms-replace-modal
-      className="fixed inset-0 z-[100002] flex min-h-dvh items-center justify-center overflow-y-auto p-4 box-border isolate"
-      style={{
-        backgroundColor: "rgba(0,0,0,0.85)",
-        pointerEvents: "auto",
-      }}
+      className="fixed inset-0 z-[100002] flex items-center justify-center bg-black/60 p-4 box-border isolate pointer-events-auto"
       onClick={onClose}
     >
       <div
         role="document"
         data-cms-replace-modal-inner
-        className="relative z-[100003] w-full max-w-[448px] min-w-[280px] max-h-[min(420px,calc(100dvh-32px))] overflow-y-auto rounded-2xl border border-white/15 bg-[#0a0a0a] p-6 shadow-xl my-auto shrink-0"
-        style={{
-          boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
-        }}
+        className="relative z-[100003] w-full max-w-md min-w-[280px] max-h-[90vh] overflow-y-auto rounded-xl border border-white/15 bg-neutral-900 p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 id="editable-media-modal-title" className="text-lg font-semibold text-white mb-1">

@@ -761,12 +761,12 @@ export default function WhatWeDoPageClient() {
         </div>
       </section>
 
-      {/* Footer Section – Pixelmatters style with video background - Mobile optimized */}
+      {/* Footer Section – Pixelmatters style with video background; stable min-height so CTA centers without resize */}
       <section
         ref={(element) => {
           sectionsRef.current[4] = element as HTMLDivElement | null;
         }}
-        className="relative min-h-[50vh] sm:min-h-[60vh] md:min-h-[70vh] flex flex-col justify-between px-4 sm:px-6 md:px-8 lg:px-12 py-12 sm:py-16 md:py-20 lg:py-24 overflow-hidden isolate"
+        className="relative min-h-[60vh] sm:min-h-[65vh] md:min-h-[70vh] flex flex-col justify-between px-4 sm:px-6 md:px-8 lg:px-12 py-12 sm:py-16 md:py-20 lg:py-24 overflow-hidden isolate"
       >
         {/* Footer background – no media until section data loaded (prevents flash of wrong asset) */}
         <div className="absolute inset-0 z-0 overflow-hidden">
@@ -827,8 +827,8 @@ export default function WhatWeDoPageClient() {
           </div>
         </div>
 
-        {/* Main Content - Centered - Mobile optimized */}
-        <div className="relative z-10 mx-auto max-w-4xl text-center flex-1 flex items-center justify-center px-4 sm:px-6">
+        {/* Main Content - Centered; min-h-0 so flex-1 gets correct height from first paint (fixes resize-only centering) */}
+        <div className="relative z-10 mx-auto max-w-4xl text-center flex-1 flex min-h-0 items-center justify-center px-4 sm:px-6">
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
