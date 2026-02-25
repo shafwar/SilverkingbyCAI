@@ -538,14 +538,20 @@ function EditableMediaModal({
   uploadProgress: number;
   error: string | null;
 }) {
+  // Scroll lock only while modal is mounted; cleanup always restores so page never stays frozen (close, unmount, or error)
   useEffect(() => {
+    if (typeof document === "undefined" || !document.body) return;
+    document.body.style.overflow = "hidden";
+
     const onEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     document.addEventListener("keydown", onEscape);
-    document.body.style.overflow = "hidden";
+
     return () => {
       document.removeEventListener("keydown", onEscape);
+      document.body.style.overflow = "";
+      document.body.removeAttribute("data-cms-modal-open");
     };
   }, [onClose]);
 
@@ -556,22 +562,9 @@ function EditableMediaModal({
       aria-modal="true"
       aria-labelledby="editable-media-modal-title"
       data-cms-replace-modal
+      className="fixed inset-0 z-[100002] flex min-h-dvh items-center justify-center overflow-y-auto p-4 box-border isolate"
       style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        width: "100vw",
-        height: "100dvh",
-        zIndex: 1,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-        boxSizing: "border-box",
         backgroundColor: "rgba(0,0,0,0.85)",
-        isolation: "isolate",
         pointerEvents: "auto",
       }}
       onClick={onClose}
@@ -579,22 +572,8 @@ function EditableMediaModal({
       <div
         role="document"
         data-cms-replace-modal-inner
+        className="relative z-[100003] w-full max-w-[448px] min-w-[280px] max-h-[min(420px,calc(100dvh-32px))] overflow-y-auto rounded-2xl border border-white/15 bg-[#0a0a0a] p-6 shadow-xl my-auto shrink-0"
         style={{
-          position: "absolute",
-          left: "50%",
-          top: "50%",
-          transform: "translate(-50%, -50%)",
-          zIndex: 1,
-          width: "calc(100vw - 32px)",
-          maxWidth: 448,
-          minWidth: 280,
-          maxHeight: "min(420px, calc(100dvh - 32px))",
-          overflow: "auto",
-          borderRadius: 16,
-          border: "1px solid rgba(255,255,255,0.15)",
-          background: "#0a0a0a",
-          padding: 24,
-          boxSizing: "border-box",
           boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
         }}
         onClick={(e) => e.stopPropagation()}
