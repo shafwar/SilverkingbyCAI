@@ -17,6 +17,7 @@ const MAX_IMAGE_BYTES = 3 * 1024 * 1024; // 3 MB
 const MAX_VIDEO_BYTES = 10 * 1024 * 1024; // 10 MB
 const IMAGE_MAX_WIDTH = 1920;
 const IMAGE_QUALITY = 88; // high quality, minimal visible loss
+const IMAGE_MAX_PIXELS = 1920 * 1920 * 4; // limit decode for speed on huge uploads
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     if (type === "image") {
       const buf = Buffer.from(await file.arrayBuffer());
-      const pipeline = sharp(buf)
+      const pipeline = sharp(buf, { limitInputPixels: IMAGE_MAX_PIXELS })
         .resize(IMAGE_MAX_WIDTH, undefined, { withoutEnlargement: true })
         .rotate(); // auto-orient from EXIF
       const outFormat = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpeg";
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
       key = `static/page-media/${page}/${safeSection}_${ts}.${ext}`;
       const outBuf =
         outFormat === "png"
-          ? await pipeline.png({ compressionLevel: 6 }).toBuffer()
+          ? await pipeline.png({ compressionLevel: 4 }).toBuffer() // 4 = faster than 6, minimal size diff
           : outFormat === "webp"
             ? await pipeline.webp({ quality: IMAGE_QUALITY }).toBuffer()
             : await pipeline.jpeg({ quality: IMAGE_QUALITY, mozjpeg: true }).toBuffer();

@@ -1,3 +1,4 @@
+import { Readable } from "stream";
 import {
   S3Client,
   PutObjectCommand,
@@ -165,17 +166,37 @@ export function getPublicUrl(key: string): string {
 }
 
 /**
- * Upload file from FormData or File
- * @param file - File object from FormData
- * @param path - Destination path in R2 (e.g., "images/product.jpg")
- * @returns Public URL of the uploaded file
+ * Upload file from FormData or File (streaming for video/large files — faster, no full buffer).
+ * Uses stream when possible so upload starts immediately; ContentLength required for S3/R2.
  */
 export async function uploadFileToR2(file: File, path: string): Promise<string> {
-  const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-
-  return uploadToR2(path, buffer, file.type, {
+  const contentType = file.type || "application/octet-stream";
+  const metadata = {
     originalName: file.name,
     uploadedAt: new Date().toISOString(),
-  });
+  };
+  const size = file.size;
+
+  try {
+    const webStream = file.stream();
+    const nodeStream = Readable.fromWeb(webStream as import("stream/web").ReadableStream);
+
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: path,
+      Body: nodeStream,
+      ContentType: contentType,
+      ContentLength: size,
+      Metadata: metadata,
+    });
+
+    await r2Client.send(command);
+
+    return PUBLIC_URL ? `${PUBLIC_URL}/${path}` : `https://${process.env.R2_ACCOUNT_ID}.r2.dev/${path}`;
+  } catch (error) {
+    console.error("Error uploading file to R2:", error);
+    throw new Error(
+      `Failed to upload file to R2: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+  }
 }
