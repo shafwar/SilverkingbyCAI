@@ -144,8 +144,10 @@ const NarrativeImageSection = forwardRef<
     refetchSections?: () => void;
     /** When true, show placeholder for card media until section data is loaded (prevents flash of wrong asset) */
     sectionsLoading?: boolean;
+    /** When true, opening edit on a card auto-opens the file picker (craft cards on What We Do) */
+    autoOpenFilePicker?: boolean;
   }
->(({ columns, cards, title, description, sectionKeys, refetchSections, sectionsLoading }, ref) => {
+>(({ columns, cards, title, description, sectionKeys, refetchSections, sectionsLoading, autoOpenFilePicker }, ref) => {
   // Track which images have finished loading so we can fade them in smoothly
   const [imageLoaded, setImageLoaded] = useState<{ [key: string]: boolean }>({});
 
@@ -300,7 +302,7 @@ const NarrativeImageSection = forwardRef<
                           overlayOnly
                           onUploadDone={refetchSections}
                           editLabel="Edit foto"
-                          directFilePicker
+                          autoOpenFilePicker={autoOpenFilePicker}
                         />
                       </div>
                     )}
@@ -697,6 +699,7 @@ export default function WhatWeDoPageClient() {
         sectionKeys={["craft_card_1", "craft_card_2", "craft_card_3"]}
         refetchSections={refetchPageSections}
         sectionsLoading={sectionsLoading}
+        autoOpenFilePicker
       />
 
       {/* Impact Section – similar to Pixelmatters "The impact you can expect" - Mobile optimized */}
@@ -862,7 +865,7 @@ export default function WhatWeDoPageClient() {
               overlayOnly
               onUploadDone={refetchPageSections}
               editLabel="Edit video"
-              directFilePicker
+              autoOpenFilePicker
             />
           </div>
         </div>
