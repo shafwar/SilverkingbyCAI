@@ -87,6 +87,10 @@ export function EditableMedia({
       document.body.style.overflow = "";
     }
     setModalOpen(false);
+    setUploading(false);
+    setUploadProgress(0);
+    setError(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   /** Set attribute immediately so PageTransitionOverlay never blurs when opening modal (same as home). */
@@ -101,6 +105,9 @@ export function EditableMedia({
     e?.stopPropagation();
     if (!isAdmin) return;
     setError(null);
+    setUploading(false);
+    setUploadProgress(0);
+    if (fileInputRef.current) fileInputRef.current.value = "";
     setModalOpenAttribute();
     setModalOpen(true);
   };
