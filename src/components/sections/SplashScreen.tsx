@@ -103,7 +103,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
     <motion.div
       ref={containerRef}
       data-splash-screen
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black"
+      className="font-sans fixed inset-0 z-[9999] flex items-center justify-center bg-black"
       initial={{ opacity: 1 }}
       animate={{ opacity: 1 }}
       style={{ 

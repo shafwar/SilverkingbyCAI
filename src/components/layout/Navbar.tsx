@@ -331,11 +331,9 @@ export default function Navbar() {
                   }
                 }}
                 role="menuitem"
-                style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
               >
                 <span
                   className="relative z-10"
-                  style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
                 >
                   {link.name}
                 </span>
@@ -372,7 +370,6 @@ export default function Navbar() {
                 }}
                 className="group relative flex items-center gap-2 rounded-full border border-luxury-gold/30 bg-luxury-gold/10 px-4 py-2.5 backdrop-blur-xl hover:border-luxury-gold/50 hover:bg-luxury-gold/20 hover:shadow-[0_0_20px_rgba(212,175,55,0.3)] will-change-[transform,opacity]"
                 style={{ 
-                  fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c",
                   pointerEvents: isAdmin === true ? "auto" : "none",
                   transform: "translateZ(0)", // Force GPU acceleration
                   backfaceVisibility: "hidden", // Prevent flicker
@@ -381,7 +378,7 @@ export default function Navbar() {
                 tabIndex={isAdmin === true ? 0 : -1}
               >
                 <ShieldCheck className="h-4 w-4 text-luxury-gold flex-shrink-0" />
-                <span className="text-xs font-semibold text-luxury-gold whitespace-nowrap" style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}>ADMIN</span>
+                <span className="text-xs font-semibold text-luxury-gold whitespace-nowrap">ADMIN</span>
                 <div className="absolute inset-0 rounded-full bg-gradient-to-r from-luxury-gold/20 to-luxury-lightGold/20 opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-100" />
               </motion.a>
             </div>
@@ -411,11 +408,9 @@ export default function Navbar() {
                 }
               }}
               className="group relative overflow-hidden inline-flex items-center gap-2.5 rounded-full bg-gradient-to-r from-white/[0.12] to-white/[0.08] backdrop-blur-xl border border-white/[0.15] px-6 py-3 font-sans text-[0.9375rem] font-semibold text-white shadow-[0_8px_32px_rgba(0,0,0,0.12)] transition-all duration-500 hover:shadow-[0_8px_32px_rgba(212,175,55,0.25)] hover:scale-105 hover:border-luxury-gold/30"
-              style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
             >
               <span
                 className="relative z-10 transition-colors duration-300 group-hover:text-luxury-gold"
-                style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
               >
                 {t("getInTouch")}
               </span>
@@ -431,7 +426,6 @@ export default function Navbar() {
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="md:hidden flex flex-col gap-1.5 p-2 relative z-[101]"
               aria-label="Toggle menu"
-              style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
             >
               <motion.span
                 animate={{ rotate: 0, y: 0 }}
@@ -527,7 +521,6 @@ export default function Navbar() {
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="flex items-center justify-center w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 transition-colors"
                       aria-label="Close menu"
-                      style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
                     >
                       <X className="h-5 w-5 text-white" />
                     </button>
@@ -572,7 +565,6 @@ export default function Navbar() {
                             }
                           }}
                           className="block font-sans text-2xl sm:text-3xl font-medium text-white py-4 transition-all duration-300 hover:text-white/80"
-                          style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
                         >
                           {link.name}
                         </Link>
@@ -606,7 +598,6 @@ export default function Navbar() {
                       }}
                       className="group relative flex items-center gap-2 rounded-full border border-luxury-gold/30 bg-luxury-gold/10 px-4 py-2.5 backdrop-blur-xl hover:border-luxury-gold/50 hover:bg-luxury-gold/20 will-change-[transform,opacity]"
                       style={{ 
-                        fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c",
                         pointerEvents: isAdmin === true ? "auto" : "none",
                         transform: "translateZ(0)",
                         backfaceVisibility: "hidden",
@@ -614,7 +605,7 @@ export default function Navbar() {
                       tabIndex={isAdmin === true ? 0 : -1}
                     >
                       <ShieldCheck className="h-4 w-4 text-luxury-gold" />
-                      <span className="text-xs font-semibold text-luxury-gold" style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}>ADMIN</span>
+                      <span className="text-xs font-semibold text-luxury-gold">ADMIN</span>
                     </motion.a>
                   </motion.div>
 
@@ -633,7 +624,6 @@ export default function Navbar() {
                         setIsMobileMenuOpen(false);
                       }}
                       className="group block relative overflow-hidden rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all duration-300 hover:border-white/20"
-                      style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
                     >
                       <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4">
                         {/* Icon/Thumbnail - Smaller */}
@@ -645,25 +635,16 @@ export default function Navbar() {
                         <div className="flex-1 min-w-0">
                           <p
                             className="font-sans text-[0.6rem] sm:text-[0.65rem] uppercase tracking-[0.25em] sm:tracking-[0.3em] text-white/50 mb-1"
-                            style={{
-                              fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c",
-                            }}
                           >
                             SCAN & VERIFY
                           </p>
                           <h3
                             className="font-sans text-sm sm:text-base font-semibold text-white leading-tight group-hover:text-white/90 transition-colors"
-                            style={{
-                              fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c",
-                            }}
                           >
                             Tap to launch Silver King QR scanner
                           </h3>
                           <p
                             className="font-sans text-xs sm:text-sm text-white/60 leading-relaxed mt-1 line-clamp-2"
-                            style={{
-                              fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c",
-                            }}
                           >
                             Capture the QR seal to view purity & provenance.
                           </p>
@@ -687,7 +668,6 @@ export default function Navbar() {
                         setIsMobileMenuOpen(false);
                       }}
                       className="group flex items-center justify-center gap-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/20 px-6 py-4 font-sans text-base font-semibold text-white transition-all duration-300 hover:scale-[1.02]"
-                      style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
                     >
                       <span>Get in touch</span>
                       <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />

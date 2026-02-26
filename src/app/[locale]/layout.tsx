@@ -49,6 +49,7 @@ export default async function LocaleLayout({
     messages = {};
   }
 
+  // Font: same as root layout — GeistSans.variable + className; content uses font-sans (var(--font-geist-sans))
   return (
     <html lang={locale} className={`${GeistSans.variable} ${playfair.variable}`}>
       <body className={`${GeistSans.className} antialiased`}>
