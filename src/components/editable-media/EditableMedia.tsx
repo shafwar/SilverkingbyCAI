@@ -111,18 +111,13 @@ export function EditableMedia({
     setUploading(false);
     setUploadProgress(0);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    if (autoOpenFilePicker) {
+      fileInputRef.current?.click();
+      return;
+    }
     setModalOpenAttribute();
     setModalOpen(true);
   };
-
-  // When modal opens with autoOpenFilePicker (craft cards + footer), open file dialog after a short delay
-  useEffect(() => {
-    if (!modalOpen || !autoOpenFilePicker || !isAdmin) return;
-    const t = setTimeout(() => {
-      fileInputRef.current?.click();
-    }, 120);
-    return () => clearTimeout(t);
-  }, [modalOpen, autoOpenFilePicker, isAdmin]);
 
   const handleRestore = async () => {
     if (!isAdmin || !hasCustomMedia) return;
@@ -162,17 +157,29 @@ export function EditableMedia({
     if (!uploadType) {
       setError("Use image (JPEG, PNG, WebP) or video (MP4, WebM).");
       e.target.value = "";
+      if (autoOpenFilePicker) {
+        setModalOpenAttribute();
+        setModalOpen(true);
+      }
       return;
     }
     const limit = uploadType === "image" ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
     if (file.size > limit) {
       setError(uploadType === "image" ? "Image max 3 MB." : "Video max 10 MB.");
       e.target.value = "";
+      if (autoOpenFilePicker) {
+        setModalOpenAttribute();
+        setModalOpen(true);
+      }
       return;
     }
     setError(null);
     setUploading(true);
     setUploadProgress(0);
+    if (autoOpenFilePicker) {
+      setModalOpenAttribute();
+      setModalOpen(true);
+    }
     const formData = new FormData();
     formData.set("page", page);
     formData.set("section", section);
@@ -387,6 +394,16 @@ export function EditableMedia({
           />
         )}
         {buttons}
+        {autoOpenFilePicker && (
+          <input
+            ref={fileInputRef as React.RefObject<HTMLInputElement>}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
+            className="hidden"
+            onChange={handleFileChange}
+            aria-hidden
+          />
+        )}
         {modalOpen &&
           (() => {
             const target = getModalPortalTarget();
@@ -403,6 +420,7 @@ export function EditableMedia({
                     uploading={uploading}
                     uploadProgress={uploadProgress}
                     error={error}
+                    progressOnly={autoOpenFilePicker}
                   />,
                   target
                 )
@@ -506,6 +524,7 @@ export function EditableMedia({
                   uploading={uploading}
                   uploadProgress={uploadProgress}
                   error={error}
+                  progressOnly={autoOpenFilePicker}
                 />,
                 target
               )
@@ -538,6 +557,7 @@ function EditableMediaModal({
   uploading,
   uploadProgress,
   error,
+  progressOnly = false,
 }: {
   onClose: () => void;
   type: string;
@@ -549,6 +569,8 @@ function EditableMediaModal({
   uploading: boolean;
   uploadProgress: number;
   error: string | null;
+  /** When true (craft cards + footer): no file input container, only progress + actions */
+  progressOnly?: boolean;
 }) {
   useEffect(() => {
     const onEscape = (e: KeyboardEvent) => {
@@ -614,27 +636,31 @@ function EditableMediaModal({
         <h3 id="editable-media-modal-title" className="text-lg font-semibold text-white mb-1">
           {title}
         </h3>
-        <p className="text-sm text-white/50 mb-4">
-          Pilih foto atau video yang ingin ditampilkan. Image: JPEG, PNG, WebP (maks. 3 MB). Video: MP4, WebM (maks. 10 MB).
-        </p>
-        <input
-          ref={fileInputRef as React.RefObject<HTMLInputElement>}
-          type="file"
-          accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
-          className="hidden"
-          onChange={handleFileChange}
-        />
-        <div
-          className="mb-4 rounded-xl border-2 border-dashed border-white/20 bg-white/5 p-6 text-center transition hover:border-luxury-gold/40 hover:bg-white/10"
-          onClick={() => fileInputRef.current?.click()}
-          onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
-          role="button"
-          tabIndex={0}
-          aria-label="Klik untuk memilih file"
-        >
-          <p className="text-sm font-medium text-white/90 mb-1">Klik untuk memilih file</p>
-          <p className="text-xs text-white/50">atau drag & drop foto/video di sini</p>
-        </div>
+        {!progressOnly && (
+          <>
+            <p className="text-sm text-white/50 mb-4">
+              Pilih foto atau video yang ingin ditampilkan. Image: JPEG, PNG, WebP (maks. 3 MB). Video: MP4, WebM (maks. 10 MB).
+            </p>
+            <input
+              ref={fileInputRef as React.RefObject<HTMLInputElement>}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+            <div
+              className="mb-4 rounded-xl border-2 border-dashed border-white/20 bg-white/5 p-6 text-center transition hover:border-luxury-gold/40 hover:bg-white/10"
+              onClick={() => fileInputRef.current?.click()}
+              onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
+              role="button"
+              tabIndex={0}
+              aria-label="Klik untuk memilih file"
+            >
+              <p className="text-sm font-medium text-white/90 mb-1">Klik untuk memilih file</p>
+              <p className="text-xs text-white/50">atau drag & drop foto/video di sini</p>
+            </div>
+          </>
+        )}
         {uploading && (
           <div className="mb-4">
             <div className="flex justify-between text-xs text-white/60 mb-1">
@@ -669,14 +695,16 @@ function EditableMediaModal({
           >
             Cancel
           </button>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="rounded-xl bg-luxury-gold/20 text-luxury-gold px-4 py-2.5 text-sm font-medium hover:bg-luxury-gold/30 disabled:opacity-50"
-          >
-            {uploading ? `Upload ${uploadProgress}%` : "Pilih file"}
-          </button>
+          {!progressOnly && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="rounded-xl bg-luxury-gold/20 text-luxury-gold px-4 py-2.5 text-sm font-medium hover:bg-luxury-gold/30 disabled:opacity-50"
+            >
+              {uploading ? `${uploadProgress}%` : "Pilih file"}
+            </button>
+          )}
         </div>
       </div>
     </div>
