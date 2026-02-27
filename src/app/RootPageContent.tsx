@@ -81,8 +81,10 @@ export default function RootPageContent() {
 
       {/* Hero video + edit icon only after splash complete */}
       <PersistentHomeHeroVideo splashComplete={splashComplete} />
-      {/* Main Content - Always render, control visibility */}
+      {/* Main Content - Always render, control visibility; data-home-content + font-sans for consistent font with splash/body */}
       <div
+        data-home-content
+        className="font-sans"
         style={{
           opacity: isClient && !showSplash ? 1 : 0,
           transition: "opacity 0.3s ease-in",

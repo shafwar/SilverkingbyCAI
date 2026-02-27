@@ -271,7 +271,7 @@ export default function VerifyPage() {
               className="space-y-6"
             >
               <div className="luxury-card text-center">
-                <h1 className="text-3xl md:text-4xl font-serif font-bold text-luxury-gold mb-3">
+                <h1 className="text-3xl md:text-4xl font-sans font-bold text-luxury-gold mb-3">
                   Root Key Required
                 </h1>
                 <p className="text-luxury-silver text-lg">
@@ -280,7 +280,7 @@ export default function VerifyPage() {
               </div>
 
               <div className="luxury-card">
-                <h2 className="text-2xl font-serif font-bold text-luxury-gold mb-6 flex items-center gap-2">
+                <h2 className="text-2xl font-sans font-bold text-luxury-gold mb-6 flex items-center gap-2">
                   <Shield className="w-6 h-6" />
                   Product Information
                 </h2>
@@ -382,7 +382,7 @@ export default function VerifyPage() {
               {/* Show product info first */}
               <div className="luxury-card text-center">
                 <CheckCircle2 className="w-20 h-20 text-green-500 mx-auto mb-4" />
-                <h1 className="text-3xl md:text-4xl font-serif font-bold text-luxury-gold mb-3">
+                <h1 className="text-3xl md:text-4xl font-sans font-bold text-luxury-gold mb-3">
                   Product Verified
                 </h1>
                 <p className="text-luxury-silver text-lg">
@@ -391,7 +391,7 @@ export default function VerifyPage() {
               </div>
 
               <div className="luxury-card">
-                <h2 className="text-2xl font-serif font-bold text-luxury-gold mb-6 flex items-center gap-2">
+                <h2 className="text-2xl font-sans font-bold text-luxury-gold mb-6 flex items-center gap-2">
                   <Shield className="w-6 h-6" />
                   Product Information
                 </h2>
@@ -459,7 +459,7 @@ export default function VerifyPage() {
               className="luxury-card text-center"
             >
               <XCircle className="w-20 h-20 text-red-500 mx-auto mb-4" />
-              <h1 className="text-3xl md:text-4xl font-serif font-bold text-red-500 mb-3">
+              <h1 className="text-3xl md:text-4xl font-sans font-bold text-red-500 mb-3">
                 Verification Failed
               </h1>
               <p className="text-luxury-silver text-lg mb-6">

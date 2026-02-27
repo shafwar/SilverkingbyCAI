@@ -237,7 +237,7 @@ export default function HeroWithVideo({
           className="max-w-5xl"
         >
           {/* Title */}
-          <h1 className="text-5xl md:text-7xl font-serif font-bold mb-6">
+          <h1 className="text-5xl md:text-7xl font-sans font-bold mb-6">
             <span className="bg-gradient-to-r from-luxury-gold via-luxury-lightGold to-luxury-gold bg-clip-text text-transparent">
               {title}
             </span>

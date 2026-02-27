@@ -28,7 +28,7 @@ export default function Error({
   return (
     <html lang={routing.defaultLocale} className={`${GeistSans.variable} ${playfair.variable}`}>
       <body className={`${GeistSans.className} antialiased min-h-screen bg-luxury-black text-white flex items-center justify-center`}>
-        <div className="text-center space-y-6 px-6 max-w-md">
+        <div className="font-sans text-center space-y-6 px-6 max-w-md">
           <h1 className="text-6xl font-light text-white">500</h1>
           <div className="h-px w-16 mx-auto bg-gradient-to-r from-transparent via-white/20 to-transparent" />
           <h2 className="text-xl font-semibold text-white">Something went wrong!</h2>

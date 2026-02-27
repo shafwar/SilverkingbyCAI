@@ -98,11 +98,19 @@
     transform: translateZ(0);
   }
 
-  /* CRITICAL: Hide splash screen text until animation starts */
-  /* This prevents flicker where text appears before animation */
-  /* Note: GSAP will handle the visibility, so we only set initial state */
+  /* CRITICAL: Splash and home use same font as body — avoid FOUT / inconsistent font */
+  [data-splash-screen],
+  [data-splash-screen] * {
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+  }
+  /* Hide splash screen text until animation starts */
   [data-splash-screen] .letter {
     opacity: 0;
+  }
+  /* Home page content: lock font so hero + content match body */
+  body.home-page main,
+  body.home-page [data-home-content] {
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
   }
 
   /* Hide body content until splash screen completes - REMOVED: Too aggressive, blocks interactions */

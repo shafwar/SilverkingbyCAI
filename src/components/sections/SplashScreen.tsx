@@ -99,6 +99,8 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
     return () => ctx.revert();
   }, [onComplete]);
 
+  const fontStack = "var(--font-geist-sans), system-ui, sans-serif";
+
   return (
     <motion.div
       ref={containerRef}
@@ -107,6 +109,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
       initial={{ opacity: 1 }}
       animate={{ opacity: 1 }}
       style={{ 
+        fontFamily: fontStack,
         position: 'fixed',
         top: 0,
         left: 0,
@@ -126,11 +129,9 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
       <div
         ref={textRef}
         className="relative z-10 text-center px-6"
-        style={{ 
-          perspective: "1000px",
-        }}
+        style={{ perspective: "1000px", fontFamily: fontStack }}
       >
-        <div className="font-sans text-[2rem] sm:text-[2.5rem] md:text-[3rem] lg:text-[3.5rem] font-light tracking-tight leading-none text-white">
+        <div className="font-sans text-[2rem] sm:text-[2.5rem] md:text-[3rem] lg:text-[3.5rem] font-light tracking-tight leading-none text-white" style={{ fontFamily: fontStack }}>
           {"Silver King by CAI".split("").map((char, index) => (
             <span
               key={index}
@@ -152,6 +153,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
           animate={{ opacity: 0.85, y: 0, visibility: "visible" }}
           transition={{ duration: 0.8, delay: 1.2, ease: "easeOut" }}
           className="mt-6 font-sans text-[0.75rem] md:text-[0.875rem] font-light tracking-[0.3em] text-white/85"
+          style={{ fontFamily: fontStack }}
         >
           {t("tagline")}
         </motion.div>

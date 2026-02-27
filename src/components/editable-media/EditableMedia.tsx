@@ -613,6 +613,7 @@ function EditableMediaModal({
       <div
         role="document"
         data-cms-replace-modal-inner
+        className="font-sans"
         style={{
           position: "absolute",
           left: "50%",
