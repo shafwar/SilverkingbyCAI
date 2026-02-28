@@ -46,7 +46,14 @@ export async function POST(request: NextRequest) {
       (Array.isArray(productsFromFrontend) && productsFromFrontend.some((p: any) => p?.isGram));
 
     // Support both formats: products (new, preferred) or serialCodes (legacy, fallback)
-    let productsData: Array<{ id: number; name: string; serialCode: string; weight: number }>;
+    let productsData: Array<{
+      id: number;
+      name: string;
+      serialCode: string;
+      weight: number;
+      isGram?: boolean;
+      rootKey?: string | null;
+    }>;
 
     if (
       productsFromFrontend &&
@@ -67,6 +74,7 @@ export async function POST(request: NextRequest) {
         serialCode: p.serialCode,
         weight: p.weight,
         isGram: p.isGram === true,
+        rootKey: p.rootKey != null ? String(p.rootKey).trim() || null : null,
       }));
 
       console.log(`[QR Multiple] Using products from frontend (no database query):`, {
@@ -109,6 +117,7 @@ export async function POST(request: NextRequest) {
           serialCode: p.uniqCode,
           weight: p.batch?.weight || 0,
           isGram: true,
+          rootKey: p.rootKey != null ? String(p.rootKey).trim() || null : null,
         }));
       } else {
         const products = await prisma.product.findMany({
@@ -421,6 +430,23 @@ export async function POST(request: NextRequest) {
         frontCtx.textBaseline = "top";
         frontCtx.font = `bold ${serialFontSize}px ${fontConfig.fontFamily}, monospace`;
         frontCtx.fillText(productSerialCode, frontTemplateImage.width / 2, serialY);
+
+        // Root key below serial: smaller font, proportional (optional)
+        const productRootKey =
+          (product as any).rootKey != null && String((product as any).rootKey).trim() !== ""
+            ? String((product as any).rootKey).trim().toUpperCase()
+            : null;
+        if (productRootKey) {
+          const rootKeyFontSize = Math.max(10, Math.floor(serialFontSize * 0.65));
+          const rootKeyGap = 8;
+          const rootKeyY = serialY + serialFontSize + rootKeyGap;
+          frontCtx.font = `${rootKeyFontSize}px ${fontConfig.fontFamily}, monospace`;
+          frontCtx.fillStyle = textColor;
+          frontCtx.textAlign = "center";
+          frontCtx.textBaseline = "top";
+          frontCtx.fillText(productRootKey, frontTemplateImage.width / 2, rootKeyY);
+        }
+
         console.log(
           `[QR Multiple] Serial code drawn (from DATABASE): "${productSerialCode}" at Y=${serialY}`
         );

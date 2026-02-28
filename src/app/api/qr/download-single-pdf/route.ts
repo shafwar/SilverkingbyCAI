@@ -158,10 +158,28 @@ export async function POST(request: NextRequest) {
     frontCtx.font = serialFont;
     frontCtx.fillText(displaySerialCode, frontTemplateImage.width / 2, serialY);
 
+    // Root key below serial: smaller font, proportional (optional)
+    const productRootKey =
+      product.rootKey != null && String(product.rootKey).trim() !== ""
+        ? String(product.rootKey).trim().toUpperCase()
+        : null;
+    if (productRootKey) {
+      const rootKeyFontSize = Math.max(10, Math.floor(serialFontSize * 0.65));
+      const rootKeyGap = 8;
+      const rootKeyY = serialY + serialFontSize + rootKeyGap;
+      const rootKeyFont = `${rootKeyFontSize}px ${fontConfig.fontFamily}, monospace`;
+      frontCtx.font = rootKeyFont;
+      frontCtx.fillStyle = textColor;
+      frontCtx.textAlign = "center";
+      frontCtx.textBaseline = "top";
+      frontCtx.fillText(productRootKey, frontTemplateImage.width / 2, rootKeyY);
+    }
+
     console.log("[QR Single PDF] Serial code rendered:", {
       text: displaySerialCode,
       fontSize: serialFontSize,
       font: serialFont,
+      hasRootKey: !!productRootKey,
     });
 
     const frontBuffer = frontCanvas.toBuffer("image/png");

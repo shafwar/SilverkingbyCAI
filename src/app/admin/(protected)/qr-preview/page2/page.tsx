@@ -27,6 +27,7 @@ export default async function QrPreviewPage2() {
         serialCode: string;
         qrImageUrl: string;
         hasRootKey: boolean;
+        rootKey: string | null;
       }>;
     }
   >();
@@ -47,6 +48,7 @@ export default async function QrPreviewPage2() {
       serialCode: item.serialCode,
       qrImageUrl: item.qrImageUrl,
       hasRootKey: !!item.rootKeyHash,
+      rootKey: item.rootKey ?? null,
     });
   });
 

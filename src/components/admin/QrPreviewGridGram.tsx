@@ -34,6 +34,7 @@ type GramPreviewBatch = {
     serialCode: string;
     qrImageUrl: string;
     hasRootKey: boolean;
+    rootKey?: string | null;
   };
   allItems: Array<{
     id: number;
@@ -41,6 +42,7 @@ type GramPreviewBatch = {
     serialCode: string;
     qrImageUrl: string;
     hasRootKey: boolean;
+    rootKey?: string | null;
   }>;
 };
 
@@ -58,7 +60,7 @@ export function QrPreviewGridGram({ batches }: Props) {
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const [selectedBatch, setSelectedBatch] = useState<GramPreviewBatch | null>(null);
   const [batchItems, setBatchItems] = useState<
-    Array<{ serialCode: string; uniqCode: string; rootKey: string | null }>
+    Array<{ id: number; serialCode: string; uniqCode: string; rootKey: string | null }>
   >([]);
   const [selectedQrItem, setSelectedQrItem] = useState<{ name: string; uniqCode: string } | null>(
     null
@@ -67,6 +69,7 @@ export function QrPreviewGridGram({ batches }: Props) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [downloadDropdownOpen, setDownloadDropdownOpen] = useState<number | null>(null);
   const downloadDropdownRef = useRef<HTMLDivElement>(null);
+  const [isDownloadingBatchZip, setIsDownloadingBatchZip] = useState(false);
 
   // Fetch serticard config to check for custom template
   const { data: fontConfig, mutate: mutateFontConfig } = useSWR<{
@@ -140,9 +143,10 @@ export function QrPreviewGridGram({ batches }: Props) {
         const data = await response.json();
         setBatchItems(
           data.items.map((item: any) => ({
+            id: item.id,
             serialCode: item.serialCode,
             uniqCode: item.uniqCode,
-            rootKey: item.rootKey,
+            rootKey: item.rootKey ?? null,
           }))
         );
       } else {
@@ -202,6 +206,7 @@ export function QrPreviewGridGram({ batches }: Props) {
           serialCode: product.uniqCode.trim().toUpperCase(),
           weight: product.weight,
           isGram: true,
+          rootKey: product.rootKey ?? undefined,
         },
         templateVariant: variantId === "custom" ? "01" : variantId,
         useCustomTemplate: variantId === "custom",
@@ -579,6 +584,51 @@ export function QrPreviewGridGram({ batches }: Props) {
     }
   };
 
+  const handleDownloadBatchSerticardsZip = async () => {
+    if (!selectedBatch || batchItems.length === 0) return;
+    try {
+      setIsDownloadingBatchZip(true);
+      const products = batchItems.map((item) => ({
+        id: item.id,
+        name: selectedBatch.name,
+        serialCode: item.uniqCode,
+        weight: selectedBatch.weight,
+        isGram: true,
+        rootKey: item.rootKey ?? null,
+      }));
+      const response = await fetch("/api/qr/download-multiple-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          products,
+          templateVariant: "01",
+          useCustomTemplate: false,
+        }),
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `HTTP ${response.status}`);
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const safeName = selectedBatch.name.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_-]/g, "");
+      link.download = `${safeName || "batch"}-serticards-${batchItems.length}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("[GramPreview] handleDownloadBatchSerticardsZip error:", error);
+      alert(
+        error instanceof Error ? error.message : "Gagal mengunduh ZIP Serticard. Silakan coba lagi."
+      );
+    } finally {
+      setIsDownloadingBatchZip(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header section: sama nuansanya dengan Page 1 (Vault QR) */}
@@ -828,6 +878,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                               qrImageUrl: batch.firstItem.qrImageUrl,
                               weightGroup: batch.weightGroup,
                               hasRootKey: batch.firstItem.hasRootKey,
+                              rootKey: batch.firstItem.rootKey ?? undefined,
                             }}
                           />
                         </div>
@@ -911,6 +962,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                         qrImageUrl: batch.firstItem.qrImageUrl,
                         weightGroup: batch.weightGroup,
                         hasRootKey: batch.firstItem.hasRootKey,
+                        rootKey: batch.firstItem.rootKey ?? undefined,
                       }}
                     />
                   </div>
@@ -939,7 +991,20 @@ export function QrPreviewGridGram({ batches }: Props) {
       >
         {selectedBatch && (
           <div className="max-h-[70vh] overflow-y-auto">
-            <div className="flex items-center justify-end mb-3 px-1">
+            <div className="flex items-center justify-end gap-2 mb-3 px-1 flex-wrap">
+              <motion.button
+                type="button"
+                onClick={handleDownloadBatchSerticardsZip}
+                disabled={isDownloadingBatchZip || batchItems.length === 0}
+                className="inline-flex items-center gap-2 rounded-full border border-[#FFD700]/40 bg-[#FFD700]/10 px-4 py-2 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/20 disabled:opacity-50"
+                whileHover={{ scale: isDownloadingBatchZip ? 1 : 1.02 }}
+                whileTap={{ scale: isDownloadingBatchZip ? 1 : 0.98 }}
+              >
+                <Download className="h-4 w-4" />
+                {isDownloadingBatchZip
+                  ? "Generating ZIP..."
+                  : `Download Serticards (ZIP) — ${batchItems.length} file${batchItems.length !== 1 ? "s" : ""}`}
+              </motion.button>
               <motion.button
                 type="button"
                 onClick={handleDownloadAll}
@@ -964,9 +1029,9 @@ export function QrPreviewGridGram({ batches }: Props) {
                   <div>UniqCode</div>
                   <div>Root Key</div>
                 </div>
-                {batchItems.map((item, index) => (
+                {batchItems.map((item) => (
                   <div
-                    key={index}
+                    key={item.id}
                     className="grid grid-cols-3 gap-4 px-4 py-3 text-sm border-b border-white/5 hover:bg-white/5 transition-colors"
                   >
                     <div className="font-mono text-white/90">{item.serialCode}</div>
