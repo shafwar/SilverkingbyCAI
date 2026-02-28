@@ -1680,13 +1680,12 @@ export function QrPreviewGrid() {
               ease: [0.22, 1, 0.36, 1],
             }}
           >
-            <div className="overflow-hidden rounded-3xl border border-white/5 bg-white/[0.02]">
-              {/* Desktop Table */}
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] shadow-sm">
               <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-sm text-white/70">
+                <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-white/[0.03] text-left text-xs uppercase tracking-[0.4em] text-white/40">
-                      <th scope="col" className="w-12 px-4 py-3">
+                    <tr className="border-b border-white/10 bg-white/[0.04] text-left text-[11px] font-semibold uppercase tracking-wider text-white/60">
+                      <th scope="col" className="w-12 px-5 py-3.5">
                         <button
                           type="button"
                           onClick={toggleSelectAll}
@@ -1707,27 +1706,17 @@ export function QrPreviewGrid() {
                           )}
                         </button>
                       </th>
-                      <th scope="col" className="px-4 py-3">
-                        {t("serialCode")}
-                      </th>
-                      <th scope="col" className="px-4 py-3">
-                        {t("productName")}
-                      </th>
-                      <th scope="col" className="px-4 py-3">
-                        {t("weight")}
-                      </th>
-                      <th scope="col" className="px-4 py-3">
-                        {t("qrPreview")}
-                      </th>
-                      <th scope="col" className="px-4 py-3 text-right">
-                        {t("actions")}
-                      </th>
+                      <th scope="col" className="px-5 py-3.5">{t("serialCode")}</th>
+                      <th scope="col" className="px-5 py-3.5">{t("productName")}</th>
+                      <th scope="col" className="px-5 py-3.5">{t("weight")}</th>
+                      <th scope="col" className="px-5 py-3.5">{t("qrPreview")}</th>
+                      <th scope="col" className="px-5 py-3.5 text-right">{t("actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredProducts.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-12 text-center text-white/40">
+                        <td colSpan={6} className="px-5 py-14 text-center text-sm text-white/40">
                           {t("noProductsFound")}{" "}
                           {searchQuery && `${t("matching")} "${searchQuery}"`}
                         </td>
@@ -1740,11 +1729,11 @@ export function QrPreviewGrid() {
                             key={product.id}
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            className={`border-t border-white/5 transition-colors hover:bg-white/5 ${
+                            className={`border-b border-white/5 transition-colors hover:bg-white/[0.04] ${
                               isItemSelected ? "bg-[#FFD700]/5" : ""
                             }`}
                           >
-                            <td className="px-4 py-3">
+                            <td className="px-5 py-3.5">
                               <button
                                 type="button"
                                 onClick={() => toggleSelectItem(product.id)}
@@ -1759,18 +1748,18 @@ export function QrPreviewGrid() {
                                 )}
                               </button>
                             </td>
-                            <td className="px-4 py-3">
-                              <div className="font-mono text-sm text-white/80">
+                            <td className="px-5 py-3.5">
+                              <div className="font-mono text-sm text-white/90">
                                 {product.serialCode}
                               </div>
                             </td>
-                            <td className="px-4 py-3">
-                              <div className="font-semibold text-white">{product.name}</div>
+                            <td className="px-5 py-3.5">
+                              <div className="font-medium text-white">{product.name}</div>
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-5 py-3.5">
                               <div className="text-white/80">{product.weight} gr</div>
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-5 py-3.5">
                               <div className="flex items-center">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
@@ -1795,13 +1784,13 @@ export function QrPreviewGrid() {
                                 />
                               </div>
                             </td>
-                            <td className="px-4 py-3 text-right">
+                            <td className="px-5 py-3.5 text-right">
                               <div className="flex items-center justify-end gap-2">
                                 <motion.button
                                   onClick={() => setSelected(product)}
-                                  className="inline-flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1 text-xs text-white/70 transition hover:border-white/40 hover:bg-white/5"
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.95 }}
+                                  className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-medium text-white/90 transition hover:border-white/25 hover:bg-white/10"
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
                                   aria-label={t("enlarge")}
                                 >
                                   <Maximize2 className="h-3.5 w-3.5" />
@@ -1810,9 +1799,9 @@ export function QrPreviewGrid() {
                                 <motion.button
                                   onClick={() => handleDownload(product)}
                                   disabled={isDownloading}
-                                  className="inline-flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1 text-xs text-white/70 transition hover:border-white/40 hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  whileHover={{ scale: isDownloading ? 1 : 1.05 }}
-                                  whileTap={{ scale: isDownloading ? 1 : 0.95 }}
+                                  className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-medium text-white/90 transition hover:border-[#FFD700]/30 hover:bg-[#FFD700]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  whileHover={{ scale: isDownloading ? 1 : 1.02 }}
+                                  whileTap={{ scale: isDownloading ? 1 : 0.98 }}
                                   aria-label={t("download")}
                                 >
                                   <Download className="h-3.5 w-3.5" />

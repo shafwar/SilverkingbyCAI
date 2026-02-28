@@ -498,7 +498,7 @@ export function QrPreviewGridGram({ batches }: Props) {
           ref={buttonRef}
           onClick={() => setDownloadDropdownOpen(isOpen ? null : batchId)}
           disabled={isLoading || isZipLoading}
-          className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/20 px-3 py-2.5 text-xs text-white/80 hover:border-white/40 hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-medium text-white/90 transition hover:border-[#FFD700]/30 hover:bg-[#FFD700]/10 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Download className="h-4 w-4 flex-shrink-0" />
           <span className="truncate">
@@ -929,7 +929,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t("searchPlaceholder")}
-                className="w-full rounded-full border border-white/15 bg-white/5 px-10 py-2 text-sm text-white placeholder:text-white/40 focus:border-[#FFD700] focus:outline-none focus:ring-2 focus:ring-[#FFD700]/20"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-10 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/10"
               />
               {searchQuery && (
                 <button
@@ -946,50 +946,50 @@ export function QrPreviewGridGram({ batches }: Props) {
               <Filter className="h-3 w-3" />
               <span>Mode</span>
             </div>
-            <div className="flex rounded-full border border-white/15 bg-white/5 p-1 text-xs">
+            <div className="flex rounded-xl border border-white/10 bg-white/5 p-1 text-xs">
               <button
                 onClick={() => setWeightFilter("ALL")}
-                className={`px-3 py-1 rounded-full ${
-                  weightFilter === "ALL" ? "bg-white text-black" : "text-white/70"
+                className={`rounded-lg px-3 py-2 font-medium transition ${
+                  weightFilter === "ALL" ? "bg-white text-black" : "text-white/70 hover:text-white"
                 }`}
               >
                 All
               </button>
               <button
                 onClick={() => setWeightFilter("SMALL")}
-                className={`px-3 py-1 rounded-full ${
-                  weightFilter === "SMALL" ? "bg-white text-black" : "text-white/70"
+                className={`rounded-lg px-3 py-2 font-medium transition ${
+                  weightFilter === "SMALL" ? "bg-white text-black" : "text-white/70 hover:text-white"
                 }`}
               >
                 ≤ 99gr
               </button>
               <button
                 onClick={() => setWeightFilter("LARGE")}
-                className={`px-3 py-1 rounded-full ${
-                  weightFilter === "LARGE" ? "bg-white text-black" : "text-white/70"
+                className={`rounded-lg px-3 py-2 font-medium transition ${
+                  weightFilter === "LARGE" ? "bg-white text-black" : "text-white/70 hover:text-white"
                 }`}
               >
                 Over 99gr
               </button>
             </div>
 
-            <div className="flex rounded-full border border-white/15 bg-white/5 p-1 text-xs">
+            <div className="flex rounded-xl border border-white/10 bg-white/5 p-1 text-xs">
               <button
                 onClick={() => setLayoutView("table")}
-                className={`flex items-center gap-1 rounded-full px-3 py-1 ${
-                  layoutView === "table" ? "bg-white text-black" : "text-white/70"
+                className={`flex items-center gap-2 rounded-lg px-3 py-2 font-medium transition ${
+                  layoutView === "table" ? "bg-white text-black" : "text-white/70 hover:text-white"
                 }`}
               >
-                <Table2 className="h-3 w-3" />
+                <Table2 className="h-3.5 w-3.5" />
                 Table
               </button>
               <button
                 onClick={() => setLayoutView("grid")}
-                className={`flex items-center gap-1 rounded-full px-3 py-1 ${
-                  layoutView === "grid" ? "bg-white text-black" : "text-white/70"
+                className={`flex items-center gap-2 rounded-lg px-3 py-2 font-medium transition ${
+                  layoutView === "grid" ? "bg-white text-black" : "text-white/70 hover:text-white"
                 }`}
               >
-                <Grid3x3 className="h-3 w-3" />
+                <Grid3x3 className="h-3.5 w-3.5" />
                 Grid
               </button>
             </div>
@@ -1002,7 +1002,7 @@ export function QrPreviewGridGram({ batches }: Props) {
             type="button"
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-all hover:border-white/40 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-white/90 transition hover:border-white/20 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
             whileHover={{ scale: isRefreshing ? 1 : 1.02 }}
             whileTap={{ scale: isRefreshing ? 1 : 0.98 }}
             aria-label={t("refresh")}
@@ -1020,36 +1020,36 @@ export function QrPreviewGridGram({ batches }: Props) {
       </div>
 
       {layoutView === "table" ? (
-        <div className="rounded-3xl border border-white/10 bg-white/[0.02] overflow-hidden">
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px] text-sm text-white/70">
+            <table className="w-full min-w-[1000px] text-sm">
               <thead>
-                <tr className="sticky top-0 z-10 bg-[#0a0a0a]/95 backdrop-blur text-left text-xs uppercase tracking-[0.4em] text-white/40 border-b border-white/10">
-                  <th className="px-4 lg:px-6 py-4">{t("productName")}</th>
-                  <th className="px-4 lg:px-6 py-4">{t("weight")}</th>
-                  <th className="px-4 lg:px-6 py-4">{t("qrPreview")}</th>
-                  <th className="px-4 lg:px-6 py-4">Uniqcode</th>
-                  <th className="px-4 lg:px-6 py-4">Serial Code</th>
-                  <th className="px-4 lg:px-6 py-4">Root Key</th>
-                  <th className="px-4 lg:px-6 py-4 text-right">{t("actions")}</th>
+                <tr className="border-b border-white/10 bg-white/[0.04] text-left text-[11px] font-semibold uppercase tracking-wider text-white/60">
+                  <th className="px-5 py-3.5">{t("productName")}</th>
+                  <th className="px-5 py-3.5">{t("weight")}</th>
+                  <th className="px-5 py-3.5">{t("qrPreview")}</th>
+                  <th className="px-5 py-3.5">Uniqcode</th>
+                  <th className="px-5 py-3.5">Serial Code</th>
+                  <th className="px-5 py-3.5">Root Key</th>
+                  <th className="px-5 py-3.5 text-right">{t("actions")}</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredBatches.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-white/40">
+                    <td colSpan={7} className="px-5 py-14 text-center text-sm text-white/40">
                       {t("noProducts")}
                     </td>
                   </tr>
                 ) : (
                   filteredBatches.map((batch) => (
-                    <tr key={batch.batchId} className="border-t border-white/5">
-                      <td className="px-4 lg:px-6 py-4">
-                        <p className="font-semibold text-white">{batch.name}</p>
-                        <p className="text-xs text-white/40">#{batch.batchId}</p>
+                    <tr key={batch.batchId} className="border-b border-white/5 transition-colors hover:bg-white/[0.04]">
+                      <td className="px-5 py-3.5">
+                        <p className="font-medium text-white">{batch.name}</p>
+                        <p className="text-[11px] text-white/40">#{batch.batchId}</p>
                       </td>
-                      <td className="px-4 lg:px-6 py-4">{batch.weight} gr</td>
-                      <td className="px-4 lg:px-6 py-4">
+                      <td className="px-5 py-3.5 text-white/80">{batch.weight} gr</td>
+                      <td className="px-5 py-3.5">
                         <div className="flex items-center">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
@@ -1063,20 +1063,20 @@ export function QrPreviewGridGram({ batches }: Props) {
                           />
                         </div>
                       </td>
-                      <td className="px-4 lg:px-6 py-4 font-mono text-xs text-white/80">
+                      <td className="px-5 py-3.5 font-mono text-xs text-white/90">
                         {batch.firstItem.uniqCode}
                       </td>
-                      <td className="px-4 lg:px-6 py-4">
+                      <td className="px-5 py-3.5">
                         <button
                           onClick={() => handleSerialCodeClick(batch)}
-                          className="font-mono text-xs text-white/80 hover:text-[#FFD700] cursor-pointer underline"
+                          className="text-xs font-medium text-white/80 underline decoration-white/30 underline-offset-2 hover:text-[#FFD700] hover:decoration-[#FFD700]/50"
                         >
                           {batch.itemCount} items
                         </button>
                       </td>
-                      <td className="px-4 lg:px-6 py-4">
+                      <td className="px-5 py-3.5">
                         {batch.firstItem.hasRootKey ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-green-500/20 px-2 py-1 text-[10px] text-green-400 border border-green-500/30">
+                          <span className="inline-flex items-center gap-1.5 rounded-lg bg-green-500/15 px-2.5 py-1 text-[11px] font-medium text-green-400 border border-green-500/25">
                             <CheckCircle2 className="h-3 w-3" />
                             Active
                           </span>
@@ -1084,7 +1084,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                           <span className="text-xs text-white/40">—</span>
                         )}
                       </td>
-                      <td className="px-4 lg:px-6 py-4 text-right">
+                      <td className="px-5 py-3.5 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() =>
@@ -1093,9 +1093,9 @@ export function QrPreviewGridGram({ batches }: Props) {
                                 uniqCode: batch.firstItem.uniqCode,
                               })
                             }
-                            className="inline-flex items-center gap-1 rounded-full border border-white/20 px-3 py-1 text-[11px] text-white/80 hover:border-white/50"
+                            className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-medium text-white/90 transition hover:border-white/25 hover:bg-white/10"
                           >
-                            <Maximize2 className="h-3 w-3" />
+                            <Maximize2 className="h-3.5 w-3.5" />
                             {t("enlarge")}
                           </button>
                           <DownloadDropdown
@@ -1139,7 +1139,7 @@ export function QrPreviewGridGram({ batches }: Props) {
             filteredBatches.map((batch) => (
               <div
                 key={batch.batchId}
-                className="group rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4 hover:border-[#FFD700]/40 transition-all"
+                className="group rounded-2xl border border-white/10 bg-white/[0.02] p-4 shadow-sm hover:border-white/20 hover:bg-white/[0.04] transition-all"
               >
                 <div className="relative aspect-square w-full rounded-lg border border-white/10 bg-white p-3 mb-3">
                   <img
