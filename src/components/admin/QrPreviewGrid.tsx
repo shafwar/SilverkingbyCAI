@@ -1322,73 +1322,40 @@ export function QrPreviewGrid() {
   }
   return (
     <>
-      {/* Mesmerizing Header Section */}
+      {/* Header: judul + total aset */}
       <motion.section
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{
-          duration: 0.6,
-          ease: [0.22, 1, 0.36, 1],
-        }}
-        className="mb-10 rounded-3xl border border-white/5 bg-gradient-to-br from-white/[0.03] via-white/[0.02] to-transparent p-8 md:p-10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-xl"
+        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+        className="mb-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 md:p-6 backdrop-blur-sm"
       >
-        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-          {/* Typography Section */}
-          <div className="space-y-3">
-            <motion.p
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-xs font-medium uppercase tracking-[0.5em] text-white/40"
-            >
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-medium uppercase tracking-widest text-white/40">
               {t("eyebrow")}
-            </motion.p>
-            <motion.h1
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="text-3xl md:text-4xl lg:text-5xl font-light tracking-[-0.02em] leading-[1.2] text-white"
-            >
+            </p>
+            <h2 className="text-xl md:text-2xl font-semibold tracking-tight text-white">
               {t("title")}
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="mt-2 text-sm leading-relaxed text-white/50 md:text-base"
-            >
+            </h2>
+            <p className="mt-1 text-sm text-white/50">
               {t("description")}
               {filteredProducts.length > 0 && (
                 <span className="ml-1 text-[#FFD700]/80">
-                  {filteredProducts.length} {filteredProducts.length === 1 ? t("item") : t("items")}
-                  .
+                  {filteredProducts.length} {filteredProducts.length === 1 ? t("item") : t("items")}.
                 </span>
               )}
-            </motion.p>
+            </p>
           </div>
-
-          {/* Stats Badge */}
           {data && data.products.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
-              className="flex flex-col items-end gap-1 rounded-2xl border border-white/10 bg-white/5 px-6 py-4 backdrop-blur-sm"
-            >
-              <p className="text-xs uppercase tracking-[0.2em] text-white/40">{t("totalAssets")}</p>
-              <p className="text-3xl font-light tracking-tight text-white">
-                {data.products.length}
-              </p>
+            <div className="flex flex-col items-end justify-center rounded-xl border border-white/10 bg-white/5 px-5 py-3">
+              <p className="text-[10px] uppercase tracking-wider text-white/40">{t("totalAssets")}</p>
+              <p className="text-2xl font-semibold tabular-nums text-white">{data.products.length}</p>
               {selectedItems.size > 0 && (
-                <motion.p
-                  initial={{ opacity: 0, y: -5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-xs font-medium text-[#FFD700]"
-                >
+                <p className="text-xs font-medium text-[#FFD700]">
                   {selectedItems.size} {t("selected")}
-                </motion.p>
+                </p>
               )}
-            </motion.div>
+            </div>
           )}
         </div>
       </motion.section>
