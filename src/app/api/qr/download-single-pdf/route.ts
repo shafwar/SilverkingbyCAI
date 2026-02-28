@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { createCanvas, loadImage } from "canvas";
 import { PDFDocument } from "pdf-lib";
 import { loadSerticardTemplates } from "@/lib/load-serticard-templates";
@@ -73,11 +74,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Resolve rootKey: use body first, fallback to DB for gram items so PDF always shows it when available
+    let rootKeyValue: string | null =
+      product.rootKey != null && String(product.rootKey).trim() !== ""
+        ? String(product.rootKey).trim()
+        : null;
+    if (!rootKeyValue && isGram) {
+      const gramItem = await prisma.gramProductItem.findFirst({
+        where: { uniqCode: productSerialCode },
+        select: { rootKey: true },
+      });
+      if (gramItem?.rootKey?.trim()) rootKeyValue = gramItem.rootKey.trim();
+    }
+
     console.log("[QR Single PDF] Processing:", {
       productName,
       productSerialCode,
       isGram,
       templateVariant,
+      hasRootKey: !!rootKeyValue,
     });
 
     // --- Load Serticard templates (custom or variant) ---
@@ -160,9 +175,7 @@ export async function POST(request: NextRequest) {
 
     // Root key below serial: smaller font, proportional (optional)
     const productRootKey =
-      product.rootKey != null && String(product.rootKey).trim() !== ""
-        ? String(product.rootKey).trim().toUpperCase()
-        : null;
+      rootKeyValue != null && rootKeyValue.length > 0 ? rootKeyValue.toUpperCase() : null;
     if (productRootKey) {
       const rootKeyFontSize = Math.max(10, Math.floor(serialFontSize * 0.65));
       const rootKeyGap = 8;

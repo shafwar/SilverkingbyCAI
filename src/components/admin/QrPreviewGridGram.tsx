@@ -70,6 +70,7 @@ export function QrPreviewGridGram({ batches }: Props) {
   const [downloadDropdownOpen, setDownloadDropdownOpen] = useState<number | null>(null);
   const downloadDropdownRef = useRef<HTMLDivElement>(null);
   const [isDownloadingBatchZip, setIsDownloadingBatchZip] = useState(false);
+  const [downloadingZipBatchId, setDownloadingZipBatchId] = useState<number | null>(null);
 
   // Fetch serticard config to check for custom template
   const { data: fontConfig, mutate: mutateFontConfig } = useSWR<{
@@ -362,9 +363,15 @@ export function QrPreviewGridGram({ batches }: Props) {
   // Download dropdown button component
   const DownloadDropdown = ({
     batchId,
+    batchName,
+    batchWeight,
+    itemCount,
     product,
   }: {
     batchId: number;
+    batchName: string;
+    batchWeight: number;
+    itemCount: number;
     product: {
       id: number;
       name: string;
@@ -374,10 +381,12 @@ export function QrPreviewGridGram({ batches }: Props) {
       qrImageUrl: string | null;
       weightGroup: string | null;
       hasRootKey?: boolean;
+      rootKey?: string | null;
     };
   }) => {
     const isOpen = downloadDropdownOpen === batchId;
     const isLoading = downloadingId === product.id;
+    const isZipLoading = downloadingZipBatchId === batchId;
     const dropdownRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
     const [dropdownPosition, setDropdownPosition] = useState<"bottom" | "top">("bottom");
@@ -454,11 +463,13 @@ export function QrPreviewGridGram({ batches }: Props) {
         <button
           ref={buttonRef}
           onClick={() => setDownloadDropdownOpen(isOpen ? null : batchId)}
-          disabled={isLoading}
+          disabled={isLoading || isZipLoading}
           className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/20 px-3 py-2.5 text-xs text-white/80 hover:border-white/40 hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           <Download className="h-4 w-4 flex-shrink-0" />
-          <span className="truncate">{isLoading ? t("downloading") : t("download")}</span>
+          <span className="truncate">
+            {isZipLoading ? "ZIP..." : isLoading ? t("downloading") : t("download")}
+          </span>
           <ChevronDown
             className={`h-4 w-4 flex-shrink-0 transition-transform duration-200 ${
               isOpen ? "rotate-180" : ""
@@ -488,8 +499,27 @@ export function QrPreviewGridGram({ batches }: Props) {
                 </div>
               </div>
 
-              {/* Scrollable template list */}
+              {/* Download semua item = satu file per item (ZIP) */}
+              <div className="px-4 py-2 border-b border-[#FFD700]/20 bg-[#FFD700]/5">
+                <div className="text-xs text-white/60 mb-1.5">Satu file per item (dengan root key)</div>
+                <motion.button
+                  type="button"
+                  onClick={() =>
+                    handleDownloadBatchAsZipFromCard(batchId, batchName, batchWeight, itemCount)
+                  }
+                  disabled={isLoading || isZipLoading}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-[#FFD700]/40 bg-[#FFD700]/10 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/20 disabled:opacity-50"
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Download className="h-4 w-4" />
+                  {isZipLoading ? "Membuat ZIP..." : `Unduh ZIP — ${itemCount} file`}
+                </motion.button>
+              </div>
+
+              {/* Scrollable template list - satu kartu (item pertama) */}
               <div className="overflow-y-auto flex-1 min-h-0 py-2 scrollbar-show">
+                <div className="px-4 pb-1 text-[10px] text-white/40">Satu kartu (item pertama)</div>
                 {SERTICARD_VARIANTS.map((v) => (
                   <motion.button
                     key={v.id}
@@ -626,6 +656,64 @@ export function QrPreviewGridGram({ batches }: Props) {
       );
     } finally {
       setIsDownloadingBatchZip(false);
+    }
+  };
+
+  const handleDownloadBatchAsZipFromCard = async (
+    batchId: number,
+    name: string,
+    weight: number,
+    itemCount: number
+  ) => {
+    try {
+      setDownloadingZipBatchId(batchId);
+      setDownloadDropdownOpen(null);
+      const res = await fetch(`/api/gram-products/batch/${batchId}?includeItems=true`);
+      if (!res.ok) throw new Error("Gagal mengambil data item batch");
+      const data = await res.json();
+      const items = data.items ?? [];
+      if (items.length === 0) {
+        alert("Tidak ada item di batch ini.");
+        return;
+      }
+      const products = items.map((item: { id: number; uniqCode: string; rootKey?: string | null }) => ({
+        id: item.id,
+        name,
+        serialCode: item.uniqCode,
+        weight,
+        isGram: true,
+        rootKey: item.rootKey ?? null,
+      }));
+      const response = await fetch("/api/qr/download-multiple-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          products,
+          templateVariant: "01",
+          useCustomTemplate: false,
+        }),
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `HTTP ${response.status}`);
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const safeName = name.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_-]/g, "");
+      link.download = `${safeName || "batch"}-serticards-${items.length}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("[GramPreview] handleDownloadBatchAsZipFromCard error:", error);
+      alert(
+        error instanceof Error ? error.message : "Gagal mengunduh ZIP Serticard. Silakan coba lagi."
+      );
+    } finally {
+      setDownloadingZipBatchId(null);
     }
   };
 
@@ -869,6 +957,9 @@ export function QrPreviewGridGram({ batches }: Props) {
                           </button>
                           <DownloadDropdown
                             batchId={batch.batchId}
+                            batchName={batch.name}
+                            batchWeight={batch.weight}
+                            itemCount={batch.itemCount}
                             product={{
                               id: batch.firstItem.id,
                               name: batch.name,
@@ -953,6 +1044,9 @@ export function QrPreviewGridGram({ batches }: Props) {
                   <div className="flex-1 relative" ref={downloadDropdownRef}>
                     <DownloadDropdown
                       batchId={batch.batchId}
+                      batchName={batch.name}
+                      batchWeight={batch.weight}
+                      itemCount={batch.itemCount}
                       product={{
                         id: batch.firstItem.id,
                         name: batch.name,
