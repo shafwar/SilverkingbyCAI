@@ -659,6 +659,8 @@
       "found": "Ditemukan",
       "of": "dari",
       "product": "produk",
+      "refresh": "Muat Ulang",
+      "refreshing": "Memuat ulang...",
       "form": {
         "basicInformation": "Informasi Dasar",
         "productName": "Nama Produk",

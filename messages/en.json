@@ -656,6 +656,8 @@
       "found": "Found",
       "of": "of",
       "product": "product(s)",
+      "refresh": "Refresh",
+      "refreshing": "Refreshing...",
       "form": {
         "basicInformation": "Basic Information",
         "productName": "Product Name",

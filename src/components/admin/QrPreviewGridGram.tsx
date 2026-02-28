@@ -4,6 +4,7 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import JSZip from "jszip";
 import { Modal } from "./Modal";
 import {
   Search,
@@ -21,6 +22,23 @@ import {
 import { SERTICARD_VARIANTS, type SerticardVariantId } from "@/utils/serticard-templates";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
+
+const ZIP_CHUNK_SIZE = 80;
+
+function parseErrorResponse(text: string, status: number): string {
+  if (!text || text.trim() === "")
+    return `Gagal mengunduh (${status}). Silakan coba lagi.`;
+  if (text.trimStart().startsWith("<"))
+    return "Server sibuk atau terjadi kesalahan. Silakan coba lagi nanti.";
+  try {
+    const j = JSON.parse(text) as { error?: string };
+    if (j && typeof j.error === "string") return j.error;
+  } catch {
+    // ignore
+  }
+  if (text.length > 300) return `Gagal mengunduh (${status}). Silakan coba lagi.`;
+  return text;
+}
 
 type GramPreviewBatch = {
   batchId: number;
@@ -71,6 +89,8 @@ export function QrPreviewGridGram({ batches }: Props) {
   const downloadDropdownRef = useRef<HTMLDivElement>(null);
   const [isDownloadingBatchZip, setIsDownloadingBatchZip] = useState(false);
   const [downloadingZipBatchId, setDownloadingZipBatchId] = useState<number | null>(null);
+  const [selectedZipTemplateId, setSelectedZipTemplateId] = useState<SerticardVariantId>("01");
+  const [zipProgress, setZipProgress] = useState<{ percent: number; label: string } | null>(null);
 
   // Fetch serticard config to check for custom template
   const { data: fontConfig, mutate: mutateFontConfig } = useSWR<{
@@ -231,7 +251,7 @@ export function QrPreviewGridGram({ batches }: Props) {
           statusText: response.statusText,
           error: text,
         });
-        throw new Error(text || `Failed with status ${response.status}`);
+        throw new Error(parseErrorResponse(text, response.status));
       }
 
       // Validate blob
@@ -299,9 +319,7 @@ export function QrPreviewGridGram({ batches }: Props) {
           error: errorText,
           url: downloadUrl,
         });
-        throw new Error(
-          `Failed to download QR (${response.status}): ${errorText || response.statusText}`
-        );
+        throw new Error(parseErrorResponse(errorText || "", response.status));
       }
 
       // Ensure response is image type
@@ -368,6 +386,9 @@ export function QrPreviewGridGram({ batches }: Props) {
     batchWeight,
     itemCount,
     product,
+    selectedZipTemplateId,
+    setSelectedZipTemplateId,
+    zipProgress,
   }: {
     batchId: number;
     batchName: string;
@@ -384,10 +405,14 @@ export function QrPreviewGridGram({ batches }: Props) {
       hasRootKey?: boolean;
       rootKey?: string | null;
     };
+    selectedZipTemplateId: SerticardVariantId;
+    setSelectedZipTemplateId: (id: SerticardVariantId) => void;
+    zipProgress: { percent: number; label: string } | null;
   }) => {
     const isOpen = downloadDropdownOpen === batchId;
     const isLoading = downloadingId === product.id;
     const isZipLoading = downloadingZipBatchId === batchId;
+    const zipPercent = isZipLoading && zipProgress ? zipProgress.percent : null;
     const dropdownRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
     const [dropdownPosition, setDropdownPosition] = useState<"bottom" | "top">("bottom");
@@ -503,6 +528,29 @@ export function QrPreviewGridGram({ batches }: Props) {
               {/* Download semua item = satu file per item (ZIP) */}
               <div className="px-4 py-2 border-b border-[#FFD700]/20 bg-[#FFD700]/5">
                 <div className="text-xs text-white/60 mb-1.5">Satu file per item (dengan root key)</div>
+                <div className="mb-2">
+                  <label className="text-[10px] text-white/50 block mb-0.5">Template</label>
+                  <select
+                    value={selectedZipTemplateId}
+                    onChange={(e) => setSelectedZipTemplateId(e.target.value as SerticardVariantId)}
+                    disabled={isZipLoading}
+                    className="w-full rounded-lg border border-white/20 bg-white/5 px-2 py-1.5 text-xs text-white focus:border-[#FFD700]/50 focus:outline-none"
+                  >
+                    {SERTICARD_VARIANTS.map((v) => (
+                      <option key={v.id} value={v.id} className="bg-gray-900 text-white">
+                        {v.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {zipPercent != null && (
+                  <div className="mb-1.5 h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      className="h-full bg-[#FFD700]/70 rounded-full transition-all duration-300"
+                      style={{ width: `${zipPercent}%` }}
+                    />
+                  </div>
+                )}
                 <motion.button
                   type="button"
                   onClick={() =>
@@ -514,7 +562,11 @@ export function QrPreviewGridGram({ batches }: Props) {
                   whileTap={{ scale: 0.98 }}
                 >
                   <Download className="h-4 w-4" />
-                  {isZipLoading ? "Membuat ZIP..." : `Unduh ZIP — ${itemCount} file`}
+                  {isZipLoading
+                    ? zipPercent != null
+                      ? `${zipProgress?.label ?? "Membuat ZIP..."} ${zipPercent}%`
+                      : "Membuat ZIP..."
+                    : `Unduh ZIP — ${itemCount} file`}
                 </motion.button>
               </div>
 
@@ -617,35 +669,59 @@ export function QrPreviewGridGram({ batches }: Props) {
 
   const handleDownloadBatchSerticardsZip = async () => {
     if (!selectedBatch || batchItems.length === 0) return;
+    const templateId = selectedZipTemplateId;
+    const products = batchItems.map((item) => ({
+      id: item.id,
+      name: selectedBatch.name,
+      serialCode: item.uniqCode,
+      weight: selectedBatch.weight,
+      isGram: true,
+      rootKey: item.rootKey ?? null,
+    }));
     try {
       setIsDownloadingBatchZip(true);
-      const products = batchItems.map((item) => ({
-        id: item.id,
-        name: selectedBatch.name,
-        serialCode: item.uniqCode,
-        weight: selectedBatch.weight,
-        isGram: true,
-        rootKey: item.rootKey ?? null,
-      }));
-      const response = await fetch("/api/qr/download-multiple-pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          products,
-          templateVariant: "01",
-          useCustomTemplate: false,
-        }),
-      });
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || `HTTP ${response.status}`);
+      setZipProgress({ percent: 0, label: "Mempersiapkan..." });
+      const chunks: Array<{ id: number; name: string; serialCode: string; weight: number; isGram: boolean; rootKey: string | null }>[] = [];
+      for (let i = 0; i < products.length; i += ZIP_CHUNK_SIZE) {
+        chunks.push(products.slice(i, i + ZIP_CHUNK_SIZE));
       }
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const totalChunks = chunks.length;
+      const blobs: Blob[] = [];
+      for (let i = 0; i < chunks.length; i++) {
+        setZipProgress({
+          percent: Math.round(((i + 0.5) / totalChunks) * 100),
+          label: `Batch ${i + 1}/${totalChunks}...`,
+        });
+        const response = await fetch("/api/qr/download-multiple-pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            products: chunks[i],
+            templateVariant: templateId,
+            useCustomTemplate: false,
+          }),
+        });
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(parseErrorResponse(text, response.status));
+        }
+        blobs.push(await response.blob());
+      }
+      setZipProgress({ percent: 98, label: "Menggabungkan file..." });
+      const mainZip = new JSZip();
+      for (let b = 0; b < blobs.length; b++) {
+        const z = await JSZip.loadAsync(blobs[b]);
+        const entries = Object.entries(z.files).filter(([, f]) => !f.dir);
+        for (const [path, file] of entries) {
+          mainZip.file(path, file.async("arraybuffer"));
+        }
+      }
+      const merged = await mainZip.generateAsync({ type: "blob" });
+      const url = window.URL.createObjectURL(merged);
       const link = document.createElement("a");
       link.href = url;
       const safeName = selectedBatch.name.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_-]/g, "");
-      link.download = `${safeName || "batch"}-serticards-${batchItems.length}.zip`;
+      link.download = `${safeName || "batch"}-serticards-${products.length}.zip`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -657,6 +733,7 @@ export function QrPreviewGridGram({ batches }: Props) {
       );
     } finally {
       setIsDownloadingBatchZip(false);
+      setZipProgress(null);
     }
   };
 
@@ -666,14 +743,17 @@ export function QrPreviewGridGram({ batches }: Props) {
     weight: number,
     itemCount: number
   ) => {
+    const templateId = selectedZipTemplateId;
     try {
       setDownloadingZipBatchId(batchId);
       setDownloadDropdownOpen(null);
+      setZipProgress({ percent: 0, label: "Mengambil data batch..." });
       const res = await fetch(`/api/gram-products/batch/${batchId}?includeItems=true`);
       if (!res.ok) throw new Error("Gagal mengambil data item batch");
       const data = await res.json();
       const items = data.items ?? [];
       if (items.length === 0) {
+        setZipProgress(null);
         alert("Tidak ada item di batch ini.");
         return;
       }
@@ -685,25 +765,47 @@ export function QrPreviewGridGram({ batches }: Props) {
         isGram: true,
         rootKey: item.rootKey ?? null,
       }));
-      const response = await fetch("/api/qr/download-multiple-pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          products,
-          templateVariant: "01",
-          useCustomTemplate: false,
-        }),
-      });
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || `HTTP ${response.status}`);
+      const chunks: typeof products[] = [];
+      for (let i = 0; i < products.length; i += ZIP_CHUNK_SIZE) {
+        chunks.push(products.slice(i, i + ZIP_CHUNK_SIZE));
       }
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const totalChunks = chunks.length;
+      const blobs: Blob[] = [];
+      for (let i = 0; i < chunks.length; i++) {
+        setZipProgress({
+          percent: Math.round(((i + 0.5) / totalChunks) * 100),
+          label: `Membuat PDF batch ${i + 1}/${totalChunks}...`,
+        });
+        const response = await fetch("/api/qr/download-multiple-pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            products: chunks[i],
+            templateVariant: templateId,
+            useCustomTemplate: false,
+          }),
+        });
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(parseErrorResponse(text, response.status));
+        }
+        blobs.push(await response.blob());
+      }
+      setZipProgress({ percent: 98, label: "Menggabungkan file..." });
+      const mainZip = new JSZip();
+      for (let b = 0; b < blobs.length; b++) {
+        const z = await JSZip.loadAsync(blobs[b]);
+        const entries = Object.entries(z.files).filter(([, f]) => !f.dir);
+        for (const [path, file] of entries) {
+          mainZip.file(path, file.async("arraybuffer"));
+        }
+      }
+      const merged = await mainZip.generateAsync({ type: "blob" });
+      const url = window.URL.createObjectURL(merged);
       const link = document.createElement("a");
       link.href = url;
       const safeName = name.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_-]/g, "");
-      link.download = `${safeName || "batch"}-serticards-${items.length}.zip`;
+      link.download = `${safeName || "batch"}-serticards-${products.length}.zip`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -715,11 +817,28 @@ export function QrPreviewGridGram({ batches }: Props) {
       );
     } finally {
       setDownloadingZipBatchId(null);
+      setZipProgress(null);
     }
   };
 
   return (
     <div className="space-y-6">
+      {/* Global ZIP progress (when downloading from card, dropdown is closed) */}
+      {zipProgress && (
+        <div className="rounded-xl border border-[#FFD700]/30 bg-black/80 backdrop-blur px-4 py-2">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-xs font-medium text-[#FFD700]">{zipProgress.label}</span>
+            <span className="text-xs tabular-nums text-white/80">{zipProgress.percent}%</span>
+          </div>
+          <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
+            <div
+              className="h-full bg-[#FFD700]/70 rounded-full transition-all duration-300"
+              style={{ width: `${zipProgress.percent}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Header section: sama nuansanya dengan Page 1 (Vault QR) */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
@@ -972,6 +1091,9 @@ export function QrPreviewGridGram({ batches }: Props) {
                               hasRootKey: batch.firstItem.hasRootKey,
                               rootKey: batch.firstItem.rootKey ?? undefined,
                             }}
+                            selectedZipTemplateId={selectedZipTemplateId}
+                            setSelectedZipTemplateId={setSelectedZipTemplateId}
+                            zipProgress={zipProgress}
                           />
                         </div>
                       </td>
@@ -1059,6 +1181,9 @@ export function QrPreviewGridGram({ batches }: Props) {
                         hasRootKey: batch.firstItem.hasRootKey,
                         rootKey: batch.firstItem.rootKey ?? undefined,
                       }}
+                      selectedZipTemplateId={selectedZipTemplateId}
+                      setSelectedZipTemplateId={setSelectedZipTemplateId}
+                      zipProgress={zipProgress}
                     />
                   </div>
                   <button
@@ -1086,20 +1211,47 @@ export function QrPreviewGridGram({ batches }: Props) {
       >
         {selectedBatch && (
           <div className="max-h-[70vh] overflow-y-auto">
+            <div className="flex flex-col gap-2 mb-3 px-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-white/60">Template ZIP:</span>
+                <select
+                  value={selectedZipTemplateId}
+                  onChange={(e) => setSelectedZipTemplateId(e.target.value as SerticardVariantId)}
+                  disabled={isDownloadingBatchZip}
+                  className="rounded-lg border border-white/20 bg-white/5 px-2 py-1.5 text-xs text-white focus:border-[#FFD700]/50 focus:outline-none"
+                >
+                  {SERTICARD_VARIANTS.map((v) => (
+                    <option key={v.id} value={v.id} className="bg-gray-900 text-white">
+                      {v.label}
+                    </option>
+                  ))}
+                </select>
+                <motion.button
+                  type="button"
+                  onClick={handleDownloadBatchSerticardsZip}
+                  disabled={isDownloadingBatchZip || batchItems.length === 0}
+                  className="inline-flex items-center gap-2 rounded-full border border-[#FFD700]/40 bg-[#FFD700]/10 px-4 py-2 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/20 disabled:opacity-50"
+                  whileHover={{ scale: isDownloadingBatchZip ? 1 : 1.02 }}
+                  whileTap={{ scale: isDownloadingBatchZip ? 1 : 0.98 }}
+                >
+                  <Download className="h-4 w-4" />
+                  {isDownloadingBatchZip && zipProgress
+                    ? `${zipProgress.label} ${zipProgress.percent}%`
+                    : isDownloadingBatchZip
+                      ? "Generating ZIP..."
+                      : `Download Serticards (ZIP) — ${batchItems.length} file${batchItems.length !== 1 ? "s" : ""}`}
+                </motion.button>
+              </div>
+              {isDownloadingBatchZip && zipProgress && (
+                <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className="h-full bg-[#FFD700]/70 rounded-full transition-all duration-300"
+                    style={{ width: `${zipProgress.percent}%` }}
+                  />
+                </div>
+              )}
+            </div>
             <div className="flex items-center justify-end gap-2 mb-3 px-1 flex-wrap">
-              <motion.button
-                type="button"
-                onClick={handleDownloadBatchSerticardsZip}
-                disabled={isDownloadingBatchZip || batchItems.length === 0}
-                className="inline-flex items-center gap-2 rounded-full border border-[#FFD700]/40 bg-[#FFD700]/10 px-4 py-2 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/20 disabled:opacity-50"
-                whileHover={{ scale: isDownloadingBatchZip ? 1 : 1.02 }}
-                whileTap={{ scale: isDownloadingBatchZip ? 1 : 0.98 }}
-              >
-                <Download className="h-4 w-4" />
-                {isDownloadingBatchZip
-                  ? "Generating ZIP..."
-                  : `Download Serticards (ZIP) — ${batchItems.length} file${batchItems.length !== 1 ? "s" : ""}`}
-              </motion.button>
               <motion.button
                 type="button"
                 onClick={handleDownloadAll}
