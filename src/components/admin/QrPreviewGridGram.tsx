@@ -40,6 +40,14 @@ function parseErrorResponse(text: string, status: number): string {
   return text;
 }
 
+/** ZIP magic bytes: PK (0x50 0x4B) */
+async function isZipBlob(blob: Blob): Promise<boolean> {
+  if (blob.size < 4) return false;
+  const buf = await blob.slice(0, 2).arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  return bytes[0] === 0x50 && bytes[1] === 0x4b;
+}
+
 type GramPreviewBatch = {
   batchId: number;
   name: string;
@@ -705,15 +713,34 @@ export function QrPreviewGridGram({ batches }: Props) {
           const text = await response.text();
           throw new Error(parseErrorResponse(text, response.status));
         }
-        blobs.push(await response.blob());
+        const ct = response.headers.get("content-type") || "";
+        if (ct.includes("text/html") || ct.includes("application/json")) {
+          const text = await response.text();
+          throw new Error(parseErrorResponse(text, response.status));
+        }
+        const blob = await response.blob();
+        if (!(await isZipBlob(blob))) {
+          throw new Error(
+            `Batch ${i + 1}/${totalChunks} mengembalikan data bukan file ZIP (server error?). Coba batch lebih kecil atau coba lagi nanti.`
+          );
+        }
+        blobs.push(blob);
       }
       setZipProgress({ percent: 98, label: "Menggabungkan file..." });
       const mainZip = new JSZip();
       for (let b = 0; b < blobs.length; b++) {
-        const z = await JSZip.loadAsync(blobs[b]);
-        const entries = Object.entries(z.files).filter(([, f]) => !f.dir);
-        for (const [path, file] of entries) {
-          mainZip.file(path, file.async("arraybuffer"));
+        try {
+          const z = await JSZip.loadAsync(blobs[b]);
+          const entries = Object.entries(z.files).filter(([, f]) => !f.dir);
+          for (const [path, file] of entries) {
+            mainZip.file(path, file.async("arraybuffer"));
+          }
+        } catch (zipErr) {
+          const msg =
+            zipErr instanceof Error ? zipErr.message : String(zipErr);
+          throw new Error(
+            `File ZIP batch ${b + 1} rusak atau tidak lengkap: ${msg}. Coba ukuran batch lebih kecil atau coba lagi nanti.`
+          );
         }
       }
       const merged = await mainZip.generateAsync({ type: "blob" });
@@ -789,15 +816,34 @@ export function QrPreviewGridGram({ batches }: Props) {
           const text = await response.text();
           throw new Error(parseErrorResponse(text, response.status));
         }
-        blobs.push(await response.blob());
+        const ct = response.headers.get("content-type") || "";
+        if (ct.includes("text/html") || ct.includes("application/json")) {
+          const text = await response.text();
+          throw new Error(parseErrorResponse(text, response.status));
+        }
+        const blob = await response.blob();
+        if (!(await isZipBlob(blob))) {
+          throw new Error(
+            `Batch ${i + 1}/${totalChunks} mengembalikan data bukan file ZIP (server error?). Coba batch lebih kecil atau coba lagi nanti.`
+          );
+        }
+        blobs.push(blob);
       }
       setZipProgress({ percent: 98, label: "Menggabungkan file..." });
       const mainZip = new JSZip();
       for (let b = 0; b < blobs.length; b++) {
-        const z = await JSZip.loadAsync(blobs[b]);
-        const entries = Object.entries(z.files).filter(([, f]) => !f.dir);
-        for (const [path, file] of entries) {
-          mainZip.file(path, file.async("arraybuffer"));
+        try {
+          const z = await JSZip.loadAsync(blobs[b]);
+          const entries = Object.entries(z.files).filter(([, f]) => !f.dir);
+          for (const [path, file] of entries) {
+            mainZip.file(path, file.async("arraybuffer"));
+          }
+        } catch (zipErr) {
+          const msg =
+            zipErr instanceof Error ? zipErr.message : String(zipErr);
+          throw new Error(
+            `File ZIP batch ${b + 1} rusak atau tidak lengkap: ${msg}. Coba ukuran batch lebih kecil atau coba lagi nanti.`
+          );
         }
       }
       const merged = await mainZip.generateAsync({ type: "blob" });
