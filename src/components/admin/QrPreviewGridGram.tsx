@@ -184,6 +184,7 @@ export function QrPreviewGridGram({ batches }: Props) {
       qrImageUrl: string | null;
       weightGroup: string | null;
       hasRootKey?: boolean;
+      rootKey?: string | null;
     },
     variantId: SerticardVariantId | "custom"
   ) => {
