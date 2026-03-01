@@ -10,6 +10,9 @@ import { PDFDocument } from "pdf-lib";
 import { loadSerticardTemplates } from "@/lib/load-serticard-templates";
 import { getSerticardConfig, getFontSizeMultipliers } from "@/lib/serticard-config";
 
+/** Request dengan product count di atas ini diproses di background (hindari timeout 524). */
+const ZIP_JOB_THRESHOLD = 80;
+
 /**
  * Generate ZIP file with multiple PDFs (one PDF per QR code)
  * Organizes PDFs into subfolders based on weight (gramasi) if different weights exist
@@ -256,20 +259,120 @@ export async function POST(request: NextRequest) {
     );
     console.log(`[QR Multiple] ====== DATABASE QUERY END ======`);
 
-    // Group VALID products by weight (gramasi)
-    // CRITICAL: Use validProducts, not products, to ensure we only group valid data
-    const productsByWeight = new Map<number, typeof validProducts>();
-    validProducts.forEach((product) => {
-      const weight = product.weight;
-      if (!productsByWeight.has(weight)) {
-        productsByWeight.set(weight, []);
-      }
-      productsByWeight.get(weight)!.push(product);
+    // Request besar: proses di background agar tidak kena timeout 524 (Cloudflare/origin)
+    if (
+      validProducts.length > ZIP_JOB_THRESHOLD &&
+      productsFromFrontend &&
+      Array.isArray(productsFromFrontend) &&
+      productsFromFrontend.length > 0
+    ) {
+      const requestPayload = {
+        products: productsFromFrontend,
+        batchId: bodyBatchId,
+        productTitle: bodyProductTitle,
+        templateVariant,
+        useCustomTemplate: useCustom,
+        batchNumber: batchNumber ?? bodyBatchId ?? Math.floor(Date.now() / 1000),
+      };
+      const job = await prisma.qrZipDownloadJob.create({
+        data: {
+          status: "PENDING",
+          requestPayload: requestPayload as any,
+        },
+      });
+      processZipJobInBackground(job.id).catch((err) => {
+        console.error("[QR Multiple] Background job failed:", err);
+      });
+      return NextResponse.json({
+        jobId: job.id,
+        status: "pending",
+        message:
+          "ZIP sedang diproses di background (banyak file). Silakan polling status atau tunggu notifikasi.",
+      });
+    }
+
+    // Jalankan generate ZIP + upload R2 (sync path)
+    const zipOpts = {
+      bodyProductTitle,
+      templateVariant,
+      useCustom,
+      batchNumber: batchNumber ?? bodyBatchId ?? Math.floor(Date.now() / 1000),
+      isGramRequest,
+    };
+    const outcome = await executeZipGeneration(validProducts, zipOpts);
+    if (outcome.json) {
+      return NextResponse.json(outcome.json);
+    }
+    return new NextResponse(new Uint8Array(outcome.zip.buffer), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Disposition": `attachment; filename="${outcome.zip.filename}"`,
+        "Cache-Control": "no-cache",
+      },
+    });
+  } catch (error: any) {
+    const errorMessage = error?.message || String(error);
+    const errorStack = error?.stack || "";
+    const errorName = error?.name || "UnknownError";
+
+    console.error("[QR Multiple] Fatal error in download-multiple-pdf:", {
+      name: errorName,
+      message: errorMessage,
+      stack: errorStack,
     });
 
-    const hasMultipleWeights = productsByWeight.size > 1;
+    return NextResponse.json(
+      {
+        error: "Failed to generate ZIP file",
+        message: errorMessage,
+        details: process.env.NODE_ENV === "development" ? errorStack : undefined,
+      },
+      { status: 500 }
+    );
+  }
+}
 
-    // NEW APPROACH: Use same logic as frontend - no PDFKit, no fontconfig errors
+// --- Shared ZIP generation (sync + background job) ---
+type ZipGenProduct = {
+  id: number;
+  name: string;
+  serialCode: string;
+  weight: number;
+  isGram?: boolean;
+  rootKey?: string | null;
+};
+type ZipGenOpts = {
+  bodyProductTitle?: string;
+  templateVariant: string;
+  useCustom: boolean;
+  batchNumber: number;
+  isGramRequest: boolean;
+};
+type ZipOutcome = {
+  json?: Record<string, unknown>;
+  zip: { buffer: Buffer; filename: string };
+};
+
+async function executeZipGeneration(
+  validProducts: ZipGenProduct[],
+  opts: ZipGenOpts
+): Promise<ZipOutcome> {
+  const { bodyProductTitle, templateVariant, useCustom, batchNumber, isGramRequest } = opts;
+
+  // Group VALID products by weight (gramasi)
+  const productsByWeight = new Map<number, ZipGenProduct[]>();
+  validProducts.forEach((product) => {
+    const weight = product.weight;
+    if (!productsByWeight.has(weight)) {
+      productsByWeight.set(weight, []);
+    }
+    productsByWeight.get(weight)!.push(product);
+  });
+
+  const hasMultipleWeights = productsByWeight.size > 1;
+
+  // NEW APPROACH: Use same logic as frontend - no PDFKit, no fontconfig errors
     // 1. Get QR from /api/qr/[serialCode]/qr-only (no PDFKit)
     // 2. Get template from file system or R2
     // 3. Combine in canvas (same as frontend)
@@ -614,27 +717,21 @@ export async function POST(request: NextRequest) {
     if (successCount === 0) {
       // Get more details about the failure
       const errorDetails = {
-        totalProducts: productsData.length,
+        totalProducts: validProducts.length,
         validProducts: validProducts.length,
         failedCount: failCount,
         message: "Failed to generate any PDFs. All products failed.",
         suggestion:
           "Please check server logs for detailed error messages. Common issues: template file not found, image processing errors, or memory issues.",
-        requestedCount: productsData.length,
-        foundProducts: productsData.length,
+        requestedCount: validProducts.length,
+        foundProducts: validProducts.length,
       };
       console.error("[QR Multiple] All PDFs failed:", errorDetails);
       console.error(
         "[QR Multiple] First few products that failed:",
-        productsData.slice(0, 5).map((p) => p.serialCode)
+        validProducts.slice(0, 5).map((p) => p.serialCode)
       );
-      return NextResponse.json(
-        {
-          error: errorDetails.message,
-          details: errorDetails,
-        },
-        { status: 500 }
-      );
+      throw new Error(errorDetails.message);
     }
 
     // Log warning if some failed but not all
@@ -754,22 +851,25 @@ export async function POST(request: NextRequest) {
               ? String(firstProduct.rootKey).trim()
               : null;
 
-          return NextResponse.json({
-            success: true,
-            product_title,
-            product_id,
-            rootkey,
-            total_files: successCount,
-            download_url: downloadUrl,
-            downloadUrl,
-            filename,
-            batchNumber: batchNum,
-            fileCount: successCount,
-            failedCount: failCount,
-            r2Key,
-            zipSize: zipBuffer.length,
-            message: "ZIP file generated and uploaded to R2 successfully",
-          });
+          return {
+            json: {
+              success: true,
+              product_title,
+              product_id,
+              rootkey,
+              total_files: successCount,
+              download_url: downloadUrl,
+              downloadUrl,
+              filename,
+              batchNumber: batchNum,
+              fileCount: successCount,
+              failedCount: failCount,
+              r2Key,
+              zipSize: zipBuffer.length,
+              message: "ZIP file generated and uploaded to R2 successfully",
+            },
+            zip: { buffer: zipBuffer, filename },
+          };
         } catch (r2UploadError: any) {
           console.error(`[QR Multiple] R2 upload failed:`, {
             error: r2UploadError?.message,
@@ -799,33 +899,101 @@ export async function POST(request: NextRequest) {
       console.log("[QR Multiple] R2 not available, using direct download");
     }
 
-    // Fallback: Return ZIP file directly if R2 is not available or upload failed
-    return new NextResponse(new Uint8Array(zipBuffer), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="${filename}"`,
-        "Cache-Control": "no-cache",
+    // Fallback: return ZIP buffer when R2 not available or upload failed
+    return { zip: { buffer: zipBuffer, filename } };
+}
+
+async function processZipJobInBackground(jobId: number): Promise<void> {
+  const job = await prisma.qrZipDownloadJob.findUnique({ where: { id: jobId } });
+  if (!job || job.status !== "PENDING") return;
+
+  await prisma.qrZipDownloadJob.update({
+    where: { id: jobId },
+    data: { status: "PROCESSING", updatedAt: new Date() },
+  });
+
+  const payload = job.requestPayload as {
+    products?: Array<{
+      id: number;
+      name: string;
+      serialCode: string;
+      weight: number;
+      isGram?: boolean;
+      rootKey?: string | null;
+    }>;
+    productTitle?: string;
+    templateVariant?: string;
+    useCustomTemplate?: boolean;
+    batchNumber?: number;
+    batchId?: number;
+  };
+
+  const productsData = (payload.products || []).map((p) => ({
+    id: p.id,
+    name: p.name,
+    serialCode: p.serialCode,
+    weight: p.weight,
+    isGram: p.isGram === true,
+    rootKey: p.rootKey ?? null,
+  }));
+
+  const validProducts = productsData.filter(
+    (p) =>
+      p.name &&
+      p.serialCode &&
+      p.name.trim().length > 0 &&
+      p.serialCode.trim().length > 0 &&
+      p.serialCode.trim().toUpperCase() !== "0000" &&
+      p.name.trim().toUpperCase() !== "0000"
+  );
+
+  if (validProducts.length === 0) {
+    await prisma.qrZipDownloadJob.update({
+      where: { id: jobId },
+      data: { status: "FAILED", errorMessage: "No valid products", updatedAt: new Date() },
+    });
+    return;
+  }
+
+  const zipOpts: ZipGenOpts = {
+    bodyProductTitle: payload.productTitle,
+    templateVariant: payload.templateVariant ?? "01",
+    useCustom: payload.useCustomTemplate === true,
+    batchNumber:
+      payload.batchNumber ?? payload.batchId ?? Math.floor(Date.now() / 1000),
+    isGramRequest: validProducts.some((p) => p.isGram),
+  };
+
+  try {
+    const outcome = await executeZipGeneration(validProducts, zipOpts);
+    if (outcome.json) {
+      await prisma.qrZipDownloadJob.update({
+        where: { id: jobId },
+        data: {
+          status: "COMPLETED",
+          result: outcome.json as any,
+          updatedAt: new Date(),
+        },
+      });
+    } else {
+      await prisma.qrZipDownloadJob.update({
+        where: { id: jobId },
+        data: {
+          status: "FAILED",
+          errorMessage: "R2 tidak tersedia atau upload gagal",
+          updatedAt: new Date(),
+        },
+      });
+    }
+  } catch (e: any) {
+    console.error("[QR Multiple] Background job error:", e);
+    await prisma.qrZipDownloadJob.update({
+      where: { id: jobId },
+      data: {
+        status: "FAILED",
+        errorMessage: e?.message || String(e),
+        updatedAt: new Date(),
       },
     });
-  } catch (error: any) {
-    const errorMessage = error?.message || String(error);
-    const errorStack = error?.stack || "";
-    const errorName = error?.name || "UnknownError";
-
-    console.error("[QR Multiple] Fatal error in download-multiple-pdf:", {
-      name: errorName,
-      message: errorMessage,
-      stack: errorStack,
-    });
-
-    return NextResponse.json(
-      {
-        error: "Failed to generate ZIP file",
-        message: errorMessage,
-        details: process.env.NODE_ENV === "development" ? errorStack : undefined,
-      },
-      { status: 500 }
-    );
   }
 }

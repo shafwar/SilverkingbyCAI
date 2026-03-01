@@ -647,6 +647,47 @@ export function QrPreviewGridGram({ batches }: Props) {
           setZipProgress(null);
           return;
         }
+        // Background job: polling sampai COMPLETED atau FAILED
+        if (json.jobId != null && json.status === "pending") {
+          setZipProgress({ percent: 40, label: "ZIP diproses di background. Memeriksa status..." });
+          const maxAttempts = 120; // ~5 menit dengan interval 2.5s
+          let attempts = 0;
+          const poll = async (): Promise<void> => {
+            attempts++;
+            const statusRes = await fetch(`/api/qr/download-job/${json.jobId}`);
+            if (!statusRes.ok) throw new Error("Gagal memeriksa status job");
+            const data = await statusRes.json();
+            if (data.status === "COMPLETED" && data.result) {
+              const r = data.result;
+              const downloadUrl = r.download_url ?? r.downloadUrl;
+              if (downloadUrl) {
+                setZipDownloadResult({
+                  batchId,
+                  product_title: r.product_title ?? name,
+                  product_id: r.product_id ?? String(batchId),
+                  rootkey: r.rootkey ?? null,
+                  download_url: downloadUrl,
+                  total_files: r.total_files ?? r.fileCount ?? products.length,
+                });
+              }
+              setZipProgress(null);
+              return;
+            }
+            if (data.status === "FAILED") {
+              throw new Error(data.errorMessage || "Pembuatan ZIP gagal");
+            }
+            if (attempts >= maxAttempts) {
+              throw new Error("Timeout menunggu ZIP. Silakan coba lagi nanti.");
+            }
+            setZipProgress({
+              percent: Math.min(40 + Math.floor(attempts / 2), 90),
+              label: `Memeriksa status... (${attempts}/${maxAttempts})`,
+            });
+            setTimeout(() => poll(), 2500);
+          };
+          await poll();
+          return;
+        }
         throw new Error(json.error || json.message || "Response tidak valid");
       }
       setZipProgress({ percent: 95, label: "Mengunduh file..." });
