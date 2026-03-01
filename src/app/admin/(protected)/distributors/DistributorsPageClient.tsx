@@ -1,6 +1,7 @@
 "use client";
 
 import { DistributorForm } from "@/components/admin/DistributorForm";
+import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Pencil, Trash2, Plus, X } from "lucide-react";
@@ -110,64 +111,69 @@ export function DistributorsPageClient() {
     }
   };
 
+  const actions = (
+    <button
+      type="button"
+      onClick={openCreate}
+      className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-xs font-medium text-white hover:border-[#FFD700]/30 hover:bg-[#FFD700]/10 touch-manipulation whitespace-nowrap inline-flex items-center gap-2 transition"
+    >
+      <Plus className="h-4 w-4" />
+      {t("addDistributor")}
+    </button>
+  );
+
   return (
-    <div className="space-y-4 sm:space-y-6 h-[calc(100vh-8rem)] flex flex-col">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 flex-shrink-0">
-        <div>
-          <p className="text-[10px] sm:text-xs uppercase tracking-[0.4em] text-white/60">{t("title")}</p>
-          <h1 className="text-xl sm:text-2xl font-semibold text-white">{t("title")}</h1>
-        </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="rounded-full border border-white/15 px-3 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-sm text-white hover:border-white/40 touch-manipulation whitespace-nowrap inline-flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          {t("addDistributor")}
-        </button>
-      </div>
-      <div className="flex-1 overflow-y-auto pr-2 scrollbar-admin">
+    <AdminPageLayout
+      eyebrow="Admin"
+      title={t("title")}
+      actions={actions}
+    >
+      <div className="space-y-4 sm:space-y-6">
         {loading ? (
-          <div className="text-white/50 text-sm">Loading…</div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-5 py-8 text-center text-white/50 text-sm">
+            Loading…
+          </div>
         ) : list.length === 0 ? (
-          <p className="text-white/50">{t("noDistributors")}</p>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-5 py-12 text-center text-white/50">
+            {t("noDistributors")}
+          </div>
         ) : (
-          <div className="rounded-xl border border-white/10 overflow-hidden">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-white/5 border-b border-white/10">
+          <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02]">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead className="border-b border-white/10 bg-white/[0.04]">
                 <tr>
-                  <th className="px-4 py-3 font-medium text-white/80">{t("distributorName")}</th>
-                  <th className="px-4 py-3 font-medium text-white/80">{t("storeName")}</th>
-                  <th className="px-4 py-3 font-medium text-white/80">{t("city")}</th>
-                  <th className="px-4 py-3 font-medium text-white/80">{t("phone")}</th>
-                  <th className="px-4 py-3 font-medium text-white/80">{t("status")}</th>
-                  <th className="px-4 py-3 font-medium text-white/80 w-28">{t("actions")}</th>
+                  <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-white/60">{t("distributorName")}</th>
+                  <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-white/60">{t("storeName")}</th>
+                  <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-white/60">{t("city")}</th>
+                  <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-white/60">{t("phone")}</th>
+                  <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-white/60">{t("status")}</th>
+                  <th className="px-5 py-3.5 text-right text-[11px] font-semibold uppercase tracking-wider text-white/60 w-28">{t("actions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {list.map((row) => (
-                  <tr key={row.id} className="hover:bg-white/5">
-                    <td className="px-4 py-3 text-white/90">{row.distributorName}</td>
-                    <td className="px-4 py-3 text-white/80">{row.storeName}</td>
-                    <td className="px-4 py-3 text-white/80">{row.city}</td>
-                    <td className="px-4 py-3 text-white/80">{row.phone}</td>
-                    <td className="px-4 py-3">
+                  <tr key={row.id} className="transition-colors hover:bg-white/[0.04]">
+                    <td className="px-5 py-3.5 font-medium text-white/90">{row.distributorName}</td>
+                    <td className="px-5 py-3.5 text-white/80">{row.storeName}</td>
+                    <td className="px-5 py-3.5 text-white/80">{row.city}</td>
+                    <td className="px-5 py-3.5 text-white/80">{row.phone}</td>
+                    <td className="px-5 py-3.5">
                       <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs ${
+                        className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-medium border ${
                           row.status === "ACTIVE"
-                            ? "bg-emerald-500/20 text-emerald-400"
-                            : "bg-white/10 text-white/60"
+                            ? "border-emerald-500/25 bg-emerald-500/15 text-emerald-400"
+                            : "border-white/10 bg-white/5 text-white/60"
                         }`}
                       >
                         {row.status === "ACTIVE" ? t("statusActive") : t("statusInactive")}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
+                    <td className="px-5 py-3.5 text-right">
+                      <div className="flex items-center justify-end gap-2">
                         <button
                           type="button"
                           onClick={() => openEdit(row)}
-                          className="rounded border border-white/20 p-1.5 text-white/70 hover:bg-white/10 hover:text-white transition"
+                          className="rounded-lg border border-white/20 p-2 text-white/70 hover:bg-white/10 hover:text-white transition"
                           title={t("edit")}
                         >
                           <Pencil className="h-4 w-4" />
@@ -176,7 +182,7 @@ export function DistributorsPageClient() {
                           type="button"
                           onClick={() => handleDelete(row.id)}
                           disabled={deletingId === row.id}
-                          className="rounded border border-red-400/30 p-1.5 text-red-300/80 hover:bg-red-500/20 hover:text-red-300 transition disabled:opacity-50"
+                          className="rounded-lg border border-red-400/30 p-2 text-red-300/80 hover:bg-red-500/20 hover:text-red-300 transition disabled:opacity-50"
                           title={t("delete")}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -198,7 +204,7 @@ export function DistributorsPageClient() {
           onClick={closeModal}
         >
           <div
-            className="w-full max-w-lg rounded-2xl border border-white/15 bg-[#0a0a0a] p-6 shadow-2xl"
+            className="w-full max-w-lg rounded-2xl border border-white/15 bg-black/95 backdrop-blur-xl p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
@@ -222,6 +228,6 @@ export function DistributorsPageClient() {
           </div>
         </div>
       )}
-    </div>
+    </AdminPageLayout>
   );
 }

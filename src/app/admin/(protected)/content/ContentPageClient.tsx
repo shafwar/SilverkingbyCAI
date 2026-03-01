@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Pencil, Trash2, Plus, X, RefreshCw } from "lucide-react";
+import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 
 type Bilingual = { id: string; en: string };
 type Meta = {
@@ -224,69 +225,63 @@ export function ContentPageClient() {
     "w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold";
   const labelClass = "block text-xs font-medium text-white/70 mb-1";
 
-  return (
-    <div className="space-y-4 sm:space-y-6 h-[calc(100vh-8rem)] flex flex-col">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 flex-shrink-0">
-        <div>
-          <p className="text-[10px] sm:text-xs uppercase tracking-[0.4em] text-white/60">
-            {t("title")}
-          </p>
-          <h1 className="text-xl sm:text-2xl font-semibold text-white">
-            {t("title")}
-          </h1>
-        </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="rounded-full border border-white/15 px-3 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-sm text-white hover:border-white/40 inline-flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          {t("addEntry")}
-        </button>
-      </div>
+  const actions = (
+    <button
+      type="button"
+      onClick={openCreate}
+      className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-xs font-medium text-white hover:border-[#FFD700]/30 hover:bg-[#FFD700]/10 inline-flex items-center gap-2 transition"
+    >
+      <Plus className="h-4 w-4" />
+      {t("addEntry")}
+    </button>
+  );
 
-      <div className="flex-1 overflow-y-auto pr-2">
+  return (
+    <AdminPageLayout eyebrow="Admin" title={t("title")} actions={actions}>
+      <div className="space-y-4 sm:space-y-6">
         {loading ? (
-          <div className="text-white/50 text-sm">Loading…</div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-5 py-8 text-center text-white/50 text-sm">
+            Loading…
+          </div>
         ) : entries.length === 0 ? (
-          <p className="text-white/50">{t("noEntries")}</p>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-5 py-12 text-center text-white/50">
+            {t("noEntries")}
+          </div>
         ) : (
-          <div className="rounded-xl border border-white/10 overflow-hidden">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-white/5 border-b border-white/10">
+          <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02]">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead className="border-b border-white/10 bg-white/[0.04]">
                 <tr>
-                  <th className="px-4 py-3 font-medium text-white/80">
+                  <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-white/60">
                     {t("pageName")}
                   </th>
-                  <th className="px-4 py-3 font-medium text-white/80">
+                  <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-white/60">
                     {t("sectionName")}
                   </th>
-                  <th className="px-4 py-3 font-medium text-white/80">
+                  <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-white/60">
                     Title ID / EN
                   </th>
-                  <th className="px-4 py-3 font-medium text-white/80 w-28">
+                  <th className="px-5 py-3.5 text-right text-[11px] font-semibold uppercase tracking-wider text-white/60 w-28">
                     {t("save")}
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {entries.map((row) => (
-                  <tr key={row.id} className="hover:bg-white/5">
-                    <td className="px-4 py-3 text-white/90">{row.pageName}</td>
-                    <td className="px-4 py-3 text-white/80">
-                      {row.sectionName}
-                    </td>
-                    <td className="px-4 py-3 text-white/80 max-w-xs">
+                  <tr key={row.id} className="transition-colors hover:bg-white/[0.04]">
+                    <td className="px-5 py-3.5 font-medium text-white/90">{row.pageName}</td>
+                    <td className="px-5 py-3.5 text-white/80">{row.sectionName}</td>
+                    <td className="px-5 py-3.5 text-white/80 max-w-xs">
                       <div className="truncate">
                         ID: {row.title.id || "—"} | EN: {row.title.en || "—"}
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
+                    <td className="px-5 py-3.5 text-right">
+                      <div className="flex items-center justify-end gap-2">
                         <button
                           type="button"
                           onClick={() => openEdit(row)}
-                          className="rounded border border-white/20 p-1.5 text-white/70 hover:bg-white/10"
+                          className="rounded-lg border border-white/20 p-2 text-white/70 hover:bg-white/10 hover:text-white transition"
                           title={t("save")}
                         >
                           <Pencil className="h-4 w-4" />
@@ -295,7 +290,7 @@ export function ContentPageClient() {
                           type="button"
                           onClick={() => handleDelete(row.id)}
                           disabled={deletingId === row.id}
-                          className="rounded border border-red-400/30 p-1.5 text-red-300/80 hover:bg-red-500/20 disabled:opacity-50"
+                          className="rounded-lg border border-red-400/30 p-2 text-red-300/80 hover:bg-red-500/20 disabled:opacity-50 transition"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -456,6 +451,6 @@ export function ContentPageClient() {
           </div>
         </div>
       )}
-    </div>
+    </AdminPageLayout>
   );
 }

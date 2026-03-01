@@ -644,39 +644,39 @@ export function ProductTable({ products }: { products: ProductRow[] }) {
         </div>
       </Modal>
 
-      <div className="overflow-hidden rounded-3xl border border-white/5 bg-white/[0.02]">
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02]">
         {/* Desktop Table */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-sm text-white/70">
-            <thead>
-              <tr className="bg-white/[0.03] text-left text-xs uppercase tracking-[0.4em] text-white/40">
-                <th className="px-4 lg:px-6 py-4">{t("name")}</th>
-                <th className="px-4 lg:px-6 py-4">{t("serial")}</th>
-                <th className="px-4 lg:px-6 py-4">{t("weight")}</th>
-                <th className="px-4 lg:px-6 py-4">{t("scans")}</th>
-                <th className="px-4 lg:px-6 py-4 text-right">{t("actions")}</th>
+          <table className="w-full min-w-[640px] text-sm text-white/80">
+            <thead className="border-b border-white/10 bg-white/[0.04]">
+              <tr>
+                <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-white/60 text-left">{t("name")}</th>
+                <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-white/60 text-left">{t("serial")}</th>
+                <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-white/60 text-left">{t("weight")}</th>
+                <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-white/60 text-left">{t("scans")}</th>
+                <th className="px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-white/60 text-right">{t("actions")}</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-white/5">
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-white/40">
+                  <td colSpan={5} className="px-5 py-12 text-center text-white/50">
                     {searchQuery ? t("noProducts") : t("noProducts")}
                   </td>
                 </tr>
               ) : (
                 filteredProducts.map((product) => (
-                  <tr key={product.id} className="border-t border-white/5">
-                    <td className="px-4 lg:px-6 py-4">
+                  <tr key={product.id} className="transition-colors hover:bg-white/[0.04]">
+                    <td className="px-5 py-3.5">
                       <p className="font-semibold text-white">{product.name}</p>
                       <p className="text-xs text-white/40">#{product.id}</p>
                     </td>
-                    <td className="px-4 lg:px-6 py-4 font-mono text-sm text-white/80">
+                    <td className="px-5 py-3.5 font-mono text-sm text-white/80">
                       {product.serialCode}
                     </td>
-                    <td className="px-4 lg:px-6 py-4">{product.weight} gr</td>
-                    <td className="px-4 lg:px-6 py-4">{product.qrRecord?.scanCount ?? 0}</td>
-                    <td className="px-4 lg:px-6 py-4 text-right">
+                    <td className="px-5 py-3.5">{product.weight} gr</td>
+                    <td className="px-5 py-3.5">{product.qrRecord?.scanCount ?? 0}</td>
+                    <td className="px-5 py-3.5 text-right">
                       <button
                         onClick={() => router.push(`/admin/products/create?id=${product.id}`)}
                         className="mr-3 rounded-full border border-white/15 px-3 py-1 text-xs text-white/70 hover:border-white/40"
