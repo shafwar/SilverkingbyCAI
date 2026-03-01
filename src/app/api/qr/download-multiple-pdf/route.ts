@@ -11,7 +11,7 @@ import { loadSerticardTemplates } from "@/lib/load-serticard-templates";
 import { getSerticardConfig, getFontSizeMultipliers } from "@/lib/serticard-config";
 
 /** Request dengan product count di atas ini diproses di background (hindari timeout 524). */
-const ZIP_JOB_THRESHOLD = 80;
+const ZIP_JOB_THRESHOLD = 25;
 
 /**
  * Generate ZIP file with multiple PDFs (one PDF per QR code)

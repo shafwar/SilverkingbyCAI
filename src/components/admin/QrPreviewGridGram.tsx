@@ -137,6 +137,7 @@ export function QrPreviewGridGram({ batches }: Props) {
       if (downloadDropdownRef.current?.contains(target)) return;
       setDownloadDropdownOpen(null);
       setZipDownloadResult(null);
+      setZipProgress(null);
     };
 
     if (downloadDropdownOpen !== null) {
@@ -615,22 +616,33 @@ export function QrPreviewGridGram({ batches }: Props) {
         isGram: true,
         rootKey: item.rootKey ?? null,
       }));
-      setZipProgress({ percent: 20, label: "Membuat ZIP dan mengunggah ke R2..." });
-      const response = await fetch("/api/qr/download-multiple-pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          products,
-          batchId,
-          productTitle: name,
-          templateVariant: templateId,
-          useCustomTemplate: false,
-        }),
-      });
+      const itemCountLabel = products.length > 1 ? ` (${products.length} item)` : "";
+      setZipProgress({ percent: 15, label: `Menyiapkan ZIP${itemCountLabel}...` });
+      let response: Response;
+      try {
+        response = await fetch("/api/qr/download-multiple-pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            products,
+            batchId,
+            productTitle: name,
+            templateVariant: templateId,
+            useCustomTemplate: false,
+          }),
+        });
+      } catch (networkErr) {
+        throw new Error("Koneksi gagal. Periksa jaringan dan coba lagi.");
+      }
       if (!response.ok) {
         const text = await response.text();
-        throw new Error(parseErrorResponse(text, response.status));
+        const status = response.status;
+        if (status === 524) {
+          throw new Error("Server timeout. Batch ini akan diproses di background. Silakan coba lagi dalam beberapa saat.");
+        }
+        throw new Error(parseErrorResponse(text, status));
       }
+      setZipProgress({ percent: 25, label: "Memproses respons..." });
       const ct = response.headers.get("content-type") || "";
       if (ct.includes("application/json")) {
         const json = await response.json();
@@ -649,11 +661,9 @@ export function QrPreviewGridGram({ batches }: Props) {
         }
         // Background job: polling sampai COMPLETED atau FAILED
         if (json.jobId != null && json.status === "pending") {
-          setZipProgress({ percent: 40, label: "ZIP diproses di background. Memeriksa status..." });
+          setZipProgress({ percent: 35, label: "ZIP diproses di background. Memeriksa status..." });
           const maxAttempts = 120; // ~5 menit dengan interval 2.5s
-          let attempts = 0;
-          const poll = async (): Promise<void> => {
-            attempts++;
+          for (let attempts = 1; attempts <= maxAttempts; attempts++) {
             const statusRes = await fetch(`/api/qr/download-job/${json.jobId}`);
             if (!statusRes.ok) throw new Error("Gagal memeriksa status job");
             const data = await statusRes.json();
@@ -676,17 +686,15 @@ export function QrPreviewGridGram({ batches }: Props) {
             if (data.status === "FAILED") {
               throw new Error(data.errorMessage || "Pembuatan ZIP gagal");
             }
-            if (attempts >= maxAttempts) {
-              throw new Error("Timeout menunggu ZIP. Silakan coba lagi nanti.");
-            }
             setZipProgress({
-              percent: Math.min(40 + Math.floor(attempts / 2), 90),
-              label: `Memeriksa status... (${attempts}/${maxAttempts})`,
+              percent: Math.min(35 + Math.floor(attempts / 3), 92),
+              label: data.status === "PROCESSING" ? "Membuat ZIP & mengunggah ke R2..." : `Memeriksa status... (${attempts}/${maxAttempts})`,
             });
-            setTimeout(() => poll(), 2500);
-          };
-          await poll();
-          return;
+            if (attempts < maxAttempts) {
+              await new Promise((r) => setTimeout(r, 2500));
+            }
+          }
+          throw new Error("Timeout menunggu ZIP. Silakan coba lagi nanti.");
         }
         throw new Error(json.error || json.message || "Response tidak valid");
       }
@@ -719,22 +727,6 @@ export function QrPreviewGridGram({ batches }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Global ZIP progress (when downloading from card, dropdown is closed) */}
-      {zipProgress && (
-        <div className="rounded-xl border border-[#FFD700]/30 bg-black/80 backdrop-blur px-4 py-2">
-          <div className="flex items-center justify-between gap-2 mb-1">
-            <span className="text-xs font-medium text-[#FFD700]">{zipProgress.label}</span>
-            <span className="text-xs tabular-nums text-white/80">{zipProgress.percent}%</span>
-          </div>
-          <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
-            <div
-              className="h-full bg-[#FFD700]/70 rounded-full transition-all duration-300"
-              style={{ width: `${zipProgress.percent}%` }}
-            />
-          </div>
-        </div>
-      )}
-
       {/* Header: judul + total aset */}
       <motion.section
         initial={{ opacity: 0, y: 12 }}
@@ -1210,6 +1202,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                 onClick={() => {
                   setDownloadDropdownOpen(null);
                   setZipDownloadResult(null);
+                  setZipProgress(null);
                 }}
                 role="presentation"
               >
@@ -1259,8 +1252,20 @@ export function QrPreviewGridGram({ batches }: Props) {
                           <button
                             type="button"
                             onClick={() => {
+                              router.refresh();
+                            }}
+                            className="shrink-0 p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition"
+                            aria-label="Segarkan data"
+                            title="Segarkan data"
+                          >
+                            <RefreshCw className="h-5 w-5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
                               setDownloadDropdownOpen(null);
                               setZipDownloadResult(null);
+                              setZipProgress(null);
                             }}
                             className="shrink-0 p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition"
                             aria-label="Tutup"
@@ -1293,6 +1298,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                                 href={zipDownloadResult.download_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
+                                download={`${(zipDownloadResult.product_title || "serticard").replace(/\s+/g, "-")}-${zipDownloadResult.total_files}file.zip`}
                                 className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFD700]/40 bg-[#FFD700]/15 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/25 transition"
                               >
                                 <Download className="h-4 w-4" />
