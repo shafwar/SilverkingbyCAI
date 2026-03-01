@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -95,6 +96,7 @@ export function QrPreviewGridGram({ batches }: Props) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [downloadDropdownOpen, setDownloadDropdownOpen] = useState<number | null>(null);
   const downloadDropdownRef = useRef<HTMLDivElement>(null);
+  const downloadModalRef = useRef<HTMLDivElement>(null);
   const [isDownloadingBatchZip, setIsDownloadingBatchZip] = useState(false);
   const [downloadingZipBatchId, setDownloadingZipBatchId] = useState<number | null>(null);
   const [selectedZipTemplateId, setSelectedZipTemplateId] = useState<SerticardVariantId>("01");
@@ -120,22 +122,18 @@ export function QrPreviewGridGram({ batches }: Props) {
     return () => window.removeEventListener("serticard-config-updated", handleConfigUpdate);
   }, [mutateFontConfig]);
 
-  // Close dropdown when clicking outside
+  // Close modal when clicking outside (backdrop); jangan tutup jika klik di dalam modal card
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        downloadDropdownRef.current &&
-        !downloadDropdownRef.current.contains(event.target as Node)
-      ) {
-        setDownloadDropdownOpen(null);
-      }
+      const target = event.target as Node;
+      if (downloadModalRef.current?.contains(target)) return;
+      if (downloadDropdownRef.current?.contains(target)) return;
+      setDownloadDropdownOpen(null);
     };
 
     if (downloadDropdownOpen !== null) {
       document.addEventListener("mousedown", handleClickOutside);
-      return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-      };
+      return () => document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [downloadDropdownOpen]);
 
@@ -391,7 +389,15 @@ export function QrPreviewGridGram({ batches }: Props) {
     }
   };
 
-  // Download dropdown button component
+  const activeDownloadBatch = useMemo(
+    () =>
+      downloadDropdownOpen !== null
+        ? filteredBatches.find((b) => b.batchId === downloadDropdownOpen) ?? null
+        : null,
+    [downloadDropdownOpen, filteredBatches]
+  );
+
+  // Download button: opens centered modal (no dropdown)
   const DownloadDropdown = ({
     batchId,
     batchName,
@@ -424,82 +430,10 @@ export function QrPreviewGridGram({ batches }: Props) {
     const isOpen = downloadDropdownOpen === batchId;
     const isLoading = downloadingId === product.id;
     const isZipLoading = downloadingZipBatchId === batchId;
-    const zipPercent = isZipLoading && zipProgress ? zipProgress.percent : null;
-    const dropdownRef = useRef<HTMLDivElement>(null);
-    const buttonRef = useRef<HTMLButtonElement>(null);
-    const [dropdownPosition, setDropdownPosition] = useState<"bottom" | "top">("bottom");
-
-    // Smart positioning: 
-    // - Top items: dropdown muncul di bawah
-    // - Bottom items: dropdown muncul di atas
-    // - Middle items: menyesuaikan berdasarkan ruang yang tersedia
-    useEffect(() => {
-      if (!isOpen || !buttonRef.current) return;
-
-      const updatePosition = () => {
-        if (!buttonRef.current) return;
-
-        const buttonRect = buttonRef.current.getBoundingClientRect();
-        const dropdownHeight = 350; // max-h-[320px] + padding
-        const spaceBelow = window.innerHeight - buttonRect.bottom;
-        const spaceAbove = buttonRect.top;
-        const viewportHeight = window.innerHeight;
-        const topThreshold = 300; // Jika button di atas 300px, SELALU muncul di bawah
-        const bottomThreshold = viewportHeight - 300; // Jika button di bawah threshold, selalu muncul di atas
-
-        // PRIORITAS: Item di paling atas HARUS selalu muncul di bawah
-        // Logic untuk menentukan posisi dropdown
-        if (buttonRect.top < topThreshold) {
-          // Item di paling atas (dalam 300px dari atas): SELALU muncul di bawah
-          // Ini adalah requirement utama - tidak peduli kondisi lainnya
-          setDropdownPosition("bottom");
-        } else if (buttonRect.bottom > bottomThreshold) {
-          // Item di paling bawah (dalam 300px dari bawah): selalu muncul di atas
-          setDropdownPosition("top");
-        } else {
-          // Item di tengah: pilih berdasarkan ruang yang tersedia
-          if (spaceBelow >= dropdownHeight) {
-            // Cukup ruang di bawah, muncul di bawah
-            setDropdownPosition("bottom");
-          } else if (spaceAbove > spaceBelow + 100) {
-            // Lebih banyak ruang di atas (selisih minimal 100px), muncul di atas
-            setDropdownPosition("top");
-          } else {
-            // Default: muncul di bawah (lebih aman)
-            setDropdownPosition("bottom");
-          }
-        }
-      };
-
-      // Calculate position immediately
-      updatePosition();
-
-      // Update on scroll and resize
-      let scrollTimeout: NodeJS.Timeout;
-      const handleScroll = () => {
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(updatePosition, 50);
-      };
-
-      const handleResize = () => {
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(updatePosition, 50);
-      };
-
-      window.addEventListener("scroll", handleScroll, true);
-      window.addEventListener("resize", handleResize);
-
-      return () => {
-        clearTimeout(scrollTimeout);
-        window.removeEventListener("scroll", handleScroll, true);
-        window.removeEventListener("resize", handleResize);
-      };
-    }, [isOpen]);
 
     return (
       <div className="relative inline-block w-full">
         <button
-          ref={buttonRef}
           onClick={() => setDownloadDropdownOpen(isOpen ? null : batchId)}
           disabled={isLoading || isZipLoading}
           className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-medium text-white/90 transition hover:border-[#FFD700]/30 hover:bg-[#FFD700]/10 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -514,166 +448,6 @@ export function QrPreviewGridGram({ batches }: Props) {
             }`}
           />
         </button>
-
-        <AnimatePresence mode="wait">
-          {isOpen && (
-            <motion.div
-              ref={dropdownRef}
-              key="download-card"
-              initial={{ opacity: 0, y: dropdownPosition === "bottom" ? -8 : 8, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: dropdownPosition === "bottom" ? -8 : 8, scale: 0.96 }}
-              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className={`absolute right-0 z-[9999] w-[min(100vw-2rem,22rem)] rounded-2xl border border-white/15 bg-gradient-to-b from-black/98 to-black/95 shadow-2xl shadow-black/50 backdrop-blur-xl overflow-hidden flex flex-col ${
-                dropdownPosition === "top" ? "bottom-full mb-2" : "top-full mt-2"
-              }`}
-              style={{ maxHeight: "min(85vh, 28rem)" }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Card header - proporsional */}
-              <div className="shrink-0 px-5 py-4 border-b border-white/10 bg-gradient-to-br from-[#FFD700]/10 to-transparent">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#FFD700]/15 border border-[#FFD700]/25">
-                    <Download className="h-5 w-5 text-[#FFD700]" />
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="font-semibold text-white text-base">Unduh Serticard</h3>
-                    <p className="text-xs text-white/55 mt-0.5">Pilih: Original QR, ZIP, atau PDF satuan</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Opsi dalam container yang rapi - scroll jika perlu */}
-              <div className="flex-1 overflow-y-auto min-h-0 p-4 space-y-4 scrollbar-show">
-                {/* 1. Original QR Only */}
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <div className="text-xs font-medium text-white/60 mb-2">Original QR</div>
-                  <motion.button
-                    onClick={() => handleDownloadOriginal(product)}
-                    disabled={isLoading}
-                    className="w-full px-3 py-2.5 rounded-lg text-left hover:bg-white/10 active:bg-white/15 transition-all disabled:opacity-50 disabled:cursor-not-allowed group border border-white/10"
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <div className="font-medium text-white text-sm group-hover:text-[#FFD700]/90">Original QR Only</div>
-                    <div className="text-[10px] text-white/50 mt-0.5">PNG dengan judul & nomor seri</div>
-                  </motion.button>
-                </div>
-
-                {/* 2. ZIP - semua item (dengan root key) */}
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <div className="text-xs font-medium text-white/60 mb-2">ZIP (semua item, dengan root key)</div>
-                  <div className="mb-2">
-                    <label className="text-[10px] text-white/45 block mb-1">Template</label>
-                    <select
-                      value={selectedZipTemplateId}
-                      onChange={(e) => setSelectedZipTemplateId(e.target.value as SerticardVariantId)}
-                      disabled={isZipLoading}
-                      className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-white focus:border-[#FFD700]/50 focus:outline-none"
-                    >
-                      {SERTICARD_VARIANTS.map((v) => (
-                        <option key={v.id} value={v.id} className="bg-gray-900 text-white">
-                          {v.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {zipPercent != null && (
-                    <div className="mb-2 h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
-                      <div
-                        className="h-full bg-[#FFD700]/70 rounded-full transition-all duration-300"
-                        style={{ width: `${zipPercent}%` }}
-                      />
-                    </div>
-                  )}
-                  <motion.button
-                    type="button"
-                    onClick={() =>
-                      handleDownloadBatchAsZipFromCard(batchId, batchName, batchWeight, itemCount)
-                    }
-                    disabled={isLoading || isZipLoading}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFD700]/40 bg-[#FFD700]/10 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/20 disabled:opacity-50"
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Download className="h-4 w-4" />
-                    {isZipLoading
-                      ? zipPercent != null
-                        ? `${zipProgress?.label ?? "Membuat ZIP..."} ${zipPercent}%`
-                        : "Membuat ZIP..."
-                      : `Unduh ZIP — ${itemCount} file`}
-                  </motion.button>
-                </div>
-
-                {/* 3. Satuan PDF - dengan dropdown jenis serticard (default tanpa root key) */}
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <div className="text-xs font-medium text-white/60 mb-2">Satuan PDF (1 file, item pertama)</div>
-                  <div className="flex rounded-lg border border-white/15 bg-white/5 p-0.5 mb-3">
-                    <button
-                      type="button"
-                      onClick={() => setSingleCardIncludeRootKey(false)}
-                      className={`rounded-md px-2.5 py-1.5 text-[10px] font-medium transition-colors flex-1 ${
-                        !singleCardIncludeRootKey
-                          ? "bg-[#FFD700]/20 text-[#FFD700]"
-                          : "text-white/60 hover:text-white/80"
-                      }`}
-                    >
-                      Tanpa root key
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSingleCardIncludeRootKey(true)}
-                      className={`rounded-md px-2.5 py-1.5 text-[10px] font-medium transition-colors flex-1 ${
-                        singleCardIncludeRootKey
-                          ? "bg-[#FFD700]/20 text-[#FFD700]"
-                          : "text-white/60 hover:text-white/80"
-                      }`}
-                    >
-                      Dengan root key
-                    </button>
-                  </div>
-                  <div className="mb-2">
-                    <label className="text-[10px] text-white/45 block mb-1">Jenis Serticard</label>
-                    <select
-                      value={selectedSingleTemplateId}
-                      onChange={(e) =>
-                        setSelectedSingleTemplateId((e.target.value === "custom" ? "custom" : e.target.value) as SerticardVariantId | "custom")
-                      }
-                      disabled={isLoading}
-                      className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-white focus:border-[#FFD700]/50 focus:outline-none"
-                    >
-                      {SERTICARD_VARIANTS.map((v) => (
-                        <option key={v.id} value={v.id} className="bg-gray-900 text-white">
-                          {v.label}
-                        </option>
-                      ))}
-                      {hasCustomTemplate && (
-                        <option value="custom" className="bg-gray-900 text-white">
-                          ✨ Custom
-                        </option>
-                      )}
-                    </select>
-                  </div>
-                  <motion.button
-                    type="button"
-                    onClick={() =>
-                      handleDownloadSingle(product, selectedSingleTemplateId, {
-                        includeRootKey: singleCardIncludeRootKey,
-                      })
-                    }
-                    disabled={isLoading}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFD700]/30 bg-[#FFD700]/10 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/20 disabled:opacity-50"
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Download className="h-4 w-4" />
-                    Unduh 1 PDF
-                  </motion.button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
     );
   };
@@ -1384,6 +1158,209 @@ export function QrPreviewGridGram({ batches }: Props) {
           </div>
         )}
       </Modal>
+
+      {/* Floating card Download - tengah layar (bukan dropdown) */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {activeDownloadBatch && (
+              <motion.div
+                key="download-modal-overlay"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 z-[9998] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                onClick={() => setDownloadDropdownOpen(null)}
+                role="presentation"
+              >
+                <motion.div
+                  ref={downloadModalRef}
+                  key="download-modal-card"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                  className="w-full max-w-md max-h-[90vh] flex flex-col rounded-2xl border border-white/15 bg-gradient-to-b from-black/98 to-black/95 shadow-2xl shadow-black/50 backdrop-blur-xl overflow-hidden"
+                  onClick={(e) => e.stopPropagation()}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="download-modal-title"
+                >
+                  {(() => {
+                    const batch = activeDownloadBatch;
+                    const product = {
+                      id: batch.firstItem.id,
+                      name: batch.name,
+                      weight: batch.weight,
+                      uniqCode: batch.firstItem.uniqCode,
+                      serialCode: batch.firstItem.serialCode,
+                      qrImageUrl: batch.firstItem.qrImageUrl,
+                      weightGroup: batch.weightGroup,
+                      hasRootKey: batch.firstItem.hasRootKey,
+                      rootKey: batch.firstItem.rootKey ?? undefined,
+                    };
+                    const isLoading = downloadingId === product.id;
+                    const isZipLoading = downloadingZipBatchId === batch.batchId;
+                    const zipPercent = isZipLoading && zipProgress ? zipProgress.percent : null;
+                    return (
+                      <>
+                        <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-white/10 bg-gradient-to-br from-[#FFD700]/10 to-transparent">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#FFD700]/15 border border-[#FFD700]/25">
+                              <Download className="h-5 w-5 text-[#FFD700]" />
+                            </div>
+                            <div className="min-w-0">
+                              <h2 id="download-modal-title" className="font-semibold text-white text-base">
+                                Unduh Serticard
+                              </h2>
+                              <p className="text-xs text-white/55 mt-0.5 truncate">{batch.name}</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setDownloadDropdownOpen(null)}
+                            className="shrink-0 p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition"
+                            aria-label="Tutup"
+                          >
+                            <X className="h-5 w-5" />
+                          </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto min-h-0 p-4 space-y-4 scrollbar-show">
+                          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                            <div className="text-xs font-medium text-white/60 mb-2">Original QR</div>
+                            <motion.button
+                              onClick={() => {
+                                handleDownloadOriginal(product);
+                                setDownloadDropdownOpen(null);
+                              }}
+                              disabled={isLoading}
+                              className="w-full px-3 py-2.5 rounded-lg text-left hover:bg-white/10 active:bg-white/15 transition-all disabled:opacity-50 disabled:cursor-not-allowed group border border-white/10"
+                              whileHover={{ scale: 1.01 }}
+                              whileTap={{ scale: 0.98 }}
+                            >
+                              <div className="font-medium text-white text-sm group-hover:text-[#FFD700]/90">Original QR Only</div>
+                              <div className="text-[10px] text-white/50 mt-0.5">PNG dengan judul & nomor seri</div>
+                            </motion.button>
+                          </div>
+
+                          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                            <div className="text-xs font-medium text-white/60 mb-2">ZIP (semua item, dengan root key)</div>
+                            <div className="mb-2">
+                              <label className="text-[10px] text-white/45 block mb-1">Template</label>
+                              <select
+                                value={selectedZipTemplateId}
+                                onChange={(e) => setSelectedZipTemplateId(e.target.value as SerticardVariantId)}
+                                disabled={isZipLoading}
+                                className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-white focus:border-[#FFD700]/50 focus:outline-none"
+                              >
+                                {SERTICARD_VARIANTS.map((v) => (
+                                  <option key={v.id} value={v.id} className="bg-gray-900 text-white">
+                                    {v.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            {zipPercent != null && (
+                              <div className="mb-2 h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+                                <div
+                                  className="h-full bg-[#FFD700]/70 rounded-full transition-all duration-300"
+                                  style={{ width: `${zipPercent}%` }}
+                                />
+                              </div>
+                            )}
+                            <motion.button
+                              type="button"
+                              onClick={() => {
+                                handleDownloadBatchAsZipFromCard(batch.batchId, batch.name, batch.weight, batch.itemCount);
+                              }}
+                              disabled={isLoading || isZipLoading}
+                              className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFD700]/40 bg-[#FFD700]/10 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/20 disabled:opacity-50"
+                              whileHover={{ scale: 1.01 }}
+                              whileTap={{ scale: 0.98 }}
+                            >
+                              <Download className="h-4 w-4" />
+                              {isZipLoading
+                                ? zipPercent != null
+                                  ? `${zipProgress?.label ?? "Membuat ZIP..."} ${zipPercent}%`
+                                  : "Membuat ZIP..."
+                                : `Unduh ZIP — ${batch.itemCount} file`}
+                            </motion.button>
+                          </div>
+
+                          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                            <div className="text-xs font-medium text-white/60 mb-2">Satuan PDF (1 file, item pertama)</div>
+                            <div className="flex rounded-lg border border-white/15 bg-white/5 p-0.5 mb-3">
+                              <button
+                                type="button"
+                                onClick={() => setSingleCardIncludeRootKey(false)}
+                                className={`rounded-md px-2.5 py-1.5 text-[10px] font-medium transition-colors flex-1 ${
+                                  !singleCardIncludeRootKey ? "bg-[#FFD700]/20 text-[#FFD700]" : "text-white/60 hover:text-white/80"
+                                }`}
+                              >
+                                Tanpa root key
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSingleCardIncludeRootKey(true)}
+                                className={`rounded-md px-2.5 py-1.5 text-[10px] font-medium transition-colors flex-1 ${
+                                  singleCardIncludeRootKey ? "bg-[#FFD700]/20 text-[#FFD700]" : "text-white/60 hover:text-white/80"
+                                }`}
+                              >
+                                Dengan root key
+                              </button>
+                            </div>
+                            <div className="mb-2">
+                              <label className="text-[10px] text-white/45 block mb-1">Jenis Serticard</label>
+                              <select
+                                value={selectedSingleTemplateId}
+                                onChange={(e) =>
+                                  setSelectedSingleTemplateId(
+                                    (e.target.value === "custom" ? "custom" : e.target.value) as SerticardVariantId | "custom"
+                                  )
+                                }
+                                disabled={isLoading}
+                                className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-white focus:border-[#FFD700]/50 focus:outline-none"
+                              >
+                                {SERTICARD_VARIANTS.map((v) => (
+                                  <option key={v.id} value={v.id} className="bg-gray-900 text-white">
+                                    {v.label}
+                                  </option>
+                                ))}
+                                {hasCustomTemplate && (
+                                  <option value="custom" className="bg-gray-900 text-white">
+                                    ✨ Custom
+                                  </option>
+                                )}
+                              </select>
+                            </div>
+                            <motion.button
+                              type="button"
+                              onClick={() =>
+                                handleDownloadSingle(product, selectedSingleTemplateId, {
+                                  includeRootKey: singleCardIncludeRootKey,
+                                })
+                              }
+                              disabled={isLoading}
+                              className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFD700]/30 bg-[#FFD700]/10 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/20 disabled:opacity-50"
+                              whileHover={{ scale: 1.01 }}
+                              whileTap={{ scale: 0.98 }}
+                            >
+                              <Download className="h-4 w-4" />
+                              Unduh 1 PDF
+                            </motion.button>
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
     </div>
   );
 }
