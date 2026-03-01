@@ -99,7 +99,8 @@ export function QrPreviewGridGram({ batches }: Props) {
   const [downloadingZipBatchId, setDownloadingZipBatchId] = useState<number | null>(null);
   const [selectedZipTemplateId, setSelectedZipTemplateId] = useState<SerticardVariantId>("01");
   const [zipProgress, setZipProgress] = useState<{ percent: number; label: string } | null>(null);
-  const [singleCardIncludeRootKey, setSingleCardIncludeRootKey] = useState(true);
+  const [singleCardIncludeRootKey, setSingleCardIncludeRootKey] = useState(false);
+  const [selectedSingleTemplateId, setSelectedSingleTemplateId] = useState<SerticardVariantId | "custom">("01");
 
   // Fetch serticard config to check for custom template
   const { data: fontConfig, mutate: mutateFontConfig } = useSWR<{
@@ -523,89 +524,95 @@ export function QrPreviewGridGram({ batches }: Props) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: dropdownPosition === "bottom" ? -8 : 8, scale: 0.96 }}
               transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className={`absolute right-0 z-[9999] w-[min(100vw-2rem,20rem)] max-h-[85vh] flex flex-col rounded-2xl border border-white/15 bg-gradient-to-b from-black/98 to-black/95 shadow-2xl shadow-black/50 backdrop-blur-xl overflow-hidden ${
+              className={`absolute right-0 z-[9999] w-[min(100vw-2rem,22rem)] rounded-2xl border border-white/15 bg-gradient-to-b from-black/98 to-black/95 shadow-2xl shadow-black/50 backdrop-blur-xl overflow-hidden flex flex-col ${
                 dropdownPosition === "top" ? "bottom-full mb-2" : "top-full mt-2"
               }`}
+              style={{ maxHeight: "min(85vh, 28rem)" }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Floating card header - preview style */}
+              {/* Card header - proporsional */}
               <div className="shrink-0 px-5 py-4 border-b border-white/10 bg-gradient-to-br from-[#FFD700]/10 to-transparent">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FFD700]/15 border border-[#FFD700]/20">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#FFD700]/15 border border-[#FFD700]/25">
                     <Download className="h-5 w-5 text-[#FFD700]" />
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-white text-sm">Unduh Serticard</h3>
-                    <p className="text-xs text-white/55 mt-0.5">Pilih opsi unduh template PDF atau QR</p>
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-white text-base">Unduh Serticard</h3>
+                    <p className="text-xs text-white/55 mt-0.5">Pilih: Original QR, ZIP, atau PDF satuan</p>
                   </div>
                 </div>
               </div>
 
-              {/* Section: ZIP (satu file per item dengan root key) */}
-              <div className="shrink-0 px-4 py-3 border-b border-white/10 bg-white/[0.02]">
-                <div className="text-xs font-medium text-white/70 mb-2">Satu file per item (dengan root key)</div>
-                <div className="mb-2">
-                  <label className="text-[10px] text-white/45 block mb-1">Template</label>
-                  <select
-                    value={selectedZipTemplateId}
-                    onChange={(e) => setSelectedZipTemplateId(e.target.value as SerticardVariantId)}
-                    disabled={isZipLoading}
-                    className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-white focus:border-[#FFD700]/50 focus:outline-none"
+              {/* Opsi dalam container yang rapi - scroll jika perlu */}
+              <div className="flex-1 overflow-y-auto min-h-0 p-4 space-y-4 scrollbar-show">
+                {/* 1. Original QR Only */}
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  <div className="text-xs font-medium text-white/60 mb-2">Original QR</div>
+                  <motion.button
+                    onClick={() => handleDownloadOriginal(product)}
+                    disabled={isLoading}
+                    className="w-full px-3 py-2.5 rounded-lg text-left hover:bg-white/10 active:bg-white/15 transition-all disabled:opacity-50 disabled:cursor-not-allowed group border border-white/10"
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.98 }}
                   >
-                    {SERTICARD_VARIANTS.map((v) => (
-                      <option key={v.id} value={v.id} className="bg-gray-900 text-white">
-                        {v.label}
-                      </option>
-                    ))}
-                  </select>
+                    <div className="font-medium text-white text-sm group-hover:text-[#FFD700]/90">Original QR Only</div>
+                    <div className="text-[10px] text-white/50 mt-0.5">PNG dengan judul & nomor seri</div>
+                  </motion.button>
                 </div>
-                {zipPercent != null && (
-                  <div className="mb-2 h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
-                    <div
-                      className="h-full bg-[#FFD700]/70 rounded-full transition-all duration-300"
-                      style={{ width: `${zipPercent}%` }}
-                    />
-                  </div>
-                )}
-                <motion.button
-                  type="button"
-                  onClick={() =>
-                    handleDownloadBatchAsZipFromCard(batchId, batchName, batchWeight, itemCount)
-                  }
-                  disabled={isLoading || isZipLoading}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-[#FFD700]/40 bg-[#FFD700]/10 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/20 disabled:opacity-50"
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Download className="h-4 w-4" />
-                  {isZipLoading
-                    ? zipPercent != null
-                      ? `${zipProgress?.label ?? "Membuat ZIP..."} ${zipPercent}%`
-                      : "Membuat ZIP..."
-                    : `Unduh ZIP — ${itemCount} file`}
-                </motion.button>
-              </div>
 
-              {/* Section: Satu kartu (item pertama) - dengan/tanpa root key */}
-              <div className="overflow-y-auto flex-1 min-h-0 py-3 scrollbar-show">
-                <div className="px-4 mb-2 flex items-center justify-between">
-                  <span className="text-[10px] font-medium text-white/50">Satu kartu (item pertama)</span>
-                  <div className="flex rounded-lg border border-white/15 bg-white/5 p-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setSingleCardIncludeRootKey(true)}
-                      className={`rounded-md px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                        singleCardIncludeRootKey
-                          ? "bg-[#FFD700]/20 text-[#FFD700]"
-                          : "text-white/60 hover:text-white/80"
-                      }`}
+                {/* 2. ZIP - semua item (dengan root key) */}
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  <div className="text-xs font-medium text-white/60 mb-2">ZIP (semua item, dengan root key)</div>
+                  <div className="mb-2">
+                    <label className="text-[10px] text-white/45 block mb-1">Template</label>
+                    <select
+                      value={selectedZipTemplateId}
+                      onChange={(e) => setSelectedZipTemplateId(e.target.value as SerticardVariantId)}
+                      disabled={isZipLoading}
+                      className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-white focus:border-[#FFD700]/50 focus:outline-none"
                     >
-                      Dengan root key
-                    </button>
+                      {SERTICARD_VARIANTS.map((v) => (
+                        <option key={v.id} value={v.id} className="bg-gray-900 text-white">
+                          {v.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {zipPercent != null && (
+                    <div className="mb-2 h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+                      <div
+                        className="h-full bg-[#FFD700]/70 rounded-full transition-all duration-300"
+                        style={{ width: `${zipPercent}%` }}
+                      />
+                    </div>
+                  )}
+                  <motion.button
+                    type="button"
+                    onClick={() =>
+                      handleDownloadBatchAsZipFromCard(batchId, batchName, batchWeight, itemCount)
+                    }
+                    disabled={isLoading || isZipLoading}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFD700]/40 bg-[#FFD700]/10 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/20 disabled:opacity-50"
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Download className="h-4 w-4" />
+                    {isZipLoading
+                      ? zipPercent != null
+                        ? `${zipProgress?.label ?? "Membuat ZIP..."} ${zipPercent}%`
+                        : "Membuat ZIP..."
+                      : `Unduh ZIP — ${itemCount} file`}
+                  </motion.button>
+                </div>
+
+                {/* 3. Satuan PDF - dengan dropdown jenis serticard (default tanpa root key) */}
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  <div className="text-xs font-medium text-white/60 mb-2">Satuan PDF (1 file, item pertama)</div>
+                  <div className="flex rounded-lg border border-white/15 bg-white/5 p-0.5 mb-3">
                     <button
                       type="button"
                       onClick={() => setSingleCardIncludeRootKey(false)}
-                      className={`rounded-md px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                      className={`rounded-md px-2.5 py-1.5 text-[10px] font-medium transition-colors flex-1 ${
                         !singleCardIncludeRootKey
                           ? "bg-[#FFD700]/20 text-[#FFD700]"
                           : "text-white/60 hover:text-white/80"
@@ -613,63 +620,56 @@ export function QrPreviewGridGram({ batches }: Props) {
                     >
                       Tanpa root key
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setSingleCardIncludeRootKey(true)}
+                      className={`rounded-md px-2.5 py-1.5 text-[10px] font-medium transition-colors flex-1 ${
+                        singleCardIncludeRootKey
+                          ? "bg-[#FFD700]/20 text-[#FFD700]"
+                          : "text-white/60 hover:text-white/80"
+                      }`}
+                    >
+                      Dengan root key
+                    </button>
                   </div>
-                </div>
-                <div className="space-y-0.5 px-2">
-                  {SERTICARD_VARIANTS.map((v) => (
-                    <motion.button
-                      key={v.id}
-                      onClick={() =>
-                        handleDownloadSingle(product, v.id, { includeRootKey: singleCardIncludeRootKey })
+                  <div className="mb-2">
+                    <label className="text-[10px] text-white/45 block mb-1">Jenis Serticard</label>
+                    <select
+                      value={selectedSingleTemplateId}
+                      onChange={(e) =>
+                        setSelectedSingleTemplateId((e.target.value === "custom" ? "custom" : e.target.value) as SerticardVariantId | "custom")
                       }
                       disabled={isLoading}
-                      className="w-full px-3 py-2.5 rounded-xl text-left hover:bg-white/10 active:bg-white/15 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between group"
-                      whileHover={{ x: 2 }}
-                      whileTap={{ scale: 0.98 }}
+                      className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-white focus:border-[#FFD700]/50 focus:outline-none"
                     >
-                      <span className="font-medium text-white text-sm group-hover:text-[#FFD700]/90 transition-colors">
-                        {v.label}
-                      </span>
-                      <span className="text-xs text-white/40 font-mono bg-white/5 px-2 py-0.5 rounded">
-                        {v.frontNum}-{v.backNum}
-                      </span>
-                    </motion.button>
-                  ))}
-                  {hasCustomTemplate && (
-                    <motion.button
-                      onClick={() =>
-                        handleDownloadSingle(product, "custom", { includeRootKey: singleCardIncludeRootKey })
-                      }
-                      disabled={isLoading}
-                      className="w-full px-3 py-2.5 rounded-xl text-left hover:bg-white/10 active:bg-white/15 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between border-t border-white/10 mt-1 pt-2 group"
-                      whileHover={{ x: 2 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <span className="font-semibold text-[#FFD700] text-sm group-hover:text-[#FFD700] transition-colors">
-                        ✨ Custom
-                      </span>
-                      <span className="text-xs text-[#FFD700]/60 font-mono bg-[#FFD700]/10 px-2 py-0.5 rounded">
-                        Custom
-                      </span>
-                    </motion.button>
-                  )}
-                </div>
-              </div>
-
-              {/* Footer - Original QR */}
-              <div className="shrink-0 border-t border-white/10 px-4 py-3 bg-gradient-to-t from-white/[0.03] to-transparent">
-                <motion.button
-                  onClick={() => handleDownloadOriginal(product)}
-                  disabled={isLoading}
-                  className="w-full px-3 py-2.5 rounded-xl text-left hover:bg-white/10 active:bg-white/15 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <div className="font-semibold text-white text-sm group-hover:text-[#FFD700]/90 transition-colors">
-                    Original QR Only
+                      {SERTICARD_VARIANTS.map((v) => (
+                        <option key={v.id} value={v.id} className="bg-gray-900 text-white">
+                          {v.label}
+                        </option>
+                      ))}
+                      {hasCustomTemplate && (
+                        <option value="custom" className="bg-gray-900 text-white">
+                          ✨ Custom
+                        </option>
+                      )}
+                    </select>
                   </div>
-                  <div className="text-xs text-white/50 mt-0.5">PNG dengan judul & nomor seri</div>
-                </motion.button>
+                  <motion.button
+                    type="button"
+                    onClick={() =>
+                      handleDownloadSingle(product, selectedSingleTemplateId, {
+                        includeRootKey: singleCardIncludeRootKey,
+                      })
+                    }
+                    disabled={isLoading}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFD700]/30 bg-[#FFD700]/10 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/20 disabled:opacity-50"
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Download className="h-4 w-4" />
+                    Unduh 1 PDF
+                  </motion.button>
+                </div>
               </div>
             </motion.div>
           )}
