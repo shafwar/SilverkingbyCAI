@@ -234,7 +234,7 @@ export function QrPreviewGridGram({ batches }: Props) {
         product: {
           id: product.id,
           name: product.name.trim(),
-          // IMPORTANT: For page 2 we use uniqCode as serialCode
+          // IMPORTANT: For page 2 we use uniqCode as serialCode (id)
           serialCode: product.uniqCode.trim().toUpperCase(),
           weight: product.weight,
           isGram: true,
@@ -242,6 +242,7 @@ export function QrPreviewGridGram({ batches }: Props) {
         },
         templateVariant: variantId === "custom" ? "01" : variantId,
         useCustomTemplate: variantId === "custom",
+        includeRootKey,
       };
 
       console.log("[GramPreview] Sending download request:", body);

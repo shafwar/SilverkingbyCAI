@@ -15,12 +15,10 @@ import { getSerticardConfig, getFontSizeMultipliers } from "@/lib/serticard-conf
  *
  * Body:
  * {
- *   "product": {
- *     "id": number,
- *     "name": string,
- *     "serialCode": string, // for page 2 this is uniqCode
- *     "weight": number
- *   }
+ *   "product": { "id", "name", "serialCode", "weight", "isGram?", "rootKey?" },
+ *   "templateVariant": string,
+ *   "useCustomTemplate": boolean,
+ *   "includeRootKey": boolean  // if false, PDF output hanya judul + serial (no root key)
  * }
  */
 export async function POST(request: NextRequest) {
@@ -74,12 +72,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Resolve rootKey: use body first, fallback to DB for gram items so PDF always shows it when available
+    // Resolve rootKey: when includeRootKey is false, output PDF hanya judul + id (no root key), like previous system
+    const includeRootKey = body?.includeRootKey !== false;
     let rootKeyValue: string | null =
       product.rootKey != null && String(product.rootKey).trim() !== ""
         ? String(product.rootKey).trim()
         : null;
-    if (!rootKeyValue && isGram) {
+    if (includeRootKey && !rootKeyValue && isGram) {
       const gramItem = await prisma.gramProductItem.findFirst({
         where: { uniqCode: productSerialCode },
         select: { rootKey: true },
