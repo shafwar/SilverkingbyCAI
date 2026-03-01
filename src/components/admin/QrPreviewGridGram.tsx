@@ -101,7 +101,6 @@ export function QrPreviewGridGram({ batches }: Props) {
   const [downloadingZipBatchId, setDownloadingZipBatchId] = useState<number | null>(null);
   const [selectedZipTemplateId, setSelectedZipTemplateId] = useState<SerticardVariantId>("01");
   const [zipProgress, setZipProgress] = useState<{ percent: number; label: string } | null>(null);
-  const [singleCardIncludeRootKey, setSingleCardIncludeRootKey] = useState(false);
   const [selectedSingleTemplateId, setSelectedSingleTemplateId] = useState<SerticardVariantId | "custom">("01");
 
   // Fetch serticard config to check for custom template
@@ -1303,26 +1302,7 @@ export function QrPreviewGridGram({ batches }: Props) {
 
                           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                             <div className="text-xs font-medium text-white/60 mb-2">Satuan PDF (1 file, item pertama)</div>
-                            <div className="flex rounded-lg border border-white/15 bg-white/5 p-0.5 mb-3">
-                              <button
-                                type="button"
-                                onClick={() => setSingleCardIncludeRootKey(false)}
-                                className={`rounded-md px-2.5 py-1.5 text-[10px] font-medium transition-colors flex-1 ${
-                                  !singleCardIncludeRootKey ? "bg-[#FFD700]/20 text-[#FFD700]" : "text-white/60 hover:text-white/80"
-                                }`}
-                              >
-                                Tanpa root key
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setSingleCardIncludeRootKey(true)}
-                                className={`rounded-md px-2.5 py-1.5 text-[10px] font-medium transition-colors flex-1 ${
-                                  singleCardIncludeRootKey ? "bg-[#FFD700]/20 text-[#FFD700]" : "text-white/60 hover:text-white/80"
-                                }`}
-                              >
-                                Dengan root key
-                              </button>
-                            </div>
+                            <p className="text-[10px] text-white/45 mb-2">Hanya nama produk dan ID. Root key untuk ZIP.</p>
                             <div className="mb-2">
                               <label className="text-[10px] text-white/45 block mb-1">Jenis Serticard</label>
                               <select
@@ -1351,7 +1331,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                               type="button"
                               onClick={() =>
                                 handleDownloadSingle(product, selectedSingleTemplateId, {
-                                  includeRootKey: singleCardIncludeRootKey,
+                                  includeRootKey: false,
                                 })
                               }
                               disabled={isLoading}
