@@ -588,7 +588,7 @@ export function QrPreviewGridGram({ batches }: Props) {
     const templateId = selectedZipTemplateId;
     try {
       setDownloadingZipBatchId(batchId);
-      setDownloadDropdownOpen(null);
+      // Jangan tutup modal supaya progress % tampil di floating card
       setZipProgress({ percent: 0, label: "Mengambil data batch..." });
       const res = await fetch(`/api/gram-products/batch/${batchId}?includeItems=true`);
       if (!res.ok) throw new Error("Gagal mengambil data item batch");
@@ -679,6 +679,7 @@ export function QrPreviewGridGram({ batches }: Props) {
     } finally {
       setDownloadingZipBatchId(null);
       setZipProgress(null);
+      setDownloadDropdownOpen(null);
     }
   };
 
@@ -1263,12 +1264,22 @@ export function QrPreviewGridGram({ batches }: Props) {
                                 ))}
                               </select>
                             </div>
-                            {zipPercent != null && (
-                              <div className="mb-2 h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
-                                <div
-                                  className="h-full bg-[#FFD700]/70 rounded-full transition-all duration-300"
-                                  style={{ width: `${zipPercent}%` }}
-                                />
+                            {isZipLoading && (
+                              <div className="mb-3 rounded-xl border border-[#FFD700]/20 bg-[#FFD700]/5 px-3 py-2.5">
+                                <div className="flex items-center justify-between gap-2 mb-1.5">
+                                  <span className="text-[11px] font-medium text-[#FFD700]/90 truncate">
+                                    {zipProgress?.label ?? "Membuat ZIP..."}
+                                  </span>
+                                  <span className="text-sm font-semibold tabular-nums text-[#FFD700] shrink-0">
+                                    {zipPercent != null ? `${zipPercent}%` : "—"}
+                                  </span>
+                                </div>
+                                <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
+                                  <div
+                                    className="h-full bg-[#FFD700]/70 rounded-full transition-all duration-300"
+                                    style={{ width: `${zipPercent ?? 0}%` }}
+                                  />
+                                </div>
                               </div>
                             )}
                             <motion.button
@@ -1284,7 +1295,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                               <Download className="h-4 w-4" />
                               {isZipLoading
                                 ? zipPercent != null
-                                  ? `${zipProgress?.label ?? "Membuat ZIP..."} ${zipPercent}%`
+                                  ? `Membuat ZIP... ${zipPercent}%`
                                   : "Membuat ZIP..."
                                 : `Unduh ZIP — ${batch.itemCount} file`}
                             </motion.button>
@@ -1348,8 +1359,17 @@ export function QrPreviewGridGram({ batches }: Props) {
                               whileHover={{ scale: 1.01 }}
                               whileTap={{ scale: 0.98 }}
                             >
-                              <Download className="h-4 w-4" />
-                              Unduh 1 PDF
+                              {isLoading ? (
+                                <>
+                                  <RefreshCw className="h-4 w-4 animate-spin" />
+                                  Mengunduh...
+                                </>
+                              ) : (
+                                <>
+                                  <Download className="h-4 w-4" />
+                                  Unduh 1 PDF
+                                </>
+                              )}
                             </motion.button>
                           </div>
                         </div>
