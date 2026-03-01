@@ -36,9 +36,15 @@ export async function POST(request: NextRequest) {
     }
 
     // CRITICAL: Accept products (full objects) from frontend, same as handleDownload (single)
-    // This ensures we use data directly from frontend, not query database again
-    // This matches the working handleDownload (single) approach
-    const { products: productsFromFrontend, serialCodes, batchNumber, templateVariant: templateVariantParam, useCustomTemplate } = body;
+    const {
+      products: productsFromFrontend,
+      serialCodes,
+      batchNumber,
+      batchId: bodyBatchId,
+      productTitle: bodyProductTitle,
+      templateVariant: templateVariantParam,
+      useCustomTemplate,
+    } = body;
     const templateVariant = templateVariantParam ?? "01";
     const useCustom = useCustomTemplate === true;
     const isGramRequest =
@@ -739,9 +745,22 @@ export async function POST(request: NextRequest) {
 
           console.log(`[QR Multiple] R2 Download URL: ${downloadUrl}`);
 
-          // Return JSON with download URL instead of file
+          // Response konsisten dengan flow PDF satuan: product_title, product_id, rootkey, download_url
+          const firstProduct = validProducts[0];
+          const product_title = bodyProductTitle ?? firstProduct?.name ?? "Serticard ZIP";
+          const product_id = String(firstProduct?.serialCode ?? batchNum);
+          const rootkey =
+            firstProduct?.rootKey != null && String(firstProduct.rootKey).trim() !== ""
+              ? String(firstProduct.rootKey).trim()
+              : null;
+
           return NextResponse.json({
             success: true,
+            product_title,
+            product_id,
+            rootkey,
+            total_files: successCount,
+            download_url: downloadUrl,
             downloadUrl,
             filename,
             batchNumber: batchNum,
