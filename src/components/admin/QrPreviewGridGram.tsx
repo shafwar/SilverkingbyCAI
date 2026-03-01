@@ -659,10 +659,17 @@ export function QrPreviewGridGram({ batches }: Props) {
           setZipProgress(null);
           return;
         }
-        // Background job: polling sampai COMPLETED atau FAILED
+        // Background job: polling sampai COMPLETED atau FAILED (mendukung 1000+ file, ~24 menit)
         if (json.jobId != null && json.status === "pending") {
-          setZipProgress({ percent: 35, label: "ZIP diproses di background. Memeriksa status..." });
-          const maxAttempts = 120; // ~5 menit dengan interval 2.5s
+          const isLargeBatch = products.length > 500;
+          setZipProgress({
+            percent: 35,
+            label: isLargeBatch
+              ? `ZIP ${products.length} file diproses di background (bisa 10–20 menit)...`
+              : "ZIP diproses di background. Memeriksa status...",
+          });
+          const maxAttempts = isLargeBatch ? 480 : 120; // 24 min @ 3s atau 6 min @ 2.5s
+          const intervalMs = isLargeBatch ? 3000 : 2500;
           for (let attempts = 1; attempts <= maxAttempts; attempts++) {
             const statusRes = await fetch(`/api/qr/download-job/${json.jobId}`);
             if (!statusRes.ok) throw new Error("Gagal memeriksa status job");
@@ -686,15 +693,19 @@ export function QrPreviewGridGram({ batches }: Props) {
             if (data.status === "FAILED") {
               throw new Error(data.errorMessage || "Pembuatan ZIP gagal");
             }
+            const progressPct = Math.min(35 + Math.floor(attempts / (maxAttempts / 60)), 92);
             setZipProgress({
-              percent: Math.min(35 + Math.floor(attempts / 3), 92),
-              label: data.status === "PROCESSING" ? "Membuat ZIP & mengunggah ke R2..." : `Memeriksa status... (${attempts}/${maxAttempts})`,
+              percent: progressPct,
+              label:
+                data.status === "PROCESSING"
+                  ? "Membuat ZIP & mengunggah ke R2..."
+                  : `Memeriksa status... (${attempts}/${maxAttempts})`,
             });
             if (attempts < maxAttempts) {
-              await new Promise((r) => setTimeout(r, 2500));
+              await new Promise((r) => setTimeout(r, intervalMs));
             }
           }
-          throw new Error("Timeout menunggu ZIP. Silakan coba lagi nanti.");
+          throw new Error("Timeout menunggu ZIP. Untuk batch sangat besar, coba lagi nanti atau hubungi admin.");
         }
         throw new Error(json.error || json.message || "Response tidak valid");
       }

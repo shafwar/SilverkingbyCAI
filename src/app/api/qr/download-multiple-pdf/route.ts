@@ -407,27 +407,18 @@ async function executeZipGeneration(
     let successCount = 0;
     let failCount = 0;
 
+    const totalToProcess = validProducts.length;
+    const logEvery = totalToProcess > 100 ? Math.max(1, Math.floor(totalToProcess / 20)) : 1;
+
     // Process all VALID products (already filtered above)
     // CRITICAL: Use validProducts, not products, to ensure we only process products with valid data
-    for (const product of validProducts) {
+    for (let idx = 0; idx < validProducts.length; idx++) {
+      const product = validProducts[idx];
+      const shouldLog = idx === 0 || idx === totalToProcess - 1 || (idx + 1) % logEvery === 0;
       try {
-        // CRITICAL: Double-check product data before processing (defensive programming)
-        // This ensures we NEVER draw "0000" or empty text
-        // CRITICAL: Log raw product data BEFORE any transformation
-        console.log(`[QR Multiple] ====== RAW PRODUCT DATA (BEFORE TRANSFORMATION) ======`);
-        console.log(`[QR Multiple] Raw product object:`, {
-          id: product.id,
-          name: product.name,
-          serialCode: product.serialCode,
-          nameType: typeof product.name,
-          serialCodeType: typeof product.serialCode,
-          nameIsNull: product.name === null,
-          nameIsUndefined: product.name === undefined,
-          serialCodeIsNull: product.serialCode === null,
-          serialCodeIsUndefined: product.serialCode === undefined,
-          nameRawValue: JSON.stringify(product.name),
-          serialCodeRawValue: JSON.stringify(product.serialCode),
-        });
+        if (shouldLog) {
+          console.log(`[QR Multiple] Processing ${idx + 1}/${totalToProcess} (id=${product.id}, serialCode=${product.serialCode})`);
+        }
 
         // CRITICAL: Extract and validate product data
         // Use same approach as handleDownload (single) that works correctly
@@ -435,14 +426,6 @@ async function executeZipGeneration(
         const productSerialCode = product.serialCode
           ? String(product.serialCode).trim().toUpperCase()
           : "";
-
-        console.log(`[QR Multiple] ====== TRANSFORMED PRODUCT DATA ======`);
-        console.log(`[QR Multiple] Transformed values:`, {
-          productName,
-          productSerialCode,
-          productNameLength: productName.length,
-          productSerialCodeLength: productSerialCode.length,
-        });
 
         // Final validation before processing
         if (!productName || productName.length === 0 || productName === "0000") {
@@ -468,33 +451,18 @@ async function executeZipGeneration(
           continue;
         }
 
-        // CRITICAL: Log product data that will be used for drawing
-        console.log(`[QR Multiple] ====== PROCESSING PRODUCT ======`);
-        console.log(`[QR Multiple] Product data (from DATABASE, NOT from R2 template):`, {
-          id: product.id,
-          serialCode: productSerialCode,
-          name: productName,
-          weight: product.weight,
-          serialCodeLength: productSerialCode.length,
-          nameLength: productName.length,
-        });
-
         // 1. Get QR code from endpoint (no PDFKit)
         // CRITICAL: Use productSerialCode (validated, uppercased) for QR generation
         const productIsGram = (product as any).isGram === true || isGramRequest;
         const qrBase = productIsGram ? "/api/qr-gram" : "/api/qr";
         const qrUrl = `${internalBaseUrl}${qrBase}/${encodeURIComponent(productSerialCode)}/qr-only`;
-        console.log(`[QR Multiple] Fetching QR from: ${qrUrl}`);
+        if (shouldLog) console.log(`[QR Multiple] Fetching QR from: ${qrUrl}`);
         const qrResponse = await fetch(qrUrl);
         if (!qrResponse.ok) {
           throw new Error(`Failed to fetch QR for ${productSerialCode}: ${qrResponse.status}`);
         }
         const qrBuffer = Buffer.from(await qrResponse.arrayBuffer());
         const qrImage = await loadImage(qrBuffer);
-        console.log(
-          `[QR Multiple] QR loaded for ${productSerialCode}: ${qrImage.width}x${qrImage.height}`
-        );
-
         // 2. Create FRONT canvas with QR + template (same as frontend)
         const frontCanvas = createCanvas(frontTemplateImage.width, frontTemplateImage.height);
         const frontCtx = frontCanvas.getContext("2d");
@@ -527,9 +495,6 @@ async function executeZipGeneration(
         frontCtx.textBaseline = "bottom";
         frontCtx.font = `bold ${nameFontSize}px ${fontConfig.fontFamily}, sans-serif`;
         frontCtx.fillText(productName, frontTemplateImage.width / 2, nameY);
-        console.log(
-          `[QR Multiple] Product name drawn (from DATABASE): "${productName}" at Y=${nameY} for serialCode: ${productSerialCode}`
-        );
 
         const serialFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.serialMultiplier);
         const serialY = qrY + qrSize + serialOffset;
@@ -556,16 +521,7 @@ async function executeZipGeneration(
           frontCtx.fillText(productRootKey, frontTemplateImage.width / 2, rootKeyY);
         }
 
-        console.log(
-          `[QR Multiple] Serial code drawn (from DATABASE): "${productSerialCode}" at Y=${serialY}`
-        );
-        console.log(`[QR Multiple] ====== PRODUCT PROCESSING COMPLETE ======`);
-        // === END: Persis sama dengan handleDownload ===
-
         const frontBuffer = frontCanvas.toBuffer("image/png");
-        console.log(
-          `[QR Multiple] Front image for ${productSerialCode}: ${frontBuffer.length} bytes`
-        );
 
         // 3. Create BACK canvas (no QR, just template)
         // Validate back template is loaded
@@ -578,9 +534,6 @@ async function executeZipGeneration(
         backCtx.drawImage(backTemplateImage, 0, 0);
 
         const backBuffer = backCanvas.toBuffer("image/png");
-        console.log(
-          `[QR Multiple] Back image for ${product.serialCode}: ${backBuffer.length} bytes (${backTemplateImage.width}x${backTemplateImage.height})`
-        );
 
         // 4. Generate PDF - UNIFIED PANEL DIMENSIONS for 100% balance (same as Serticard 01-02)
         // Templates 03-18 have mismatched front/back sizes; normalize so left & right are identical.
@@ -589,14 +542,6 @@ async function executeZipGeneration(
         const gap = 0;
         const pageWidth = panelWidth * 2 + gap;
         const pageHeight = panelHeight;
-
-        console.log(`[QR Multiple] PDF dimensions for ${product.serialCode}:`, {
-          pageWidth,
-          pageHeight,
-          panelSize: `${panelWidth}x${panelHeight}`,
-          frontSize: `${frontTemplateImage.width}x${frontTemplateImage.height}`,
-          backSize: `${backTemplateImage.width}x${backTemplateImage.height}`,
-        });
 
         const pdfDoc = await PDFDocument.create();
         const page = pdfDoc.addPage([pageWidth, pageHeight]);
@@ -623,12 +568,6 @@ async function executeZipGeneration(
           throw new Error(`Failed to embed back image for ${product.serialCode}`);
         }
 
-        console.log(`[QR Multiple] Embedding images to PDF for ${product.serialCode}:`, {
-          panelSize: `${panelWidth}x${panelHeight}`,
-          frontBufferSize: frontBuffer.length,
-          backBufferSize: backBuffer.length,
-        });
-
         // Both panels at SAME size = 100% balanced (same as Serticard 01-02)
         page.drawImage(frontPngImage, {
           x: 0,
@@ -645,14 +584,6 @@ async function executeZipGeneration(
           height: panelHeight,
         });
 
-        // Verify both images are drawn
-        console.log(`[QR Multiple] Both templates drawn to PDF for ${product.serialCode}:`, {
-          frontPosition: "(0, 0)",
-          backPosition: `(${backX}, 0)`,
-          frontDrawn: true,
-          backDrawn: true,
-        });
-
         const pdfBytes = await pdfDoc.save();
         const pdfBuffer = Buffer.from(pdfBytes);
 
@@ -663,17 +594,13 @@ async function executeZipGeneration(
 
         // Verify PDF contains both templates by checking size (should be substantial)
         const minExpectedSize = Math.min(frontBuffer.length, backBuffer.length) * 0.5; // At least 50% of one template
-        if (pdfBuffer.length < minExpectedSize) {
+        if (pdfBuffer.length < minExpectedSize && shouldLog) {
           console.warn(
-            `[QR Multiple] PDF size suspiciously small for ${product.serialCode}: ${pdfBuffer.length} bytes (expected at least ${minExpectedSize})`
+            `[QR Multiple] PDF size small for ${product.serialCode}: ${pdfBuffer.length} bytes`
           );
         }
 
-        console.log(
-          `[QR Multiple] PDF generated for ${product.serialCode}: ${pdfBuffer.length} bytes (with front + back templates)`
-        );
-
-        // Sanitize filename
+        // Sanitize filename; CRITICAL: must be unique per item (gram batch shares same serialCode/uniqCode)
         const sanitizedName = product.name
           .trim()
           .replace(/\s+/g, "-")
@@ -681,7 +608,11 @@ async function executeZipGeneration(
           .replace(/-+/g, "-")
           .replace(/^-|-$/g, "");
 
-        const filename = `QR-${product.serialCode}${sanitizedName ? `-${sanitizedName}` : ""}.pdf`;
+        const rootKeyPart = (product as any).rootKey
+          ? String((product as any).rootKey).trim().replace(/[^a-zA-Z0-9-]/g, "") || ""
+          : "";
+        const uniqueId = rootKeyPart ? `-${rootKeyPart}` : `-id${product.id}`;
+        const filename = `QR-${product.serialCode}${uniqueId}${sanitizedName ? `-${sanitizedName}` : ""}.pdf`;
 
         // Determine folder path based on weight grouping
         let folderPath = "";
@@ -689,10 +620,10 @@ async function executeZipGeneration(
           folderPath = `${product.weight}gr/`;
         }
 
-        // Add PDF to ZIP
+        // Add PDF to ZIP (unique path per item)
         zip.file(`${folderPath}${filename}`, pdfBuffer);
         successCount++;
-        console.log(`[QR Multiple] Added ${folderPath}${filename} to ZIP`);
+        if (shouldLog) console.log(`[QR Multiple] Added ${folderPath}${filename} (${successCount}/${totalToProcess})`);
       } catch (error: any) {
         failCount++;
         const errorMessage = error?.message || String(error);
