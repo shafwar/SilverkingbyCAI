@@ -204,6 +204,63 @@ export function QrPreviewGridGram({ batches }: Props) {
     };
   }, [zipDownloadResult?.cacheKey, zipDownloadResult?.downloads?.length]);
 
+  // Saat dropdown ZIP dibuka, cek dulu apakah sudah ada ZIP siap di R2 (cache) untuk batch+template ini.
+  useEffect(() => {
+    if (downloadDropdownOpen == null) return;
+    const batch = batches.find((b) => b.batchId === downloadDropdownOpen);
+    if (!batch) return;
+    // Kalau sudah ada result untuk batch ini, tidak perlu fetch lagi.
+    if (zipDownloadResult && zipDownloadResult.batchId === batch.batchId) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/qr/zip-ready?batchId=${batch.batchId}&templateVariant=${encodeURIComponent(selectedZipTemplateId)}&useCustom=0`
+        );
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!json || json.cached !== true || json.success !== true) return;
+        const url = json.download_url ?? json.downloadUrl;
+        const downloads = json.downloads;
+        if (!url && (!Array.isArray(downloads) || downloads.length === 0)) return;
+        if (cancelled) return;
+        setZipDownloadResult({
+          batchId: batch.batchId,
+          product_title: json.product_title ?? batch.name,
+          product_id: json.product_id ?? String(batch.batchId),
+          rootkey: json.rootkey ?? null,
+          ...(url ? { download_url: url } : {}),
+          total_files: json.total_files ?? json.fileCount ?? batch.itemCount,
+          cached: true,
+          cacheKey: typeof json.cacheKey === "string" ? json.cacheKey : undefined,
+          ...(Array.isArray(downloads) && downloads.length > 0
+            ? {
+                downloads: downloads.map((d: any) => ({
+                  ...d,
+                  r2Key:
+                    (typeof d.r2Key === "string" && d.r2Key.trim() !== ""
+                      ? d.r2Key
+                      : null) ??
+                    (typeof d.download_url === "string"
+                      ? deriveR2KeyFromUrl(d.download_url)
+                      : null) ??
+                    undefined,
+                  fileCount: d.fileCount ?? 0,
+                })),
+              }
+            : {}),
+        });
+      } catch {
+        // ignore
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [downloadDropdownOpen, batches, selectedZipTemplateId, zipDownloadResult?.batchId]);
+
   // Close modal when clicking outside (backdrop); jangan tutup jika klik di dalam modal card
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
