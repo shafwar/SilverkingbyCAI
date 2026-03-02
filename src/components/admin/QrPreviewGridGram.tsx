@@ -27,8 +27,7 @@ import { fetcher } from "@/lib/fetcher";
 const ZIP_CHUNK_SIZE = 80;
 
 function parseErrorResponse(text: string, status: number): string {
-  if (!text || text.trim() === "")
-    return `Gagal mengunduh (${status}). Silakan coba lagi.`;
+  if (!text || text.trim() === "") return `Gagal mengunduh (${status}). Silakan coba lagi.`;
   if (text.trimStart().startsWith("<"))
     return "Server sibuk atau terjadi kesalahan. Silakan coba lagi nanti.";
   try {
@@ -106,10 +105,22 @@ export function QrPreviewGridGram({ batches }: Props) {
     product_title: string;
     product_id: string;
     rootkey: string | null;
-    download_url: string;
+    download_url?: string;
     total_files: number;
+    /** Jika chunked: beberapa ZIP (batch 1, 2, ...) masing-masing 100 file */
+    downloads?: Array<{
+      batchIndex: number;
+      totalBatches: number;
+      download_url: string;
+      fileCount: number;
+      product_title?: string;
+      product_id?: string;
+      rootkey?: string | null;
+    }>;
   } | null>(null);
-  const [selectedSingleTemplateId, setSelectedSingleTemplateId] = useState<SerticardVariantId | "custom">("01");
+  const [selectedSingleTemplateId, setSelectedSingleTemplateId] = useState<
+    SerticardVariantId | "custom"
+  >("01");
 
   // Fetch serticard config to check for custom template
   const { data: fontConfig, mutate: mutateFontConfig } = useSWR<{
@@ -402,7 +413,7 @@ export function QrPreviewGridGram({ batches }: Props) {
   const activeDownloadBatch = useMemo(
     () =>
       downloadDropdownOpen !== null
-        ? filteredBatches.find((b) => b.batchId === downloadDropdownOpen) ?? null
+        ? (filteredBatches.find((b) => b.batchId === downloadDropdownOpen) ?? null)
         : null,
     [downloadDropdownOpen, filteredBatches]
   );
@@ -513,7 +524,14 @@ export function QrPreviewGridGram({ batches }: Props) {
     try {
       setIsDownloadingBatchZip(true);
       setZipProgress({ percent: 0, label: "Mempersiapkan..." });
-      const chunks: Array<{ id: number; name: string; serialCode: string; weight: number; isGram: boolean; rootKey: string | null }>[] = [];
+      const chunks: Array<{
+        id: number;
+        name: string;
+        serialCode: string;
+        weight: number;
+        isGram: boolean;
+        rootKey: string | null;
+      }>[] = [];
       for (let i = 0; i < products.length; i += ZIP_CHUNK_SIZE) {
         chunks.push(products.slice(i, i + ZIP_CHUNK_SIZE));
       }
@@ -560,8 +578,7 @@ export function QrPreviewGridGram({ batches }: Props) {
             mainZip.file(path, file.async("arraybuffer"));
           }
         } catch (zipErr) {
-          const msg =
-            zipErr instanceof Error ? zipErr.message : String(zipErr);
+          const msg = zipErr instanceof Error ? zipErr.message : String(zipErr);
           throw new Error(
             `File ZIP batch ${b + 1} rusak atau tidak lengkap: ${msg}. Coba ukuran batch lebih kecil atau coba lagi nanti.`
           );
@@ -608,14 +625,16 @@ export function QrPreviewGridGram({ batches }: Props) {
         alert("Tidak ada item di batch ini.");
         return;
       }
-      const products = items.map((item: { id: number; uniqCode: string; rootKey?: string | null }) => ({
-        id: item.id,
-        name,
-        serialCode: item.uniqCode,
-        weight,
-        isGram: true,
-        rootKey: item.rootKey ?? null,
-      }));
+      const products = items.map(
+        (item: { id: number; uniqCode: string; rootKey?: string | null }) => ({
+          id: item.id,
+          name,
+          serialCode: item.uniqCode,
+          weight,
+          isGram: true,
+          rootKey: item.rootKey ?? null,
+        })
+      );
       const itemCountLabel = products.length > 1 ? ` (${products.length} item)` : "";
       setZipProgress({ percent: 15, label: `Menyiapkan ZIP${itemCountLabel}...` });
       let response: Response;
@@ -638,7 +657,9 @@ export function QrPreviewGridGram({ batches }: Props) {
         const text = await response.text();
         const status = response.status;
         if (status === 524) {
-          throw new Error("Server timeout. Batch ini akan diproses di background. Silakan coba lagi dalam beberapa saat.");
+          throw new Error(
+            "Server timeout. Batch ini akan diproses di background. Silakan coba lagi dalam beberapa saat."
+          );
         }
         throw new Error(parseErrorResponse(text, status));
       }
@@ -647,74 +668,48 @@ export function QrPreviewGridGram({ batches }: Props) {
       if (ct.includes("application/json")) {
         const json = await response.json();
         const url = json.download_url ?? json.downloadUrl;
-        if (url && json.success) {
+        const downloads = json.downloads;
+        if ((url || (downloads && downloads.length > 0)) && json.success) {
           setZipDownloadResult({
             batchId,
             product_title: json.product_title ?? name,
             product_id: json.product_id ?? String(batchId),
             rootkey: json.rootkey ?? null,
-            download_url: url,
+            ...(url ? { download_url: url } : {}),
             total_files: json.total_files ?? json.fileCount ?? products.length,
+            ...(Array.isArray(downloads) && downloads.length > 0 ? { downloads } : {}),
           });
           setZipProgress(null);
           return;
         }
-        // Background job: polling dengan retry agar server sibuk tidak langsung gagal
+        // Background job: polling sampai COMPLETED atau FAILED (mendukung 1000+ file, ~24 menit)
         if (json.jobId != null && json.status === "pending") {
-          const totalFiles = products.length;
-          const maxAttempts = 600; // 30 menit @ 3s
-          const intervalMs = 3000;
-          const pollTimeoutMs = 25000; // 25s per request
-          const maxPollRetries = 3;
+          const isLargeBatch = products.length > 500;
           setZipProgress({
             percent: 35,
-            label: `ZIP ${totalFiles} file diproses di background (bisa beberapa menit, mohon tunggu)...`,
+            label: isLargeBatch
+              ? `ZIP ${products.length} file diproses di background (bisa 10–20 menit)...`
+              : "ZIP diproses di background. Memeriksa status...",
           });
-
-          const fetchJobStatus = async (): Promise<{ status: string; result?: any; errorMessage?: string }> => {
-            for (let r = 0; r < maxPollRetries; r++) {
-              const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), pollTimeoutMs);
-              try {
-                const statusRes = await fetch(`/api/qr/download-job/${json.jobId}`, {
-                  signal: controller.signal,
-                });
-                clearTimeout(timeoutId);
-                if (!statusRes.ok) {
-                  const text = await statusRes.text();
-                  if (r < maxPollRetries - 1) {
-                    await new Promise((res) => setTimeout(res, 2000));
-                    continue;
-                  }
-                  throw new Error(text || `Status ${statusRes.status}`);
-                }
-                return await statusRes.json();
-              } catch (err) {
-                clearTimeout(timeoutId);
-                if (r < maxPollRetries - 1) {
-                  setZipProgress((p) => (p ? { ...p, label: "Server sibuk, memeriksa lagi..." } : p));
-                  await new Promise((res) => setTimeout(res, 2000));
-                  continue;
-                }
-                throw err;
-              }
-            }
-            throw new Error("Gagal memeriksa status job setelah beberapa percobaan");
-          };
-
+          const maxAttempts = isLargeBatch ? 480 : 120; // 24 min @ 3s atau 6 min @ 2.5s
+          const intervalMs = isLargeBatch ? 3000 : 2500;
           for (let attempts = 1; attempts <= maxAttempts; attempts++) {
-            const data = await fetchJobStatus();
+            const statusRes = await fetch(`/api/qr/download-job/${json.jobId}`);
+            if (!statusRes.ok) throw new Error("Gagal memeriksa status job");
+            const data = await statusRes.json();
             if (data.status === "COMPLETED" && data.result) {
               const r = data.result;
               const downloadUrl = r.download_url ?? r.downloadUrl;
-              if (downloadUrl) {
+              const downloads = r.downloads;
+              if (downloadUrl || (Array.isArray(downloads) && downloads.length > 0)) {
                 setZipDownloadResult({
                   batchId,
                   product_title: r.product_title ?? name,
                   product_id: r.product_id ?? String(batchId),
                   rootkey: r.rootkey ?? null,
-                  download_url: downloadUrl,
+                  ...(downloadUrl ? { download_url: downloadUrl } : {}),
                   total_files: r.total_files ?? r.fileCount ?? products.length,
+                  ...(Array.isArray(downloads) && downloads.length > 0 ? { downloads } : {}),
                 });
               }
               setZipProgress(null);
@@ -728,7 +723,7 @@ export function QrPreviewGridGram({ batches }: Props) {
               percent: progressPct,
               label:
                 data.status === "PROCESSING"
-                  ? `Membuat ZIP & mengunggah ke R2... (${totalFiles} file)`
+                  ? "Membuat ZIP & mengunggah ke R2..."
                   : `Memeriksa status... (${attempts}/${maxAttempts})`,
             });
             if (attempts < maxAttempts) {
@@ -736,7 +731,7 @@ export function QrPreviewGridGram({ batches }: Props) {
             }
           }
           throw new Error(
-            "Timeout menunggu ZIP (30 menit). Server mungkin masih memproses. Coba refresh halaman dan periksa lagi, atau hubungi admin."
+            "Timeout menunggu ZIP. Untuk batch sangat besar, coba lagi nanti atau hubungi admin."
           );
         }
         throw new Error(json.error || json.message || "Response tidak valid");
@@ -797,7 +792,9 @@ export function QrPreviewGridGram({ batches }: Props) {
 
           {totalItems > 0 && (
             <div className="flex flex-col items-end justify-center rounded-xl border border-white/10 bg-white/5 px-5 py-3">
-              <p className="text-[10px] uppercase tracking-wider text-white/40">{t("totalAssets")}</p>
+              <p className="text-[10px] uppercase tracking-wider text-white/40">
+                {t("totalAssets")}
+              </p>
               <p className="text-2xl font-semibold tabular-nums text-white">{totalItems}</p>
             </div>
           )}
@@ -843,7 +840,9 @@ export function QrPreviewGridGram({ batches }: Props) {
               <button
                 onClick={() => setWeightFilter("SMALL")}
                 className={`rounded-lg px-3 py-2 font-medium transition ${
-                  weightFilter === "SMALL" ? "bg-white text-black" : "text-white/70 hover:text-white"
+                  weightFilter === "SMALL"
+                    ? "bg-white text-black"
+                    : "text-white/70 hover:text-white"
                 }`}
               >
                 ≤ 99gr
@@ -851,7 +850,9 @@ export function QrPreviewGridGram({ batches }: Props) {
               <button
                 onClick={() => setWeightFilter("LARGE")}
                 className={`rounded-lg px-3 py-2 font-medium transition ${
-                  weightFilter === "LARGE" ? "bg-white text-black" : "text-white/70 hover:text-white"
+                  weightFilter === "LARGE"
+                    ? "bg-white text-black"
+                    : "text-white/70 hover:text-white"
                 }`}
               >
                 Over 99gr
@@ -928,7 +929,10 @@ export function QrPreviewGridGram({ batches }: Props) {
                   </tr>
                 ) : (
                   filteredBatches.map((batch) => (
-                    <tr key={batch.batchId} className="border-b border-white/5 transition-colors hover:bg-white/[0.04]">
+                    <tr
+                      key={batch.batchId}
+                      className="border-b border-white/5 transition-colors hover:bg-white/[0.04]"
+                    >
                       <td className="px-5 py-3.5">
                         <p className="font-medium text-white">{batch.name}</p>
                         <p className="text-[11px] text-white/40">#{batch.batchId}</p>
@@ -1286,7 +1290,10 @@ export function QrPreviewGridGram({ batches }: Props) {
                               <Download className="h-5 w-5 text-[#FFD700]" />
                             </div>
                             <div className="min-w-0">
-                              <h2 id="download-modal-title" className="font-semibold text-white text-base">
+                              <h2
+                                id="download-modal-title"
+                                className="font-semibold text-white text-base"
+                              >
                                 Unduh Serticard
                               </h2>
                               <p className="text-xs text-white/55 mt-0.5 truncate">{batch.name}</p>
@@ -1336,22 +1343,45 @@ export function QrPreviewGridGram({ batches }: Props) {
                               )}
                               <p className="text-[10px] text-white/50">
                                 {zipDownloadResult.total_files} file · disimpan di R2
+                                {zipDownloadResult.downloads && zipDownloadResult.downloads.length > 1
+                                  ? ` · ${zipDownloadResult.downloads.length} batch`
+                                  : ""}
                               </p>
-                              <a
-                                href={zipDownloadResult.download_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                download={`${(zipDownloadResult.product_title || "serticard").replace(/\s+/g, "-")}-${zipDownloadResult.total_files}file.zip`}
-                                className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFD700]/40 bg-[#FFD700]/15 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/25 transition"
-                              >
-                                <Download className="h-4 w-4" />
-                                Unduh dari R2
-                              </a>
+                              {zipDownloadResult.downloads && zipDownloadResult.downloads.length > 0 ? (
+                                <div className="space-y-2">
+                                  {zipDownloadResult.downloads.map((d) => (
+                                    <a
+                                      key={d.batchIndex}
+                                      href={d.download_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      download={`${(zipDownloadResult.product_title || "serticard").replace(/\s+/g, "-")}-batch-${d.batchIndex}-of-${d.totalBatches}.zip`}
+                                      className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFD700]/40 bg-[#FFD700]/15 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/25 transition"
+                                    >
+                                      <Download className="h-4 w-4" />
+                                      ZIP Batch {d.batchIndex} dari {d.totalBatches} ({d.fileCount} file)
+                                    </a>
+                                  ))}
+                                </div>
+                              ) : zipDownloadResult.download_url ? (
+                                <a
+                                  href={zipDownloadResult.download_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  download={`${(zipDownloadResult.product_title || "serticard").replace(/\s+/g, "-")}-${zipDownloadResult.total_files}file.zip`}
+                                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFD700]/40 bg-[#FFD700]/15 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/25 transition"
+                                >
+                                  <Download className="h-4 w-4" />
+                                  Unduh dari R2
+                                </a>
+                              ) : null}
                             </div>
                           )}
 
                           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                            <div className="text-xs font-medium text-white/60 mb-2">Original QR</div>
+                            <div className="text-xs font-medium text-white/60 mb-2">
+                              Original QR
+                            </div>
                             <motion.button
                               onClick={() => {
                                 handleDownloadOriginal(product);
@@ -1362,23 +1392,37 @@ export function QrPreviewGridGram({ batches }: Props) {
                               whileHover={{ scale: 1.01 }}
                               whileTap={{ scale: 0.98 }}
                             >
-                              <div className="font-medium text-white text-sm group-hover:text-[#FFD700]/90">Original QR Only</div>
-                              <div className="text-[10px] text-white/50 mt-0.5">PNG dengan judul & nomor seri</div>
+                              <div className="font-medium text-white text-sm group-hover:text-[#FFD700]/90">
+                                Original QR Only
+                              </div>
+                              <div className="text-[10px] text-white/50 mt-0.5">
+                                PNG dengan judul & nomor seri
+                              </div>
                             </motion.button>
                           </div>
 
                           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                            <div className="text-xs font-medium text-white/60 mb-2">ZIP (semua item, dengan root key)</div>
+                            <div className="text-xs font-medium text-white/60 mb-2">
+                              ZIP (semua item, dengan root key)
+                            </div>
                             <div className="mb-2">
-                              <label className="text-[10px] text-white/45 block mb-1">Template</label>
+                              <label className="text-[10px] text-white/45 block mb-1">
+                                Template
+                              </label>
                               <select
                                 value={selectedZipTemplateId}
-                                onChange={(e) => setSelectedZipTemplateId(e.target.value as SerticardVariantId)}
+                                onChange={(e) =>
+                                  setSelectedZipTemplateId(e.target.value as SerticardVariantId)
+                                }
                                 disabled={isZipLoading}
                                 className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-white focus:border-[#FFD700]/50 focus:outline-none"
                               >
                                 {SERTICARD_VARIANTS.map((v) => (
-                                  <option key={v.id} value={v.id} className="bg-gray-900 text-white">
+                                  <option
+                                    key={v.id}
+                                    value={v.id}
+                                    className="bg-gray-900 text-white"
+                                  >
                                     {v.label}
                                   </option>
                                 ))}
@@ -1405,7 +1449,12 @@ export function QrPreviewGridGram({ batches }: Props) {
                             <motion.button
                               type="button"
                               onClick={() => {
-                                handleDownloadBatchAsZipFromCard(batch.batchId, batch.name, batch.weight, batch.itemCount);
+                                handleDownloadBatchAsZipFromCard(
+                                  batch.batchId,
+                                  batch.name,
+                                  batch.weight,
+                                  batch.itemCount
+                                );
                               }}
                               disabled={isLoading || isZipLoading}
                               className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFD700]/40 bg-[#FFD700]/10 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/20 disabled:opacity-50"
@@ -1422,22 +1471,34 @@ export function QrPreviewGridGram({ batches }: Props) {
                           </div>
 
                           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                            <div className="text-xs font-medium text-white/60 mb-2">Satuan PDF (1 file, item pertama)</div>
-                            <p className="text-[10px] text-white/45 mb-2">Hanya nama produk dan ID. Root key untuk ZIP.</p>
+                            <div className="text-xs font-medium text-white/60 mb-2">
+                              Satuan PDF (1 file, item pertama)
+                            </div>
+                            <p className="text-[10px] text-white/45 mb-2">
+                              Hanya nama produk dan ID. Root key untuk ZIP.
+                            </p>
                             <div className="mb-2">
-                              <label className="text-[10px] text-white/45 block mb-1">Jenis Serticard</label>
+                              <label className="text-[10px] text-white/45 block mb-1">
+                                Jenis Serticard
+                              </label>
                               <select
                                 value={selectedSingleTemplateId}
                                 onChange={(e) =>
                                   setSelectedSingleTemplateId(
-                                    (e.target.value === "custom" ? "custom" : e.target.value) as SerticardVariantId | "custom"
+                                    (e.target.value === "custom" ? "custom" : e.target.value) as
+                                      | SerticardVariantId
+                                      | "custom"
                                   )
                                 }
                                 disabled={isLoading}
                                 className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-white focus:border-[#FFD700]/50 focus:outline-none"
                               >
                                 {SERTICARD_VARIANTS.map((v) => (
-                                  <option key={v.id} value={v.id} className="bg-gray-900 text-white">
+                                  <option
+                                    key={v.id}
+                                    value={v.id}
+                                    className="bg-gray-900 text-white"
+                                  >
                                     {v.label}
                                   </option>
                                 ))}

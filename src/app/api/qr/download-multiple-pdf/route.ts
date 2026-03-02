@@ -13,6 +13,9 @@ import { getSerticardConfig, getFontSizeMultipliers } from "@/lib/serticard-conf
 /** Request dengan product count di atas ini diproses di background (hindari timeout 524). */
 const ZIP_JOB_THRESHOLD = 25;
 
+/** Maksimal file per satu ZIP; jika lebih maka dipecah jadi beberapa ZIP (batch 1, 2, ...) agar cepat & aman dari timeout. */
+const ZIP_CHUNK_SIZE = 100;
+
 /**
  * Generate ZIP file with multiple PDFs (one PDF per QR code)
  * Organizes PDFs into subfolders based on weight (gramasi) if different weights exist
@@ -354,6 +357,163 @@ type ZipOutcome = {
   zip: { buffer: Buffer; filename: string };
 };
 
+type ZipChunkContext = {
+  frontTemplateImage: Awaited<ReturnType<typeof loadImage>>;
+  backTemplateImage: Awaited<ReturnType<typeof loadImage>>;
+  fontConfig: Awaited<ReturnType<typeof getSerticardConfig>>;
+  sizeMultipliers: ReturnType<typeof getFontSizeMultipliers>;
+  internalBaseUrl: string;
+  bodyProductTitle?: string;
+  batchNumber: number;
+  isGramRequest: boolean;
+  hasMultipleWeights: boolean;
+  templateVariant: string;
+  useCustom: boolean;
+};
+
+/** Build satu ZIP dari satu slice products; dipakai untuk single ZIP atau per chunk. */
+async function buildOneZipChunk(
+  validProducts: ZipGenProduct[],
+  ctx: ZipChunkContext
+): Promise<{ zip: JSZip; successCount: number; failCount: number; firstProduct: ZipGenProduct | null }> {
+  const {
+    frontTemplateImage,
+    backTemplateImage,
+    fontConfig,
+    sizeMultipliers,
+    internalBaseUrl,
+    bodyProductTitle,
+    batchNumber,
+    isGramRequest,
+    hasMultipleWeights,
+    templateVariant,
+  } = ctx;
+  const zip = new JSZip();
+  let successCount = 0;
+  let failCount = 0;
+  let firstProduct: ZipGenProduct | null = null;
+  const totalToProcess = validProducts.length;
+  const logEvery = totalToProcess > 50 ? Math.max(1, Math.floor(totalToProcess / 10)) : 1;
+
+  for (let idx = 0; idx < validProducts.length; idx++) {
+    const product = validProducts[idx];
+    const shouldLog = idx === 0 || idx === totalToProcess - 1 || (idx + 1) % logEvery === 0;
+    try {
+      const productName = product.name ? String(product.name).trim() : "";
+      const productSerialCode = product.serialCode
+        ? String(product.serialCode).trim().toUpperCase()
+        : "";
+      if (!productName || productName === "0000" || !productSerialCode || productSerialCode === "0000") {
+        failCount++;
+        continue;
+      }
+      const productIsGram = (product as any).isGram === true || isGramRequest;
+      const qrBase = productIsGram ? "/api/qr-gram" : "/api/qr";
+      const qrUrl = `${internalBaseUrl}${qrBase}/${encodeURIComponent(productSerialCode)}/qr-only`;
+      const qrResponse = await fetch(qrUrl);
+      if (!qrResponse.ok) {
+        failCount++;
+        continue;
+      }
+      const qrBuffer = Buffer.from(await qrResponse.arrayBuffer());
+      const qrImage = await loadImage(qrBuffer);
+      const frontCanvas = createCanvas(frontTemplateImage.width, frontTemplateImage.height);
+      const frontCtx = frontCanvas.getContext("2d");
+      frontCtx!.drawImage(frontTemplateImage, 0, 0);
+      const qrSize = Math.min(
+        frontTemplateImage.width * 0.55,
+        frontTemplateImage.height * 0.55,
+        900
+      );
+      const qrX = (frontTemplateImage.width - qrSize) / 2;
+      const qrY = frontTemplateImage.height * 0.38;
+      const padding = 8;
+      frontCtx!.fillStyle = "#ffffff";
+      frontCtx!.fillRect(qrX - padding, qrY - padding, qrSize + padding * 2, qrSize + padding * 2);
+      frontCtx!.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+      const nameOffset = Math.round(frontTemplateImage.height * 0.038);
+      const serialOffset = Math.round(frontTemplateImage.height * 0.038);
+      const isDarkTemplate = templateVariant !== "01";
+      const textColor = isDarkTemplate ? "#ffffff" : "#111111";
+      const nameFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.nameMultiplier);
+      const nameY = qrY - nameOffset;
+      frontCtx!.fillStyle = textColor;
+      frontCtx!.textAlign = "center";
+      frontCtx!.textBaseline = "bottom";
+      frontCtx!.font = `bold ${nameFontSize}px ${fontConfig.fontFamily}, sans-serif`;
+      frontCtx!.fillText(productName, frontTemplateImage.width / 2, nameY);
+      const serialFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.serialMultiplier);
+      const serialY = qrY + qrSize + serialOffset;
+      frontCtx!.fillStyle = textColor;
+      frontCtx!.textAlign = "center";
+      frontCtx!.textBaseline = "top";
+      frontCtx!.font = `bold ${serialFontSize}px ${fontConfig.fontFamily}, monospace`;
+      frontCtx!.fillText(productSerialCode, frontTemplateImage.width / 2, serialY);
+      const productRootKey =
+        (product as any).rootKey != null && String((product as any).rootKey).trim() !== ""
+          ? String((product as any).rootKey).trim().toUpperCase()
+          : null;
+      if (productRootKey) {
+        const rootKeyFontSize = Math.max(10, Math.floor(serialFontSize * 0.65));
+        const rootKeyGap = 8;
+        const rootKeyY = serialY + serialFontSize + rootKeyGap;
+        frontCtx!.font = `${rootKeyFontSize}px ${fontConfig.fontFamily}, monospace`;
+        frontCtx!.fillStyle = textColor;
+        frontCtx!.textAlign = "center";
+        frontCtx!.textBaseline = "top";
+        frontCtx!.fillText(productRootKey, frontTemplateImage.width / 2, rootKeyY);
+      }
+      const frontBuffer = frontCanvas.toBuffer("image/png");
+      const backCanvas = createCanvas(backTemplateImage.width, backTemplateImage.height);
+      const backCtx = backCanvas.getContext("2d");
+      backCtx!.drawImage(backTemplateImage, 0, 0);
+      const backBuffer = backCanvas.toBuffer("image/png");
+      const panelWidth = Math.max(frontTemplateImage.width, backTemplateImage.width);
+      const panelHeight = Math.max(frontTemplateImage.height, backTemplateImage.height);
+      const gap = 0;
+      const pageWidth = panelWidth * 2 + gap;
+      const pageHeight = panelHeight;
+      const pdfDoc = await PDFDocument.create();
+      const page = pdfDoc.addPage([pageWidth, pageHeight]);
+      const frontPngImage = await pdfDoc.embedPng(frontBuffer);
+      const backPngImage = await pdfDoc.embedPng(backBuffer);
+      page.drawImage(frontPngImage, { x: 0, y: 0, width: panelWidth, height: panelHeight });
+      page.drawImage(backPngImage, {
+        x: panelWidth + gap,
+        y: 0,
+        width: panelWidth,
+        height: panelHeight,
+      });
+      const pdfBytes = await pdfDoc.save();
+      const pdfBuffer = Buffer.from(pdfBytes);
+      const sanitizedName = (product.name ?? "")
+        .toString()
+        .trim()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-zA-Z0-9-]/g, "")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+      const rootKeyPart = (product as any).rootKey
+        ? String((product as any).rootKey).trim().replace(/[^a-zA-Z0-9-]/g, "") || ""
+        : "";
+      const uniqueId = rootKeyPart ? `-${rootKeyPart}` : `-id${product.id}`;
+      const filename = `QR-${product.serialCode}${uniqueId}${sanitizedName ? `-${sanitizedName}` : ""}.pdf`;
+      let folderPath = "";
+      if (hasMultipleWeights) folderPath = `${product.weight}gr/`;
+      zip.file(`${folderPath}${filename}`, pdfBuffer);
+      successCount++;
+      if (successCount === 1) firstProduct = product;
+      if (shouldLog) {
+        console.log(`[QR Multiple] Chunk progress ${idx + 1}/${totalToProcess} added (${successCount} ok)`);
+      }
+    } catch (err: any) {
+      failCount++;
+      if (shouldLog) console.error(`[QR Multiple] Chunk item ${idx + 1} failed:`, err?.message);
+    }
+  }
+  return { zip, successCount, failCount, firstProduct };
+}
+
 async function executeZipGeneration(
   validProducts: ZipGenProduct[],
   opts: ZipGenOpts
@@ -373,454 +533,292 @@ async function executeZipGeneration(
   const hasMultipleWeights = productsByWeight.size > 1;
 
   // NEW APPROACH: Use same logic as frontend - no PDFKit, no fontconfig errors
-    // 1. Get QR from /api/qr/[serialCode]/qr-only (no PDFKit)
-    // 2. Get template from file system or R2
-    // 3. Combine in canvas (same as frontend)
-    // 4. Generate PDF using pdf-lib (no fontconfig errors)
-    console.log(`[QR Multiple] ====== USING FRONTEND APPROACH ======`);
-    console.log(
-      `[QR Multiple] Will combine QR + template in canvas, then generate PDF with pdf-lib`
-    );
-    console.log(`[QR Multiple] Template variant: ${templateVariant}`);
+  // 1. Get QR from /api/qr/[serialCode]/qr-only (no PDFKit)
+  // 2. Get template from file system or R2
+  // 3. Combine in canvas (same as frontend)
+  // 4. Generate PDF using pdf-lib (no fontconfig errors)
+  console.log(`[QR Multiple] ====== USING FRONTEND APPROACH ======`);
+  console.log(`[QR Multiple] Will combine QR + template in canvas, then generate PDF with pdf-lib`);
+  console.log(`[QR Multiple] Template variant: ${templateVariant}`);
 
-    // Pre-load BOTH templates (front and back) - custom or variant
-    // If useCustom flag is set, loadSerticardTemplates will automatically use custom templates
-    const { front: frontTemplateImage, back: backTemplateImage } =
-      await loadSerticardTemplates(useCustom ? undefined : templateVariant);
-    const fontConfig = await getSerticardConfig();
-    const sizeMultipliers = getFontSizeMultipliers(
-      fontConfig.fontSizePreset === "KECIL" ? "KECIL" : "BESAR"
-    );
+  // Pre-load BOTH templates (front and back) - custom or variant
+  // If useCustom flag is set, loadSerticardTemplates will automatically use custom templates
+  const { front: frontTemplateImage, back: backTemplateImage } = await loadSerticardTemplates(
+    useCustom ? undefined : templateVariant
+  );
+  const fontConfig = await getSerticardConfig();
+  const sizeMultipliers = getFontSizeMultipliers(
+    fontConfig.fontSizePreset === "KECIL" ? "KECIL" : "BESAR"
+  );
 
-    console.log(`[QR Multiple] Both templates loaded successfully:`, {
-      front: `${frontTemplateImage.width}x${frontTemplateImage.height}`,
-      back: `${backTemplateImage.width}x${backTemplateImage.height}`,
-    });
+  console.log(`[QR Multiple] Both templates loaded successfully:`, {
+    front: `${frontTemplateImage.width}x${frontTemplateImage.height}`,
+    back: `${backTemplateImage.width}x${backTemplateImage.height}`,
+  });
 
-    // Get base URL for internal API calls
-    const baseUrl =
-      process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const internalBaseUrl = baseUrl.replace(/\/$/, "");
+  // Get base URL for internal API calls
+  const baseUrl =
+    process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const internalBaseUrl = baseUrl.replace(/\/$/, "");
 
-    // Create ZIP file
-    const zip = new JSZip();
-    let successCount = 0;
-    let failCount = 0;
+  const hasMultipleWeights = productsByWeight.size > 1;
+  const ctx: ZipChunkContext = {
+    frontTemplateImage,
+    backTemplateImage,
+    fontConfig,
+    sizeMultipliers,
+    internalBaseUrl,
+    bodyProductTitle,
+    batchNumber,
+    isGramRequest,
+    hasMultipleWeights,
+    templateVariant,
+    useCustom,
+  };
 
-    const totalToProcess = validProducts.length;
-    const logEvery = totalToProcess > 100 ? Math.max(1, Math.floor(totalToProcess / 20)) : 1;
-
-    // QR cache: satu fetch per serialCode (gram batch = 1 uniqCode → 1 fetch untuk semua item)
-    const qrCache = new Map<string, Awaited<ReturnType<typeof loadImage>>>();
-
-    const CONCURRENCY = 4;
+  if (validProducts.length > ZIP_CHUNK_SIZE) {
+    console.log(`[QR Multiple] Chunked mode: ${validProducts.length} files → ${Math.ceil(validProducts.length / ZIP_CHUNK_SIZE)} ZIPs of max ${ZIP_CHUNK_SIZE}`);
     const chunks: ZipGenProduct[][] = [];
-    for (let i = 0; i < validProducts.length; i += CONCURRENCY) {
-      chunks.push(validProducts.slice(i, i + CONCURRENCY));
-    }
-
-    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
-      const chunk = chunks[chunkIndex];
-      const results = await Promise.allSettled(
-        chunk.map(async (product) => {
-          const productName = product.name ? String(product.name).trim() : "";
-          const productSerialCode = product.serialCode
-            ? String(product.serialCode).trim().toUpperCase()
-            : "";
-          if (!productName || productName.length === 0 || productName === "0000") {
-            throw new Error(`Invalid product name for id ${product.id}`);
-          }
-          if (!productSerialCode || productSerialCode.length === 0 || productSerialCode === "0000") {
-            throw new Error(`Invalid serialCode for id ${product.id}`);
-          }
-
-          const productIsGram = (product as any).isGram === true || isGramRequest;
-          let qrImage: Awaited<ReturnType<typeof loadImage>>;
-          if (qrCache.has(productSerialCode)) {
-            qrImage = qrCache.get(productSerialCode)!;
-          } else {
-            const qrBase = productIsGram ? "/api/qr-gram" : "/api/qr";
-            const qrUrl = `${internalBaseUrl}${qrBase}/${encodeURIComponent(productSerialCode)}/qr-only`;
-            const qrResponse = await fetch(qrUrl);
-            if (!qrResponse.ok) {
-              throw new Error(`Failed to fetch QR for ${productSerialCode}: ${qrResponse.status}`);
-            }
-            const qrBuffer = Buffer.from(await qrResponse.arrayBuffer());
-            qrImage = await loadImage(qrBuffer);
-            qrCache.set(productSerialCode, qrImage);
-          }
-        // 2. Create FRONT canvas with QR + template (same as frontend)
-        const frontCanvas = createCanvas(frontTemplateImage.width, frontTemplateImage.height);
-        const frontCtx = frontCanvas.getContext("2d");
-        frontCtx.drawImage(frontTemplateImage, 0, 0);
-
-        const qrSize = Math.min(
-          frontTemplateImage.width * 0.55,
-          frontTemplateImage.height * 0.55,
-          900
-        );
-        const qrX = (frontTemplateImage.width - qrSize) / 2;
-        const qrY = frontTemplateImage.height * 0.38;
-
-        const padding = 8;
-        frontCtx.fillStyle = "#ffffff";
-        frontCtx.fillRect(qrX - padding, qrY - padding, qrSize + padding * 2, qrSize + padding * 2);
-        frontCtx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
-
-        // Use Serticard config for font (admin can set font type & size Besar/Kecil)
-        const nameOffset = Math.round(frontTemplateImage.height * 0.038);
-        const serialOffset = Math.round(frontTemplateImage.height * 0.038);
-        const isDarkTemplate = templateVariant !== "01";
-        const textColor = isDarkTemplate ? "#ffffff" : "#111111";
-
-        const nameFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.nameMultiplier);
-        const nameY = qrY - nameOffset;
-
-        frontCtx.fillStyle = textColor;
-        frontCtx.textAlign = "center";
-        frontCtx.textBaseline = "bottom";
-        frontCtx.font = `bold ${nameFontSize}px ${fontConfig.fontFamily}, sans-serif`;
-        frontCtx.fillText(productName, frontTemplateImage.width / 2, nameY);
-
-        const serialFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.serialMultiplier);
-        const serialY = qrY + qrSize + serialOffset;
-
-        frontCtx.fillStyle = textColor;
-        frontCtx.textAlign = "center";
-        frontCtx.textBaseline = "top";
-        frontCtx.font = `bold ${serialFontSize}px ${fontConfig.fontFamily}, monospace`;
-        frontCtx.fillText(productSerialCode, frontTemplateImage.width / 2, serialY);
-
-        // Root key below serial: smaller font, proportional (optional)
-        const productRootKey =
-          (product as any).rootKey != null && String((product as any).rootKey).trim() !== ""
-            ? String((product as any).rootKey).trim().toUpperCase()
-            : null;
-        if (productRootKey) {
-          const rootKeyFontSize = Math.max(10, Math.floor(serialFontSize * 0.65));
-          const rootKeyGap = 8;
-          const rootKeyY = serialY + serialFontSize + rootKeyGap;
-          frontCtx.font = `${rootKeyFontSize}px ${fontConfig.fontFamily}, monospace`;
-          frontCtx.fillStyle = textColor;
-          frontCtx.textAlign = "center";
-          frontCtx.textBaseline = "top";
-          frontCtx.fillText(productRootKey, frontTemplateImage.width / 2, rootKeyY);
-        }
-
-        const frontBuffer = frontCanvas.toBuffer("image/png");
-
-        // 3. Create BACK canvas (no QR, just template)
-        // Validate back template is loaded
-        if (!backTemplateImage) {
-          throw new Error("Back template image is not loaded");
-        }
-
-        const backCanvas = createCanvas(backTemplateImage.width, backTemplateImage.height);
-        const backCtx = backCanvas.getContext("2d");
-        backCtx.drawImage(backTemplateImage, 0, 0);
-
-        const backBuffer = backCanvas.toBuffer("image/png");
-
-        // 4. Generate PDF - UNIFIED PANEL DIMENSIONS for 100% balance (same as Serticard 01-02)
-        // Templates 03-18 have mismatched front/back sizes; normalize so left & right are identical.
-        const panelWidth = Math.max(frontTemplateImage.width, backTemplateImage.width);
-        const panelHeight = Math.max(frontTemplateImage.height, backTemplateImage.height);
-        const gap = 0;
-        const pageWidth = panelWidth * 2 + gap;
-        const pageHeight = panelHeight;
-
-        const pdfDoc = await PDFDocument.create();
-        const page = pdfDoc.addPage([pageWidth, pageHeight]);
-
-        // Validate buffers before embedding
-        if (!frontBuffer || frontBuffer.length === 0) {
-          throw new Error(`Front buffer is empty for ${product.serialCode}`);
-        }
-
-        if (!backBuffer || backBuffer.length === 0) {
-          throw new Error(`Back buffer is empty for ${product.serialCode}`);
-        }
-
-        // Embed images - CRITICAL: Both must be embedded
-        const frontPngImage = await pdfDoc.embedPng(frontBuffer);
-        const backPngImage = await pdfDoc.embedPng(backBuffer);
-
-        // Validate embedded images
-        if (!frontPngImage) {
-          throw new Error(`Failed to embed front image for ${product.serialCode}`);
-        }
-
-        if (!backPngImage) {
-          throw new Error(`Failed to embed back image for ${product.serialCode}`);
-        }
-
-        // Both panels at SAME size = 100% balanced (same as Serticard 01-02)
-        page.drawImage(frontPngImage, {
-          x: 0,
-          y: 0,
-          width: panelWidth,
-          height: panelHeight,
-        });
-
-        const backX = panelWidth + gap;
-        page.drawImage(backPngImage, {
-          x: backX,
-          y: 0,
-          width: panelWidth,
-          height: panelHeight,
-        });
-
-        const pdfBytes = await pdfDoc.save();
-        const pdfBuffer = Buffer.from(pdfBytes);
-
-        // Validate PDF was generated with both templates
-        if (!pdfBuffer || pdfBuffer.length === 0) {
-          throw new Error(`PDF buffer is empty for ${product.serialCode}`);
-        }
-
-        // Verify PDF contains both templates by checking size (should be substantial)
-        const minExpectedSize = Math.min(frontBuffer.length, backBuffer.length) * 0.5; // At least 50% of one template
-        if (pdfBuffer.length < minExpectedSize) {
-          console.warn(
-            `[QR Multiple] PDF size small for ${product.serialCode}: ${pdfBuffer.length} bytes`
-          );
-        }
-
-        // Sanitize filename; CRITICAL: must be unique per item (gram batch shares same serialCode/uniqCode)
-        const sanitizedName = product.name
-          .trim()
-          .replace(/\s+/g, "-")
-          .replace(/[^a-zA-Z0-9-]/g, "")
-          .replace(/-+/g, "-")
-          .replace(/^-|-$/g, "");
-
-        const rootKeyPart = (product as any).rootKey
-          ? String((product as any).rootKey).trim().replace(/[^a-zA-Z0-9-]/g, "") || ""
-          : "";
-        const uniqueId = rootKeyPart ? `-${rootKeyPart}` : `-id${product.id}`;
-        const filename = `QR-${product.serialCode}${uniqueId}${sanitizedName ? `-${sanitizedName}` : ""}.pdf`;
-
-        // Determine folder path based on weight grouping
-        let folderPath = "";
-        if (hasMultipleWeights) {
-          folderPath = `${product.weight}gr/`;
-        }
-
-        return { folderPath, filename, pdfBuffer };
-        })
-      );
-
-      for (let i = 0; i < results.length; i++) {
-        const r = results[i];
-        const product = chunk[i];
-        if (r.status === "fulfilled") {
-          const { folderPath, filename, pdfBuffer } = r.value;
-          zip.file(`${folderPath}${filename}`, pdfBuffer);
-          successCount++;
-          const globalIdx = chunkIndex * CONCURRENCY + i + 1;
-          if (globalIdx === 1 || globalIdx === totalToProcess || globalIdx % logEvery === 0) {
-            console.log(`[QR Multiple] Added ${folderPath}${filename} (${successCount}/${totalToProcess})`);
-          }
-        } else {
-          failCount++;
-          console.error(`[QR Multiple] Failed for id=${product.id}:`, r.reason?.message || r.reason);
-        }
-      }
-      // Yield event loop agar request polling GET /api/qr/download-job bisa terlayani (hindari "Gagal memeriksa status job")
-      await new Promise<void>((r) => setImmediate(r));
-    }
-
-    console.log(
-      `[QR Multiple] PDF generation complete: ${successCount} success, ${failCount} failed`
-    );
-
-    if (successCount === 0) {
-      // Get more details about the failure
-      const errorDetails = {
-        totalProducts: validProducts.length,
-        validProducts: validProducts.length,
-        failedCount: failCount,
-        message: "Failed to generate any PDFs. All products failed.",
-        suggestion:
-          "Please check server logs for detailed error messages. Common issues: template file not found, image processing errors, or memory issues.",
-        requestedCount: validProducts.length,
-        foundProducts: validProducts.length,
-      };
-      console.error("[QR Multiple] All PDFs failed:", errorDetails);
-      console.error(
-        "[QR Multiple] First few products that failed:",
-        validProducts.slice(0, 5).map((p) => p.serialCode)
-      );
-      throw new Error(errorDetails.message);
-    }
-
-    // Log warning if some failed but not all
-    if (failCount > 0) {
-      console.warn(
-        `[QR Multiple] Partial success: ${successCount} succeeded, ${failCount} failed out of ${validProducts.length} total`
-      );
-    }
-
-    // Generate ZIP file (level 6 = balance kecepatan vs ukuran)
-    const zipBuffer = await zip.generateAsync({
-      type: "nodebuffer",
-      compression: "DEFLATE",
-      compressionOptions: { level: 6 },
-    });
-
-    // Generate filename with date and count
+    for (let i = 0; i < validProducts.length; i += ZIP_CHUNK_SIZE)
+      chunks.push(validProducts.slice(i, i + ZIP_CHUNK_SIZE));
     const dateStr = new Date().toISOString().split("T")[0];
-    const filename = `Silver-King-QR-Codes-${validProducts.length}-${dateStr}.zip`;
-
-    // Upload ZIP to R2 if available
+    const batchNum = batchNumber || Math.floor(Date.now() / 1000);
     const R2_ENDPOINT = process.env.R2_ENDPOINT;
     const R2_BUCKET = process.env.R2_BUCKET || process.env.R2_BUCKET_NAME;
     const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
     const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
     const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL;
     const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
-
-    // Normalize R2 endpoint - remove bucket name if present, ensure proper format
     let normalizedR2Endpoint: string | null = null;
-    if (R2_ENDPOINT) {
-      // Remove bucket name and any trailing paths
-      normalizedR2Endpoint = R2_ENDPOINT.replace(/\/[^\/]+$/, "") // Remove last path segment (bucket name)
-        .replace(/\/$/, ""); // Remove trailing slash
-    } else if (R2_ACCOUNT_ID) {
-      normalizedR2Endpoint = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-    }
-
-    console.log(`[QR Multiple] R2 Configuration Check:`, {
-      hasEndpoint: !!R2_ENDPOINT,
-      endpoint: R2_ENDPOINT?.substring(0, 60) + "...",
-      normalizedEndpoint: normalizedR2Endpoint?.substring(0, 60) + "...",
-      hasAccountId: !!R2_ACCOUNT_ID,
-      accountId: R2_ACCOUNT_ID?.substring(0, 10) + "...",
-      hasBucket: !!R2_BUCKET,
-      bucket: R2_BUCKET,
-      hasAccessKey: !!R2_ACCESS_KEY_ID,
-      hasSecretKey: !!R2_SECRET_ACCESS_KEY,
-      hasPublicUrl: !!R2_PUBLIC_URL,
-      publicUrl: R2_PUBLIC_URL,
-    });
-
+    if (R2_ENDPOINT) normalizedR2Endpoint = R2_ENDPOINT.replace(/\/[^/]+$/, "").replace(/\/$/, "");
+    else if (R2_ACCOUNT_ID) normalizedR2Endpoint = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
     const r2Available =
       !!normalizedR2Endpoint &&
       !!R2_BUCKET &&
       !!R2_ACCESS_KEY_ID &&
       !!R2_SECRET_ACCESS_KEY &&
       !!R2_PUBLIC_URL;
-
-    if (r2Available && normalizedR2Endpoint) {
-      try {
-        // Create R2 client with proper configuration (forcePathStyle is required for R2)
-        const r2Client = new S3Client({
-          region: "auto",
-          endpoint: normalizedR2Endpoint, // Now guaranteed to be string, not null
-          credentials: {
-            accessKeyId: R2_ACCESS_KEY_ID!,
-            secretAccessKey: R2_SECRET_ACCESS_KEY!,
-          },
-          forcePathStyle: true, // CRITICAL: Required for R2
-          maxAttempts: 3, // Retry up to 3 times
-        });
-
-        // Create R2 key with folder structure: qr-batches/batch-{number}-{date}/filename.zip
-        // Use provided batchNumber or generate based on timestamp
-        const batchNum = batchNumber || Math.floor(Date.now() / 1000);
-        const r2Key = `qr-batches/batch-${batchNum}-${dateStr}/${filename}`;
-
-        console.log(`[QR Multiple] Uploading ZIP to R2...`);
-        console.log(`[QR Multiple] R2 Key: ${r2Key}`);
-        console.log(
-          `[QR Multiple] ZIP Size: ${zipBuffer.length} bytes (${(zipBuffer.length / 1024 / 1024).toFixed(2)} MB)`
-        );
-        console.log(`[QR Multiple] R2 Config:`, {
-          bucket: R2_BUCKET,
-          endpoint: normalizedR2Endpoint?.substring(0, 50) + "...",
-          publicUrl: R2_PUBLIC_URL?.substring(0, 50) + "...",
-          hasAccessKey: !!R2_ACCESS_KEY_ID,
-          hasSecretKey: !!R2_SECRET_ACCESS_KEY,
-        });
-
-        try {
-          // Upload to R2
-          const uploadCommand = new PutObjectCommand({
-            Bucket: R2_BUCKET,
-            Key: r2Key,
-            Body: zipBuffer,
-            ContentType: "application/zip",
-            CacheControl: "public, max-age=86400", // Cache for 1 day
-          });
-
-          await r2Client.send(uploadCommand);
-          console.log(`[QR Multiple] ZIP uploaded to R2 successfully`);
-
-          // Construct public URL
-          const base = R2_PUBLIC_URL!.endsWith("/") ? R2_PUBLIC_URL!.slice(0, -1) : R2_PUBLIC_URL!;
-          const downloadUrl = `${base}/${r2Key}`;
-
-          console.log(`[QR Multiple] R2 Download URL: ${downloadUrl}`);
-
-          // Response konsisten dengan flow PDF satuan: product_title, product_id, rootkey, download_url
-          const firstProduct = validProducts[0];
-          const product_title = bodyProductTitle ?? firstProduct?.name ?? "Serticard ZIP";
-          const product_id = String(firstProduct?.serialCode ?? batchNum);
-          const rootkey =
-            firstProduct?.rootKey != null && String(firstProduct.rootKey).trim() !== ""
-              ? String(firstProduct.rootKey).trim()
-              : null;
-
-          return {
-            json: {
-              success: true,
-              product_title,
-              product_id,
-              rootkey,
-              total_files: successCount,
-              download_url: downloadUrl,
-              downloadUrl,
-              filename,
-              batchNumber: batchNum,
-              fileCount: successCount,
-              failedCount: failCount,
-              r2Key,
-              zipSize: zipBuffer.length,
-              message: "ZIP file generated and uploaded to R2 successfully",
-            },
-            zip: { buffer: zipBuffer, filename },
-          };
-        } catch (r2UploadError: any) {
-          console.error(`[QR Multiple] R2 upload failed:`, {
-            error: r2UploadError?.message,
-            name: r2UploadError?.name,
-            code: r2UploadError?.code,
-            stack: r2UploadError?.stack,
-            r2Key,
-            bucket: R2_BUCKET,
-            endpoint: normalizedR2Endpoint,
-          });
-          // Fall through to direct download if R2 upload fails
-          throw r2UploadError;
-        }
-      } catch (r2Error: any) {
-        console.error(
-          "[QR Multiple] Failed to upload ZIP to R2, falling back to direct download:",
-          {
-            error: r2Error?.message,
-            name: r2Error?.name,
-            code: r2Error?.code,
-            stack: r2Error?.stack,
-          }
-        );
-        // Fallback to direct download if R2 upload fails
-      }
-    } else {
-      console.log("[QR Multiple] R2 not available, using direct download");
+    if (!r2Available || !normalizedR2Endpoint)
+      throw new Error("R2 required for chunked ZIP. Set env vars.");
+    const r2Client = new S3Client({
+      region: "auto",
+      endpoint: normalizedR2Endpoint,
+      credentials: { accessKeyId: R2_ACCESS_KEY_ID!, secretAccessKey: R2_SECRET_ACCESS_KEY! },
+      forcePathStyle: true,
+      maxAttempts: 3,
+    });
+    const downloads: Array<{
+      batchIndex: number;
+      totalBatches: number;
+      download_url: string;
+      fileCount: number;
+      product_title: string;
+      product_id: string;
+      rootkey: string | null;
+    }> = [];
+    for (let c = 0; c < chunks.length; c++) {
+      const chunkResult = await buildOneZipChunk(chunks[c], ctx);
+      if (chunkResult.successCount === 0) continue;
+      const zipBuffer = await chunkResult.zip.generateAsync({
+        type: "nodebuffer",
+        compression: "DEFLATE",
+        compressionOptions: { level: 9 },
+      });
+      const r2Key = `qr-batches/batch-${batchNum}-${dateStr}/batch-${c + 1}-of-${chunks.length}.zip`;
+      await r2Client.send(
+        new PutObjectCommand({
+          Bucket: R2_BUCKET!,
+          Key: r2Key,
+          Body: zipBuffer,
+          ContentType: "application/zip",
+          CacheControl: "public, max-age=86400",
+        })
+      );
+      const base = R2_PUBLIC_URL!.endsWith("/") ? R2_PUBLIC_URL!.slice(0, -1) : R2_PUBLIC_URL!;
+      const firstProduct = chunkResult.firstProduct;
+      downloads.push({
+        batchIndex: c + 1,
+        totalBatches: chunks.length,
+        download_url: `${base}/${r2Key}`,
+        fileCount: chunkResult.successCount,
+        product_title: bodyProductTitle ?? firstProduct?.name ?? "Serticard ZIP",
+        product_id: String(firstProduct?.serialCode ?? batchNum),
+        rootkey: firstProduct?.rootKey != null ? String(firstProduct.rootKey).trim() : null,
+      });
     }
+    console.log(`[QR Multiple] Chunked upload done: ${downloads.length} ZIPs, ${validProducts.length} total files`);
+    return {
+      json: { success: true, downloads, total_files: validProducts.length, chunked: true },
+      zip: { buffer: Buffer.alloc(0), filename: "chunked.zip" },
+    };
+  }
 
-    // Fallback: return ZIP buffer when R2 not available or upload failed
-    return { zip: { buffer: zipBuffer, filename } };
+  const chunkResult = await buildOneZipChunk(validProducts, ctx);
+  if (chunkResult.successCount === 0) {
+    const errorDetails = {
+      message: "Failed to generate any PDFs. All products failed.",
+      totalProducts: validProducts.length,
+      failedCount: chunkResult.failCount,
+    };
+    console.error("[QR Multiple] All PDFs failed:", errorDetails);
+    throw new Error(errorDetails.message);
+  }
+  const zipBuffer = await chunkResult.zip.generateAsync({
+    type: "nodebuffer",
+    compression: "DEFLATE",
+    compressionOptions: { level: 9 },
+  });
+  const dateStr = new Date().toISOString().split("T")[0];
+  const filename = `Silver-King-QR-Codes-${validProducts.length}-${dateStr}.zip`;
+
+  // Single ZIP: R2 upload below (reuses zipBuffer, dateStr, filename from chunkResult)
+  const successCount = chunkResult.successCount;
+  const firstProduct = chunkResult.firstProduct;
+  // Upload ZIP to R2 if available
+  const R2_ENDPOINT = process.env.R2_ENDPOINT;
+  const R2_BUCKET = process.env.R2_BUCKET || process.env.R2_BUCKET_NAME;
+  const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
+  const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
+  const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL;
+  const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
+
+  // Normalize R2 endpoint - remove bucket name if present, ensure proper format
+  let normalizedR2Endpoint: string | null = null;
+  if (R2_ENDPOINT) {
+    // Remove bucket name and any trailing paths
+    normalizedR2Endpoint = R2_ENDPOINT.replace(/\/[^\/]+$/, "") // Remove last path segment (bucket name)
+      .replace(/\/$/, ""); // Remove trailing slash
+  } else if (R2_ACCOUNT_ID) {
+    normalizedR2Endpoint = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  }
+
+  console.log(`[QR Multiple] R2 Configuration Check:`, {
+    hasEndpoint: !!R2_ENDPOINT,
+    endpoint: R2_ENDPOINT?.substring(0, 60) + "...",
+    normalizedEndpoint: normalizedR2Endpoint?.substring(0, 60) + "...",
+    hasAccountId: !!R2_ACCOUNT_ID,
+    accountId: R2_ACCOUNT_ID?.substring(0, 10) + "...",
+    hasBucket: !!R2_BUCKET,
+    bucket: R2_BUCKET,
+    hasAccessKey: !!R2_ACCESS_KEY_ID,
+    hasSecretKey: !!R2_SECRET_ACCESS_KEY,
+    hasPublicUrl: !!R2_PUBLIC_URL,
+    publicUrl: R2_PUBLIC_URL,
+  });
+
+  const r2Available =
+    !!normalizedR2Endpoint &&
+    !!R2_BUCKET &&
+    !!R2_ACCESS_KEY_ID &&
+    !!R2_SECRET_ACCESS_KEY &&
+    !!R2_PUBLIC_URL;
+
+  if (r2Available && normalizedR2Endpoint) {
+    try {
+      // Create R2 client with proper configuration (forcePathStyle is required for R2)
+      const r2Client = new S3Client({
+        region: "auto",
+        endpoint: normalizedR2Endpoint, // Now guaranteed to be string, not null
+        credentials: {
+          accessKeyId: R2_ACCESS_KEY_ID!,
+          secretAccessKey: R2_SECRET_ACCESS_KEY!,
+        },
+        forcePathStyle: true, // CRITICAL: Required for R2
+        maxAttempts: 3, // Retry up to 3 times
+      });
+
+      // Create R2 key with folder structure: qr-batches/batch-{number}-{date}/filename.zip
+      // Use provided batchNumber or generate based on timestamp
+      const batchNum = batchNumber || Math.floor(Date.now() / 1000);
+      const r2Key = `qr-batches/batch-${batchNum}-${dateStr}/${filename}`;
+
+      console.log(`[QR Multiple] Uploading ZIP to R2...`);
+      console.log(`[QR Multiple] R2 Key: ${r2Key}`);
+      console.log(
+        `[QR Multiple] ZIP Size: ${zipBuffer.length} bytes (${(zipBuffer.length / 1024 / 1024).toFixed(2)} MB)`
+      );
+      console.log(`[QR Multiple] R2 Config:`, {
+        bucket: R2_BUCKET,
+        endpoint: normalizedR2Endpoint?.substring(0, 50) + "...",
+        publicUrl: R2_PUBLIC_URL?.substring(0, 50) + "...",
+        hasAccessKey: !!R2_ACCESS_KEY_ID,
+        hasSecretKey: !!R2_SECRET_ACCESS_KEY,
+      });
+
+      try {
+        // Upload to R2
+        const uploadCommand = new PutObjectCommand({
+          Bucket: R2_BUCKET,
+          Key: r2Key,
+          Body: zipBuffer,
+          ContentType: "application/zip",
+          CacheControl: "public, max-age=86400", // Cache for 1 day
+        });
+
+        await r2Client.send(uploadCommand);
+        console.log(`[QR Multiple] ZIP uploaded to R2 successfully`);
+
+        // Construct public URL
+        const base = R2_PUBLIC_URL!.endsWith("/") ? R2_PUBLIC_URL!.slice(0, -1) : R2_PUBLIC_URL!;
+        const downloadUrl = `${base}/${r2Key}`;
+
+        console.log(`[QR Multiple] R2 Download URL: ${downloadUrl}`);
+
+        // Response konsisten dengan flow PDF satuan: product_title, product_id, rootkey, download_url
+        const product_title = bodyProductTitle ?? firstProduct?.name ?? "Serticard ZIP";
+        const product_id = String(firstProduct?.serialCode ?? batchNum);
+        const rootkey =
+          firstProduct?.rootKey != null && String(firstProduct.rootKey).trim() !== ""
+            ? String(firstProduct.rootKey).trim()
+            : null;
+
+        return {
+          json: {
+            success: true,
+            product_title,
+            product_id,
+            rootkey,
+            total_files: successCount,
+            download_url: downloadUrl,
+            downloadUrl,
+            filename,
+            batchNumber: batchNum,
+            fileCount: successCount,
+            failedCount: failCount,
+            r2Key,
+            zipSize: zipBuffer.length,
+            message: "ZIP file generated and uploaded to R2 successfully",
+          },
+          zip: { buffer: zipBuffer, filename },
+        };
+      } catch (r2UploadError: any) {
+        console.error(`[QR Multiple] R2 upload failed:`, {
+          error: r2UploadError?.message,
+          name: r2UploadError?.name,
+          code: r2UploadError?.code,
+          stack: r2UploadError?.stack,
+          r2Key,
+          bucket: R2_BUCKET,
+          endpoint: normalizedR2Endpoint,
+        });
+        // Fall through to direct download if R2 upload fails
+        throw r2UploadError;
+      }
+    } catch (r2Error: any) {
+      console.error("[QR Multiple] Failed to upload ZIP to R2, falling back to direct download:", {
+        error: r2Error?.message,
+        name: r2Error?.name,
+        code: r2Error?.code,
+        stack: r2Error?.stack,
+      });
+      // Fallback to direct download if R2 upload fails
+    }
+  } else {
+    console.log("[QR Multiple] R2 not available, using direct download");
+  }
+
+  // Fallback: return ZIP buffer when R2 not available or upload failed
+  return { zip: { buffer: zipBuffer, filename } };
 }
 
 async function processZipJobInBackground(jobId: number): Promise<void> {
@@ -879,8 +877,7 @@ async function processZipJobInBackground(jobId: number): Promise<void> {
     bodyProductTitle: payload.productTitle,
     templateVariant: payload.templateVariant ?? "01",
     useCustom: payload.useCustomTemplate === true,
-    batchNumber:
-      payload.batchNumber ?? payload.batchId ?? Math.floor(Date.now() / 1000),
+    batchNumber: payload.batchNumber ?? payload.batchId ?? Math.floor(Date.now() / 1000),
     isGramRequest: validProducts.some((p) => p.isGram),
   };
 
