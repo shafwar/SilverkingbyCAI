@@ -351,6 +351,8 @@ type ZipGenOpts = {
   useCustom: boolean;
   batchNumber: number;
   isGramRequest: boolean;
+  /** When set, progress (Item 1-100: X%, ...) is written to this job for polling. */
+  jobId?: number;
 };
 type ZipOutcome = {
   json?: Record<string, unknown>;
@@ -371,10 +373,33 @@ type ZipChunkContext = {
   useCustom: boolean;
 };
 
+/** Callback untuk progress dalam satu chunk: (processed, total) => void. Dipanggil setiap beberapa item. */
+type OnChunkProgress = (processed: number, total: number) => void | Promise<void>;
+
+async function updateJobProgress(
+  jobId: number,
+  progressPercent: number,
+  progressMessage: string
+): Promise<void> {
+  try {
+    await prisma.qrZipDownloadJob.update({
+      where: { id: jobId },
+      data: {
+        progressPercent: Math.min(100, Math.max(0, progressPercent)),
+        progressMessage: progressMessage.slice(0, 500),
+        updatedAt: new Date(),
+      },
+    });
+  } catch (e) {
+    console.warn("[QR Multiple] updateJobProgress failed:", (e as Error)?.message);
+  }
+}
+
 /** Build satu ZIP dari satu slice products; dipakai untuk single ZIP atau per chunk. */
 async function buildOneZipChunk(
   validProducts: ZipGenProduct[],
-  ctx: ZipChunkContext
+  ctx: ZipChunkContext,
+  onProgress?: OnChunkProgress
 ): Promise<{ zip: JSZip; successCount: number; failCount: number; firstProduct: ZipGenProduct | null }> {
   const {
     frontTemplateImage,
@@ -506,9 +531,17 @@ async function buildOneZipChunk(
       if (shouldLog) {
         console.log(`[QR Multiple] Chunk progress ${idx + 1}/${totalToProcess} added (${successCount} ok)`);
       }
+      const processed = idx + 1;
+      if (onProgress && (processed % 5 === 0 || processed === totalToProcess)) {
+        await (onProgress(processed, totalToProcess) as Promise<void>);
+      }
     } catch (err: any) {
       failCount++;
       if (shouldLog) console.error(`[QR Multiple] Chunk item ${idx + 1} failed:`, err?.message);
+      const processed = idx + 1;
+      if (onProgress && (processed % 5 === 0 || processed === totalToProcess)) {
+        await (onProgress(processed, totalToProcess) as Promise<void>);
+      }
     }
   }
   return { zip, successCount, failCount, firstProduct };
@@ -575,6 +608,9 @@ async function executeZipGeneration(
     useCustom,
   };
 
+  const jobId = opts.jobId;
+  if (jobId) await updateJobProgress(jobId, 5, "Menyiapkan template dan data...");
+
   if (validProducts.length > ZIP_CHUNK_SIZE) {
     console.log(`[QR Multiple] Chunked mode: ${validProducts.length} files → ${Math.ceil(validProducts.length / ZIP_CHUNK_SIZE)} ZIPs of max ${ZIP_CHUNK_SIZE}`);
     const chunks: ZipGenProduct[][] = [];
@@ -615,15 +651,45 @@ async function executeZipGeneration(
       product_id: string;
       rootkey: string | null;
     }> = [];
-    for (let c = 0; c < chunks.length; c++) {
-      const chunkResult = await buildOneZipChunk(chunks[c], ctx);
+    const totalChunks = chunks.length;
+    for (let c = 0; c < totalChunks; c++) {
+      const startItem = c * ZIP_CHUNK_SIZE + 1;
+      const endItem = Math.min((c + 1) * ZIP_CHUNK_SIZE, validProducts.length);
+      const batchLabel = `(batch ${c + 1} dari ${totalChunks})`;
+      if (jobId) {
+        await updateJobProgress(
+          jobId,
+          Math.floor((c / totalChunks) * 100),
+          `Item ${startItem}-${endItem}: 0% ${batchLabel}`
+        );
+      }
+      const chunkResult = await buildOneZipChunk(chunks[c], ctx, jobId
+        ? async (processed, total) => {
+            const pct = Math.round((processed / total) * 100);
+            const overall = Math.floor((c / totalChunks) * 100 + (processed / total) * (100 / totalChunks));
+            await updateJobProgress(
+              jobId,
+              Math.min(99, overall),
+              `Item ${startItem}-${endItem}: ${pct}% ${batchLabel}`
+            );
+          }
+        : undefined);
       if (chunkResult.successCount === 0) continue;
+      if (jobId) {
+        await updateJobProgress(
+          jobId,
+          Math.floor(((c + 1) / totalChunks) * 100) - (c + 1 === totalChunks ? 0 : 1),
+          `Item ${startItem}-${endItem} selesai. Mengunggah... ${batchLabel}`
+        );
+      }
       const zipBuffer = await chunkResult.zip.generateAsync({
         type: "nodebuffer",
         compression: "DEFLATE",
         compressionOptions: { level: 9 },
       });
-      const r2Key = `qr-batches/batch-${batchNum}-${dateStr}/batch-${c + 1}-of-${chunks.length}.zip`;
+      // Satu folder induk (batch-{num}-{date}), tiap batch 100 = subfolder sendiri; bisa selesai bertahap
+      const batchFolder = `batch-${c + 1}-of-${totalChunks}`;
+      const r2Key = `qr-batches/batch-${batchNum}-${dateStr}/${batchFolder}/${batchFolder}.zip`;
       await r2Client.send(
         new PutObjectCommand({
           Bucket: R2_BUCKET!,
@@ -645,6 +711,7 @@ async function executeZipGeneration(
         rootkey: firstProduct?.rootKey != null ? String(firstProduct.rootKey).trim() : null,
       });
     }
+    if (jobId) await updateJobProgress(jobId, 100, "Semua batch selesai.");
     console.log(`[QR Multiple] Chunked upload done: ${downloads.length} ZIPs, ${validProducts.length} total files`);
     return {
       json: { success: true, downloads, total_files: validProducts.length, chunked: true },
@@ -652,7 +719,15 @@ async function executeZipGeneration(
     };
   }
 
-  const chunkResult = await buildOneZipChunk(validProducts, ctx);
+  const n = validProducts.length;
+  if (jobId) await updateJobProgress(jobId, 10, `Item 1-${n}: 0%`);
+  const chunkResult = await buildOneZipChunk(validProducts, ctx, jobId
+    ? async (processed, total) => {
+        const pct = Math.round((processed / total) * 100);
+        const overall = 10 + Math.round((processed / total) * 80);
+        await updateJobProgress(jobId!, Math.min(89, overall), `Item 1-${n}: ${pct}%`);
+      }
+    : undefined);
   if (chunkResult.successCount === 0) {
     const errorDetails = {
       message: "Failed to generate any PDFs. All products failed.",
@@ -731,6 +806,7 @@ async function executeZipGeneration(
       const batchNum = batchNumber || Math.floor(Date.now() / 1000);
       const r2Key = `qr-batches/batch-${batchNum}-${dateStr}/${filename}`;
 
+      if (jobId) await updateJobProgress(jobId, 90, "Mengunggah ZIP ke R2...");
       console.log(`[QR Multiple] Uploading ZIP to R2...`);
       console.log(`[QR Multiple] R2 Key: ${r2Key}`);
       console.log(
@@ -755,6 +831,7 @@ async function executeZipGeneration(
         });
 
         await r2Client.send(uploadCommand);
+        if (jobId) await updateJobProgress(jobId, 100, "Selesai.");
         console.log(`[QR Multiple] ZIP uploaded to R2 successfully`);
 
         // Construct public URL
@@ -878,6 +955,7 @@ async function processZipJobInBackground(jobId: number): Promise<void> {
     useCustom: payload.useCustomTemplate === true,
     batchNumber: payload.batchNumber ?? payload.batchId ?? Math.floor(Date.now() / 1000),
     isGramRequest: validProducts.some((p) => p.isGram),
+    jobId,
   };
 
   try {

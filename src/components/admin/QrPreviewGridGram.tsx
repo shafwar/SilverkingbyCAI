@@ -718,14 +718,13 @@ export function QrPreviewGridGram({ batches }: Props) {
             if (data.status === "FAILED") {
               throw new Error(data.errorMessage || "Pembuatan ZIP gagal");
             }
-            const progressPct = Math.min(35 + Math.floor(attempts / (maxAttempts / 60)), 92);
-            setZipProgress({
-              percent: progressPct,
-              label:
-                data.status === "PROCESSING"
-                  ? "Membuat ZIP & mengunggah ke R2..."
-                  : `Memeriksa status... (${attempts}/${maxAttempts})`,
-            });
+            const progressPct = data.progressPercent ?? Math.min(35 + Math.floor(attempts / (maxAttempts / 60)), 92);
+            const progressLabel =
+              data.progressMessage ??
+              (data.status === "PROCESSING"
+                ? "Membuat ZIP & mengunggah ke R2..."
+                : `Memeriksa status... (${attempts}/${maxAttempts})`);
+            setZipProgress({ percent: progressPct, label: progressLabel });
             if (attempts < maxAttempts) {
               await new Promise((r) => setTimeout(r, intervalMs));
             }

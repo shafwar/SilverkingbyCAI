@@ -278,13 +278,15 @@ model PageSection {
 /// Background job for large ZIP downloads (avoid 524 timeout).
 /// POST returns jobId immediately; client polls GET /api/qr/download-job/[jobId].
 model QrZipDownloadJob {
-  id              Int       @id @default(autoincrement())
-  status          String    // PENDING | PROCESSING | COMPLETED | FAILED
-  requestPayload  Json      // { products, batchId, productTitle, templateVariant, useCustomTemplate }
-  result          Json?     // { download_url, product_title, product_id, rootkey, total_files }
-  errorMessage    String?   @db.Text
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id               Int       @id @default(autoincrement())
+  status           String    // PENDING | PROCESSING | COMPLETED | FAILED
+  requestPayload   Json      // { products, batchId, productTitle, templateVariant, useCustomTemplate }
+  result           Json?     // { download_url, product_title, product_id, rootkey, total_files }
+  errorMessage     String?   @db.Text
+  progressPercent  Int       @default(0)   // 0-100, untuk tampilan progress
+  progressMessage  String?   @db.Text      // e.g. "Item 1-100: 45%" atau "Item 101-200: 30% (batch 2 dari 14)"
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@index([status])
   @@index([createdAt])

@@ -35,6 +35,8 @@ export async function GET(
     status: string;
     result?: Record<string, unknown>;
     errorMessage?: string | null;
+    progressPercent?: number;
+    progressMessage?: string | null;
     createdAt: Date;
     updatedAt: Date;
   } = {
@@ -43,6 +45,10 @@ export async function GET(
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
   };
+  if (job.status === "PROCESSING" || job.status === "PENDING") {
+    payload.progressPercent = job.progressPercent ?? 0;
+    payload.progressMessage = job.progressMessage ?? null;
+  }
 
   if (job.status === "COMPLETED" && result) {
     payload.result = result;
