@@ -431,7 +431,7 @@ async function executeZipGeneration(
     let failCount = 0;
 
     const totalToProcess = validProducts.length;
-    const CONCURRENCY = 12; // Generate 12 PDFs in parallel
+    const CONCURRENCY = 6; // Generate 6 PDFs in parallel (balance: cepat vs hemat CPU Railway)
     const logEvery = totalToProcess > 100 ? Math.max(1, Math.floor(totalToProcess / 20)) : 1;
 
     async function generateOnePdf(product: ZipGenProduct): Promise<{ folderPath: string; filename: string; pdfBuffer: Buffer } | null> {
