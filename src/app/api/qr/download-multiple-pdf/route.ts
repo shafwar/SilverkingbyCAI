@@ -402,242 +402,125 @@ async function executeZipGeneration(
       process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const internalBaseUrl = baseUrl.replace(/\/$/, "");
 
+    // Pre-fetch QR images once per unique serialCode (gram batch = 1 uniqCode → 1 fetch for 400/1400 items)
+    const uniqueSerialCodes = [
+      ...new Set(
+        validProducts
+          .map((p) => (p.serialCode ? String(p.serialCode).trim().toUpperCase() : ""))
+          .filter((c) => c && c !== "0000")
+      ),
+    ] as string[];
+    const qrCache = new Map<string, Awaited<ReturnType<typeof loadImage>>>();
+    const productIsGramDefault = isGramRequest;
+    const qrBase = productIsGramDefault ? "/api/qr-gram" : "/api/qr";
+    await Promise.all(
+      uniqueSerialCodes.map(async (code) => {
+        const qrUrl = `${internalBaseUrl}${qrBase}/${encodeURIComponent(code)}/qr-only`;
+        const res = await fetch(qrUrl);
+        if (!res.ok) throw new Error(`Failed to fetch QR for ${code}: ${res.status}`);
+        const buf = Buffer.from(await res.arrayBuffer());
+        const img = await loadImage(buf);
+        qrCache.set(code, img);
+      })
+    );
+    console.log(`[QR Multiple] QR cache ready: ${qrCache.size} unique code(s) for ${validProducts.length} items`);
+
     // Create ZIP file
     const zip = new JSZip();
     let successCount = 0;
     let failCount = 0;
 
     const totalToProcess = validProducts.length;
+    const CONCURRENCY = 12; // Generate 12 PDFs in parallel
     const logEvery = totalToProcess > 100 ? Math.max(1, Math.floor(totalToProcess / 20)) : 1;
 
-    // Process all VALID products (already filtered above)
-    // CRITICAL: Use validProducts, not products, to ensure we only process products with valid data
-    for (let idx = 0; idx < validProducts.length; idx++) {
-      const product = validProducts[idx];
-      const shouldLog = idx === 0 || idx === totalToProcess - 1 || (idx + 1) % logEvery === 0;
-      try {
-        if (shouldLog) {
-          console.log(`[QR Multiple] Processing ${idx + 1}/${totalToProcess} (id=${product.id}, serialCode=${product.serialCode})`);
-        }
+    async function generateOnePdf(product: ZipGenProduct): Promise<{ folderPath: string; filename: string; pdfBuffer: Buffer } | null> {
+      const productName = product.name ? String(product.name).trim() : "";
+      const productSerialCode = product.serialCode
+        ? String(product.serialCode).trim().toUpperCase()
+        : "";
+      if (!productName || productName === "0000" || !productSerialCode || productSerialCode === "0000") return null;
+      const qrImage = qrCache.get(productSerialCode);
+      if (!qrImage) return null;
 
-        // CRITICAL: Extract and validate product data
-        // Use same approach as handleDownload (single) that works correctly
-        const productName = product.name ? String(product.name).trim() : "";
-        const productSerialCode = product.serialCode
-          ? String(product.serialCode).trim().toUpperCase()
-          : "";
+      const frontCanvas = createCanvas(frontTemplateImage.width, frontTemplateImage.height);
+      const frontCtx = frontCanvas.getContext("2d");
+      frontCtx.drawImage(frontTemplateImage, 0, 0);
+      const qrSize = Math.min(frontTemplateImage.width * 0.55, frontTemplateImage.height * 0.55, 900);
+      const qrX = (frontTemplateImage.width - qrSize) / 2;
+      const qrY = frontTemplateImage.height * 0.38;
+      const padding = 8;
+      frontCtx.fillStyle = "#ffffff";
+      frontCtx.fillRect(qrX - padding, qrY - padding, qrSize + padding * 2, qrSize + padding * 2);
+      frontCtx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+      const nameOffset = Math.round(frontTemplateImage.height * 0.038);
+      const serialOffset = Math.round(frontTemplateImage.height * 0.038);
+      const isDarkTemplate = templateVariant !== "01";
+      const textColor = isDarkTemplate ? "#ffffff" : "#111111";
+      const nameFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.nameMultiplier);
+      const nameY = qrY - nameOffset;
+      frontCtx.fillStyle = textColor;
+      frontCtx.textAlign = "center";
+      frontCtx.textBaseline = "bottom";
+      frontCtx.font = `bold ${nameFontSize}px ${fontConfig.fontFamily}, sans-serif`;
+      frontCtx.fillText(productName, frontTemplateImage.width / 2, nameY);
+      const serialFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.serialMultiplier);
+      const serialY = qrY + qrSize + serialOffset;
+      frontCtx.font = `bold ${serialFontSize}px ${fontConfig.fontFamily}, monospace`;
+      frontCtx.fillText(productSerialCode, frontTemplateImage.width / 2, serialY);
+      const productRootKey =
+        (product as any).rootKey != null && String((product as any).rootKey).trim() !== ""
+          ? String((product as any).rootKey).trim().toUpperCase()
+          : null;
+      if (productRootKey) {
+        const rootKeyFontSize = Math.max(10, Math.floor(serialFontSize * 0.65));
+        const rootKeyGap = 8;
+        const rootKeyY = serialY + serialFontSize + rootKeyGap;
+        frontCtx.font = `${rootKeyFontSize}px ${fontConfig.fontFamily}, monospace`;
+        frontCtx.fillText(productRootKey, frontTemplateImage.width / 2, rootKeyY);
+      }
+      const frontBuffer = frontCanvas.toBuffer("image/png");
+      if (!backTemplateImage) throw new Error("Back template not loaded");
+      const backCanvas = createCanvas(backTemplateImage.width, backTemplateImage.height);
+      const backCtx = backCanvas.getContext("2d");
+      backCtx.drawImage(backTemplateImage, 0, 0);
+      const backBuffer = backCanvas.toBuffer("image/png");
+      const panelWidth = Math.max(frontTemplateImage.width, backTemplateImage.width);
+      const panelHeight = Math.max(frontTemplateImage.height, backTemplateImage.height);
+      const gap = 0;
+      const pageWidth = panelWidth * 2 + gap;
+      const pageHeight = panelHeight;
+      const pdfDoc = await PDFDocument.create();
+      const page = pdfDoc.addPage([pageWidth, pageHeight]);
+      const frontPngImage = await pdfDoc.embedPng(frontBuffer);
+      const backPngImage = await pdfDoc.embedPng(backBuffer);
+      page.drawImage(frontPngImage, { x: 0, y: 0, width: panelWidth, height: panelHeight });
+      page.drawImage(backPngImage, { x: panelWidth + gap, y: 0, width: panelWidth, height: panelHeight });
+      const pdfBytes = await pdfDoc.save();
+      const pdfBuffer = Buffer.from(pdfBytes);
+      const sanitizedName = product.name.trim().replace(/\s+/g, "-").replace(/[^a-zA-Z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
+      const rootKeyPart = (product as any).rootKey ? String((product as any).rootKey).trim().replace(/[^a-zA-Z0-9-]/g, "") || "" : "";
+      const uniqueId = rootKeyPart ? `-${rootKeyPart}` : `-id${product.id}`;
+      const filename = `QR-${product.serialCode}${uniqueId}${sanitizedName ? `-${sanitizedName}` : ""}.pdf`;
+      const folderPath = hasMultipleWeights ? `${product.weight}gr/` : "";
+      return { folderPath, filename, pdfBuffer };
+    }
 
-        // Final validation before processing
-        if (!productName || productName.length === 0 || productName === "0000") {
-          console.error(
-            `[QR Multiple] SKIPPING: Invalid product name for product ID ${product.id}`,
-            {
-              rawName: product.name,
-              transformedName: productName,
-              nameType: typeof product.name,
-            }
-          );
+    // Process in parallel chunks
+    for (let i = 0; i < validProducts.length; i += CONCURRENCY) {
+      const chunk = validProducts.slice(i, i + CONCURRENCY);
+      const results = await Promise.all(chunk.map((p) => generateOnePdf(p).catch(() => null)));
+      for (let j = 0; j < results.length; j++) {
+        const r = results[j];
+        if (r) {
+          zip.file(`${r.folderPath}${r.filename}`, r.pdfBuffer);
+          successCount++;
+        } else {
           failCount++;
-          continue;
         }
-
-        if (!productSerialCode || productSerialCode.length === 0 || productSerialCode === "0000") {
-          console.error(`[QR Multiple] SKIPPING: Invalid serialCode for product ID ${product.id}`, {
-            rawSerialCode: product.serialCode,
-            transformedSerialCode: productSerialCode,
-            serialCodeType: typeof product.serialCode,
-          });
-          failCount++;
-          continue;
-        }
-
-        // 1. Get QR code from endpoint (no PDFKit)
-        // CRITICAL: Use productSerialCode (validated, uppercased) for QR generation
-        const productIsGram = (product as any).isGram === true || isGramRequest;
-        const qrBase = productIsGram ? "/api/qr-gram" : "/api/qr";
-        const qrUrl = `${internalBaseUrl}${qrBase}/${encodeURIComponent(productSerialCode)}/qr-only`;
-        if (shouldLog) console.log(`[QR Multiple] Fetching QR from: ${qrUrl}`);
-        const qrResponse = await fetch(qrUrl);
-        if (!qrResponse.ok) {
-          throw new Error(`Failed to fetch QR for ${productSerialCode}: ${qrResponse.status}`);
-        }
-        const qrBuffer = Buffer.from(await qrResponse.arrayBuffer());
-        const qrImage = await loadImage(qrBuffer);
-        // 2. Create FRONT canvas with QR + template (same as frontend)
-        const frontCanvas = createCanvas(frontTemplateImage.width, frontTemplateImage.height);
-        const frontCtx = frontCanvas.getContext("2d");
-        frontCtx.drawImage(frontTemplateImage, 0, 0);
-
-        const qrSize = Math.min(
-          frontTemplateImage.width * 0.55,
-          frontTemplateImage.height * 0.55,
-          900
-        );
-        const qrX = (frontTemplateImage.width - qrSize) / 2;
-        const qrY = frontTemplateImage.height * 0.38;
-
-        const padding = 8;
-        frontCtx.fillStyle = "#ffffff";
-        frontCtx.fillRect(qrX - padding, qrY - padding, qrSize + padding * 2, qrSize + padding * 2);
-        frontCtx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
-
-        // Use Serticard config for font (admin can set font type & size Besar/Kecil)
-        const nameOffset = Math.round(frontTemplateImage.height * 0.038);
-        const serialOffset = Math.round(frontTemplateImage.height * 0.038);
-        const isDarkTemplate = templateVariant !== "01";
-        const textColor = isDarkTemplate ? "#ffffff" : "#111111";
-
-        const nameFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.nameMultiplier);
-        const nameY = qrY - nameOffset;
-
-        frontCtx.fillStyle = textColor;
-        frontCtx.textAlign = "center";
-        frontCtx.textBaseline = "bottom";
-        frontCtx.font = `bold ${nameFontSize}px ${fontConfig.fontFamily}, sans-serif`;
-        frontCtx.fillText(productName, frontTemplateImage.width / 2, nameY);
-
-        const serialFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.serialMultiplier);
-        const serialY = qrY + qrSize + serialOffset;
-
-        frontCtx.fillStyle = textColor;
-        frontCtx.textAlign = "center";
-        frontCtx.textBaseline = "top";
-        frontCtx.font = `bold ${serialFontSize}px ${fontConfig.fontFamily}, monospace`;
-        frontCtx.fillText(productSerialCode, frontTemplateImage.width / 2, serialY);
-
-        // Root key below serial: smaller font, proportional (optional)
-        const productRootKey =
-          (product as any).rootKey != null && String((product as any).rootKey).trim() !== ""
-            ? String((product as any).rootKey).trim().toUpperCase()
-            : null;
-        if (productRootKey) {
-          const rootKeyFontSize = Math.max(10, Math.floor(serialFontSize * 0.65));
-          const rootKeyGap = 8;
-          const rootKeyY = serialY + serialFontSize + rootKeyGap;
-          frontCtx.font = `${rootKeyFontSize}px ${fontConfig.fontFamily}, monospace`;
-          frontCtx.fillStyle = textColor;
-          frontCtx.textAlign = "center";
-          frontCtx.textBaseline = "top";
-          frontCtx.fillText(productRootKey, frontTemplateImage.width / 2, rootKeyY);
-        }
-
-        const frontBuffer = frontCanvas.toBuffer("image/png");
-
-        // 3. Create BACK canvas (no QR, just template)
-        // Validate back template is loaded
-        if (!backTemplateImage) {
-          throw new Error("Back template image is not loaded");
-        }
-
-        const backCanvas = createCanvas(backTemplateImage.width, backTemplateImage.height);
-        const backCtx = backCanvas.getContext("2d");
-        backCtx.drawImage(backTemplateImage, 0, 0);
-
-        const backBuffer = backCanvas.toBuffer("image/png");
-
-        // 4. Generate PDF - UNIFIED PANEL DIMENSIONS for 100% balance (same as Serticard 01-02)
-        // Templates 03-18 have mismatched front/back sizes; normalize so left & right are identical.
-        const panelWidth = Math.max(frontTemplateImage.width, backTemplateImage.width);
-        const panelHeight = Math.max(frontTemplateImage.height, backTemplateImage.height);
-        const gap = 0;
-        const pageWidth = panelWidth * 2 + gap;
-        const pageHeight = panelHeight;
-
-        const pdfDoc = await PDFDocument.create();
-        const page = pdfDoc.addPage([pageWidth, pageHeight]);
-
-        // Validate buffers before embedding
-        if (!frontBuffer || frontBuffer.length === 0) {
-          throw new Error(`Front buffer is empty for ${product.serialCode}`);
-        }
-
-        if (!backBuffer || backBuffer.length === 0) {
-          throw new Error(`Back buffer is empty for ${product.serialCode}`);
-        }
-
-        // Embed images - CRITICAL: Both must be embedded
-        const frontPngImage = await pdfDoc.embedPng(frontBuffer);
-        const backPngImage = await pdfDoc.embedPng(backBuffer);
-
-        // Validate embedded images
-        if (!frontPngImage) {
-          throw new Error(`Failed to embed front image for ${product.serialCode}`);
-        }
-
-        if (!backPngImage) {
-          throw new Error(`Failed to embed back image for ${product.serialCode}`);
-        }
-
-        // Both panels at SAME size = 100% balanced (same as Serticard 01-02)
-        page.drawImage(frontPngImage, {
-          x: 0,
-          y: 0,
-          width: panelWidth,
-          height: panelHeight,
-        });
-
-        const backX = panelWidth + gap;
-        page.drawImage(backPngImage, {
-          x: backX,
-          y: 0,
-          width: panelWidth,
-          height: panelHeight,
-        });
-
-        const pdfBytes = await pdfDoc.save();
-        const pdfBuffer = Buffer.from(pdfBytes);
-
-        // Validate PDF was generated with both templates
-        if (!pdfBuffer || pdfBuffer.length === 0) {
-          throw new Error(`PDF buffer is empty for ${product.serialCode}`);
-        }
-
-        // Verify PDF contains both templates by checking size (should be substantial)
-        const minExpectedSize = Math.min(frontBuffer.length, backBuffer.length) * 0.5; // At least 50% of one template
-        if (pdfBuffer.length < minExpectedSize && shouldLog) {
-          console.warn(
-            `[QR Multiple] PDF size small for ${product.serialCode}: ${pdfBuffer.length} bytes`
-          );
-        }
-
-        // Sanitize filename; CRITICAL: must be unique per item (gram batch shares same serialCode/uniqCode)
-        const sanitizedName = product.name
-          .trim()
-          .replace(/\s+/g, "-")
-          .replace(/[^a-zA-Z0-9-]/g, "")
-          .replace(/-+/g, "-")
-          .replace(/^-|-$/g, "");
-
-        const rootKeyPart = (product as any).rootKey
-          ? String((product as any).rootKey).trim().replace(/[^a-zA-Z0-9-]/g, "") || ""
-          : "";
-        const uniqueId = rootKeyPart ? `-${rootKeyPart}` : `-id${product.id}`;
-        const filename = `QR-${product.serialCode}${uniqueId}${sanitizedName ? `-${sanitizedName}` : ""}.pdf`;
-
-        // Determine folder path based on weight grouping
-        let folderPath = "";
-        if (hasMultipleWeights) {
-          folderPath = `${product.weight}gr/`;
-        }
-
-        // Add PDF to ZIP (unique path per item)
-        zip.file(`${folderPath}${filename}`, pdfBuffer);
-        successCount++;
-        if (shouldLog) console.log(`[QR Multiple] Added ${folderPath}${filename} (${successCount}/${totalToProcess})`);
-      } catch (error: any) {
-        failCount++;
-        const errorMessage = error?.message || String(error);
-        const errorStack = error?.stack || "";
-        const errorName = error?.name || "UnknownError";
-        console.error(`[QR Multiple] Failed to generate PDF for ${product.serialCode}:`, {
-          name: errorName,
-          message: errorMessage,
-          stack: errorStack,
-          serialCode: product.serialCode,
-          productName: product.name,
-          weight: product.weight,
-        });
-        // Continue with next product - don't throw, just log and continue
+      }
+      if (logEvery > 0 && (i + chunk.length) % logEvery === 0) {
+        console.log(`[QR Multiple] Progress: ${Math.min(i + CONCURRENCY, totalToProcess)}/${totalToProcess}`);
       }
     }
 
