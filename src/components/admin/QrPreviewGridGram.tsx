@@ -659,17 +659,15 @@ export function QrPreviewGridGram({ batches }: Props) {
           setZipProgress(null);
           return;
         }
-        // Background job: polling sampai COMPLETED atau FAILED (mendukung 1000+ file, ~24 menit)
+        // Background job: satu kebijakan polling untuk semua ukuran batch (hindari timeout 400/1000/1400)
         if (json.jobId != null && json.status === "pending") {
-          const isLargeBatch = products.length > 500;
+          const totalFiles = products.length;
+          const maxAttempts = 600; // 30 menit @ 3s
+          const intervalMs = 3000;
           setZipProgress({
             percent: 35,
-            label: isLargeBatch
-              ? `ZIP ${products.length} file diproses di background (bisa 10–20 menit)...`
-              : "ZIP diproses di background. Memeriksa status...",
+            label: `ZIP ${totalFiles} file diproses di background (bisa beberapa menit, mohon tunggu)...`,
           });
-          const maxAttempts = isLargeBatch ? 480 : 120; // 24 min @ 3s atau 6 min @ 2.5s
-          const intervalMs = isLargeBatch ? 3000 : 2500;
           for (let attempts = 1; attempts <= maxAttempts; attempts++) {
             const statusRes = await fetch(`/api/qr/download-job/${json.jobId}`);
             if (!statusRes.ok) throw new Error("Gagal memeriksa status job");
@@ -698,14 +696,16 @@ export function QrPreviewGridGram({ batches }: Props) {
               percent: progressPct,
               label:
                 data.status === "PROCESSING"
-                  ? "Membuat ZIP & mengunggah ke R2..."
+                  ? `Membuat ZIP & mengunggah ke R2... (${totalFiles} file)`
                   : `Memeriksa status... (${attempts}/${maxAttempts})`,
             });
             if (attempts < maxAttempts) {
               await new Promise((r) => setTimeout(r, intervalMs));
             }
           }
-          throw new Error("Timeout menunggu ZIP. Untuk batch sangat besar, coba lagi nanti atau hubungi admin.");
+          throw new Error(
+            "Timeout menunggu ZIP (30 menit). Server mungkin masih memproses. Coba refresh halaman dan periksa lagi, atau hubungi admin."
+          );
         }
         throw new Error(json.error || json.message || "Response tidak valid");
       }
