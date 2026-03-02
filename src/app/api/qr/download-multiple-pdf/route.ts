@@ -461,7 +461,21 @@ async function updateJobProgress(
 /** Simpan partial result ke job (setiap chunk selesai) agar frontend bisa dapat URL dan auto-download. */
 async function updateJobPartialResult(
   jobId: number,
-  partial: { success: boolean; downloads: Array<{ batchIndex: number; totalBatches: number; download_url: string; fileCount: number; product_title: string; product_id: string; rootkey: string | null }>; total_files: number; chunked: boolean }
+  partial: {
+    success: boolean;
+    downloads: Array<{
+      batchIndex: number;
+      totalBatches: number;
+      download_url: string;
+      r2Key?: string;
+      fileCount: number;
+      product_title: string;
+      product_id: string;
+      rootkey: string | null;
+    }>;
+    total_files: number;
+    chunked: boolean;
+  }
 ): Promise<void> {
   try {
     await prisma.qrZipDownloadJob.update({
@@ -724,6 +738,7 @@ async function executeZipGeneration(
       batchIndex: number;
       totalBatches: number;
       download_url: string;
+      r2Key: string;
       fileCount: number;
       product_title: string;
       product_id: string;
@@ -783,6 +798,7 @@ async function executeZipGeneration(
         batchIndex: c + 1,
         totalBatches: chunks.length,
         download_url: `${base}/${r2Key}`,
+        r2Key,
         fileCount: chunkResult.successCount,
         product_title: bodyProductTitle ?? firstProduct?.name ?? "Serticard ZIP",
         product_id: String(firstProduct?.serialCode ?? batchNum),

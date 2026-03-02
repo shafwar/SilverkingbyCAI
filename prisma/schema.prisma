@@ -306,3 +306,18 @@ model QrZipDownloadCache {
 
   @@index([createdAt])
 }
+
+/// Audit klik download admin (tidak bisa deteksi file benar-benar ada di folder lokal, tapi bisa catat "pernah diunduh").
+model QrZipDownloadAudit {
+  id                Int      @id @default(autoincrement())
+  cacheKey          String
+  r2Key             String
+  batchIndex        Int?
+  totalBatches      Int?
+  downloadedByEmail String?
+  downloadedAt      DateTime @default(now())
+
+  @@index([cacheKey])
+  @@index([r2Key])
+  @@index([downloadedAt])
+}

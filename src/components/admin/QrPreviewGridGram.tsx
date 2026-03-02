@@ -48,6 +48,15 @@ async function isZipBlob(blob: Blob): Promise<boolean> {
   return bytes[0] === 0x50 && bytes[1] === 0x4b;
 }
 
+function deriveR2KeyFromUrl(downloadUrl: string): string | null {
+  try {
+    const u = new URL(downloadUrl);
+    return u.pathname.replace(/^\/+/, "") || null;
+  } catch {
+    return null;
+  }
+}
+
 type GramPreviewBatch = {
   batchId: number;
   name: string;
@@ -114,12 +123,20 @@ export function QrPreviewGridGram({ batches }: Props) {
       batchIndex: number;
       totalBatches: number;
       download_url: string;
+      r2Key?: string;
       fileCount: number;
       product_title?: string;
       product_id?: string;
       rootkey?: string | null;
     }>;
   } | null>(null);
+  const [zipR2Status, setZipR2Status] = useState<
+    Record<
+      string,
+      { exists: boolean | null; downloadedCount: number; lastDownloadedAt: string | null }
+    >
+  >({});
+  const [zipR2StatusLoading, setZipR2StatusLoading] = useState(false);
   const [selectedSingleTemplateId, setSelectedSingleTemplateId] = useState<
     SerticardVariantId | "custom"
   >("01");
@@ -141,6 +158,51 @@ export function QrPreviewGridGram({ batches }: Props) {
     window.addEventListener("serticard-config-updated", handleConfigUpdate);
     return () => window.removeEventListener("serticard-config-updated", handleConfigUpdate);
   }, [mutateFontConfig]);
+
+  // Real-time status dari R2 + audit "pernah diunduh" (global, server-side)
+  useEffect(() => {
+    const cacheKey = zipDownloadResult?.cacheKey;
+    const downloads = zipDownloadResult?.downloads;
+    if (!cacheKey || !downloads || downloads.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        setZipR2StatusLoading(true);
+        const res = await fetch(`/api/qr/zip-status?cacheKey=${encodeURIComponent(cacheKey)}`);
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          items: Array<{
+            r2Key: string;
+            exists: boolean | null;
+            downloadedCount: number;
+            lastDownloadedAt: string | null;
+          }>;
+        };
+        if (cancelled) return;
+        const map: Record<
+          string,
+          { exists: boolean | null; downloadedCount: number; lastDownloadedAt: string | null }
+        > = {};
+        for (const it of json.items || []) {
+          map[it.r2Key] = {
+            exists: it.exists ?? null,
+            downloadedCount: it.downloadedCount ?? 0,
+            lastDownloadedAt: it.lastDownloadedAt ?? null,
+          };
+        }
+        setZipR2Status(map);
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setZipR2StatusLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [zipDownloadResult?.cacheKey, zipDownloadResult?.downloads?.length]);
 
   // Close modal when clicking outside (backdrop); jangan tutup jika klik di dalam modal card
   useEffect(() => {
@@ -682,7 +744,17 @@ export function QrPreviewGridGram({ batches }: Props) {
             cached: json.cached === true,
             cacheKey: typeof json.cacheKey === "string" ? json.cacheKey : undefined,
             ...(Array.isArray(downloads) && downloads.length > 0
-              ? { downloads: downloads.map((d: any) => ({ ...d, fileCount: d.fileCount ?? 0 })) }
+              ? {
+                  downloads: downloads.map((d: any) => ({
+                    ...d,
+                    r2Key:
+                      (typeof d.r2Key === "string" && d.r2Key.trim() !== ""
+                        ? d.r2Key
+                        : null) ?? (typeof d.download_url === "string" ? deriveR2KeyFromUrl(d.download_url) : null) ??
+                      undefined,
+                    fileCount: d.fileCount ?? 0,
+                  })),
+                }
               : {}),
           });
           setZipProgress(null);
@@ -724,6 +796,7 @@ export function QrPreviewGridGram({ batches }: Props) {
             const statusRes = await fetchJobStatus();
             const data = (await statusRes.json()) as {
               status: string;
+              cacheKey?: string | null;
               result?: {
                 download_url?: string;
                 downloadUrl?: string;
@@ -735,6 +808,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                   product_title?: string;
                   product_id?: string;
                   rootkey?: string | null;
+                  r2Key?: string;
                 }>;
                 product_title?: string;
                 product_id?: string;
@@ -756,7 +830,15 @@ export function QrPreviewGridGram({ batches }: Props) {
                 product_id: (data.result?.product_id as any) ?? String(batchId),
                 rootkey: (data.result?.rootkey as any) ?? null,
                 total_files: (data.result?.total_files as any) ?? products.length,
-                downloads: list.map((d) => ({ ...d, fileCount: d.fileCount ?? 0 })),
+                cacheKey: typeof data.cacheKey === "string" ? data.cacheKey : undefined,
+                downloads: list.map((d) => ({
+                  ...d,
+                  r2Key:
+                    (typeof d.r2Key === "string" && d.r2Key.trim() !== "" ? d.r2Key : null) ??
+                    deriveR2KeyFromUrl(d.download_url) ??
+                    undefined,
+                  fileCount: d.fileCount ?? 0,
+                })),
               });
             }
 
@@ -1414,19 +1496,68 @@ export function QrPreviewGridGram({ batches }: Props) {
                               </p>
                               {zipDownloadResult.downloads && zipDownloadResult.downloads.length > 0 ? (
                                 <div className="space-y-2">
-                                  {zipDownloadResult.downloads.map((d) => (
-                                    <a
-                                      key={d.batchIndex}
-                                      href={d.download_url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      download={`${(zipDownloadResult.product_title || "serticard").replace(/\s+/g, "-")}-batch-${d.batchIndex}-of-${d.totalBatches}.zip`}
-                                      className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFD700]/40 bg-[#FFD700]/15 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/25 transition"
-                                    >
-                                      <Download className="h-4 w-4" />
-                                      ZIP Batch {d.batchIndex} dari {d.totalBatches} ({d.fileCount} file)
-                                    </a>
-                                  ))}
+                                  {zipDownloadResult.downloads.map((d) => {
+                                    const r2Key =
+                                      d.r2Key ?? deriveR2KeyFromUrl(d.download_url) ?? `batch-${d.batchIndex}`;
+                                    const st = zipR2Status[r2Key];
+                                    const exists = st?.exists ?? null;
+                                    const downloadedCount = st?.downloadedCount ?? 0;
+                                    const statusLabel =
+                                      exists === true
+                                        ? "R2: OK"
+                                        : exists === false
+                                          ? "R2: tidak ada"
+                                          : zipR2StatusLoading
+                                            ? "R2: cek..."
+                                            : "R2: ?";
+
+                                    return (
+                                      <div key={d.batchIndex} className="space-y-1">
+                                        <a
+                                          href={d.download_url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          download={`${(zipDownloadResult.product_title || "serticard").replace(/\s+/g, "-")}-batch-${d.batchIndex}-of-${d.totalBatches}.zip`}
+                                          onClick={() => {
+                                            const ck = zipDownloadResult.cacheKey;
+                                            const rk = d.r2Key ?? deriveR2KeyFromUrl(d.download_url);
+                                            if (!ck || !rk) return;
+                                            fetch("/api/qr/zip-download-audit", {
+                                              method: "POST",
+                                              headers: { "Content-Type": "application/json" },
+                                              body: JSON.stringify({
+                                                cacheKey: ck,
+                                                r2Key: rk,
+                                                batchIndex: d.batchIndex,
+                                                totalBatches: d.totalBatches,
+                                              }),
+                                            }).catch(() => {});
+                                            // optimistic UI update
+                                            setZipR2Status((prev) => ({
+                                              ...prev,
+                                              [rk]: {
+                                                exists: prev[rk]?.exists ?? null,
+                                                downloadedCount: (prev[rk]?.downloadedCount ?? 0) + 1,
+                                                lastDownloadedAt: new Date().toISOString(),
+                                              },
+                                            }));
+                                          }}
+                                          className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFD700]/40 bg-[#FFD700]/15 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/25 transition"
+                                        >
+                                          <Download className="h-4 w-4" />
+                                          ZIP Batch {d.batchIndex} dari {d.totalBatches} ({d.fileCount} file)
+                                        </a>
+                                        <div className="flex items-center justify-between text-[10px] text-white/50 px-1">
+                                          <span className="tabular-nums">
+                                            {statusLabel}
+                                          </span>
+                                          <span className="tabular-nums">
+                                            {downloadedCount > 0 ? `Pernah diunduh: ${downloadedCount}x` : "Belum pernah diunduh"}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               ) : zipDownloadResult.download_url ? (
                                 <a

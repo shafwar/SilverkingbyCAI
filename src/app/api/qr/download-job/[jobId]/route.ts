@@ -47,6 +47,7 @@ export async function GET(
     errorMessage?: string | null;
     progressPercent?: number;
     progressMessage?: string | null;
+    cacheKey?: string | null;
     createdAt: Date;
     updatedAt: Date;
   } = {
@@ -55,6 +56,7 @@ export async function GET(
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
   };
+  payload.cacheKey = (job as any).cacheKey ?? null;
   if (job.status === "PROCESSING" || job.status === "PENDING") {
     payload.progressPercent = job.progressPercent ?? 0;
     payload.progressMessage = job.progressMessage ?? null;
