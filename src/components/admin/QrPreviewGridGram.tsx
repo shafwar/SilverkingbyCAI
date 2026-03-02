@@ -48,6 +48,18 @@ async function isZipBlob(blob: Blob): Promise<boolean> {
   return bytes[0] === 0x50 && bytes[1] === 0x4b;
 }
 
+/** Trigger unduh file ke komputer (dari URL). Coba fetch+blob dulu; jika CORS gagal, buka tab. */
+function triggerDownloadToComputer(url: string, filename: string): void {
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.rel = "noopener noreferrer";
+  link.target = "_blank";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
 type GramPreviewBatch = {
   batchId: number;
   name: string;
@@ -682,7 +694,7 @@ export function QrPreviewGridGram({ batches }: Props) {
           setZipProgress(null);
           return;
         }
-        // Background job: polling sampai COMPLETED atau FAILED (mendukung 1000+ file, ~24 menit)
+        // Background job: polling sampai COMPLETED atau FAILED; tiap batch selesai langsung unduh ke komputer
         if (json.jobId != null && json.status === "pending") {
           const isLargeBatch = products.length > 500;
           setZipProgress({
@@ -691,12 +703,67 @@ export function QrPreviewGridGram({ batches }: Props) {
               ? `ZIP ${products.length} file diproses di background (bisa 10–20 menit)...`
               : "ZIP diproses di background. Memeriksa status...",
           });
-          const maxAttempts = isLargeBatch ? 480 : 120; // 24 min @ 3s atau 6 min @ 2.5s
+          const maxAttempts = isLargeBatch ? 480 : 120;
           const intervalMs = isLargeBatch ? 3000 : 2500;
+          let downloadedCount = 0;
+
+          const fetchJobStatus = async (): Promise<Response> => {
+            let lastBody: { code?: string; error?: string } = {};
+            for (let retry = 0; retry <= 2; retry++) {
+              const res = await fetch(`/api/qr/download-job/${json.jobId}`);
+              if (res.ok) return res;
+              lastBody = (await res.json().catch(() => ({}))) as { code?: string; error?: string };
+              if (retry < 2 && res.status >= 500) {
+                await new Promise((r) => setTimeout(r, 1000));
+                continue;
+              }
+              break;
+            }
+            const code = lastBody.code;
+            let msg = lastBody.error || "Gagal memeriksa status job.";
+            if (code === "UNAUTHORIZED") msg = "Sesi habis. Silakan login lagi.";
+            else if (code === "NOT_FOUND") msg = "Job tidak ditemukan.";
+            else if (code === "SCHEMA") msg = "Database perlu di-update (jalankan migration). Hubungi admin.";
+            throw new Error(msg);
+          };
+
           for (let attempts = 1; attempts <= maxAttempts; attempts++) {
-            const statusRes = await fetch(`/api/qr/download-job/${json.jobId}`);
-            if (!statusRes.ok) throw new Error("Gagal memeriksa status job");
-            const data = await statusRes.json();
+            const statusRes = await fetchJobStatus();
+            const data = (await statusRes.json()) as {
+              status: string;
+              result?: {
+                download_url?: string;
+                downloadUrl?: string;
+                downloads?: Array<{
+                  download_url: string;
+                  batchIndex: number;
+                  totalBatches: number;
+                  fileCount?: number;
+                  product_title?: string;
+                  product_id?: string;
+                  rootkey?: string | null;
+                }>;
+                product_title?: string;
+                product_id?: string;
+                rootkey?: string | null;
+                total_files?: number;
+                fileCount?: number;
+              };
+              errorMessage?: string;
+              progressPercent?: number;
+              progressMessage?: string;
+            };
+
+            const list = data.result?.downloads;
+            if (Array.isArray(list) && list.length > downloadedCount) {
+              for (let i = downloadedCount; i < list.length; i++) {
+                const d = list[i];
+                const filename = `batch-${d.batchIndex}-of-${d.totalBatches}-${(name || "serticard").replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_-]/g, "")}.zip`;
+                triggerDownloadToComputer(d.download_url, filename);
+              }
+              downloadedCount = list.length;
+            }
+
             if (data.status === "COMPLETED" && data.result) {
               const r = data.result;
               const downloadUrl = r.download_url ?? r.downloadUrl;
@@ -709,7 +776,9 @@ export function QrPreviewGridGram({ batches }: Props) {
                   rootkey: r.rootkey ?? null,
                   ...(downloadUrl ? { download_url: downloadUrl } : {}),
                   total_files: r.total_files ?? r.fileCount ?? products.length,
-                  ...(Array.isArray(downloads) && downloads.length > 0 ? { downloads } : {}),
+                  ...(Array.isArray(downloads) && downloads.length > 0
+                    ? { downloads: downloads.map((d) => ({ ...d, fileCount: d.fileCount ?? 0 })) }
+                    : {}),
                 });
               }
               setZipProgress(null);

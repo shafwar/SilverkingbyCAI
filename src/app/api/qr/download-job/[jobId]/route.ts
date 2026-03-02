@@ -10,27 +10,37 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ jobId: string }> }
 ) {
-  const session = await auth();
-  if (!session || (session.user as any).role !== "ADMIN") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  try {
+    const session = await auth();
+    if (!session || (session.user as any).role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Unauthorized", code: "UNAUTHORIZED" },
+        { status: 401 }
+      );
+    }
 
-  const { jobId } = await params;
-  const id = parseInt(jobId, 10);
-  if (Number.isNaN(id) || id < 1) {
-    return NextResponse.json({ error: "Invalid jobId" }, { status: 400 });
-  }
+    const { jobId } = await params;
+    const id = parseInt(jobId, 10);
+    if (Number.isNaN(id) || id < 1) {
+      return NextResponse.json(
+        { error: "Invalid jobId", code: "INVALID_ID" },
+        { status: 400 }
+      );
+    }
 
-  const job = await prisma.qrZipDownloadJob.findUnique({
-    where: { id },
-  });
+    const job = await prisma.qrZipDownloadJob.findUnique({
+      where: { id },
+    });
 
-  if (!job) {
-    return NextResponse.json({ error: "Job not found" }, { status: 404 });
-  }
+    if (!job) {
+      return NextResponse.json(
+        { error: "Job not found", code: "NOT_FOUND" },
+        { status: 404 }
+      );
+    }
 
-  const result = job.result as Record<string, unknown> | null;
-  const payload: {
+    const result = job.result as Record<string, unknown> | null;
+    const payload: {
     jobId: number;
     status: string;
     result?: Record<string, unknown>;
@@ -48,16 +58,31 @@ export async function GET(
   if (job.status === "PROCESSING" || job.status === "PENDING") {
     payload.progressPercent = job.progressPercent ?? 0;
     payload.progressMessage = job.progressMessage ?? null;
+    // Partial result (downloads per batch) agar frontend bisa auto-download tiap batch
+    if (result && typeof result === "object" && Array.isArray((result as any).downloads)) {
+      payload.result = result as Record<string, unknown>;
+      (payload.result as any).success = true;
+    }
   }
 
   if (job.status === "COMPLETED" && result) {
-    payload.result = result;
-    // Frontend expects success, product_title, product_id, rootkey, total_files, download_url
-    payload.result.success = true;
+    payload.result = result as Record<string, unknown>;
+    (payload.result as any).success = true;
   }
   if (job.status === "FAILED" && job.errorMessage) {
     payload.errorMessage = job.errorMessage;
   }
 
   return NextResponse.json(payload);
+  } catch (e: any) {
+    console.error("[qr/download-job] GET error:", e?.message ?? e);
+    const code = e?.code === "P2021" ? "SCHEMA" : "SERVER_ERROR";
+    return NextResponse.json(
+      {
+        error: code === "SCHEMA" ? "Database schema outdated (run migrations)" : "Server error",
+        code,
+      },
+      { status: 500 }
+    );
+  }
 }

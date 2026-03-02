@@ -395,6 +395,21 @@ async function updateJobProgress(
   }
 }
 
+/** Simpan partial result ke job (setiap chunk selesai) agar frontend bisa dapat URL dan auto-download. */
+async function updateJobPartialResult(
+  jobId: number,
+  partial: { success: boolean; downloads: Array<{ batchIndex: number; totalBatches: number; download_url: string; fileCount: number; product_title: string; product_id: string; rootkey: string | null }>; total_files: number; chunked: boolean }
+): Promise<void> {
+  try {
+    await prisma.qrZipDownloadJob.update({
+      where: { id: jobId },
+      data: { result: partial as any, updatedAt: new Date() },
+    });
+  } catch (e) {
+    console.warn("[QR Multiple] updateJobPartialResult failed:", (e as Error)?.message);
+  }
+}
+
 /** Build satu ZIP dari satu slice products; dipakai untuk single ZIP atau per chunk. */
 async function buildOneZipChunk(
   validProducts: ZipGenProduct[],
@@ -710,6 +725,15 @@ async function executeZipGeneration(
         product_id: String(firstProduct?.serialCode ?? batchNum),
         rootkey: firstProduct?.rootKey != null ? String(firstProduct.rootKey).trim() : null,
       });
+      // Partial result agar frontend bisa auto-download tiap batch begitu selesai (tanpa nunggu semua)
+      if (jobId) {
+        await updateJobPartialResult(jobId, {
+          success: true,
+          downloads: [...downloads],
+          total_files: validProducts.length,
+          chunked: true,
+        });
+      }
     }
     if (jobId) await updateJobProgress(jobId, 100, "Semua batch selesai.");
     console.log(`[QR Multiple] Chunked upload done: ${downloads.length} ZIPs, ${validProducts.length} total files`);
