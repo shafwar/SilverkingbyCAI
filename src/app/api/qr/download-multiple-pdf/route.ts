@@ -561,7 +561,6 @@ async function executeZipGeneration(
     process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const internalBaseUrl = baseUrl.replace(/\/$/, "");
 
-  const hasMultipleWeights = productsByWeight.size > 1;
   const ctx: ZipChunkContext = {
     frontTemplateImage,
     backTemplateImage,
@@ -784,7 +783,7 @@ async function executeZipGeneration(
             filename,
             batchNumber: batchNum,
             fileCount: successCount,
-            failedCount: failCount,
+            failedCount: chunkResult.failCount,
             r2Key,
             zipSize: zipBuffer.length,
             message: "ZIP file generated and uploaded to R2 successfully",
