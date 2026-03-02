@@ -413,7 +413,7 @@ async function executeZipGeneration(
     // QR cache: satu fetch per serialCode (gram batch = 1 uniqCode → 1 fetch untuk semua item)
     const qrCache = new Map<string, Awaited<ReturnType<typeof loadImage>>>();
 
-    const CONCURRENCY = 6;
+    const CONCURRENCY = 4;
     const chunks: ZipGenProduct[][] = [];
     for (let i = 0; i < validProducts.length; i += CONCURRENCY) {
       chunks.push(validProducts.slice(i, i + CONCURRENCY));
@@ -626,6 +626,8 @@ async function executeZipGeneration(
           console.error(`[QR Multiple] Failed for id=${product.id}:`, r.reason?.message || r.reason);
         }
       }
+      // Yield event loop agar request polling GET /api/qr/download-job bisa terlayani (hindari "Gagal memeriksa status job")
+      await new Promise<void>((r) => setImmediate(r));
     }
 
     console.log(

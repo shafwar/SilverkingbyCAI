@@ -659,19 +659,51 @@ export function QrPreviewGridGram({ batches }: Props) {
           setZipProgress(null);
           return;
         }
-        // Background job: satu kebijakan polling untuk semua ukuran batch (hindari timeout 400/1000/1400)
+        // Background job: polling dengan retry agar server sibuk tidak langsung gagal
         if (json.jobId != null && json.status === "pending") {
           const totalFiles = products.length;
           const maxAttempts = 600; // 30 menit @ 3s
           const intervalMs = 3000;
+          const pollTimeoutMs = 25000; // 25s per request
+          const maxPollRetries = 3;
           setZipProgress({
             percent: 35,
             label: `ZIP ${totalFiles} file diproses di background (bisa beberapa menit, mohon tunggu)...`,
           });
+
+          const fetchJobStatus = async (): Promise<{ status: string; result?: any; errorMessage?: string }> => {
+            for (let r = 0; r < maxPollRetries; r++) {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), pollTimeoutMs);
+              try {
+                const statusRes = await fetch(`/api/qr/download-job/${json.jobId}`, {
+                  signal: controller.signal,
+                });
+                clearTimeout(timeoutId);
+                if (!statusRes.ok) {
+                  const text = await statusRes.text();
+                  if (r < maxPollRetries - 1) {
+                    await new Promise((res) => setTimeout(res, 2000));
+                    continue;
+                  }
+                  throw new Error(text || `Status ${statusRes.status}`);
+                }
+                return await statusRes.json();
+              } catch (err) {
+                clearTimeout(timeoutId);
+                if (r < maxPollRetries - 1) {
+                  setZipProgress((p) => (p ? { ...p, label: "Server sibuk, memeriksa lagi..." } : p));
+                  await new Promise((res) => setTimeout(res, 2000));
+                  continue;
+                }
+                throw err;
+              }
+            }
+            throw new Error("Gagal memeriksa status job setelah beberapa percobaan");
+          };
+
           for (let attempts = 1; attempts <= maxAttempts; attempts++) {
-            const statusRes = await fetch(`/api/qr/download-job/${json.jobId}`);
-            if (!statusRes.ok) throw new Error("Gagal memeriksa status job");
-            const data = await statusRes.json();
+            const data = await fetchJobStatus();
             if (data.status === "COMPLETED" && data.result) {
               const r = data.result;
               const downloadUrl = r.download_url ?? r.downloadUrl;

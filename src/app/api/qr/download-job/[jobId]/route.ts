@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+export const maxDuration = 30;
+
 /**
  * GET /api/qr/download-job/[jobId]
  * Poll status untuk background ZIP job. Return status + result ketika COMPLETED.
