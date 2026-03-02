@@ -48,18 +48,6 @@ async function isZipBlob(blob: Blob): Promise<boolean> {
   return bytes[0] === 0x50 && bytes[1] === 0x4b;
 }
 
-/** Trigger unduh file ke komputer (dari URL). Coba fetch+blob dulu; jika CORS gagal, buka tab. */
-function triggerDownloadToComputer(url: string, filename: string): void {
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.rel = "noopener noreferrer";
-  link.target = "_blank";
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-}
-
 type GramPreviewBatch = {
   batchId: number;
   name: string;
@@ -119,6 +107,8 @@ export function QrPreviewGridGram({ batches }: Props) {
     rootkey: string | null;
     download_url?: string;
     total_files: number;
+    cached?: boolean;
+    cacheKey?: string;
     /** Jika chunked: beberapa ZIP (batch 1, 2, ...) masing-masing 100 file */
     downloads?: Array<{
       batchIndex: number;
@@ -689,7 +679,11 @@ export function QrPreviewGridGram({ batches }: Props) {
             rootkey: json.rootkey ?? null,
             ...(url ? { download_url: url } : {}),
             total_files: json.total_files ?? json.fileCount ?? products.length,
-            ...(Array.isArray(downloads) && downloads.length > 0 ? { downloads } : {}),
+            cached: json.cached === true,
+            cacheKey: typeof json.cacheKey === "string" ? json.cacheKey : undefined,
+            ...(Array.isArray(downloads) && downloads.length > 0
+              ? { downloads: downloads.map((d: any) => ({ ...d, fileCount: d.fileCount ?? 0 })) }
+              : {}),
           });
           setZipProgress(null);
           return;
@@ -705,7 +699,6 @@ export function QrPreviewGridGram({ batches }: Props) {
           });
           const maxAttempts = isLargeBatch ? 480 : 120;
           const intervalMs = isLargeBatch ? 3000 : 2500;
-          let downloadedCount = 0;
 
           const fetchJobStatus = async (): Promise<Response> => {
             let lastBody: { code?: string; error?: string } = {};
@@ -754,14 +747,17 @@ export function QrPreviewGridGram({ batches }: Props) {
               progressMessage?: string;
             };
 
+            // Partial availability: tampilkan tombol download untuk batch yang sudah ready (tanpa auto-download)
             const list = data.result?.downloads;
-            if (Array.isArray(list) && list.length > downloadedCount) {
-              for (let i = downloadedCount; i < list.length; i++) {
-                const d = list[i];
-                const filename = `batch-${d.batchIndex}-of-${d.totalBatches}-${(name || "serticard").replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_-]/g, "")}.zip`;
-                triggerDownloadToComputer(d.download_url, filename);
-              }
-              downloadedCount = list.length;
+            if (Array.isArray(list) && list.length > 0) {
+              setZipDownloadResult({
+                batchId,
+                product_title: (data.result?.product_title as any) ?? name,
+                product_id: (data.result?.product_id as any) ?? String(batchId),
+                rootkey: (data.result?.rootkey as any) ?? null,
+                total_files: (data.result?.total_files as any) ?? products.length,
+                downloads: list.map((d) => ({ ...d, fileCount: d.fileCount ?? 0 })),
+              });
             }
 
             if (data.status === "COMPLETED" && data.result) {
@@ -1414,6 +1410,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                                 {zipDownloadResult.downloads && zipDownloadResult.downloads.length > 1
                                   ? ` · ${zipDownloadResult.downloads.length} batch`
                                   : ""}
+                                {zipDownloadResult.cached ? " · tersedia (cache)" : ""}
                               </p>
                               {zipDownloadResult.downloads && zipDownloadResult.downloads.length > 0 ? (
                                 <div className="space-y-2">

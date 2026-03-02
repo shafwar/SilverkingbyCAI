@@ -7,6 +7,7 @@ import { createCanvas, loadImage } from "canvas";
 import { promises as fs } from "fs";
 import path from "path";
 import { PDFDocument } from "pdf-lib";
+import { createHash } from "crypto";
 import { loadSerticardTemplates } from "@/lib/load-serticard-templates";
 import { getSerticardConfig, getFontSizeMultipliers } from "@/lib/serticard-config";
 
@@ -15,6 +16,26 @@ const ZIP_JOB_THRESHOLD = 25;
 
 /** Maksimal file per satu ZIP; jika lebih maka dipecah jadi beberapa ZIP (batch 1, 2, ...) agar cepat & aman dari timeout. */
 const ZIP_CHUNK_SIZE = 100;
+
+function buildZipCacheKey(args: {
+  batchId?: number | null;
+  validProducts: Array<{ serialCode: string; isGram?: boolean }>;
+  templateVariant: string;
+  useCustom: boolean;
+}): string {
+  const { batchId, validProducts, templateVariant, useCustom } = args;
+  const gram = validProducts.some((p) => p.isGram === true) ? 1 : 0;
+  if (batchId != null) {
+    return `gram-batch:${batchId}:tpl:${templateVariant}:custom:${useCustom ? 1 : 0}:gram:${gram}`;
+  }
+  const serials = validProducts
+    .map((p) => String(p.serialCode || "").trim().toUpperCase())
+    .filter(Boolean)
+    .sort();
+  const base = serials.join(",");
+  const hash = createHash("sha256").update(base).digest("hex").slice(0, 32);
+  return `serials:${hash}:n:${serials.length}:tpl:${templateVariant}:custom:${useCustom ? 1 : 0}:gram:${gram}`;
+}
 
 /**
  * Generate ZIP file with multiple PDFs (one PDF per QR code)
@@ -262,6 +283,26 @@ export async function POST(request: NextRequest) {
     );
     console.log(`[QR Multiple] ====== DATABASE QUERY END ======`);
 
+    // Cache key: gunakan hasil ZIP yang sudah tersimpan di R2 bila request sama
+    const cacheKey = buildZipCacheKey({
+      batchId: bodyBatchId ?? null,
+      validProducts,
+      templateVariant,
+      useCustom,
+    });
+    const cached = await prisma.qrZipDownloadCache.findUnique({ where: { cacheKey } });
+    if (cached) {
+      await prisma.qrZipDownloadCache.update({
+        where: { cacheKey },
+        data: { hitCount: { increment: 1 }, lastAccessedAt: new Date() },
+      });
+      return NextResponse.json({
+        ...(cached.result as any),
+        cached: true,
+        cacheKey,
+      });
+    }
+
     // Request besar: proses di background agar tidak kena timeout 524 (Cloudflare/origin)
     if (
       validProducts.length > ZIP_JOB_THRESHOLD &&
@@ -269,6 +310,20 @@ export async function POST(request: NextRequest) {
       Array.isArray(productsFromFrontend) &&
       productsFromFrontend.length > 0
     ) {
+      // Kalau sudah ada job untuk request yang sama, jangan render ulang.
+      const existingJob = await prisma.qrZipDownloadJob.findFirst({
+        where: { cacheKey, status: { in: ["PENDING", "PROCESSING"] } },
+        orderBy: { createdAt: "desc" },
+      });
+      if (existingJob) {
+        return NextResponse.json({
+          jobId: existingJob.id,
+          status: "pending",
+          cacheKey,
+          message: "Job ZIP sudah berjalan. Silakan tunggu / polling status.",
+        });
+      }
+
       const requestPayload = {
         products: productsFromFrontend,
         batchId: bodyBatchId,
@@ -276,10 +331,12 @@ export async function POST(request: NextRequest) {
         templateVariant,
         useCustomTemplate: useCustom,
         batchNumber: batchNumber ?? bodyBatchId ?? Math.floor(Date.now() / 1000),
+        cacheKey,
       };
       const job = await prisma.qrZipDownloadJob.create({
         data: {
           status: "PENDING",
+          cacheKey,
           requestPayload: requestPayload as any,
         },
       });
@@ -289,6 +346,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         jobId: job.id,
         status: "pending",
+        cacheKey,
         message:
           "ZIP sedang diproses di background (banyak file). Silakan polling status atau tunggu notifikasi.",
       });
@@ -304,6 +362,11 @@ export async function POST(request: NextRequest) {
     };
     const outcome = await executeZipGeneration(validProducts, zipOpts);
     if (outcome.json) {
+      await prisma.qrZipDownloadCache.upsert({
+        where: { cacheKey },
+        update: { result: outcome.json as any, lastAccessedAt: new Date(), hitCount: { increment: 1 } },
+        create: { cacheKey, result: outcome.json as any, lastAccessedAt: new Date(), hitCount: 1 },
+      });
       return NextResponse.json(outcome.json);
     }
     return new NextResponse(new Uint8Array(outcome.zip.buffer), {
@@ -944,6 +1007,7 @@ async function processZipJobInBackground(jobId: number): Promise<void> {
     useCustomTemplate?: boolean;
     batchNumber?: number;
     batchId?: number;
+    cacheKey?: string;
   };
 
   const productsData = (payload.products || []).map((p) => ({
@@ -985,6 +1049,14 @@ async function processZipJobInBackground(jobId: number): Promise<void> {
   try {
     const outcome = await executeZipGeneration(validProducts, zipOpts);
     if (outcome.json) {
+      const ck = job.cacheKey ?? payload.cacheKey;
+      if (ck) {
+        await prisma.qrZipDownloadCache.upsert({
+          where: { cacheKey: ck },
+          update: { result: outcome.json as any, lastAccessedAt: new Date(), hitCount: { increment: 1 } },
+          create: { cacheKey: ck, result: outcome.json as any, lastAccessedAt: new Date(), hitCount: 1 },
+        });
+      }
       await prisma.qrZipDownloadJob.update({
         where: { id: jobId },
         data: {

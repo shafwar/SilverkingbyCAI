@@ -280,6 +280,7 @@ model PageSection {
 model QrZipDownloadJob {
   id               Int       @id @default(autoincrement())
   status           String    // PENDING | PROCESSING | COMPLETED | FAILED
+  cacheKey         String?   // request signature to reuse existing R2 result
   requestPayload   Json      // { products, batchId, productTitle, templateVariant, useCustomTemplate }
   result           Json?     // { download_url, product_title, product_id, rootkey, total_files }
   errorMessage     String?   @db.Text
@@ -289,5 +290,19 @@ model QrZipDownloadJob {
   updatedAt        DateTime  @updatedAt
 
   @@index([status])
+  @@index([cacheKey])
+  @@index([createdAt])
+}
+
+/// Cache hasil ZIP yang sudah tersimpan di R2 agar request yang sama tidak render ulang.
+model QrZipDownloadCache {
+  id             Int      @id @default(autoincrement())
+  cacheKey        String   @unique
+  result          Json
+  hitCount        Int      @default(0)
+  lastAccessedAt  DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
   @@index([createdAt])
 }
