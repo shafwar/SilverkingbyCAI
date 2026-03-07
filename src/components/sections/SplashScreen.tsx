@@ -34,6 +34,10 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
     });
 
     const runTimeline = () => {
+      const container = containerRef.current;
+      const textEl = textRef.current;
+      if (!container || !textEl) return;
+
       gsapCtxRef.current = gsap.context(() => {
         const tl = gsap.timeline();
 
@@ -55,18 +59,18 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
         );
 
         tl.to(
-          textRef.current,
+          textEl,
           { scale: 1.015, duration: 0.3, ease: "power2.out" },
           "-=0.4"
         );
         tl.to(
-          textRef.current,
+          textEl,
           { scale: 1, duration: 0.3, ease: "power2.inOut" },
           "-=0.15"
         );
         tl.to({}, { duration: 0.3 });
         tl.to(
-          containerRef.current,
+          container,
           {
             opacity: 0,
             duration: 0.6,
@@ -80,7 +84,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
           },
           "+=0.2"
         );
-      }, containerRef.current);
+      }, container);
     };
 
     // Start animation only after fonts are ready (Geist loaded), or after timeout
