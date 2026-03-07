@@ -73,7 +73,7 @@ const FALLBACK_IMAGE_PATHS: Record<MerchandiseCategory, string[]> = {
   ],
 };
 
-/** Centered product copy: no container, powerful typography */
+/** Centered product copy: larger type, subtle gradient, no box */
 function DetailBlockCentered({
   tagline,
   description,
@@ -93,38 +93,41 @@ function DetailBlockCentered({
 }) {
   return (
     <motion.div
-      className="text-center"
+      className="relative text-center"
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.3 }}
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: index * 0.08 }}
     >
-      <p className="font-serif text-2xl font-medium tracking-tight text-luxury-gold md:text-3xl">
-        {tagline}
-      </p>
-      <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-white/85 md:text-lg">
-        {description}
-      </p>
-      {highlights && highlights.length > 0 && (
-        <div className="mt-6">
-          <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-white/50">
-            {highlightsLabel}
-          </p>
-          <ul className="mx-auto flex max-w-md flex-wrap justify-center gap-x-6 gap-y-1 text-sm text-white/80 md:gap-x-8">
-            {highlights.map((item, i) => (
-              <li key={i} className="flex items-center justify-center gap-2">
-                <span className="h-1 w-1 flex-shrink-0 rounded-full bg-luxury-gold/90" />
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      <div className="mt-6">
-        <p className="text-xs font-medium uppercase tracking-[0.2em] text-white/50">
-          {colorsLabel}
+      <div className="absolute inset-0 -inset-x-8 rounded-2xl bg-gradient-to-b from-luxury-gold/[0.06] via-transparent to-luxury-silver/[0.04] pointer-events-none" />
+      <div className="relative py-8 md:py-10">
+        <p className="font-serif text-2xl font-semibold tracking-tight text-luxury-gold md:text-3xl lg:text-4xl">
+          {tagline}
         </p>
-        <p className="mt-1.5 text-sm tracking-wide text-luxury-silver/95">{colors}</p>
+        <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-white/90 md:text-lg lg:text-xl">
+          {description}
+        </p>
+        {highlights && highlights.length > 0 && (
+          <div className="mt-8">
+            <p className="mb-4 text-xs font-medium uppercase tracking-[0.2em] text-white/60">
+              {highlightsLabel}
+            </p>
+            <ul className="mx-auto flex max-w-lg flex-wrap justify-center gap-x-8 gap-y-2 text-sm text-white/85 md:gap-x-10 md:text-base">
+              {highlights.map((item, i) => (
+                <li key={i} className="flex items-center justify-center gap-2">
+                  <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-luxury-gold/90" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <div className="mt-8">
+          <p className="text-xs font-medium uppercase tracking-[0.2em] text-white/55">
+            {colorsLabel}
+          </p>
+          <p className="mt-2 text-base tracking-wide text-luxury-silver/95 md:text-lg">{colors}</p>
+        </div>
       </div>
     </motion.div>
   );
@@ -403,7 +406,7 @@ export default function MerchandisePageClient() {
             <span className="text-luxury-gold">{t("hero.title")}</span>
           </motion.h1>
           <motion.p
-            className="mt-5 max-w-2xl text-lg font-medium leading-snug text-white/95 drop-shadow-md md:text-xl lg:text-2xl"
+            className="mt-6 max-w-2xl text-center text-lg font-semibold leading-snug text-white/95 drop-shadow-md md:text-xl lg:text-2xl"
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.65, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
@@ -411,7 +414,7 @@ export default function MerchandisePageClient() {
             {t("hero.subtitle")}
           </motion.p>
           <motion.p
-            className="mt-2 text-base tracking-wide text-luxury-silver/90 drop-shadow md:text-lg"
+            className="mt-3 text-center text-base font-medium tracking-wide text-luxury-silver/95 drop-shadow md:text-lg"
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
@@ -443,13 +446,13 @@ export default function MerchandisePageClient() {
               className="mb-20 md:mb-28"
             >
               <motion.h2
-                className="mb-8 text-2xl font-light tracking-tight text-white md:text-3xl"
+                className="mb-10 text-center text-3xl font-semibold tracking-tight text-white md:text-4xl lg:text-5xl"
                 variants={sectionVariants}
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, amount: 0.2 }}
               >
-                <span className="border-b border-luxury-gold/40 pb-2 text-luxury-gold">
+                <span className="border-b-2 border-luxury-gold/50 pb-2 text-luxury-gold">
                   {sectionTitles[category]}
                 </span>
               </motion.h2>
@@ -528,7 +531,7 @@ export default function MerchandisePageClient() {
               </div>
 
               <motion.div
-                className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4"
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, amount: 0.1 }}
@@ -540,7 +543,7 @@ export default function MerchandisePageClient() {
                     variants={cardVariants}
                     custom={0}
                     onClick={() => openAdd(category)}
-                    className="flex min-h-[280px] flex-col items-center justify-center rounded-2xl border border-dashed border-white/20 bg-white/5 text-white/60 transition hover:border-luxury-gold/50 hover:bg-white/10 hover:text-luxury-gold"
+                    className="flex min-h-[280px] flex-col items-center justify-center rounded-2xl border border-dashed border-white/20 bg-white/5 text-white/60 transition hover:border-luxury-gold/50 hover:bg-white/10 hover:text-luxury-gold sm:col-span-2 lg:col-span-1"
                   >
                     <Plus className="mb-2 h-10 w-10" />
                     <span className="text-sm">{t("cms.addCard")}</span>
@@ -550,10 +553,28 @@ export default function MerchandisePageClient() {
                   const isRealItem = typeof item.id === "number";
                   const imgUrl = typeof item.imageUrl === "string" ? item.imageUrl : resolveImageUrl(item.imageUrl);
                   const slideFromLeft = index % 2 === 0;
+                  const total = displayItems.length;
+                  const remainder = total % 4;
+                  const lastRowStart = total - (remainder === 0 ? 4 : remainder);
+                  const isInLastRow = remainder > 0 && index >= lastRowStart;
+                  const lastRowColClass =
+                    isInLastRow && remainder === 1
+                      ? "sm:col-start-2 lg:col-start-2"
+                      : isInLastRow && remainder === 2
+                        ? index === lastRowStart
+                          ? "sm:col-start-2 lg:col-start-2"
+                          : "sm:col-start-2 lg:col-start-3"
+                        : isInLastRow && remainder === 3
+                          ? index === lastRowStart
+                            ? "sm:col-start-2 lg:col-start-2"
+                            : index === lastRowStart + 1
+                              ? "sm:col-start-2 lg:col-start-3"
+                              : "sm:col-start-2 lg:col-start-4"
+                          : "";
                   return (
                     <motion.div
                       key={item.id}
-                      className="group relative overflow-hidden rounded-2xl bg-white/5"
+                      className={`group relative overflow-hidden rounded-2xl bg-white/5 ${lastRowColClass}`}
                       initial={{ opacity: 0, x: slideFromLeft ? -56 : 56 }}
                       whileInView={{ opacity: 1, x: 0 }}
                       viewport={{ once: true, amount: 0.2 }}
