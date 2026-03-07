@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import { Plus, X } from "lucide-react";
 import { usePageSections } from "@/hooks/usePageSections";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
+import { PageFooter } from "@/components/footer/PageFooter";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
@@ -345,14 +346,22 @@ export default function DistributorPageClient({
         </div>
       </section>
 
-      {/* Distributor Cards */}
+      {/* Distributor Cards – gradient section, less rigid */}
       <section
         ref={(el) => {
           sectionRefs.current[1] = el;
         }}
         className="relative pb-24 md:pb-32"
       >
-        <div className="mx-auto max-w-[1400px] px-6 md:px-8 lg:px-12">
+        <div
+          className="absolute inset-0 pointer-events-none"
+          aria-hidden
+          style={{
+            background:
+              "linear-gradient(180deg, transparent 0%, rgba(212,175,55,0.02) 30%, rgba(192,192,192,0.02) 70%, transparent 100%)",
+          }}
+        />
+        <div className="relative mx-auto max-w-[1400px] px-6 md:px-8 lg:px-12">
           <motion.div
             className="mb-10 md:mb-14 text-center font-[family-name:var(--font-distributor)]"
             variants={sectionVariants}
@@ -361,7 +370,7 @@ export default function DistributorPageClient({
             viewport={{ once: true, amount: 0.2 }}
           >
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-3 sm:gap-4">
-              <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold tracking-tight text-white">
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold tracking-tight bg-gradient-to-r from-white via-white/95 to-luxury-silver/90 bg-clip-text text-transparent">
                 {t("listTitle")}
               </h2>
               {isAdmin && (
@@ -381,7 +390,7 @@ export default function DistributorPageClient({
               {t("listSubtitle")}
             </p>
             {!loading && (
-              <p className="mt-2 text-xs uppercase tracking-widest text-white/50">
+              <p className="mt-2 text-xs uppercase tracking-widest text-luxury-gold/70">
                 {t("countDistributors", { count: distributors.length })}
               </p>
             )}
@@ -429,6 +438,8 @@ export default function DistributorPageClient({
           )}
         </div>
       </section>
+
+      <PageFooter />
 
       {/* Modal Add / Edit (admin only) – CMS unchanged */}
       <AnimatePresence>

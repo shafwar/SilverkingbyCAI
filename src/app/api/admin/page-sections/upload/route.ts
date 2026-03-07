@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     if (type === "image") {
       const buf = Buffer.from(await file.arrayBuffer());
-      // Hero sections: slightly smaller max + quality for faster load, still HD
+      // Hero sections (home, distributor, etc.): smaller max + quality for faster load, still HD
       const isHero = section.toLowerCase() === "hero";
       const maxW = isHero ? 1600 : IMAGE_MAX_WIDTH;
       const quality = isHero ? 85 : IMAGE_QUALITY;

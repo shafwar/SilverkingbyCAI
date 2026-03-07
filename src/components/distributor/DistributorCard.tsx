@@ -55,10 +55,27 @@ export function DistributorCard({
       whileInView="animate"
       viewport={{ once: true, amount: 0.2 }}
       custom={index}
-      className="relative w-full max-w-[380px] rounded-2xl border border-white/10 bg-white/[0.04] p-6 md:p-8 shadow-lg shadow-black/20 transition-all duration-300 hover:border-white/20 hover:bg-white/[0.06] hover:shadow-xl hover:shadow-luxury-gold/5 flex flex-col"
+      className="group relative w-full max-w-[380px] rounded-2xl flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-luxury-gold/10"
     >
+      {/* Glamorous gradient border + soft inner gradient */}
+      <div
+        className="absolute inset-0 rounded-2xl p-[1px] transition-opacity duration-300 group-hover:opacity-100"
+        style={{
+          background: "linear-gradient(135deg, rgba(212,175,55,0.25) 0%, rgba(192,192,192,0.12) 50%, rgba(212,175,55,0.15) 100%)",
+          opacity: 0.9,
+        }}
+      >
+        <div className="absolute inset-[1px] rounded-2xl bg-luxury-black/95" />
+      </div>
+      <div
+        className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+        style={{
+          background: "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(212,175,55,0.06) 0%, transparent 60%)",
+        }}
+      />
+      <div className="relative flex flex-col flex-1 p-6 md:p-8 z-10">
       <div className="flex items-center justify-between gap-2 mb-4">
-        <span className="rounded-full bg-luxury-gold/15 px-3 py-1 text-xs font-medium text-luxury-gold border border-luxury-gold/30">
+        <span className="rounded-full bg-gradient-to-r from-luxury-gold/20 to-luxury-gold/10 px-3 py-1 text-xs font-medium text-luxury-gold border border-luxury-gold/30">
           {d.city}
         </span>
         <div className="flex items-center gap-2">
@@ -111,7 +128,7 @@ export function DistributorCard({
       <div className="mt-6 pt-4 border-t border-white/10 flex flex-wrap gap-2">
         <a
           href={`tel:${d.phone.replace(/\s/g, "")}`}
-          className="inline-flex items-center gap-2 rounded-full border border-luxury-gold/40 bg-luxury-gold/10 px-4 py-2 text-xs font-medium text-luxury-gold hover:bg-luxury-gold/20 transition-colors"
+          className="inline-flex items-center gap-2 rounded-full border border-luxury-gold/40 bg-gradient-to-r from-luxury-gold/15 to-luxury-gold/5 px-4 py-2 text-xs font-medium text-luxury-gold hover:from-luxury-gold/25 hover:to-luxury-gold/10 transition-all duration-300"
         >
           <Phone className="h-3.5 w-3.5" />
           {t("card.contact")}
@@ -121,12 +138,13 @@ export function DistributorCard({
             href={d.mapLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-xs font-medium text-white/80 hover:border-white/40 hover:text-white transition-colors"
+            className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-xs font-medium text-white/80 hover:border-luxury-gold/40 hover:text-luxury-gold/90 transition-colors duration-300"
           >
             <ExternalLink className="h-3.5 w-3.5" />
             {t("card.viewMap")}
           </a>
         )}
+      </div>
       </div>
     </motion.article>
   );
