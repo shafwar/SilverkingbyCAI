@@ -282,24 +282,26 @@ export default function DistributorPageClient({
         editLabel="Edit photo"
       />
 
-      {/* Hero Section – min-h-screen, left-aligned, powerful typography */}
+      {/* Hero Section – min-h-screen, left-aligned, no inner scroll on text */}
       <section className="relative flex min-h-screen items-center justify-start overflow-hidden">
-        <div className="relative z-20 w-full text-left pl-4 sm:pl-6 md:pl-8 lg:pl-12 xl:pl-16 2xl:pl-20 pr-4 sm:pr-6 md:pr-8 lg:pr-12">
+        <div className="relative z-20 w-full text-left pl-4 sm:pl-6 md:pl-8 lg:pl-12 xl:pl-16 2xl:pl-20 pr-4 sm:pr-6 md:pr-8 lg:pr-12 overflow-visible">
           <motion.div
             variants={revealVariants}
             initial="initial"
             animate="animate"
-            className="space-y-6 sm:space-y-8 max-w-4xl font-[family-name:var(--font-distributor)]"
+            className="space-y-6 sm:space-y-8 max-w-4xl font-[family-name:var(--font-distributor)] overflow-visible"
           >
             <motion.h1
               variants={revealVariants}
-              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold leading-[1.08] tracking-tight text-white drop-shadow-[0_2px_24px_rgba(0,0,0,0.5)]"
+              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold leading-[1.08] tracking-tight drop-shadow-[0_2px_24px_rgba(0,0,0,0.5)]"
             >
-              <span className="text-white">{t("hero.title")}</span>
+              <span className="bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent">
+                {t("hero.title")}
+              </span>
             </motion.h1>
             <motion.p
               variants={revealVariants}
-              className="text-lg sm:text-xl md:text-2xl font-medium leading-relaxed text-white/95 max-w-2xl drop-shadow-[0_1px_12px_rgba(0,0,0,0.4)]"
+              className="text-lg sm:text-xl md:text-2xl font-medium leading-relaxed text-white/95 max-w-2xl drop-shadow-[0_1px_12px_rgba(0,0,0,0.4)] overflow-visible"
             >
               {t("hero.subtitle")}
             </motion.p>
@@ -314,24 +316,31 @@ export default function DistributorPageClient({
         </div>
       </section>
 
-      {/* Description Section */}
+      {/* Description Section – merchandise-style: gradient, tagline, no scroll */}
       <section
         ref={(el) => {
           sectionRefs.current[0] = el;
         }}
-        className="relative py-16 md:py-24"
+        className="relative py-16 md:py-24 overflow-visible"
       >
         <div className="mx-auto max-w-[1400px] px-6 md:px-8 lg:px-12">
           <motion.div
-            className="max-w-3xl mx-auto text-center font-[family-name:var(--font-distributor)]"
+            className="relative max-w-3xl mx-auto text-center font-[family-name:var(--font-distributor)] overflow-visible"
             variants={sectionVariants}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, amount: 0.25 }}
           >
-            <p className="text-white/90 text-base md:text-lg lg:text-xl leading-relaxed">
-              {t("description")}
-            </p>
+            <div className="absolute inset-0 -inset-x-8 rounded-2xl bg-gradient-to-b from-luxury-gold/[0.06] via-transparent to-luxury-silver/[0.04] pointer-events-none" />
+            <div className="relative py-8 md:py-10">
+              <p className="text-2xl font-semibold tracking-tight text-luxury-gold md:text-3xl lg:text-4xl">
+                {t("hero.subtitle")}
+              </p>
+              <p className="mt-5 text-base leading-relaxed text-white/90 md:text-lg lg:text-xl max-w-2xl mx-auto">
+                {t("description")}
+              </p>
+              <div className="mt-8 mx-auto w-32 md:w-40 h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+            </div>
           </motion.div>
         </div>
       </section>
