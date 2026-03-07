@@ -84,8 +84,12 @@ export async function POST(request: NextRequest) {
 
     if (type === "image") {
       const buf = Buffer.from(await file.arrayBuffer());
+      // Hero sections: slightly smaller max + quality for faster load, still HD
+      const isHero = section.toLowerCase() === "hero";
+      const maxW = isHero ? 1600 : IMAGE_MAX_WIDTH;
+      const quality = isHero ? 85 : IMAGE_QUALITY;
       const pipeline = sharp(buf, { limitInputPixels: IMAGE_MAX_PIXELS })
-        .resize(IMAGE_MAX_WIDTH, undefined, { withoutEnlargement: true })
+        .resize(maxW, undefined, { withoutEnlargement: true })
         .rotate(); // auto-orient from EXIF
       const outFormat = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpeg";
       const ext = outFormat === "png" ? "png" : outFormat === "webp" ? "webp" : "jpg";
@@ -94,8 +98,8 @@ export async function POST(request: NextRequest) {
         outFormat === "png"
           ? await pipeline.png({ compressionLevel: 4 }).toBuffer() // 4 = faster than 6, minimal size diff
           : outFormat === "webp"
-            ? await pipeline.webp({ quality: IMAGE_QUALITY }).toBuffer()
-            : await pipeline.jpeg({ quality: IMAGE_QUALITY, mozjpeg: true }).toBuffer();
+            ? await pipeline.webp({ quality }).toBuffer()
+            : await pipeline.jpeg({ quality, mozjpeg: true }).toBuffer();
       const contentType = outFormat === "png" ? "image/png" : outFormat === "webp" ? "image/webp" : "image/jpeg";
       url = await uploadToR2(key, outBuf, contentType, {
         originalName: file.name,

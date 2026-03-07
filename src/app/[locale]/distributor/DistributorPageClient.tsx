@@ -1,24 +1,46 @@
 "use client";
 
+import { useRef, useCallback, useEffect, useState } from "react";
 import Navbar from "@/components/layout/Navbar";
 import { DistributorCard, type DistributorItem } from "@/components/distributor/DistributorCard";
 import { DistributorForm } from "@/components/admin/DistributorForm";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
-import { motion, type Variants } from "framer-motion";
-import { useCallback, useEffect, useState } from "react";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Plus, X } from "lucide-react";
 import { usePageSections } from "@/hooks/usePageSections";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useGSAP } from "@gsap/react";
+import { Plus_Jakarta_Sans } from "next/font/google";
+
+gsap.registerPlugin(ScrollTrigger);
+
+const fontDistributor = Plus_Jakarta_Sans({
+  weight: ["400", "500", "600", "700", "800"],
+  subsets: ["latin"],
+  variable: "--font-distributor",
+  display: "swap",
+});
 
 const HERO_FALLBACK_PATH = "/images/hero-fallback.jpg";
 
 const revealVariants: Variants = {
-  initial: { opacity: 0, y: 40 },
+  initial: { opacity: 0, y: 48 },
   animate: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, ease: "easeOut", staggerChildren: 0.15 },
+    transition: { duration: 0.75, ease: [0.22, 1, 0.36, 1], staggerChildren: 0.12, delayChildren: 0.08 },
+  },
+};
+
+const sectionVariants: Variants = {
+  hidden: { opacity: 0, y: 40 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] },
   },
 };
 
@@ -32,20 +54,24 @@ export default function DistributorPageClient({
   heroImageUrl: initialHeroImageUrl,
 }: DistributorPageClientProps) {
   const t = useTranslations("distributor");
-  const [distributors, setDistributors] = useState<DistributorItem[]>(
-    initialDistributors
-  );
+  const [distributors, setDistributors] = useState<DistributorItem[]>(initialDistributors);
   const [loading, setLoading] = useState(initialDistributors.length === 0);
   const [heroImageError, setHeroImageError] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
-  const { sections: pageSections, loading: sectionsLoading, refetch: refetchPageSections } = usePageSections("distributor");
+  const {
+    sections: pageSections,
+    loading: sectionsLoading,
+    refetch: refetchPageSections,
+  } = usePageSections("distributor");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "IMAGE";
   const displayHeroUrl = heroImageError
     ? HERO_FALLBACK_PATH
     : (pageSections.hero?.url ?? initialHeroImageUrl);
   const [editing, setEditing] = useState<DistributorItem | null>(null);
   const [saving, setSaving] = useState(false);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const sectionRefs = useRef<(HTMLElement | null)[]>([]);
 
   const refetchDistributors = useCallback(async () => {
     try {
@@ -106,6 +132,36 @@ export default function DistributorPageClient({
     };
   }, []);
 
+  useGSAP(
+    () => {
+      if (!pageRef.current) return;
+      const sections = sectionRefs.current.filter(Boolean);
+      const ctx = gsap.context(() => {
+        sections.forEach((el) => {
+          if (!el) return;
+          gsap.fromTo(
+            el,
+            { opacity: 0, y: 56 },
+            {
+              opacity: 1,
+              y: 0,
+              duration: 0.8,
+              ease: "power3.out",
+              scrollTrigger: {
+                trigger: el,
+                start: "top 82%",
+                end: "top 55%",
+                scrub: 0.6,
+              },
+            }
+          );
+        });
+      }, pageRef);
+      return () => ctx.revert();
+    },
+    [distributors.length, loading]
+  );
+
   const openAdd = () => {
     setEditing(null);
     setModalOpen(true);
@@ -134,7 +190,13 @@ export default function DistributorPageClient({
       mapLink: String(formData.get("mapLink") ?? "").trim() || null,
       status: formData.get("status") === "INACTIVE" ? "INACTIVE" : "ACTIVE",
     };
-    if (!payload.distributorName || !payload.storeName || !payload.address || !payload.city || !payload.phone) {
+    if (
+      !payload.distributorName ||
+      !payload.storeName ||
+      !payload.address ||
+      !payload.city ||
+      !payload.phone
+    ) {
       return;
     }
     setSaving(true);
@@ -160,7 +222,10 @@ export default function DistributorPageClient({
   };
 
   return (
-    <div className="min-h-screen bg-luxury-black text-white selection:bg-luxury-gold/20 selection:text-white">
+    <div
+      ref={pageRef}
+      className={`min-h-screen w-full max-w-full overflow-x-hidden bg-luxury-black text-white selection:bg-luxury-gold/20 selection:text-white ${fontDistributor.variable}`}
+    >
       {/* Hero background: selalu gambar public/images/DSC02998.JPG (via R2 atau path lokal) */}
       <div
         className="fixed inset-0 z-0 w-screen h-screen overflow-hidden"
@@ -217,22 +282,24 @@ export default function DistributorPageClient({
         editLabel="Edit photo"
       />
 
-      {/* Hero Section – same height and layout as Products (min-h-screen, left-aligned) */}
+      {/* Hero Section – min-h-screen, left-aligned, powerful typography */}
       <section className="relative flex min-h-screen items-center justify-start overflow-hidden">
         <div className="relative z-20 w-full text-left pl-4 sm:pl-6 md:pl-8 lg:pl-12 xl:pl-16 2xl:pl-20 pr-4 sm:pr-6 md:pr-8 lg:pr-12">
           <motion.div
             variants={revealVariants}
             initial="initial"
             animate="animate"
-            className="space-y-6 sm:space-y-8 max-w-4xl"
+            className="space-y-6 sm:space-y-8 max-w-4xl font-[family-name:var(--font-distributor)]"
           >
             <motion.h1
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-semibold md:font-bold leading-[1.1] tracking-tight text-white drop-shadow-sm"
+              variants={revealVariants}
+              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold leading-[1.08] tracking-tight text-white drop-shadow-[0_2px_24px_rgba(0,0,0,0.5)]"
             >
               <span className="text-white">{t("hero.title")}</span>
             </motion.h1>
             <motion.p
-              className="text-base sm:text-lg md:text-xl font-sans font-light leading-relaxed text-luxury-silver/90 max-w-2xl"
+              variants={revealVariants}
+              className="text-lg sm:text-xl md:text-2xl font-medium leading-relaxed text-white/95 max-w-2xl drop-shadow-[0_1px_12px_rgba(0,0,0,0.4)]"
             >
               {t("hero.subtitle")}
             </motion.p>
@@ -248,16 +315,21 @@ export default function DistributorPageClient({
       </section>
 
       {/* Description Section */}
-      <section className="relative py-12 md:py-16">
+      <section
+        ref={(el) => {
+          sectionRefs.current[0] = el;
+        }}
+        className="relative py-16 md:py-24"
+      >
         <div className="mx-auto max-w-[1400px] px-6 md:px-8 lg:px-12">
           <motion.div
-            className="max-w-3xl mx-auto text-center"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.6 }}
+            className="max-w-3xl mx-auto text-center font-[family-name:var(--font-distributor)]"
+            variants={sectionVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.25 }}
           >
-            <p className="text-white/80 text-base md:text-lg leading-relaxed">
+            <p className="text-white/90 text-base md:text-lg lg:text-xl leading-relaxed">
               {t("description")}
             </p>
           </motion.div>
@@ -265,23 +337,29 @@ export default function DistributorPageClient({
       </section>
 
       {/* Distributor Cards */}
-      <section className="relative pb-20 md:pb-28">
+      <section
+        ref={(el) => {
+          sectionRefs.current[1] = el;
+        }}
+        className="relative pb-24 md:pb-32"
+      >
         <div className="mx-auto max-w-[1400px] px-6 md:px-8 lg:px-12">
           <motion.div
-            className="mb-8 md:mb-12 text-center"
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            className="mb-10 md:mb-14 text-center font-[family-name:var(--font-distributor)]"
+            variants={sectionVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
           >
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-3 sm:gap-4">
-              <h2 className="text-xl md:text-2xl font-light text-white">
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold tracking-tight text-white">
                 {t("listTitle")}
               </h2>
               {isAdmin && (
                 <button
                   type="button"
                   onClick={openAdd}
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-luxury-gold/40 bg-luxury-gold/10 px-4 py-2 text-sm font-medium text-luxury-gold hover:bg-luxury-gold/20 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-luxury-gold/50 bg-luxury-gold/15 px-5 py-2.5 text-sm font-medium text-luxury-gold hover:bg-luxury-gold/25 hover:border-luxury-gold/60 transition-colors"
                   title={t("addDistributor")}
                   aria-label={t("addDistributor")}
                 >
@@ -290,11 +368,11 @@ export default function DistributorPageClient({
                 </button>
               )}
             </div>
-            <p className="mt-2 text-sm md:text-base text-white/60 max-w-2xl mx-auto">
+            <p className="mt-3 text-base md:text-lg text-white/70 max-w-2xl mx-auto">
               {t("listSubtitle")}
             </p>
             {!loading && (
-              <p className="mt-1 text-xs uppercase tracking-widest text-white/40">
+              <p className="mt-2 text-xs uppercase tracking-widest text-white/50">
                 {t("countDistributors", { count: distributors.length })}
               </p>
             )}
@@ -310,16 +388,17 @@ export default function DistributorPageClient({
             </div>
           ) : distributors.length === 0 ? (
             <motion.div
-              className="text-center py-16 rounded-2xl border border-white/10 bg-white/[0.02]"
+              className="text-center py-20 rounded-2xl border border-white/10 bg-white/[0.03]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
             >
-              <p className="text-lg text-white/50">{t("noDistributors")}</p>
+              <p className="text-lg text-white/60">{t("noDistributors")}</p>
               {isAdmin && (
                 <button
                   type="button"
                   onClick={openAdd}
-                  className="mt-4 inline-flex items-center gap-2 rounded-full border border-luxury-gold/40 bg-luxury-gold/10 px-4 py-2 text-sm font-medium text-luxury-gold hover:bg-luxury-gold/20 transition-colors"
+                  className="mt-6 inline-flex items-center gap-2 rounded-full border border-luxury-gold/50 bg-luxury-gold/15 px-5 py-2.5 text-sm font-medium text-luxury-gold hover:bg-luxury-gold/25 transition-colors"
                 >
                   <Plus className="h-5 w-5" />
                   {t("addDistributor")}
@@ -342,38 +421,48 @@ export default function DistributorPageClient({
         </div>
       </section>
 
-      {/* Modal Add / Edit (admin only) – posisi agak ke bawah agar lebih nyaman */}
-      {modalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 pt-24 sm:pt-28"
-          onClick={closeModal}
-        >
-          <div
-            className="w-full max-w-lg rounded-2xl border border-white/15 bg-[#0a0a0a] p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
+      {/* Modal Add / Edit (admin only) – CMS unchanged */}
+      <AnimatePresence>
+        {modalOpen && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 pt-24 sm:pt-28"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={closeModal}
           >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-white">
-                {editing ? t("card.edit") : t("addDistributor")}
-              </h2>
-              <button
-                type="button"
-                onClick={closeModal}
-                className="rounded-full p-2 text-white/60 hover:text-white hover:bg-white/10 transition"
-                aria-label="Close"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <DistributorForm
-              defaultValues={editing}
-              onSubmit={handleSubmit}
-              onCancel={closeModal}
-              saving={saving}
-            />
-          </div>
-        </div>
-      )}
+            <motion.div
+              className="w-full max-w-lg rounded-2xl border border-white/15 bg-gradient-to-b from-[#111] to-[#0a0a0a] p-6 shadow-2xl"
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-white font-[family-name:var(--font-distributor)]">
+                  {editing ? t("card.edit") : t("addDistributor")}
+                </h2>
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="rounded-full p-2 text-white/60 hover:text-white hover:bg-white/10 transition"
+                  aria-label="Close"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <DistributorForm
+                defaultValues={editing}
+                onSubmit={handleSubmit}
+                onCancel={closeModal}
+                saving={saving}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
