@@ -282,14 +282,14 @@ export default function DistributorPageClient({
         editLabel="Edit photo"
       />
 
-      {/* Hero Section – min-h-screen, left-aligned, no inner scroll on text */}
-      <section className="relative flex min-h-screen items-center justify-start overflow-hidden">
-        <div className="relative z-20 w-full text-left pl-4 sm:pl-6 md:pl-8 lg:pl-12 xl:pl-16 2xl:pl-20 pr-4 sm:pr-6 md:pr-8 lg:pr-12 overflow-visible">
+      {/* Hero Section – fixed height, no scroll: deskripsi stay still */}
+      <section className="relative flex h-screen min-h-0 flex-col justify-end overflow-hidden">
+        <div className="relative z-20 w-full flex-1 flex items-end text-left pl-4 sm:pl-6 md:pl-8 lg:pl-12 xl:pl-16 2xl:pl-20 pr-4 sm:pr-6 md:pr-8 lg:pr-12 pb-24 overflow-hidden">
           <motion.div
             variants={revealVariants}
             initial="initial"
             animate="animate"
-            className="space-y-6 sm:space-y-8 max-w-4xl font-[family-name:var(--font-distributor)] overflow-visible"
+            className="space-y-4 sm:space-y-6 max-w-4xl font-[family-name:var(--font-distributor)] overflow-hidden min-h-0"
           >
             <motion.h1
               variants={revealVariants}
@@ -301,7 +301,7 @@ export default function DistributorPageClient({
             </motion.h1>
             <motion.p
               variants={revealVariants}
-              className="text-lg sm:text-xl md:text-2xl font-medium leading-relaxed text-white/95 max-w-2xl drop-shadow-[0_1px_12px_rgba(0,0,0,0.4)] overflow-visible"
+              className="text-lg sm:text-xl md:text-2xl font-medium leading-relaxed text-white/95 max-w-2xl drop-shadow-[0_1px_12px_rgba(0,0,0,0.4)]"
             >
               {t("hero.subtitle")}
             </motion.p>
@@ -309,7 +309,7 @@ export default function DistributorPageClient({
         </div>
 
         {/* Scroll indicator – same as Products */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-3 pointer-events-none">
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-3 pointer-events-none shrink-0">
           <div className="relative w-5 h-8 border border-white/50 rounded-full flex items-start justify-center pt-2.5">
             <div className="w-1 h-1.5 bg-white/70 rounded-full" />
           </div>
