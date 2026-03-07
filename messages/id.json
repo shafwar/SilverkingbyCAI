@@ -308,6 +308,51 @@
       "tshirtCap": "T-Shirt & Topi",
       "knitware": "Knitware"
     },
+    "detail": {
+      "knitware": {
+        "tagline": "Clean look. Sharp fit. Serious presence.",
+        "description": "Detail half-zip di bagian leher memberi kesan modern dan versatile — bisa dipakai full zip untuk look yang lebih neat, atau sedikit terbuka untuk vibe yang lebih relaxed.",
+        "highlights": [
+          "Bahan nyaman dan breathable",
+          "Cutting slim yang membentuk badan",
+          "Look clean & elegan",
+          "Mudah dipadukan dengan celana formal atau semi-casual"
+        ],
+        "colorsLabel": "Warna Tersedia",
+        "colors": "Hitam • Putih • Abu-abu • Navy"
+      },
+      "polo": {
+        "tagline": "The polo that hits different.",
+        "description": "Detail pada collar dan finishing di bagian lengan memberi sentuhan eksklusif.",
+        "highlights": [
+          "Bahan adem & nyaman dipakai seharian",
+          "Fit yang clean dan maskulin",
+          "Detail collar premium",
+          "Easy mix & match"
+        ],
+        "colorsLabel": "Warna Tersedia",
+        "colors": "Hitam • Putih • Abu-abu • Navy"
+      },
+      "tshirt": {
+        "tagline": "Basic, but make it premium.",
+        "description": "T-shirt ini didesain dengan potongan yang pas di badan dan bahan yang nyaman. Logo minimalis memberi kesan clean dan premium tanpa terlihat berlebihan.",
+        "highlights": [
+          "Bahan lembut & breathable",
+          "Potongan fit dan proporsional",
+          "Desain minimalis & modern",
+          "Daily wear friendly"
+        ],
+        "colorsLabel": "Warna Tersedia",
+        "colors": "Hitam • Putih • Abu-abu • Navy"
+      },
+      "cap": {
+        "tagline": "Finishing touch that changes the game.",
+        "description": "Clean embroidery. Perfect shape. Daily essential.",
+        "colorsLabel": "Warna Tersedia",
+        "colors": "Hitam & Putih"
+      },
+      "highlightsLabel": "Highlight"
+    },
     "cms": {
       "addCard": "Tambah kartu",
       "editCard": "Edit kartu",

@@ -53,6 +53,63 @@ const cardVariants: Variants = {
 
 const CATEGORY_ORDER: MerchandiseCategory[] = ["polo", "tshirt_cap", "knitware"];
 
+/** Renders one product-detail block: tagline, description, highlights, colors */
+function DetailBlock({
+  tagline,
+  description,
+  highlights,
+  highlightsLabel,
+  colorsLabel,
+  colors,
+  index = 0,
+}: {
+  tagline: string;
+  description: string;
+  highlights?: string[];
+  highlightsLabel: string;
+  colorsLabel: string;
+  colors: string;
+  index?: number;
+}) {
+  return (
+    <motion.div
+      className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-transparent p-6 md:p-8 backdrop-blur-sm"
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: index * 0.1 }}
+    >
+      <p className="text-lg font-medium tracking-tight text-luxury-gold md:text-xl">
+        {tagline}
+      </p>
+      <p className="mt-3 text-sm leading-relaxed text-white/80 md:text-base">
+        {description}
+      </p>
+      {highlights && highlights.length > 0 && (
+        <div className="mt-5">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-white/50">
+            {highlightsLabel}
+          </p>
+          <ul className="space-y-1.5 text-sm text-white/75">
+            {highlights.map((item, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-luxury-gold/80" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div className="mt-5 pt-4 border-t border-white/10">
+        <p className="text-xs font-medium uppercase tracking-wider text-white/50">
+          {colorsLabel}
+        </p>
+        <p className="mt-1 text-sm text-luxury-silver/90">{colors}</p>
+      </div>
+    </motion.div>
+  );
+}
+
 function resolveImageUrl(url: string): string {
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
   const path = url.startsWith("/") ? url : `/${url}`;
@@ -296,7 +353,7 @@ export default function MerchandisePageClient() {
               className="mb-20 md:mb-28"
             >
               <motion.h2
-                className="mb-10 text-2xl font-light tracking-tight text-white md:text-3xl"
+                className="mb-8 text-2xl font-light tracking-tight text-white md:text-3xl"
                 variants={sectionVariants}
                 initial="hidden"
                 whileInView="visible"
@@ -306,6 +363,51 @@ export default function MerchandisePageClient() {
                   {sectionTitles[category]}
                 </span>
               </motion.h2>
+
+              {/* Section copy: tagline, description, highlights, colors */}
+              <div className="mb-10 grid gap-6 md:grid-cols-1 lg:grid-cols-2">
+                {category === "polo" && (
+                  <DetailBlock
+                    tagline={t("detail.polo.tagline")}
+                    description={t("detail.polo.description")}
+                    highlights={(t.raw("detail.polo.highlights") as string[]) ?? []}
+                    highlightsLabel={t("detail.highlightsLabel")}
+                    colorsLabel={t("detail.polo.colorsLabel")}
+                    colors={t("detail.polo.colors")}
+                  />
+                )}
+                {category === "knitware" && (
+                  <DetailBlock
+                    tagline={t("detail.knitware.tagline")}
+                    description={t("detail.knitware.description")}
+                    highlights={(t.raw("detail.knitware.highlights") as string[]) ?? []}
+                    highlightsLabel={t("detail.highlightsLabel")}
+                    colorsLabel={t("detail.knitware.colorsLabel")}
+                    colors={t("detail.knitware.colors")}
+                  />
+                )}
+                {category === "tshirt_cap" && (
+                  <>
+                    <DetailBlock
+                      tagline={t("detail.tshirt.tagline")}
+                      description={t("detail.tshirt.description")}
+                      highlights={(t.raw("detail.tshirt.highlights") as string[]) ?? []}
+                      highlightsLabel={t("detail.highlightsLabel")}
+                      colorsLabel={t("detail.tshirt.colorsLabel")}
+                      colors={t("detail.tshirt.colors")}
+                      index={0}
+                    />
+                    <DetailBlock
+                      tagline={t("detail.cap.tagline")}
+                      description={t("detail.cap.description")}
+                      highlightsLabel={t("detail.highlightsLabel")}
+                      colorsLabel={t("detail.cap.colorsLabel")}
+                      colors={t("detail.cap.colors")}
+                      index={1}
+                    />
+                  </>
+                )}
+              </div>
 
               <motion.div
                 className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"

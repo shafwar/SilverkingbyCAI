@@ -308,6 +308,51 @@
       "tshirtCap": "T-Shirt & Cap",
       "knitware": "Knitware"
     },
+    "detail": {
+      "knitware": {
+        "tagline": "Clean look. Sharp fit. Serious presence.",
+        "description": "The half-zip at the neck adds a modern, versatile touch — wear it fully zipped for a neater look, or slightly open for a more relaxed vibe.",
+        "highlights": [
+          "Comfortable, breathable fabric",
+          "Slim cut that flatters the body",
+          "Clean & elegant look",
+          "Pairs easily with formal or semi-casual trousers"
+        ],
+        "colorsLabel": "Available Colors",
+        "colors": "Black • White • Grey • Navy"
+      },
+      "polo": {
+        "tagline": "The polo that hits different.",
+        "description": "Refined collar and sleeve finishing for an exclusive touch.",
+        "highlights": [
+          "Cool, comfortable for all-day wear",
+          "Clean, masculine fit",
+          "Premium collar detail",
+          "Easy mix & match"
+        ],
+        "colorsLabel": "Available Colors",
+        "colors": "Black • White • Grey • Navy"
+      },
+      "tshirt": {
+        "tagline": "Basic, but make it premium.",
+        "description": "Designed with a flattering fit and comfortable fabric. Minimalist logo for a clean, premium look without going overboard.",
+        "highlights": [
+          "Soft, breathable fabric",
+          "Fit, proportional cut",
+          "Minimalist & modern design",
+          "Daily wear friendly"
+        ],
+        "colorsLabel": "Available Colors",
+        "colors": "Black • White • Grey • Navy"
+      },
+      "cap": {
+        "tagline": "Finishing touch that changes the game.",
+        "description": "Clean embroidery. Perfect shape. Daily essential.",
+        "colorsLabel": "Available Colors",
+        "colors": "Black & White"
+      },
+      "highlightsLabel": "Highlights"
+    },
     "cms": {
       "addCard": "Add card",
       "editCard": "Edit card",
