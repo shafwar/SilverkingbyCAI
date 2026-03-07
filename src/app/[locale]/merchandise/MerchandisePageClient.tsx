@@ -195,11 +195,13 @@ export default function MerchandisePageClient() {
     return [raw[1], raw[0], ...raw.slice(2)];
   }, [byCategory]);
 
+  /** Hero image carousel: transition every 6 seconds */
+  const HERO_INTERVAL_MS = 6000;
   useEffect(() => {
     if (heroImageUrls.length <= 1) return;
     const t = setInterval(() => {
       setHeroIndex((i) => (i + 1) % heroImageUrls.length);
-    }, 4500);
+    }, HERO_INTERVAL_MS);
     return () => clearInterval(t);
   }, [heroImageUrls.length]);
 
@@ -381,26 +383,31 @@ export default function MerchandisePageClient() {
   const modalCategory = editing?.category ?? addingCategory;
 
   return (
-    <div ref={pageRef} className={`min-h-screen bg-luxury-black ${fontMerch.variable}`}>
+    <div
+      ref={pageRef}
+      className={`min-h-screen w-full max-w-full overflow-x-hidden bg-luxury-black ${fontMerch.variable}`}
+    >
       <Navbar />
 
-      {/* Hero with smooth transitioning merchandise images */}
+      {/* Hero with smooth transitioning merchandise images — GPU layer + crossfade to avoid mobile flicker */}
       <section className="relative min-h-[70vh] overflow-hidden pt-20">
         {heroImageUrls.length > 0 && (
-          <div className="absolute inset-0">
-            <AnimatePresence mode="wait" initial={false}>
+          <div className="absolute inset-0 overflow-hidden">
+            <AnimatePresence initial={false}>
               <motion.div
                 key={heroIndex}
-                className="absolute inset-0"
+                className="absolute inset-0 origin-center"
+                style={{ backfaceVisibility: "hidden", willChange: "transform" }}
                 initial={{ opacity: 0, scale: 1.02 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.03 }}
+                exit={{ opacity: 0, scale: 1.02 }}
                 transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
               >
                 <motion.div
-                  className="absolute inset-0"
-                  animate={{ scale: 1.04 }}
-                  transition={{ duration: 4.5, ease: "linear" }}
+                  className="absolute inset-0 origin-center"
+                  style={{ backfaceVisibility: "hidden" }}
+                  animate={{ scale: 1.05 }}
+                  transition={{ duration: 6, ease: "linear" }}
                 >
                   <Image
                     src={heroImageUrls[heroIndex]}

@@ -52,7 +52,7 @@ export default async function LocaleLayout({
   // Font: same as root layout — GeistSans.variable + className; content uses font-sans (var(--font-geist-sans))
   return (
     <html lang={locale} className={`${GeistSans.variable} ${playfair.variable}`}>
-      <body className={`${GeistSans.className} antialiased`}>
+      <body className={`${GeistSans.className} antialiased overflow-x-hidden`}>
         <GoogleAnalytics />
         <StructuredData type="Organization" locale={locale} />
         <NextIntlClientProvider messages={messages}>
