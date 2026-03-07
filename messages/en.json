@@ -379,6 +379,7 @@
       "cancel": "Cancel",
       "save": "Save",
       "saving": "Saving...",
+      "uploadingProgress": "Compressing & uploading... {percent}%",
       "confirmDelete": "Delete this item? This cannot be undone."
     }
   },

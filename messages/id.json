@@ -379,6 +379,7 @@
       "cancel": "Batal",
       "save": "Simpan",
       "saving": "Menyimpan...",
+      "uploadingProgress": "Mengompres & mengunggah... {percent}%",
       "confirmDelete": "Hapus item ini? Tindakan tidak dapat dibatalkan."
     }
   },

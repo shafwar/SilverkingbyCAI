@@ -177,7 +177,10 @@ export default function MerchandisePageClient() {
   const [addingCategory, setAddingCategory] = useState<MerchandiseCategory | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const addCategoryRef = useRef<MerchandiseCategory | null>(null);
+  const addFileInputRef = useRef<HTMLInputElement>(null);
   const [isMounted, setIsMounted] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
 
@@ -208,6 +211,15 @@ export default function MerchandisePageClient() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  /** When Edit modal opens, auto-open file picker so admin can replace image (optional). */
+  useEffect(() => {
+    if (!editing) return;
+    const t = setTimeout(() => {
+      fileInputRef.current?.click();
+    }, 400);
+    return () => clearTimeout(t);
+  }, [editing]);
 
   useEffect(() => {
     let cancelled = false;
@@ -272,10 +284,23 @@ export default function MerchandisePageClient() {
   }, [isMounted, byCategory]);
 
   const openAdd = (category: MerchandiseCategory) => {
-    setAddingCategory(category);
     setEditing(null);
     setImageFile(null);
+    setUploadProgress(null);
+    addCategoryRef.current = category;
     if (fileInputRef.current) fileInputRef.current.value = "";
+    requestAnimationFrame(() => addFileInputRef.current?.click());
+  };
+
+  const onAddFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const cat = addCategoryRef.current;
+    addCategoryRef.current = null;
+    if (file && cat) {
+      setImageFile(file);
+      setAddingCategory(cat);
+    }
+    e.target.value = "";
   };
 
   const openEdit = (item: MerchandiseItemType) => {
@@ -289,7 +314,9 @@ export default function MerchandisePageClient() {
     setEditing(null);
     setAddingCategory(null);
     setImageFile(null);
+    setUploadProgress(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    if (addFileInputRef.current) addFileInputRef.current.value = "";
   };
 
   const saveItem = async (payload: {
@@ -298,21 +325,44 @@ export default function MerchandisePageClient() {
     title: string;
   }) => {
     setIsSaving(true);
+    setUploadProgress(0);
     try {
       let imageUrl = editing?.imageUrl ?? "";
       if (imageFile) {
         const form = new FormData();
         form.append("file", imageFile);
-        const up = await fetch("/api/merchandise/upload-image", {
-          method: "POST",
-          body: form,
+        imageUrl = await new Promise<string>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open("POST", "/api/merchandise/upload-image");
+          xhr.onload = () => {
+            setUploadProgress(100);
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const data = JSON.parse(xhr.responseText);
+                resolve(data.url);
+              } catch {
+                reject(new Error("Invalid response"));
+              }
+            } else {
+              try {
+                const err = JSON.parse(xhr.responseText);
+                reject(new Error(err?.error || "Upload failed"));
+              } catch {
+                reject(new Error("Upload failed"));
+              }
+            }
+          };
+          xhr.onerror = () => reject(new Error("Upload failed"));
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+              const percent = Math.min(100, Math.round((e.loaded / e.total) * 100));
+              setUploadProgress(percent);
+            }
+          };
+          xhr.send(form);
         });
-        if (!up.ok) {
-          const err = await up.json().catch(() => ({}));
-          throw new Error(err?.error || "Upload failed");
-        }
-        const { url } = await up.json();
-        imageUrl = url;
+      } else {
+        setUploadProgress(null);
       }
       if (!imageUrl && !editing) throw new Error("Image required");
 
@@ -353,6 +403,7 @@ export default function MerchandisePageClient() {
       alert(e instanceof Error ? e.message : "Save failed");
     } finally {
       setIsSaving(false);
+      setUploadProgress(null);
     }
   };
 
@@ -368,6 +419,7 @@ export default function MerchandisePageClient() {
         });
         return next;
       });
+      closeModal();
     } catch (e) {
       alert(e instanceof Error ? e.message : "Delete failed");
     }
@@ -387,6 +439,14 @@ export default function MerchandisePageClient() {
       ref={pageRef}
       className={`min-h-screen w-full max-w-full overflow-x-hidden bg-luxury-black ${fontMerch.variable}`}
     >
+      <input
+        ref={addFileInputRef}
+        type="file"
+        accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+        className="sr-only"
+        aria-hidden
+        onChange={onAddFileSelected}
+      />
       <Navbar />
 
       {/* Hero with smooth transitioning merchandise images — GPU layer + crossfade to avoid mobile flicker */}
@@ -582,6 +642,7 @@ export default function MerchandisePageClient() {
                         <span className="text-sm">{t("cms.addCard")}</span>
                       </motion.button>
                     )}
+                    <AnimatePresence>
                     {displayItems.slice(0, 3).map((item, index) => {
                       const isRealItem = typeof item.id === "number";
                       const imgUrl =
@@ -593,6 +654,8 @@ export default function MerchandisePageClient() {
                           key={item.id}
                           variants={cardVariants}
                           custom={index}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          transition={{ duration: 0.25 }}
                           className="group relative overflow-hidden rounded-2xl bg-white/5"
                         >
                           <div className="relative aspect-[3/4] overflow-hidden">
@@ -614,11 +677,11 @@ export default function MerchandisePageClient() {
                               </div>
                             )}
                             {isAdmin && isRealItem && (
-                              <div className="absolute right-2 top-2 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                              <div className="absolute right-2 top-2 z-10 flex gap-1 rounded-lg bg-black/70 p-1 backdrop-blur-sm">
                                 <button
                                   type="button"
                                   onClick={() => openEdit(item as MerchandiseItemType)}
-                                  className="rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
+                                  className="rounded-full p-2 text-white hover:bg-white/20"
                                   aria-label={t("cms.edit")}
                                 >
                                   <Pencil className="h-4 w-4" />
@@ -626,7 +689,7 @@ export default function MerchandisePageClient() {
                                 <button
                                   type="button"
                                   onClick={() => typeof item.id === "number" && deleteItem(item.id)}
-                                  className="rounded-full bg-black/60 p-2 text-red-300 hover:bg-red-500/80"
+                                  className="rounded-full p-2 text-red-300 hover:bg-red-500/30"
                                   aria-label={t("cms.delete")}
                                 >
                                   <Trash2 className="h-4 w-4" />
@@ -637,6 +700,7 @@ export default function MerchandisePageClient() {
                         </motion.div>
                       );
                     })}
+                    </AnimatePresence>
                   </motion.div>
                   <motion.div
                     className="mb-10 py-8 text-center font-[family-name:var(--font-merch)]"
@@ -663,6 +727,7 @@ export default function MerchandisePageClient() {
                     viewport={{ once: true, amount: 0.1 }}
                     variants={sectionVariants}
                   >
+                    <AnimatePresence>
                     {displayItems.slice(3).map((item, index) => {
                       const i = index + 3;
                       const isRealItem = typeof item.id === "number";
@@ -675,6 +740,8 @@ export default function MerchandisePageClient() {
                           key={item.id}
                           variants={cardVariants}
                           custom={i}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          transition={{ duration: 0.25 }}
                           className="group relative overflow-hidden rounded-2xl bg-white/5"
                         >
                           <div className="relative aspect-[3/4] overflow-hidden">
@@ -696,11 +763,11 @@ export default function MerchandisePageClient() {
                               </div>
                             )}
                             {isAdmin && isRealItem && (
-                              <div className="absolute right-2 top-2 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                              <div className="absolute right-2 top-2 z-10 flex gap-1 rounded-lg bg-black/70 p-1 backdrop-blur-sm">
                                 <button
                                   type="button"
                                   onClick={() => openEdit(item as MerchandiseItemType)}
-                                  className="rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
+                                  className="rounded-full p-2 text-white hover:bg-white/20"
                                   aria-label={t("cms.edit")}
                                 >
                                   <Pencil className="h-4 w-4" />
@@ -708,7 +775,7 @@ export default function MerchandisePageClient() {
                                 <button
                                   type="button"
                                   onClick={() => typeof item.id === "number" && deleteItem(item.id)}
-                                  className="rounded-full bg-black/60 p-2 text-red-300 hover:bg-red-500/80"
+                                  className="rounded-full p-2 text-red-300 hover:bg-red-500/30"
                                   aria-label={t("cms.delete")}
                                 >
                                   <Trash2 className="h-4 w-4" />
@@ -719,6 +786,7 @@ export default function MerchandisePageClient() {
                         </motion.div>
                       );
                     })}
+                    </AnimatePresence>
                   </motion.div>
                 </>
               ) : (
@@ -741,6 +809,7 @@ export default function MerchandisePageClient() {
                       <span className="text-sm">{t("cms.addCard")}</span>
                     </motion.button>
                   )}
+                  <AnimatePresence>
                   {displayItems.map((item, index) => {
                     const isRealItem = typeof item.id === "number";
                     const imgUrl =
@@ -772,12 +841,13 @@ export default function MerchandisePageClient() {
                         className={`group relative overflow-hidden rounded-2xl bg-white/5 ${lastRowColClass}`}
                         initial={{ opacity: 0, x: slideFromLeft ? -56 : 56 }}
                         whileInView={{ opacity: 1, x: 0 }}
-                        viewport={{ once: true, amount: 0.2 }}
+                        exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.25 } }}
                         transition={{
                           duration: 0.7,
                           ease: [0.22, 1, 0.36, 1],
                           delay: index * 0.06,
                         }}
+                        viewport={{ once: true, amount: 0.2 }}
                       >
                         <div className="relative aspect-[3/4] overflow-hidden">
                           <Image
@@ -798,11 +868,11 @@ export default function MerchandisePageClient() {
                             </div>
                           )}
                           {isAdmin && isRealItem && (
-                            <div className="absolute right-2 top-2 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                            <div className="absolute right-2 top-2 z-10 flex gap-1 rounded-lg bg-black/70 p-1 backdrop-blur-sm">
                               <button
                                 type="button"
                                 onClick={() => openEdit(item as MerchandiseItemType)}
-                                className="rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
+                                className="rounded-full p-2 text-white hover:bg-white/20"
                                 aria-label={t("cms.edit")}
                               >
                                 <Pencil className="h-4 w-4" />
@@ -810,7 +880,7 @@ export default function MerchandisePageClient() {
                               <button
                                 type="button"
                                 onClick={() => typeof item.id === "number" && deleteItem(item.id)}
-                                className="rounded-full bg-black/60 p-2 text-red-300 hover:bg-red-500/80"
+                                className="rounded-full p-2 text-red-300 hover:bg-red-500/30"
                                 aria-label={t("cms.delete")}
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -821,6 +891,7 @@ export default function MerchandisePageClient() {
                       </motion.div>
                     );
                   })}
+                  </AnimatePresence>
                 </motion.div>
               )}
             </section>
@@ -870,6 +941,19 @@ export default function MerchandisePageClient() {
                 }}
                 className="space-y-4"
               >
+                {uploadProgress !== null && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-white/80">
+                      {t("cms.uploadingProgress", { percent: uploadProgress })}
+                    </p>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className="h-full rounded-full bg-luxury-gold transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
                 <div>
                   <label className="mb-1 block text-xs font-medium text-white/70">
                     {t("cms.title")}
@@ -882,26 +966,39 @@ export default function MerchandisePageClient() {
                     className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-luxury-gold focus:ring-1 focus:ring-luxury-gold/40"
                   />
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-white/70">
-                    {t("cms.image")}
-                  </label>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".jpg,.jpeg,image/jpeg"
-                    onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
-                    className="block w-full text-xs text-white/80 file:mr-2 file:rounded-full file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:text-white"
-                  />
-                  {editing && !imageFile && (
-                    <p className="mt-1 text-[11px] text-white/50">{t("cms.keepCurrent")}</p>
-                  )}
-                </div>
+                {!editing && (
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-white/70">
+                      {t("cms.image")}
+                    </label>
+                    <p className="text-[11px] text-white/50">
+                      {imageFile ? imageFile.name : t("cms.keepCurrent")}
+                    </p>
+                  </div>
+                )}
+                {editing && (
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-white/70">
+                      {t("cms.image")}
+                    </label>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                      onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+                      className="block w-full text-xs text-white/80 file:mr-2 file:rounded-full file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:text-white"
+                    />
+                    {!imageFile && (
+                      <p className="mt-1 text-[11px] text-white/50">{t("cms.keepCurrent")}</p>
+                    )}
+                  </div>
+                )}
                 <div className="flex gap-2 pt-2">
                   <button
                     type="button"
                     onClick={closeModal}
-                    className="flex-1 rounded-lg border border-white/20 py-2 text-sm text-white/80 hover:bg-white/10"
+                    disabled={isSaving}
+                    className="flex-1 rounded-lg border border-white/20 py-2 text-sm text-white/80 hover:bg-white/10 disabled:opacity-50"
                   >
                     {t("cms.cancel")}
                   </button>
