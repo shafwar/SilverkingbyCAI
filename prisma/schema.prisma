@@ -90,6 +90,19 @@ model CmsProduct {
   updatedAt        DateTime @updatedAt
 }
 
+/// CMS merchandise items for the public merchandise page (Polo, Knitware, T-Shirt & Cap).
+model MerchandiseItem {
+  id        Int      @id @default(autoincrement())
+  category  String   // polo | knitware | tshirt_cap
+  title     String?  // optional display title
+  imageUrl  String   // R2 or local URL
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+}
+
 model QrRecord {
   id            Int         @id @default(autoincrement())
   productId     Int         @unique

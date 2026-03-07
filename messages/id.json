@@ -3,6 +3,7 @@
     "whatWeDo": "Apa yang kami lakukan",
     "authenticity": "Keaslian",
     "products": "Produk",
+    "merchandise": "Merchandise",
     "distributor": "Distributor",
     "aboutUs": "Tentang kami",
     "getInTouch": "Hubungi kami"
@@ -294,6 +295,32 @@
         "revertSuccess": "Produk berhasil dikembalikan ke default!",
         "revertFailed": "Gagal mengembalikan produk. Silakan coba lagi."
       }
+    }
+  },
+  "merchandise": {
+    "title": "Merchandise",
+    "hero": {
+      "title": "Merchandise",
+      "subtitle": "Apparel resmi Silver King by CAI — Polo, Knitware, Kaos & Topi. Kualitas premium, gaya elegan."
+    },
+    "sections": {
+      "polo": "Polo",
+      "tshirtCap": "T-Shirt & Topi",
+      "knitware": "Knitware"
+    },
+    "cms": {
+      "addCard": "Tambah kartu",
+      "editCard": "Edit kartu",
+      "edit": "Edit",
+      "delete": "Hapus",
+      "title": "Judul",
+      "titlePlaceholder": "Judul tampilan (opsional)",
+      "image": "Gambar (JPG)",
+      "keepCurrent": "Kosongkan untuk tetap pakai gambar saat ini",
+      "cancel": "Batal",
+      "save": "Simpan",
+      "saving": "Menyimpan...",
+      "confirmDelete": "Hapus item ini? Tindakan tidak dapat dibatalkan."
     }
   },
   "about": {

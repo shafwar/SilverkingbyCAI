@@ -45,3 +45,4 @@ prisma/*.db-journal
 /generated/prisma
 public/videos/hero/backup_*/
 public/videos/hero/temp_compress/
+public/images/.merchandise-out/

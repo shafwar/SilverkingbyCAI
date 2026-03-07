@@ -3,6 +3,7 @@
     "whatWeDo": "What we do",
     "authenticity": "Authenticity",
     "products": "Products",
+    "merchandise": "Merchandise",
     "distributor": "Distributor",
     "aboutUs": "About us",
     "getInTouch": "Get in touch"
@@ -294,6 +295,32 @@
         "revertSuccess": "Product reverted to default successfully!",
         "revertFailed": "Failed to revert product. Please try again."
       }
+    }
+  },
+  "merchandise": {
+    "title": "Merchandise",
+    "hero": {
+      "title": "Merchandise",
+      "subtitle": "Official Silver King by CAI apparel — Polo, Knitware, T-Shirts & Caps. Premium quality, timeless style."
+    },
+    "sections": {
+      "polo": "Polo",
+      "tshirtCap": "T-Shirt & Cap",
+      "knitware": "Knitware"
+    },
+    "cms": {
+      "addCard": "Add card",
+      "editCard": "Edit card",
+      "edit": "Edit",
+      "delete": "Delete",
+      "title": "Title",
+      "titlePlaceholder": "Optional display title",
+      "image": "Image (JPG)",
+      "keepCurrent": "Leave empty to keep current image",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving...",
+      "confirmDelete": "Delete this item? This cannot be undone."
     }
   },
   "about": {
