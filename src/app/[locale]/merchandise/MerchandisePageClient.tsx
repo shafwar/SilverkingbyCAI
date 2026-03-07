@@ -223,17 +223,29 @@ export default function MerchandisePageClient() {
 
   useEffect(() => {
     let cancelled = false;
-    const loadAdmin = async () => {
+    const checkAdmin = async () => {
       try {
-        const res = await fetch("/api/admin/me");
+        const res = await fetch("/api/admin/me", { credentials: "include" });
         if (!res.ok) return;
         const data = await res.json();
         if (!cancelled && data?.isAdmin) setIsAdmin(true);
       } catch {
-        // silent
+        // Retry once after delay (e.g. session not ready on first paint)
+        if (!cancelled) {
+          setTimeout(async () => {
+            try {
+              const res = await fetch("/api/admin/me", { credentials: "include" });
+              if (!res.ok) return;
+              const data = await res.json();
+              if (!cancelled && data?.isAdmin) setIsAdmin(true);
+            } catch {
+              // silent
+            }
+          }, 500);
+        }
       }
     };
-    loadAdmin();
+    checkAdmin();
     return () => {
       cancelled = true;
     };
@@ -585,24 +597,30 @@ export default function MerchandisePageClient() {
                               </p>
                             </div>
                           )}
-                          {isAdmin && isRealItem && (
+                          {isAdmin && (
                             <div className="absolute right-2 top-2 z-10 flex gap-1 rounded-lg border border-white/20 bg-black/80 p-1.5 shadow-lg backdrop-blur-sm">
                               <button
                                 type="button"
-                                onClick={() => openEdit(item as MerchandiseItemType)}
+                                onClick={() =>
+                                  isRealItem
+                                    ? openEdit(item as MerchandiseItemType)
+                                    : openAdd(category)
+                                }
                                 className="rounded-full p-2 text-white hover:bg-white/20"
-                                aria-label={t("cms.edit")}
+                                aria-label={isRealItem ? t("cms.edit") : t("cms.addCard")}
                               >
                                 <Pencil className="h-4 w-4" />
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => typeof item.id === "number" && deleteItem(item.id)}
-                                className="rounded-full p-2 text-red-300 hover:bg-red-500/30"
-                                aria-label={t("cms.delete")}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
+                              {isRealItem && (
+                                <button
+                                  type="button"
+                                  onClick={() => typeof item.id === "number" && deleteItem(item.id)}
+                                  className="rounded-full p-2 text-red-300 hover:bg-red-500/30"
+                                  aria-label={t("cms.delete")}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -707,24 +725,32 @@ export default function MerchandisePageClient() {
                                 </p>
                               </div>
                             )}
-                            {isAdmin && isRealItem && (
+                            {isAdmin && (
                               <div className="absolute right-2 top-2 z-10 flex gap-1 rounded-lg border border-white/20 bg-black/80 p-1.5 shadow-lg backdrop-blur-sm">
                                 <button
                                   type="button"
-                                  onClick={() => openEdit(item as MerchandiseItemType)}
+                                  onClick={() =>
+                                    isRealItem
+                                      ? openEdit(item as MerchandiseItemType)
+                                      : openAdd(category)
+                                  }
                                   className="rounded-full p-2 text-white hover:bg-white/20"
-                                  aria-label={t("cms.edit")}
+                                  aria-label={isRealItem ? t("cms.edit") : t("cms.addCard")}
                                 >
                                   <Pencil className="h-4 w-4" />
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => typeof item.id === "number" && deleteItem(item.id)}
-                                  className="rounded-full p-2 text-red-300 hover:bg-red-500/30"
-                                  aria-label={t("cms.delete")}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
+                                {isRealItem && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      typeof item.id === "number" && deleteItem(item.id)
+                                    }
+                                    className="rounded-full p-2 text-red-300 hover:bg-red-500/30"
+                                    aria-label={t("cms.delete")}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                )}
                               </div>
                             )}
                           </div>
@@ -793,24 +819,32 @@ export default function MerchandisePageClient() {
                                 </p>
                               </div>
                             )}
-                            {isAdmin && isRealItem && (
+                            {isAdmin && (
                               <div className="absolute right-2 top-2 z-10 flex gap-1 rounded-lg border border-white/20 bg-black/80 p-1.5 shadow-lg backdrop-blur-sm">
                                 <button
                                   type="button"
-                                  onClick={() => openEdit(item as MerchandiseItemType)}
+                                  onClick={() =>
+                                    isRealItem
+                                      ? openEdit(item as MerchandiseItemType)
+                                      : openAdd(category)
+                                  }
                                   className="rounded-full p-2 text-white hover:bg-white/20"
-                                  aria-label={t("cms.edit")}
+                                  aria-label={isRealItem ? t("cms.edit") : t("cms.addCard")}
                                 >
                                   <Pencil className="h-4 w-4" />
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => typeof item.id === "number" && deleteItem(item.id)}
-                                  className="rounded-full p-2 text-red-300 hover:bg-red-500/30"
-                                  aria-label={t("cms.delete")}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
+                                {isRealItem && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      typeof item.id === "number" && deleteItem(item.id)
+                                    }
+                                    className="rounded-full p-2 text-red-300 hover:bg-red-500/30"
+                                    aria-label={t("cms.delete")}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                )}
                               </div>
                             )}
                           </div>
@@ -898,24 +932,30 @@ export default function MerchandisePageClient() {
                               </p>
                             </div>
                           )}
-                          {isAdmin && isRealItem && (
+                          {isAdmin && (
                             <div className="absolute right-2 top-2 z-10 flex gap-1 rounded-lg border border-white/20 bg-black/80 p-1.5 shadow-lg backdrop-blur-sm">
                               <button
                                 type="button"
-                                onClick={() => openEdit(item as MerchandiseItemType)}
+                                onClick={() =>
+                                  isRealItem
+                                    ? openEdit(item as MerchandiseItemType)
+                                    : openAdd(category)
+                                }
                                 className="rounded-full p-2 text-white hover:bg-white/20"
-                                aria-label={t("cms.edit")}
+                                aria-label={isRealItem ? t("cms.edit") : t("cms.addCard")}
                               >
                                 <Pencil className="h-4 w-4" />
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => typeof item.id === "number" && deleteItem(item.id)}
-                                className="rounded-full p-2 text-red-300 hover:bg-red-500/30"
-                                aria-label={t("cms.delete")}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
+                              {isRealItem && (
+                                <button
+                                  type="button"
+                                  onClick={() => typeof item.id === "number" && deleteItem(item.id)}
+                                  className="rounded-full p-2 text-red-300 hover:bg-red-500/30"
+                                  aria-label={t("cms.delete")}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>

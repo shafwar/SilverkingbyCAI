@@ -6,10 +6,14 @@ import { PersistentHomeHeroVideo } from "@/components/layout/PersistentHomeHeroV
 import HeroSection from "@/components/sections/HeroSection";
 import SplashScreen from "@/components/sections/SplashScreen";
 
+/** Max ms to wait for font before showing home content (avoid wrong font flash) */
+const FONT_READY_TIMEOUT_MS = 2500;
+
 export default function RootPageContent() {
   // Initialize with true to prevent flash - splash shows FIRST
   const [showSplash, setShowSplash] = useState<boolean>(true);
   const [splashComplete, setSplashComplete] = useState(false);
+  const [fontsReady, setFontsReady] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
   // Add home-page class to body for CSS targeting
@@ -21,6 +25,21 @@ export default function RootPageContent() {
       };
     }
   }, []);
+
+  // Show home content only after fonts are ready (Geist loaded) so fallback font is never visible
+  useEffect(() => {
+    if (!splashComplete || typeof document === "undefined") return;
+    let cancelled = false;
+    Promise.race([
+      document.fonts.ready,
+      new Promise<void>((r) => setTimeout(r, FONT_READY_TIMEOUT_MS)),
+    ]).then(() => {
+      if (!cancelled) setFontsReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [splashComplete]);
 
   // IMMEDIATELY check if splash should be shown (BEFORE first render)
   useLayoutEffect(() => {
@@ -81,14 +100,14 @@ export default function RootPageContent() {
 
       {/* Hero video + edit icon only after splash complete */}
       <PersistentHomeHeroVideo splashComplete={splashComplete} />
-      {/* Main Content - Always render, control visibility; data-home-content + font-sans for consistent font with splash/body */}
+      {/* Main Content - Visible only after splash + fonts ready (no fallback font flash) */}
       <div
         data-home-content
         className="font-sans"
         style={{
-          opacity: isClient && !showSplash ? 1 : 0,
+          opacity: isClient && !showSplash && fontsReady ? 1 : 0,
           transition: "opacity 0.3s ease-in",
-          pointerEvents: isClient && !showSplash ? "auto" : "none",
+          pointerEvents: isClient && !showSplash && fontsReady ? "auto" : "none",
           position: "relative",
           zIndex: 1,
         }}

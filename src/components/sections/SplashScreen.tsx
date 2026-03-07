@@ -99,7 +99,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
     };
   }, [onComplete]);
 
-  const fontStack = "var(--font-geist-sans), system-ui, sans-serif";
+  const fontStack = "var(--font-geist-sans), sans-serif";
 
   return (
     <motion.div
