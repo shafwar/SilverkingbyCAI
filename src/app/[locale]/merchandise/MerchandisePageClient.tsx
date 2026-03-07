@@ -10,12 +10,13 @@ import { useGSAP } from "@gsap/react";
 import Image from "next/image";
 import { Plus, Pencil, Trash2, X } from "lucide-react";
 import { getR2UrlClient } from "@/utils/r2-url";
-import { Cormorant_Garamond } from "next/font/google";
+import { Playfair_Display } from "next/font/google";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const cormorant = Cormorant_Garamond({
-  weight: ["400", "500", "600", "700"],
+/** Professional, powerful serif for merchandise hero and sections */
+const playfair = Playfair_Display({
+  weight: ["500", "600", "700"],
   subsets: ["latin"],
   variable: "--font-merch",
   display: "swap",
@@ -172,16 +173,19 @@ export default function MerchandisePageClient() {
   const [isMounted, setIsMounted] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
 
-  /** Hero images: polo first (man in shirt), then rest. Same order for fallback. */
+  /** Hero images: static hero (polo close-up) first, then API or fallback. */
+  const HERO_IMAGE_FIRST = "/images/merchandise-hero.png";
   const heroImageUrls = useMemo(() => {
     const fromApi: string[] = [];
     CATEGORY_ORDER.forEach((cat) => {
       (byCategory[cat] ?? []).forEach((item) => fromApi.push(item.imageUrl));
     });
-    if (fromApi.length > 0) return fromApi.map(resolveImageUrl);
-    return CATEGORY_ORDER.flatMap((cat) =>
-      FALLBACK_IMAGE_PATHS[cat].map((p) => getR2UrlClient(p))
-    );
+    const rest = fromApi.length > 0
+      ? fromApi.map(resolveImageUrl)
+      : CATEGORY_ORDER.flatMap((cat) =>
+          FALLBACK_IMAGE_PATHS[cat].map((p) => getR2UrlClient(p))
+        );
+    return [HERO_IMAGE_FIRST, ...rest];
   }, [byCategory]);
 
   useEffect(() => {
@@ -375,7 +379,7 @@ export default function MerchandisePageClient() {
   const modalCategory = editing?.category ?? addingCategory;
 
   return (
-    <div ref={pageRef} className={`min-h-screen bg-luxury-black ${cormorant.variable}`}>
+    <div ref={pageRef} className={`min-h-screen bg-luxury-black ${playfair.variable}`}>
       <Navbar />
 
       {/* Hero with smooth transitioning merchandise images */}
