@@ -10,13 +10,12 @@ import { useGSAP } from "@gsap/react";
 import Image from "next/image";
 import { Plus, Pencil, Trash2, X } from "lucide-react";
 import { getR2UrlClient } from "@/utils/r2-url";
-import { Playfair_Display } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 
 gsap.registerPlugin(ScrollTrigger);
 
-/** Professional, powerful serif for merchandise hero and sections */
-const playfair = Playfair_Display({
-  weight: ["500", "600", "700"],
+const fontMerch = Plus_Jakarta_Sans({
+  weight: ["400", "500", "600", "700", "800"],
   subsets: ["latin"],
   variable: "--font-merch",
   display: "swap",
@@ -64,7 +63,12 @@ const CATEGORY_ORDER: MerchandiseCategory[] = ["polo", "tshirt_cap", "knitware"]
 
 /** Fallback R2 paths when API returns no items (e.g. production not seeded) — matches compress-and-upload keys */
 const FALLBACK_IMAGE_PATHS: Record<MerchandiseCategory, string[]> = {
-  polo: ["/images/merchandise/polo-1-polo-1.jpg", "/images/merchandise/polo-2-polo-2.jpg", "/images/merchandise/polo-3-polo-3.jpg", "/images/merchandise/polo-4-polo-4.jpg"],
+  polo: [
+    "/images/merchandise/polo-1-polo-1.jpg",
+    "/images/merchandise/polo-2-polo-2.jpg",
+    "/images/merchandise/polo-3-polo-3.jpg",
+    "/images/merchandise/polo-4-polo-4.jpg",
+  ],
   tshirt_cap: [
     "/images/merchandise/tshirt_cap-1-t-shirt-&-cap-1.jpg",
     "/images/merchandise/tshirt_cap-2-t-shirt-&-cap-2.jpg",
@@ -114,7 +118,9 @@ function DetailBlockCentered({
     >
       <div className="absolute inset-0 -inset-x-8 rounded-2xl bg-gradient-to-b from-luxury-gold/[0.06] via-transparent to-luxury-silver/[0.04] pointer-events-none" />
       <div className="relative py-8 md:py-10">
-        <p className={`text-2xl font-semibold tracking-tight text-luxury-gold md:text-3xl lg:text-4xl ${!useMerchFont ? "font-serif" : ""}`}>
+        <p
+          className={`text-2xl font-semibold tracking-tight text-luxury-gold md:text-3xl lg:text-4xl ${!useMerchFont ? "font-serif" : ""}`}
+        >
           {tagline}
         </p>
         <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-white/90 md:text-lg lg:text-xl">
@@ -141,7 +147,9 @@ function DetailBlockCentered({
           </p>
           <p className="mt-2 text-base tracking-wide text-luxury-silver/95 md:text-lg">{colors}</p>
           {colorsLine2 && (
-            <p className="mt-1 text-base tracking-wide text-luxury-silver/90 md:text-lg">{colorsLine2}</p>
+            <p className="mt-1 text-base tracking-wide text-luxury-silver/90 md:text-lg">
+              {colorsLine2}
+            </p>
           )}
         </div>
       </div>
@@ -173,19 +181,18 @@ export default function MerchandisePageClient() {
   const [isMounted, setIsMounted] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
 
-  /** Hero images: static hero (polo close-up) first, then API or fallback. */
-  const HERO_IMAGE_FIRST = "/images/merchandise-hero.png";
+  /** Hero images: second image first (polo close-up / “ss kedua”), then rest of flow. */
   const heroImageUrls = useMemo(() => {
     const fromApi: string[] = [];
     CATEGORY_ORDER.forEach((cat) => {
       (byCategory[cat] ?? []).forEach((item) => fromApi.push(item.imageUrl));
     });
-    const rest = fromApi.length > 0
-      ? fromApi.map(resolveImageUrl)
-      : CATEGORY_ORDER.flatMap((cat) =>
-          FALLBACK_IMAGE_PATHS[cat].map((p) => getR2UrlClient(p))
-        );
-    return [HERO_IMAGE_FIRST, ...rest];
+    const raw =
+      fromApi.length > 0
+        ? fromApi.map(resolveImageUrl)
+        : CATEGORY_ORDER.flatMap((cat) => FALLBACK_IMAGE_PATHS[cat].map((p) => getR2UrlClient(p)));
+    if (raw.length < 2) return raw;
+    return [raw[1], raw[0], ...raw.slice(2)];
   }, [byCategory]);
 
   useEffect(() => {
@@ -236,34 +243,31 @@ export default function MerchandisePageClient() {
     };
   }, []);
 
-  useGSAP(
-    () => {
-      if (!pageRef.current || !isMounted) return;
-      const ctx = gsap.context(() => {
-        sectionRefs.current.forEach((el, i) => {
-          if (!el) return;
-          gsap.fromTo(
-            el,
-            { opacity: 0, y: 56 },
-            {
-              opacity: 1,
-              y: 0,
-              duration: 0.8,
-              ease: "power3.out",
-              scrollTrigger: {
-                trigger: el,
-                start: "top 82%",
-                end: "top 55%",
-                scrub: 0.6,
-              },
-            }
-          );
-        });
-      }, pageRef);
-      return () => ctx.revert();
-    },
-    [isMounted, byCategory]
-  );
+  useGSAP(() => {
+    if (!pageRef.current || !isMounted) return;
+    const ctx = gsap.context(() => {
+      sectionRefs.current.forEach((el, i) => {
+        if (!el) return;
+        gsap.fromTo(
+          el,
+          { opacity: 0, y: 56 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.8,
+            ease: "power3.out",
+            scrollTrigger: {
+              trigger: el,
+              start: "top 82%",
+              end: "top 55%",
+              scrub: 0.6,
+            },
+          }
+        );
+      });
+    }, pageRef);
+    return () => ctx.revert();
+  }, [isMounted, byCategory]);
 
   const openAdd = (category: MerchandiseCategory) => {
     setAddingCategory(category);
@@ -311,9 +315,7 @@ export default function MerchandisePageClient() {
       if (!imageUrl && !editing) throw new Error("Image required");
 
       const isEdit = !!payload.id;
-      const endpoint = isEdit
-        ? `/api/merchandise/${payload.id}`
-        : "/api/merchandise";
+      const endpoint = isEdit ? `/api/merchandise/${payload.id}` : "/api/merchandise";
       const method = isEdit ? "PATCH" : "POST";
       const res = await fetch(endpoint, {
         method,
@@ -379,7 +381,7 @@ export default function MerchandisePageClient() {
   const modalCategory = editing?.category ?? addingCategory;
 
   return (
-    <div ref={pageRef} className={`min-h-screen bg-luxury-black ${playfair.variable}`}>
+    <div ref={pageRef} className={`min-h-screen bg-luxury-black ${fontMerch.variable}`}>
       <Navbar />
 
       {/* Hero with smooth transitioning merchandise images */}
@@ -575,7 +577,10 @@ export default function MerchandisePageClient() {
                     )}
                     {displayItems.slice(0, 3).map((item, index) => {
                       const isRealItem = typeof item.id === "number";
-                      const imgUrl = typeof item.imageUrl === "string" ? item.imageUrl : resolveImageUrl(item.imageUrl);
+                      const imgUrl =
+                        typeof item.imageUrl === "string"
+                          ? item.imageUrl
+                          : resolveImageUrl(item.imageUrl);
                       return (
                         <motion.div
                           key={item.id}
@@ -596,7 +601,9 @@ export default function MerchandisePageClient() {
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                             {item.title && (
                               <div className="absolute bottom-0 left-0 right-0 p-4">
-                                <p className="text-sm font-medium text-white drop-shadow-lg">{item.title}</p>
+                                <p className="text-sm font-medium text-white drop-shadow-lg">
+                                  {item.title}
+                                </p>
                               </div>
                             )}
                             {isAdmin && isRealItem && (
@@ -652,7 +659,10 @@ export default function MerchandisePageClient() {
                     {displayItems.slice(3).map((item, index) => {
                       const i = index + 3;
                       const isRealItem = typeof item.id === "number";
-                      const imgUrl = typeof item.imageUrl === "string" ? item.imageUrl : resolveImageUrl(item.imageUrl);
+                      const imgUrl =
+                        typeof item.imageUrl === "string"
+                          ? item.imageUrl
+                          : resolveImageUrl(item.imageUrl);
                       return (
                         <motion.div
                           key={item.id}
@@ -673,7 +683,9 @@ export default function MerchandisePageClient() {
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                             {item.title && (
                               <div className="absolute bottom-0 left-0 right-0 p-4">
-                                <p className="text-sm font-medium text-white drop-shadow-lg">{item.title}</p>
+                                <p className="text-sm font-medium text-white drop-shadow-lg">
+                                  {item.title}
+                                </p>
                               </div>
                             )}
                             {isAdmin && isRealItem && (
@@ -705,97 +717,104 @@ export default function MerchandisePageClient() {
               ) : (
                 <motion.div
                   className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4"
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, amount: 0.1 }}
-                variants={sectionVariants}
-              >
-                {isAdmin && (
-                  <motion.button
-                    type="button"
-                    variants={cardVariants}
-                    custom={0}
-                    onClick={() => openAdd(category)}
-                    className="flex min-h-[280px] flex-col items-center justify-center rounded-2xl border border-dashed border-white/20 bg-white/5 text-white/60 transition hover:border-luxury-gold/50 hover:bg-white/10 hover:text-luxury-gold sm:col-span-2 lg:col-span-1"
-                  >
-                    <Plus className="mb-2 h-10 w-10" />
-                    <span className="text-sm">{t("cms.addCard")}</span>
-                  </motion.button>
-                )}
-                {displayItems.map((item, index) => {
-                  const isRealItem = typeof item.id === "number";
-                  const imgUrl = typeof item.imageUrl === "string" ? item.imageUrl : resolveImageUrl(item.imageUrl);
-                  const slideFromLeft = index % 2 === 0;
-                  const total = displayItems.length;
-                  const remainder = total % 4;
-                  const lastRowStart = total - (remainder === 0 ? 4 : remainder);
-                  const isInLastRow = remainder > 0 && index >= lastRowStart;
-                  const lastRowColClass =
-                    isInLastRow && remainder === 1
-                      ? "sm:col-start-2 lg:col-start-2"
-                      : isInLastRow && remainder === 2
-                        ? index === lastRowStart
-                          ? "sm:col-start-2 lg:col-start-2"
-                          : "sm:col-start-2 lg:col-start-3"
-                        : isInLastRow && remainder === 3
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true, amount: 0.1 }}
+                  variants={sectionVariants}
+                >
+                  {isAdmin && (
+                    <motion.button
+                      type="button"
+                      variants={cardVariants}
+                      custom={0}
+                      onClick={() => openAdd(category)}
+                      className="flex min-h-[280px] flex-col items-center justify-center rounded-2xl border border-dashed border-white/20 bg-white/5 text-white/60 transition hover:border-luxury-gold/50 hover:bg-white/10 hover:text-luxury-gold sm:col-span-2 lg:col-span-1"
+                    >
+                      <Plus className="mb-2 h-10 w-10" />
+                      <span className="text-sm">{t("cms.addCard")}</span>
+                    </motion.button>
+                  )}
+                  {displayItems.map((item, index) => {
+                    const isRealItem = typeof item.id === "number";
+                    const imgUrl =
+                      typeof item.imageUrl === "string"
+                        ? item.imageUrl
+                        : resolveImageUrl(item.imageUrl);
+                    const slideFromLeft = index % 2 === 0;
+                    const total = displayItems.length;
+                    const remainder = total % 4;
+                    const lastRowStart = total - (remainder === 0 ? 4 : remainder);
+                    const isInLastRow = remainder > 0 && index >= lastRowStart;
+                    const lastRowColClass =
+                      isInLastRow && remainder === 1
+                        ? "sm:col-start-2 lg:col-start-2"
+                        : isInLastRow && remainder === 2
                           ? index === lastRowStart
                             ? "sm:col-start-2 lg:col-start-2"
-                            : index === lastRowStart + 1
-                              ? "sm:col-start-2 lg:col-start-3"
-                              : "sm:col-start-2 lg:col-start-4"
-                          : "";
-                  return (
-                    <motion.div
-                      key={item.id}
-                      className={`group relative overflow-hidden rounded-2xl bg-white/5 ${lastRowColClass}`}
-                      initial={{ opacity: 0, x: slideFromLeft ? -56 : 56 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true, amount: 0.2 }}
-                      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: index * 0.06 }}
-                    >
-                      <div className="relative aspect-[3/4] overflow-hidden">
-                        <Image
-                          src={imgUrl}
-                          alt={item.title || `${sectionTitles[category]} ${index + 1}`}
-                          fill
-                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                          className="object-cover transition duration-500 group-hover:scale-105"
-                          loading="lazy"
-                          unoptimized={String(item.imageUrl).startsWith("http")}
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                        {item.title && (
-                          <div className="absolute bottom-0 left-0 right-0 p-4">
-                            <p className="text-sm font-medium text-white drop-shadow-lg">
-                              {item.title}
-                            </p>
-                          </div>
-                        )}
-                        {isAdmin && isRealItem && (
-                          <div className="absolute right-2 top-2 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                            <button
-                              type="button"
-                              onClick={() => openEdit(item as MerchandiseItemType)}
-                              className="rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
-                              aria-label={t("cms.edit")}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => typeof item.id === "number" && deleteItem(item.id)}
-                              className="rounded-full bg-black/60 p-2 text-red-300 hover:bg-red-500/80"
-                              aria-label={t("cms.delete")}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </motion.div>
+                            : "sm:col-start-2 lg:col-start-3"
+                          : isInLastRow && remainder === 3
+                            ? index === lastRowStart
+                              ? "sm:col-start-2 lg:col-start-2"
+                              : index === lastRowStart + 1
+                                ? "sm:col-start-2 lg:col-start-3"
+                                : "sm:col-start-2 lg:col-start-4"
+                            : "";
+                    return (
+                      <motion.div
+                        key={item.id}
+                        className={`group relative overflow-hidden rounded-2xl bg-white/5 ${lastRowColClass}`}
+                        initial={{ opacity: 0, x: slideFromLeft ? -56 : 56 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true, amount: 0.2 }}
+                        transition={{
+                          duration: 0.7,
+                          ease: [0.22, 1, 0.36, 1],
+                          delay: index * 0.06,
+                        }}
+                      >
+                        <div className="relative aspect-[3/4] overflow-hidden">
+                          <Image
+                            src={imgUrl}
+                            alt={item.title || `${sectionTitles[category]} ${index + 1}`}
+                            fill
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                            className="object-cover transition duration-500 group-hover:scale-105"
+                            loading="lazy"
+                            unoptimized={String(item.imageUrl).startsWith("http")}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                          {item.title && (
+                            <div className="absolute bottom-0 left-0 right-0 p-4">
+                              <p className="text-sm font-medium text-white drop-shadow-lg">
+                                {item.title}
+                              </p>
+                            </div>
+                          )}
+                          {isAdmin && isRealItem && (
+                            <div className="absolute right-2 top-2 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                              <button
+                                type="button"
+                                onClick={() => openEdit(item as MerchandiseItemType)}
+                                className="rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
+                                aria-label={t("cms.edit")}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => typeof item.id === "number" && deleteItem(item.id)}
+                                className="rounded-full bg-black/60 p-2 text-red-300 hover:bg-red-500/80"
+                                aria-label={t("cms.delete")}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </motion.div>
               )}
             </section>
           );
@@ -834,7 +853,8 @@ export default function MerchandisePageClient() {
                 onSubmit={(e) => {
                   e.preventDefault();
                   const form = e.currentTarget;
-                  const title = (form.querySelector('[name="title"]') as HTMLInputElement)?.value?.trim() ?? "";
+                  const title =
+                    (form.querySelector('[name="title"]') as HTMLInputElement)?.value?.trim() ?? "";
                   saveItem({
                     id: editing?.id,
                     category: modalCategory as MerchandiseCategory,
@@ -867,9 +887,7 @@ export default function MerchandisePageClient() {
                     className="block w-full text-xs text-white/80 file:mr-2 file:rounded-full file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:text-white"
                   />
                   {editing && !imageFile && (
-                    <p className="mt-1 text-[11px] text-white/50">
-                      {t("cms.keepCurrent")}
-                    </p>
+                    <p className="mt-1 text-[11px] text-white/50">{t("cms.keepCurrent")}</p>
                   )}
                 </div>
                 <div className="flex gap-2 pt-2">
