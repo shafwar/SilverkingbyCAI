@@ -461,23 +461,31 @@ export default function MerchandisePageClient() {
       />
       <Navbar />
 
-      {/* Hero with smooth transitioning merchandise images — GPU layer + crossfade to avoid mobile flicker */}
-      <section className="relative min-h-[70vh] overflow-hidden pt-20">
+      {/* Hero: extend layer + seam cover to prevent flickering line at bottom (mobile/desktop) */}
+      <section className="relative min-h-[70vh] overflow-hidden pt-20 isolate">
         {heroImageUrls.length > 0 && (
-          <div className="absolute inset-0 overflow-hidden">
+          <div
+            className="absolute inset-0 overflow-hidden"
+            style={{ transform: "translateZ(0)", WebkitBackfaceVisibility: "hidden" }}
+          >
             <AnimatePresence initial={false}>
               <motion.div
                 key={heroIndex}
                 className="absolute inset-0 origin-center"
-                style={{ backfaceVisibility: "hidden", willChange: "transform" }}
+                style={{
+                  backfaceVisibility: "hidden",
+                  willChange: "transform",
+                  transform: "translateZ(0)",
+                  WebkitBackfaceVisibility: "hidden",
+                }}
                 initial={{ opacity: 0, scale: 1.02 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 1.02 }}
                 transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
               >
                 <motion.div
-                  className="absolute inset-0 origin-center"
-                  style={{ backfaceVisibility: "hidden" }}
+                  className="absolute inset-0 origin-center overflow-hidden"
+                  style={{ backfaceVisibility: "hidden", transform: "translateZ(0)" }}
                   animate={{ scale: 1.05 }}
                   transition={{ duration: 6, ease: "linear" }}
                 >
@@ -496,6 +504,11 @@ export default function MerchandisePageClient() {
             </AnimatePresence>
           </div>
         )}
+        {/* Seam cover: hides subpixel line at hero bottom (flicker fix) */}
+        <div
+          className="absolute bottom-0 left-0 right-0 z-[1] h-[3px] bg-luxury-black pointer-events-none"
+          aria-hidden
+        />
         <div className="relative z-10 flex min-h-[70vh] flex-col items-center justify-center px-6 pb-20 text-center font-[family-name:var(--font-merch)]">
           <motion.h1
             className="text-4xl font-semibold tracking-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.5)] md:text-5xl lg:text-6xl xl:text-7xl"

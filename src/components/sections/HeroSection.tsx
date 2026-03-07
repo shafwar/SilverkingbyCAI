@@ -753,13 +753,17 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
         </OptimizedLink>
       </motion.div>
 
-      {/* Bottom fade - dark vignette (Home only) */}
+      {/* Bottom fade - dark vignette (Home only); translateZ + solid cap to prevent flickering line */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 2, delay: 1 }}
-        className="absolute bottom-0 left-0 right-0 h-20 sm:h-24 md:h-36 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none"
-      />
+        className="absolute bottom-0 left-0 right-0 h-20 sm:h-24 md:h-36 pointer-events-none"
+        style={{ transform: "translateZ(0)", WebkitBackfaceVisibility: "hidden" }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-black" aria-hidden />
+      </motion.div>
     </section>
   );
 }
