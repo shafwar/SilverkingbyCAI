@@ -376,7 +376,7 @@ export default function MerchandisePageClient() {
                 <motion.div
                   className="absolute inset-0"
                   animate={{ scale: 1.04 }}
-                  transition={{ duration: 4.5, ease: "none" }}
+                  transition={{ duration: 4.5, ease: "linear" }}
                 >
                   <Image
                     src={heroImageUrls[heroIndex]}
