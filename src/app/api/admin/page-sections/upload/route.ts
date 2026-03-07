@@ -86,8 +86,9 @@ export async function POST(request: NextRequest) {
       const buf = Buffer.from(await file.arrayBuffer());
       // Hero sections (home, distributor, etc.): smaller max + quality for faster load, still HD
       const isHero = section.toLowerCase() === "hero";
-      const maxW = isHero ? 1600 : IMAGE_MAX_WIDTH;
-      const quality = isHero ? 85 : IMAGE_QUALITY;
+      const isDistributorHero = isHero && page.toLowerCase() === "distributor";
+      const maxW = isDistributorHero ? 1400 : isHero ? 1600 : IMAGE_MAX_WIDTH;
+      const quality = isDistributorHero ? 82 : isHero ? 85 : IMAGE_QUALITY;
       const pipeline = sharp(buf, { limitInputPixels: IMAGE_MAX_PIXELS })
         .resize(maxW, undefined, { withoutEnlargement: true })
         .rotate(); // auto-orient from EXIF
