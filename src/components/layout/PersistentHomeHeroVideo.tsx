@@ -62,22 +62,30 @@ export function PersistentHomeHeroVideo({ splashComplete = true }: PersistentHom
       {sectionsLoading ? (
         <div className="absolute inset-0 bg-luxury-black" aria-hidden />
       ) : (
-        <VideoLoadGuard
-          ref={videoRef}
-          url={heroUrl}
-          version={heroVersion}
-          containerClassName="absolute inset-0 min-w-full min-h-full w-full h-full"
-          className="absolute left-1/2 top-1/2 min-w-full min-h-full w-full h-full -translate-x-1/2 -translate-y-1/2 object-cover"
-          style={{ pointerEvents: "none" }}
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          disablePictureInPicture
-          disableRemotePlayback
-          onContextMenu={(e) => e.preventDefault()}
-        />
+        <div className="absolute inset-0 overflow-hidden">
+          {/* Mobile: zoom out (112% container scaled to 90% = more of video visible) */}
+          <div
+            className="absolute left-1/2 top-1/2 h-[112%] w-[112%] min-h-[112%] min-w-[112%] -translate-x-1/2 -translate-y-1/2 origin-center scale-90 md:left-0 md:top-0 md:h-full md:w-full md:min-h-0 md:min-w-0 md:translate-x-0 md:translate-y-0 md:scale-100"
+            aria-hidden
+          >
+            <VideoLoadGuard
+              ref={videoRef}
+              url={heroUrl}
+              version={heroVersion}
+              containerClassName="absolute inset-0 min-w-full min-h-full w-full h-full"
+              className="absolute left-1/2 top-1/2 min-w-full min-h-full w-full h-full -translate-x-1/2 -translate-y-1/2 object-cover"
+              style={{ pointerEvents: "none" }}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="auto"
+              disablePictureInPicture
+              disableRemotePlayback
+              onContextMenu={(e) => e.preventDefault()}
+            />
+          </div>
+        </div>
       )}
       {/* Vignette / dark motif - Home only */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/60 pointer-events-none" />

@@ -710,8 +710,8 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
         </div>
       </div>
 
-      {/* Mobile: Scrolling Features - DINAIKKAN untuk proporsi dengan QR Card baru */}
-      <div className="md:hidden absolute left-0 right-0 bottom-[calc(140px+env(safe-area-inset-bottom))] sm:bottom-[calc(148px+env(safe-area-inset-bottom))] z-20 px-4 sm:px-6 pointer-events-auto">
+      {/* Mobile: Scrolling Features - dinaikkan agar tidak mepet dengan Scan & Verify */}
+      <div className="md:hidden absolute left-0 right-0 bottom-[calc(200px+env(safe-area-inset-bottom))] sm:bottom-[calc(208px+env(safe-area-inset-bottom))] z-20 px-4 sm:px-6 pointer-events-auto">
         <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate} />
       </div>
 

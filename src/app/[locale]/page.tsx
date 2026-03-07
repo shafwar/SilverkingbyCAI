@@ -15,7 +15,7 @@ export async function generateMetadata({
     title: t("title") || "Silver King by CAI",
     description:
       t("hero.subtitle") ||
-      "Expert manufacturing of gold, silver, and palladium products. Custom bar fabrication, uncompromising purity, and QR-verified authenticity—redefining trust in precious metals.",
+      "Expert manufacturing of gold, silver, and palladium products. Custom bar fabrication, uncompromising purity, and QR-verified authenticity, redefining trust in precious metals.",
     path: "",
     locale,
     keywords: [
