@@ -553,31 +553,62 @@ export default function MerchandisePageClient() {
                 </span>
               </motion.h2>
 
-              {/* Polo: featured image strip with slide-in transitions */}
+              {/* Polo: featured image strip with slide-in transitions + Edit/Delete when admin */}
               {isPolo && displayItems.length > 0 && (
                 <div className="mb-12 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {displayItems.slice(0, 4).map((item, index) => (
-                    <motion.div
-                      key={item.id}
-                      className="group relative overflow-hidden rounded-2xl"
-                      initial={{ opacity: 0, x: index % 2 === 0 ? -48 : 48 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true, amount: 0.25 }}
-                      transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1], delay: index * 0.08 }}
-                    >
-                      <div className="relative aspect-[3/4] overflow-hidden rounded-2xl border border-white/10">
-                        <Image
-                          src={item.imageUrl}
-                          alt={item.title || `${sectionTitles[category]} ${index + 1}`}
-                          fill
-                          sizes="(max-width: 640px) 50vw, 25vw"
-                          className="object-cover transition duration-500 group-hover:scale-105"
-                          loading="eager"
-                          unoptimized={String(item.imageUrl).startsWith("http")}
-                        />
-                      </div>
-                    </motion.div>
-                  ))}
+                  {displayItems.slice(0, 4).map((item, index) => {
+                    const isRealItem = typeof item.id === "number";
+                    return (
+                      <motion.div
+                        key={item.id}
+                        className="group relative overflow-hidden rounded-2xl"
+                        initial={{ opacity: 0, x: index % 2 === 0 ? -48 : 48 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true, amount: 0.25 }}
+                        transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1], delay: index * 0.08 }}
+                      >
+                        <div className="relative aspect-[3/4] overflow-hidden rounded-2xl border border-white/10">
+                          <Image
+                            src={item.imageUrl}
+                            alt={item.title || `${sectionTitles[category]} ${index + 1}`}
+                            fill
+                            sizes="(max-width: 640px) 50vw, 25vw"
+                            className="object-cover transition duration-500 group-hover:scale-105"
+                            loading="eager"
+                            unoptimized={String(item.imageUrl).startsWith("http")}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                          {item.title && (
+                            <div className="absolute bottom-0 left-0 right-0 p-4">
+                              <p className="text-sm font-medium text-white drop-shadow-lg">
+                                {item.title}
+                              </p>
+                            </div>
+                          )}
+                          {isAdmin && isRealItem && (
+                            <div className="absolute right-2 top-2 z-10 flex gap-1 rounded-lg border border-white/20 bg-black/80 p-1.5 shadow-lg backdrop-blur-sm">
+                              <button
+                                type="button"
+                                onClick={() => openEdit(item as MerchandiseItemType)}
+                                className="rounded-full p-2 text-white hover:bg-white/20"
+                                aria-label={t("cms.edit")}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => typeof item.id === "number" && deleteItem(item.id)}
+                                className="rounded-full p-2 text-red-300 hover:bg-red-500/30"
+                                aria-label={t("cms.delete")}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -677,7 +708,7 @@ export default function MerchandisePageClient() {
                               </div>
                             )}
                             {isAdmin && isRealItem && (
-                              <div className="absolute right-2 top-2 z-10 flex gap-1 rounded-lg bg-black/70 p-1 backdrop-blur-sm">
+                              <div className="absolute right-2 top-2 z-10 flex gap-1 rounded-lg border border-white/20 bg-black/80 p-1.5 shadow-lg backdrop-blur-sm">
                                 <button
                                   type="button"
                                   onClick={() => openEdit(item as MerchandiseItemType)}
@@ -763,7 +794,7 @@ export default function MerchandisePageClient() {
                               </div>
                             )}
                             {isAdmin && isRealItem && (
-                              <div className="absolute right-2 top-2 z-10 flex gap-1 rounded-lg bg-black/70 p-1 backdrop-blur-sm">
+                              <div className="absolute right-2 top-2 z-10 flex gap-1 rounded-lg border border-white/20 bg-black/80 p-1.5 shadow-lg backdrop-blur-sm">
                                 <button
                                   type="button"
                                   onClick={() => openEdit(item as MerchandiseItemType)}
@@ -868,7 +899,7 @@ export default function MerchandisePageClient() {
                             </div>
                           )}
                           {isAdmin && isRealItem && (
-                            <div className="absolute right-2 top-2 z-10 flex gap-1 rounded-lg bg-black/70 p-1 backdrop-blur-sm">
+                            <div className="absolute right-2 top-2 z-10 flex gap-1 rounded-lg border border-white/20 bg-black/80 p-1.5 shadow-lg backdrop-blur-sm">
                               <button
                                 type="button"
                                 onClick={() => openEdit(item as MerchandiseItemType)}
