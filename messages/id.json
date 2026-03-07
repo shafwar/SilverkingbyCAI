@@ -301,7 +301,8 @@
     "title": "Merchandise",
     "hero": {
       "title": "Merchandise",
-      "subtitle": "Apparel resmi Silver King by CAI — Polo, Knitware, Kaos & Topi.",
+      "subtitle": "Apparel resmi Silver King by CAI",
+      "subtitleProducts": "Polo, Knitware, Kaos & Topi.",
       "tagline": "Kualitas premium, gaya elegan."
     },
     "sections": {
@@ -345,6 +346,18 @@
         ],
         "colorsLabel": "Warna Tersedia",
         "colors": "Hitam • Putih • Abu-abu • Navy"
+      },
+      "tshirtCapCombined": {
+        "tagline": "T-Shirt & Topi",
+        "description": "Potongan yang pas, bahan nyaman, dan logo minimalis untuk tampilan bersih dan premium. Bahan lembut dan breathable dengan potongan proporsional—nyaman dipakai sehari-hari.",
+        "highlights": [
+          "Bahan lembut & breathable",
+          "Potongan fit dan proporsional",
+          "Desain minimalis & modern",
+          "Nyaman dipakai sehari-hari"
+        ],
+        "colorsTshirt": "Kaos: Hitam • Putih • Abu-abu • Navy",
+        "colorsCap": "Topi: Hitam & Putih"
       },
       "cap": {
         "tagline": "Finishing touch that changes the game.",

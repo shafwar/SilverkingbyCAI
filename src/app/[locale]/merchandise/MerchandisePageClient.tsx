@@ -10,8 +10,16 @@ import { useGSAP } from "@gsap/react";
 import Image from "next/image";
 import { Plus, Pencil, Trash2, X } from "lucide-react";
 import { getR2UrlClient } from "@/utils/r2-url";
+import { Cormorant_Garamond } from "next/font/google";
 
 gsap.registerPlugin(ScrollTrigger);
+
+const cormorant = Cormorant_Garamond({
+  weight: ["400", "500", "600", "700"],
+  subsets: ["latin"],
+  variable: "--font-merch",
+  display: "swap",
+});
 
 export type MerchandiseCategory = "polo" | "knitware" | "tshirt_cap";
 
@@ -73,7 +81,7 @@ const FALLBACK_IMAGE_PATHS: Record<MerchandiseCategory, string[]> = {
   ],
 };
 
-/** Centered product copy: larger type, subtle gradient, no box */
+/** Centered product copy: larger type, subtle gradient, no box. Optional second colors line. */
 function DetailBlockCentered({
   tagline,
   description,
@@ -81,7 +89,9 @@ function DetailBlockCentered({
   highlightsLabel,
   colorsLabel,
   colors,
+  colorsLine2,
   index = 0,
+  useMerchFont = false,
 }: {
   tagline: string;
   description: string;
@@ -89,11 +99,13 @@ function DetailBlockCentered({
   highlightsLabel: string;
   colorsLabel: string;
   colors: string;
+  colorsLine2?: string;
   index?: number;
+  useMerchFont?: boolean;
 }) {
   return (
     <motion.div
-      className="relative text-center"
+      className={`relative text-center ${useMerchFont ? "font-[family-name:var(--font-merch)]" : ""}`}
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.3 }}
@@ -101,7 +113,7 @@ function DetailBlockCentered({
     >
       <div className="absolute inset-0 -inset-x-8 rounded-2xl bg-gradient-to-b from-luxury-gold/[0.06] via-transparent to-luxury-silver/[0.04] pointer-events-none" />
       <div className="relative py-8 md:py-10">
-        <p className="font-serif text-2xl font-semibold tracking-tight text-luxury-gold md:text-3xl lg:text-4xl">
+        <p className={`text-2xl font-semibold tracking-tight text-luxury-gold md:text-3xl lg:text-4xl ${!useMerchFont ? "font-serif" : ""}`}>
           {tagline}
         </p>
         <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-white/90 md:text-lg lg:text-xl">
@@ -127,6 +139,9 @@ function DetailBlockCentered({
             {colorsLabel}
           </p>
           <p className="mt-2 text-base tracking-wide text-luxury-silver/95 md:text-lg">{colors}</p>
+          {colorsLine2 && (
+            <p className="mt-1 text-base tracking-wide text-luxury-silver/90 md:text-lg">{colorsLine2}</p>
+          )}
         </div>
       </div>
     </motion.div>
@@ -360,7 +375,7 @@ export default function MerchandisePageClient() {
   const modalCategory = editing?.category ?? addingCategory;
 
   return (
-    <div ref={pageRef} className="min-h-screen bg-luxury-black">
+    <div ref={pageRef} className={`min-h-screen bg-luxury-black ${cormorant.variable}`}>
       <Navbar />
 
       {/* Hero with smooth transitioning merchandise images */}
@@ -396,9 +411,9 @@ export default function MerchandisePageClient() {
             </AnimatePresence>
           </div>
         )}
-        <div className="relative z-10 flex min-h-[70vh] flex-col items-center justify-center px-6 pb-20 text-center">
+        <div className="relative z-10 flex min-h-[70vh] flex-col items-center justify-center px-6 pb-20 text-center font-[family-name:var(--font-merch)]">
           <motion.h1
-            className="font-serif text-4xl font-semibold tracking-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.5)] md:text-5xl lg:text-6xl xl:text-7xl"
+            className="text-4xl font-semibold tracking-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.5)] md:text-5xl lg:text-6xl xl:text-7xl"
             initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
@@ -412,6 +427,14 @@ export default function MerchandisePageClient() {
             transition={{ duration: 0.65, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
           >
             {t("hero.subtitle")}
+          </motion.p>
+          <motion.p
+            className="mt-1 max-w-2xl text-center text-lg font-medium leading-snug text-white/90 drop-shadow-md md:text-xl lg:text-2xl"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {t("hero.subtitleProducts")}
           </motion.p>
           <motion.p
             className="mt-3 text-center text-base font-medium tracking-wide text-luxury-silver/95 drop-shadow md:text-lg"
@@ -495,6 +518,7 @@ export default function MerchandisePageClient() {
                     highlightsLabel={t("detail.highlightsLabel")}
                     colorsLabel={t("detail.polo.colorsLabel")}
                     colors={t("detail.polo.colors")}
+                    useMerchFont
                   />
                 )}
                 {category === "knitware" && (
@@ -505,33 +529,178 @@ export default function MerchandisePageClient() {
                     highlightsLabel={t("detail.highlightsLabel")}
                     colorsLabel={t("detail.knitware.colorsLabel")}
                     colors={t("detail.knitware.colors")}
+                    useMerchFont
                   />
                 )}
                 {category === "tshirt_cap" && (
-                  <>
-                    <DetailBlockCentered
-                      tagline={t("detail.tshirt.tagline")}
-                      description={t("detail.tshirt.description")}
-                      highlights={(t.raw("detail.tshirt.highlights") as string[]) ?? []}
-                      highlightsLabel={t("detail.highlightsLabel")}
-                      colorsLabel={t("detail.tshirt.colorsLabel")}
-                      colors={t("detail.tshirt.colors")}
-                      index={0}
-                    />
-                    <DetailBlockCentered
-                      tagline={t("detail.cap.tagline")}
-                      description={t("detail.cap.description")}
-                      highlightsLabel={t("detail.highlightsLabel")}
-                      colorsLabel={t("detail.cap.colorsLabel")}
-                      colors={t("detail.cap.colors")}
-                      index={1}
-                    />
-                  </>
+                  <DetailBlockCentered
+                    tagline={t("detail.tshirtCapCombined.tagline")}
+                    description={t("detail.tshirtCapCombined.description")}
+                    highlights={(t.raw("detail.tshirtCapCombined.highlights") as string[]) ?? []}
+                    highlightsLabel={t("detail.highlightsLabel")}
+                    colorsLabel={t("detail.tshirtCapCombined.colorsLabel")}
+                    colors={t("detail.tshirtCapCombined.colorsTshirt")}
+                    colorsLine2={t("detail.tshirtCapCombined.colorsCap")}
+                    index={0}
+                    useMerchFont
+                  />
                 )}
               </div>
 
-              <motion.div
-                className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4"
+              {/* T-Shirt & Cap: first row of images, then "Finishing touch" block, then rest of images */}
+              {category === "tshirt_cap" && displayItems.length > 0 ? (
+                <>
+                  <motion.div
+                    className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:gap-6"
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true, amount: 0.1 }}
+                    variants={sectionVariants}
+                  >
+                    {isAdmin && (
+                      <motion.button
+                        type="button"
+                        variants={cardVariants}
+                        custom={0}
+                        onClick={() => openAdd(category)}
+                        className="flex min-h-[240px] flex-col items-center justify-center rounded-2xl border border-dashed border-white/20 bg-white/5 text-white/60 transition hover:border-luxury-gold/50 hover:bg-white/10 hover:text-luxury-gold sm:col-span-2 lg:col-span-1"
+                      >
+                        <Plus className="mb-2 h-8 w-8" />
+                        <span className="text-sm">{t("cms.addCard")}</span>
+                      </motion.button>
+                    )}
+                    {displayItems.slice(0, 3).map((item, index) => {
+                      const isRealItem = typeof item.id === "number";
+                      const imgUrl = typeof item.imageUrl === "string" ? item.imageUrl : resolveImageUrl(item.imageUrl);
+                      return (
+                        <motion.div
+                          key={item.id}
+                          variants={cardVariants}
+                          custom={index}
+                          className="group relative overflow-hidden rounded-2xl bg-white/5"
+                        >
+                          <div className="relative aspect-[3/4] overflow-hidden">
+                            <Image
+                              src={imgUrl}
+                              alt={item.title || `${sectionTitles[category]} ${index + 1}`}
+                              fill
+                              sizes="(max-width: 640px) 50vw, 33vw"
+                              className="object-cover transition duration-500 group-hover:scale-105"
+                              loading={index < 2 ? "eager" : "lazy"}
+                              unoptimized={String(item.imageUrl).startsWith("http")}
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                            {item.title && (
+                              <div className="absolute bottom-0 left-0 right-0 p-4">
+                                <p className="text-sm font-medium text-white drop-shadow-lg">{item.title}</p>
+                              </div>
+                            )}
+                            {isAdmin && isRealItem && (
+                              <div className="absolute right-2 top-2 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                                <button
+                                  type="button"
+                                  onClick={() => openEdit(item as MerchandiseItemType)}
+                                  className="rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
+                                  aria-label={t("cms.edit")}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => typeof item.id === "number" && deleteItem(item.id)}
+                                  className="rounded-full bg-black/60 p-2 text-red-300 hover:bg-red-500/80"
+                                  aria-label={t("cms.delete")}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </motion.div>
+                  <motion.div
+                    className="mb-10 py-8 text-center font-[family-name:var(--font-merch)]"
+                    initial={{ opacity: 0, y: 16 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, amount: 0.4 }}
+                    transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <p className="text-xl font-semibold tracking-tight text-luxury-gold md:text-2xl lg:text-3xl">
+                      {t("detail.cap.tagline")}
+                    </p>
+                    <p className="mx-auto mt-3 max-w-xl text-base text-white/85 md:text-lg">
+                      {t("detail.cap.description")}
+                    </p>
+                    <p className="mt-4 text-sm uppercase tracking-[0.15em] text-white/55">
+                      {t("detail.cap.colorsLabel")}
+                    </p>
+                    <p className="mt-1 text-base text-luxury-silver/95">{t("detail.cap.colors")}</p>
+                  </motion.div>
+                  <motion.div
+                    className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:gap-6"
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true, amount: 0.1 }}
+                    variants={sectionVariants}
+                  >
+                    {displayItems.slice(3).map((item, index) => {
+                      const i = index + 3;
+                      const isRealItem = typeof item.id === "number";
+                      const imgUrl = typeof item.imageUrl === "string" ? item.imageUrl : resolveImageUrl(item.imageUrl);
+                      return (
+                        <motion.div
+                          key={item.id}
+                          variants={cardVariants}
+                          custom={i}
+                          className="group relative overflow-hidden rounded-2xl bg-white/5"
+                        >
+                          <div className="relative aspect-[3/4] overflow-hidden">
+                            <Image
+                              src={imgUrl}
+                              alt={item.title || `${sectionTitles[category]} ${i + 1}`}
+                              fill
+                              sizes="(max-width: 640px) 50vw, 33vw"
+                              className="object-cover transition duration-500 group-hover:scale-105"
+                              loading="lazy"
+                              unoptimized={String(item.imageUrl).startsWith("http")}
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                            {item.title && (
+                              <div className="absolute bottom-0 left-0 right-0 p-4">
+                                <p className="text-sm font-medium text-white drop-shadow-lg">{item.title}</p>
+                              </div>
+                            )}
+                            {isAdmin && isRealItem && (
+                              <div className="absolute right-2 top-2 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                                <button
+                                  type="button"
+                                  onClick={() => openEdit(item as MerchandiseItemType)}
+                                  className="rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
+                                  aria-label={t("cms.edit")}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => typeof item.id === "number" && deleteItem(item.id)}
+                                  className="rounded-full bg-black/60 p-2 text-red-300 hover:bg-red-500/80"
+                                  aria-label={t("cms.delete")}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </motion.div>
+                </>
+              ) : (
+                <motion.div
+                  className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4"
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, amount: 0.1 }}
@@ -623,6 +792,7 @@ export default function MerchandisePageClient() {
                   );
                 })}
               </motion.div>
+              )}
             </section>
           );
         })}

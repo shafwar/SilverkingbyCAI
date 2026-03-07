@@ -13,8 +13,8 @@ export async function generateMetadata({
   return generatePageMetadata({
     title: t("title") || "Merchandise",
     description:
-      t("hero.subtitle") ||
-      "Official Silver King by CAI merchandise — Polo, Knitware, T-Shirts & Caps.",
+      [t("hero.subtitle"), t("hero.subtitleProducts"), t("hero.tagline")].filter(Boolean).join(" ") ||
+      "Official Silver King by CAI apparel. Polo, Knitware, T-Shirts & Caps. Premium quality, timeless style.",
     path: "/merchandise",
     locale,
     keywords: [

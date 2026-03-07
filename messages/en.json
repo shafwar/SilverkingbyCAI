@@ -301,7 +301,8 @@
     "title": "Merchandise",
     "hero": {
       "title": "Merchandise",
-      "subtitle": "Official Silver King by CAI apparel — Polo, Knitware, T-Shirts & Caps.",
+      "subtitle": "Official Silver King by CAI apparel",
+      "subtitleProducts": "Polo, Knitware, T-Shirts & Caps.",
       "tagline": "Premium quality, timeless style."
     },
     "sections": {
@@ -345,6 +346,18 @@
         ],
         "colorsLabel": "Available Colors",
         "colors": "Black • White • Grey • Navy"
+      },
+      "tshirtCapCombined": {
+        "tagline": "T-Shirt & Cap",
+        "description": "Flattering fit, comfortable fabric, and a minimalist logo for a clean, premium look. Soft, breathable materials with a proportional cut—daily wear that feels right.",
+        "highlights": [
+          "Soft, breathable fabric",
+          "Fit, proportional cut",
+          "Minimalist & modern design",
+          "Daily wear friendly"
+        ],
+        "colorsTshirt": "T-Shirt: Black • White • Grey • Navy",
+        "colorsCap": "Cap: Black & White"
       },
       "cap": {
         "tagline": "Finishing touch that changes the game.",
