@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import Navbar from "@/components/layout/Navbar";
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
@@ -52,6 +52,26 @@ const cardVariants: Variants = {
 };
 
 const CATEGORY_ORDER: MerchandiseCategory[] = ["polo", "tshirt_cap", "knitware"];
+
+/** Fallback R2 paths when API returns no items (e.g. production not seeded) — matches compress-and-upload keys */
+const FALLBACK_IMAGE_PATHS: Record<MerchandiseCategory, string[]> = {
+  polo: ["/images/merchandise/polo-1-polo-1.jpg", "/images/merchandise/polo-2-polo-2.jpg", "/images/merchandise/polo-3-polo-3.jpg", "/images/merchandise/polo-4-polo-4.jpg"],
+  tshirt_cap: [
+    "/images/merchandise/tshirt_cap-1-t-shirt-&-cap-1.jpg",
+    "/images/merchandise/tshirt_cap-2-t-shirt-&-cap-2.jpg",
+    "/images/merchandise/tshirt_cap-3-t-shirt-&-cap-3.jpg",
+    "/images/merchandise/tshirt_cap-4-t-shirt-&-cap-4.jpg",
+    "/images/merchandise/tshirt_cap-5-t-shirt-&-cap-5.jpg",
+    "/images/merchandise/tshirt_cap-6-t-shirt-&-cap-6.jpg",
+  ],
+  knitware: [
+    "/images/merchandise/knitware-1-knitware-1.jpg",
+    "/images/merchandise/knitware-2-knitware-2.jpg",
+    "/images/merchandise/knitware-3-knitware-3.jpg",
+    "/images/merchandise/knitware-4-knitware-4.jpg",
+    "/images/merchandise/knitware-5-knitware-5.jpg",
+  ],
+};
 
 /** Renders one product-detail block: tagline, description, highlights, colors */
 function DetailBlock({
@@ -132,6 +152,27 @@ export default function MerchandisePageClient() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [heroIndex, setHeroIndex] = useState(0);
+
+  /** All merchandise image URLs for hero slideshow; fallback to R2 paths if API empty */
+  const heroImageUrls = useMemo(() => {
+    const fromApi: string[] = [];
+    CATEGORY_ORDER.forEach((cat) => {
+      (byCategory[cat] ?? []).forEach((item) => fromApi.push(item.imageUrl));
+    });
+    if (fromApi.length > 0) return fromApi.map(resolveImageUrl);
+    return CATEGORY_ORDER.flatMap((cat) =>
+      FALLBACK_IMAGE_PATHS[cat].map((p) => getR2UrlClient(p))
+    );
+  }, [byCategory]);
+
+  useEffect(() => {
+    if (heroImageUrls.length <= 1) return;
+    const t = setInterval(() => {
+      setHeroIndex((i) => (i + 1) % heroImageUrls.length);
+    }, 4500);
+    return () => clearInterval(t);
+  }, [heroImageUrls.length]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -319,19 +360,50 @@ export default function MerchandisePageClient() {
     <div ref={pageRef} className="min-h-screen bg-luxury-black">
       <Navbar />
 
-      <section className="relative flex min-h-[50vh] flex-col items-center justify-center px-6 pt-28 pb-20 text-center">
-        <div className="absolute inset-0 bg-gradient-to-b from-luxury-black via-luxury-black/95 to-luxury-black" />
-        <div className="relative z-10 max-w-3xl">
+      {/* Hero with smooth transitioning merchandise images */}
+      <section className="relative min-h-[70vh] overflow-hidden pt-20">
+        {heroImageUrls.length > 0 && (
+          <div className="absolute inset-0">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={heroIndex}
+                className="absolute inset-0"
+                initial={{ opacity: 0, scale: 1.02 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.03 }}
+                transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <motion.div
+                  className="absolute inset-0"
+                  animate={{ scale: 1.04 }}
+                  transition={{ duration: 4.5, ease: "none" }}
+                >
+                  <Image
+                    src={heroImageUrls[heroIndex]}
+                    alt=""
+                    fill
+                    className="object-cover"
+                    sizes="100vw"
+                    priority
+                    unoptimized={heroImageUrls[heroIndex]?.startsWith("http")}
+                  />
+                </motion.div>
+                <div className="absolute inset-0 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-luxury-black/40" />
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        )}
+        <div className="relative z-10 flex min-h-[70vh] flex-col items-center justify-center px-6 pb-20 text-center">
           <motion.h1
-            className="text-4xl font-light tracking-tight text-white md:text-5xl lg:text-6xl"
+            className="text-4xl font-light tracking-tight text-white drop-shadow-lg md:text-5xl lg:text-6xl"
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           >
             <span className="text-luxury-gold">{t("hero.title")}</span>
           </motion.h1>
           <motion.p
-            className="mt-4 text-lg text-white/70 md:text-xl"
+            className="mt-4 max-w-2xl text-lg text-white/90 drop-shadow md:text-xl"
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
@@ -344,13 +416,24 @@ export default function MerchandisePageClient() {
       <div className="mx-auto max-w-7xl px-4 pb-24 md:px-6">
         {CATEGORY_ORDER.map((category, sectionIndex) => {
           const items = byCategory[category] ?? [];
+          const displayItems: { id: number | string; imageUrl: string; title: string | null }[] =
+            items.length > 0
+              ? items
+              : FALLBACK_IMAGE_PATHS[category].map((path, i) => ({
+                  id: `fallback-${category}-${i}`,
+                  imageUrl: getR2UrlClient(path),
+                  title: null,
+                }));
+          const sectionBg = sectionIndex === 1 ? "rounded-3xl border border-white/5 bg-white/[0.02] px-6 py-8 md:px-10 md:py-10" : "";
+          const isPolo = category === "polo";
+
           return (
             <section
               key={category}
               ref={(el) => {
                 sectionRefs.current[sectionIndex] = el;
               }}
-              className="mb-20 md:mb-28"
+              className={`mb-20 md:mb-28 ${sectionBg}`}
             >
               <motion.h2
                 className="mb-8 text-2xl font-light tracking-tight text-white md:text-3xl"
@@ -363,6 +446,40 @@ export default function MerchandisePageClient() {
                   {sectionTitles[category]}
                 </span>
               </motion.h2>
+
+              {/* Polo: featured image strip then copy; others: copy only above grid */}
+              {isPolo && displayItems.length > 0 && (
+                <motion.div
+                  className="mb-10 grid grid-cols-2 gap-3 sm:grid-cols-4"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, staggerChildren: 0.08 }}
+                >
+                  {displayItems.slice(0, 4).map((item, index) => (
+                    <motion.div
+                      key={item.id}
+                      className="group relative overflow-hidden rounded-2xl"
+                      initial={{ opacity: 0, y: 16 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: index * 0.08 }}
+                    >
+                      <div className="relative aspect-[3/4] overflow-hidden rounded-2xl border border-white/10">
+                        <Image
+                          src={item.imageUrl}
+                          alt={item.title || `${sectionTitles[category]} ${index + 1}`}
+                          fill
+                          sizes="(max-width: 640px) 50vw, 25vw"
+                          className="object-cover transition duration-500 group-hover:scale-105"
+                          loading="eager"
+                          unoptimized={String(item.imageUrl).startsWith("http")}
+                        />
+                      </div>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
 
               {/* Section copy: tagline, description, highlights, colors */}
               <div className="mb-10 grid gap-6 md:grid-cols-1 lg:grid-cols-2">
@@ -428,54 +545,58 @@ export default function MerchandisePageClient() {
                     <span className="text-sm">{t("cms.addCard")}</span>
                   </motion.button>
                 )}
-                {items.map((item, index) => (
-                  <motion.div
-                    key={item.id}
-                    variants={cardVariants}
-                    custom={isAdmin ? index + 1 : index}
-                    className="group relative overflow-hidden rounded-2xl bg-white/5"
-                  >
-                    <div className="relative aspect-[3/4] overflow-hidden">
-                      <Image
-                        src={resolveImageUrl(item.imageUrl)}
-                        alt={item.title || `${sectionTitles[category]} ${index + 1}`}
-                        fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                        className="object-cover transition duration-500 group-hover:scale-105"
-                        loading="lazy"
-                        unoptimized={item.imageUrl.startsWith("http")}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                      {item.title && (
-                        <div className="absolute bottom-0 left-0 right-0 p-4">
-                          <p className="text-sm font-medium text-white drop-shadow-lg">
-                            {item.title}
-                          </p>
-                        </div>
-                      )}
-                      {isAdmin && (
-                        <div className="absolute right-2 top-2 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                          <button
-                            type="button"
-                            onClick={() => openEdit(item)}
-                            className="rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
-                            aria-label={t("cms.edit")}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => deleteItem(item.id)}
-                            className="rounded-full bg-black/60 p-2 text-red-300 hover:bg-red-500/80"
-                            aria-label={t("cms.delete")}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                ))}
+                {displayItems.map((item, index) => {
+                  const isRealItem = typeof item.id === "number";
+                  const imgUrl = typeof item.imageUrl === "string" ? item.imageUrl : resolveImageUrl(item.imageUrl);
+                  return (
+                    <motion.div
+                      key={item.id}
+                      variants={cardVariants}
+                      custom={isAdmin ? index + 1 : index}
+                      className="group relative overflow-hidden rounded-2xl bg-white/5"
+                    >
+                      <div className="relative aspect-[3/4] overflow-hidden">
+                        <Image
+                          src={imgUrl}
+                          alt={item.title || `${sectionTitles[category]} ${index + 1}`}
+                          fill
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                          className="object-cover transition duration-500 group-hover:scale-105"
+                          loading="lazy"
+                          unoptimized={String(item.imageUrl).startsWith("http")}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                        {item.title && (
+                          <div className="absolute bottom-0 left-0 right-0 p-4">
+                            <p className="text-sm font-medium text-white drop-shadow-lg">
+                              {item.title}
+                            </p>
+                          </div>
+                        )}
+                        {isAdmin && isRealItem && (
+                          <div className="absolute right-2 top-2 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                            <button
+                              type="button"
+                              onClick={() => openEdit(item as MerchandiseItemType)}
+                              className="rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
+                              aria-label={t("cms.edit")}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => typeof item.id === "number" && deleteItem(item.id)}
+                              className="rounded-full bg-black/60 p-2 text-red-300 hover:bg-red-500/80"
+                              aria-label={t("cms.delete")}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </motion.div>
             </section>
           );
