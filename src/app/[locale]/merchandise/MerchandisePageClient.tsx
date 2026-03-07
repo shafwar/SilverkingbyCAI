@@ -73,8 +73,8 @@ const FALLBACK_IMAGE_PATHS: Record<MerchandiseCategory, string[]> = {
   ],
 };
 
-/** Renders one product-detail block: tagline, description, highlights, colors */
-function DetailBlock({
+/** Centered product copy: no container, powerful typography */
+function DetailBlockCentered({
   tagline,
   description,
   highlights,
@@ -93,38 +93,38 @@ function DetailBlock({
 }) {
   return (
     <motion.div
-      className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-transparent p-6 md:p-8 backdrop-blur-sm"
-      initial={{ opacity: 0, y: 24 }}
+      className="text-center"
+      initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.2 }}
-      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: index * 0.1 }}
+      viewport={{ once: true, amount: 0.3 }}
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: index * 0.08 }}
     >
-      <p className="text-lg font-medium tracking-tight text-luxury-gold md:text-xl">
+      <p className="font-serif text-2xl font-medium tracking-tight text-luxury-gold md:text-3xl">
         {tagline}
       </p>
-      <p className="mt-3 text-sm leading-relaxed text-white/80 md:text-base">
+      <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-white/85 md:text-lg">
         {description}
       </p>
       {highlights && highlights.length > 0 && (
-        <div className="mt-5">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-white/50">
+        <div className="mt-6">
+          <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-white/50">
             {highlightsLabel}
           </p>
-          <ul className="space-y-1.5 text-sm text-white/75">
+          <ul className="mx-auto flex max-w-md flex-wrap justify-center gap-x-6 gap-y-1 text-sm text-white/80 md:gap-x-8">
             {highlights.map((item, i) => (
-              <li key={i} className="flex items-start gap-2">
-                <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-luxury-gold/80" />
+              <li key={i} className="flex items-center justify-center gap-2">
+                <span className="h-1 w-1 flex-shrink-0 rounded-full bg-luxury-gold/90" />
                 {item}
               </li>
             ))}
           </ul>
         </div>
       )}
-      <div className="mt-5 pt-4 border-t border-white/10">
-        <p className="text-xs font-medium uppercase tracking-wider text-white/50">
+      <div className="mt-6">
+        <p className="text-xs font-medium uppercase tracking-[0.2em] text-white/50">
           {colorsLabel}
         </p>
-        <p className="mt-1 text-sm text-luxury-silver/90">{colors}</p>
+        <p className="mt-1.5 text-sm tracking-wide text-luxury-silver/95">{colors}</p>
       </div>
     </motion.div>
   );
@@ -154,7 +154,7 @@ export default function MerchandisePageClient() {
   const [isMounted, setIsMounted] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
 
-  /** All merchandise image URLs for hero slideshow; fallback to R2 paths if API empty */
+  /** Hero images: polo first (man in shirt), then rest. Same order for fallback. */
   const heroImageUrls = useMemo(() => {
     const fromApi: string[] = [];
     CATEGORY_ORDER.forEach((cat) => {
@@ -395,20 +395,28 @@ export default function MerchandisePageClient() {
         )}
         <div className="relative z-10 flex min-h-[70vh] flex-col items-center justify-center px-6 pb-20 text-center">
           <motion.h1
-            className="text-4xl font-light tracking-tight text-white drop-shadow-lg md:text-5xl lg:text-6xl"
-            initial={{ opacity: 0, y: 24 }}
+            className="font-serif text-4xl font-semibold tracking-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.5)] md:text-5xl lg:text-6xl xl:text-7xl"
+            initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
           >
             <span className="text-luxury-gold">{t("hero.title")}</span>
           </motion.h1>
           <motion.p
-            className="mt-4 max-w-2xl text-lg text-white/90 drop-shadow md:text-xl"
-            initial={{ opacity: 0, y: 16 }}
+            className="mt-5 max-w-2xl text-lg font-medium leading-snug text-white/95 drop-shadow-md md:text-xl lg:text-2xl"
+            initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.65, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
           >
             {t("hero.subtitle")}
+          </motion.p>
+          <motion.p
+            className="mt-2 text-base tracking-wide text-luxury-silver/90 drop-shadow md:text-lg"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {t("hero.tagline")}
           </motion.p>
         </div>
       </section>
@@ -424,7 +432,6 @@ export default function MerchandisePageClient() {
                   imageUrl: getR2UrlClient(path),
                   title: null,
                 }));
-          const sectionBg = sectionIndex === 1 ? "rounded-3xl border border-white/5 bg-white/[0.02] px-6 py-8 md:px-10 md:py-10" : "";
           const isPolo = category === "polo";
 
           return (
@@ -433,7 +440,7 @@ export default function MerchandisePageClient() {
               ref={(el) => {
                 sectionRefs.current[sectionIndex] = el;
               }}
-              className={`mb-20 md:mb-28 ${sectionBg}`}
+              className="mb-20 md:mb-28"
             >
               <motion.h2
                 className="mb-8 text-2xl font-light tracking-tight text-white md:text-3xl"
@@ -447,23 +454,17 @@ export default function MerchandisePageClient() {
                 </span>
               </motion.h2>
 
-              {/* Polo: featured image strip then copy; others: copy only above grid */}
+              {/* Polo: featured image strip with slide-in transitions */}
               {isPolo && displayItems.length > 0 && (
-                <motion.div
-                  className="mb-10 grid grid-cols-2 gap-3 sm:grid-cols-4"
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, staggerChildren: 0.08 }}
-                >
+                <div className="mb-12 grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {displayItems.slice(0, 4).map((item, index) => (
                     <motion.div
                       key={item.id}
                       className="group relative overflow-hidden rounded-2xl"
-                      initial={{ opacity: 0, y: 16 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: index * 0.08 }}
+                      initial={{ opacity: 0, x: index % 2 === 0 ? -48 : 48 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true, amount: 0.25 }}
+                      transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1], delay: index * 0.08 }}
                     >
                       <div className="relative aspect-[3/4] overflow-hidden rounded-2xl border border-white/10">
                         <Image
@@ -478,13 +479,13 @@ export default function MerchandisePageClient() {
                       </div>
                     </motion.div>
                   ))}
-                </motion.div>
+                </div>
               )}
 
-              {/* Section copy: tagline, description, highlights, colors */}
-              <div className="mb-10 grid gap-6 md:grid-cols-1 lg:grid-cols-2">
+              {/* Centered copy: no container, powerful typography */}
+              <div className="mb-14 flex flex-col gap-14 md:gap-16">
                 {category === "polo" && (
-                  <DetailBlock
+                  <DetailBlockCentered
                     tagline={t("detail.polo.tagline")}
                     description={t("detail.polo.description")}
                     highlights={(t.raw("detail.polo.highlights") as string[]) ?? []}
@@ -494,7 +495,7 @@ export default function MerchandisePageClient() {
                   />
                 )}
                 {category === "knitware" && (
-                  <DetailBlock
+                  <DetailBlockCentered
                     tagline={t("detail.knitware.tagline")}
                     description={t("detail.knitware.description")}
                     highlights={(t.raw("detail.knitware.highlights") as string[]) ?? []}
@@ -505,7 +506,7 @@ export default function MerchandisePageClient() {
                 )}
                 {category === "tshirt_cap" && (
                   <>
-                    <DetailBlock
+                    <DetailBlockCentered
                       tagline={t("detail.tshirt.tagline")}
                       description={t("detail.tshirt.description")}
                       highlights={(t.raw("detail.tshirt.highlights") as string[]) ?? []}
@@ -514,7 +515,7 @@ export default function MerchandisePageClient() {
                       colors={t("detail.tshirt.colors")}
                       index={0}
                     />
-                    <DetailBlock
+                    <DetailBlockCentered
                       tagline={t("detail.cap.tagline")}
                       description={t("detail.cap.description")}
                       highlightsLabel={t("detail.highlightsLabel")}
@@ -528,10 +529,10 @@ export default function MerchandisePageClient() {
 
               <motion.div
                 className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                variants={sectionVariants}
                 initial="hidden"
                 whileInView="visible"
-                viewport={{ once: true, amount: 0.15 }}
+                viewport={{ once: true, amount: 0.1 }}
+                variants={sectionVariants}
               >
                 {isAdmin && (
                   <motion.button
@@ -548,12 +549,15 @@ export default function MerchandisePageClient() {
                 {displayItems.map((item, index) => {
                   const isRealItem = typeof item.id === "number";
                   const imgUrl = typeof item.imageUrl === "string" ? item.imageUrl : resolveImageUrl(item.imageUrl);
+                  const slideFromLeft = index % 2 === 0;
                   return (
                     <motion.div
                       key={item.id}
-                      variants={cardVariants}
-                      custom={isAdmin ? index + 1 : index}
                       className="group relative overflow-hidden rounded-2xl bg-white/5"
+                      initial={{ opacity: 0, x: slideFromLeft ? -56 : 56 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true, amount: 0.2 }}
+                      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: index * 0.06 }}
                     >
                       <div className="relative aspect-[3/4] overflow-hidden">
                         <Image

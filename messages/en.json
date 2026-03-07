@@ -301,7 +301,8 @@
     "title": "Merchandise",
     "hero": {
       "title": "Merchandise",
-      "subtitle": "Official Silver King by CAI apparel — Polo, Knitware, T-Shirts & Caps. Premium quality, timeless style."
+      "subtitle": "Official Silver King by CAI apparel — Polo, Knitware, T-Shirts & Caps.",
+      "tagline": "Premium quality, timeless style."
     },
     "sections": {
       "polo": "Polo",
