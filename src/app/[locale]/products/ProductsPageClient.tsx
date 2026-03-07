@@ -278,7 +278,11 @@ export default function ProductsPageClient() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
   const [isMounted, setIsMounted] = useState(false);
-  const { sections: pageSections, loading: sectionsLoading, refetch: refetchPageSections } = usePageSections("products");
+  const {
+    sections: pageSections,
+    loading: sectionsLoading,
+    refetch: refetchPageSections,
+  } = usePageSections("products");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
   const heroMediaUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/gold-stone.mp4");
 

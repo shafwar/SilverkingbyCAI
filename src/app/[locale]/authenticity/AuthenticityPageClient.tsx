@@ -356,9 +356,14 @@ export default function AuthenticityPageClient() {
   const heroRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const router = useRouter();
-  const { sections: pageSections, loading: sectionsLoading, refetch: refetchPageSections } = usePageSections("authenticity");
+  const {
+    sections: pageSections,
+    loading: sectionsLoading,
+    refetch: refetchPageSections,
+  } = usePageSections("authenticity");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
-  const heroMediaUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/mobile scanning qr.mp4");
+  const heroMediaUrl =
+    pageSections.hero?.url ?? getR2UrlClient("/videos/hero/mobile scanning qr.mp4");
 
   // Register ScrollTrigger only on the client to avoid SSR/window issues
   useEffect(() => {

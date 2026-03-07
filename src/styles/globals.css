@@ -62,8 +62,9 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Hide scrollbar globally for all browsers - Desktop & Mobile */
+  /* Lock font from root so hero/home never inherit a different font (reduces FOUT) */
   html {
+    font-family: var(--font-geist-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     /* Firefox */
     scrollbar-width: none;
     /* IE and Edge */

@@ -5,6 +5,9 @@ import { motion } from "framer-motion";
 import { gsap } from "gsap";
 import { useTranslations } from "next-intl";
 
+/** Max ms to wait for font before starting splash (avoid blocking on very slow networks) */
+const FONT_READY_TIMEOUT_MS = 2000;
+
 interface SplashScreenProps {
   onComplete: () => void;
 }
@@ -13,27 +16,27 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
   const t = useTranslations("home");
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
+  const gsapCtxRef = useRef<ReturnType<typeof gsap.context> | null>(null);
 
-  // USE useLayoutEffect for INSTANT initial state (no flash, no delay)
+  // Wait for font to load before animating, so splash never shows fallback font
   useLayoutEffect(() => {
-    const ctx = gsap.context(() => {
-      const tl = gsap.timeline();
+    const letters = textRef.current?.querySelectorAll(".letter");
+    const textContainer = textRef.current;
 
-      // Get all letters and text container
-      const letters = textRef.current?.querySelectorAll(".letter");
-      const textContainer = textRef.current;
+    if (!letters?.length || !textContainer || !containerRef.current) return;
 
-      if (letters && textContainer) {
-        // CRITICAL: Set initial state IMMEDIATELY before any render
-        // This prevents any flicker or flash of text
-        gsap.set(letters, {
-          opacity: 0,
-          y: 30,
-          filter: "blur(15px)",
-          scale: 0.9,
-        });
+    // CRITICAL: Hide letters immediately so no flash of wrong font
+    gsap.set(letters, {
+      opacity: 0,
+      y: 30,
+      filter: "blur(15px)",
+      scale: 0.9,
+    });
 
-        // Animate letters one by one - FASTER & SMOOTHER
+    const runTimeline = () => {
+      gsapCtxRef.current = gsap.context(() => {
+        const tl = gsap.timeline();
+
         tl.to(
           letters,
           {
@@ -43,60 +46,53 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
             scale: 1,
             duration: 0.7,
             stagger: {
-              amount: 1.6, // Reduced from 2 for faster stagger
+              amount: 1.6,
               ease: "power2.inOut",
             },
             ease: "expo.out",
           },
-          0.1 // Small delay to ensure smooth start
+          0.1
         );
 
-        // Pulse effect at the end - SUBTLER & FASTER
         tl.to(
           textRef.current,
-          {
-            scale: 1.015, // More subtle (was 1.02)
-            duration: 0.3,
-            ease: "power2.out",
-          },
+          { scale: 1.015, duration: 0.3, ease: "power2.out" },
           "-=0.4"
         );
-
         tl.to(
           textRef.current,
-          {
-            scale: 1,
-            duration: 0.3,
-            ease: "power2.inOut",
-          },
+          { scale: 1, duration: 0.3, ease: "power2.inOut" },
           "-=0.15"
         );
-
-        // Shorter hold
         tl.to({}, { duration: 0.3 });
-
-        // Fade out entire splash - FASTER & SMOOTHER
         tl.to(
           containerRef.current,
           {
             opacity: 0,
-            duration: 0.6, // Faster fade (was 0.8)
+            duration: 0.6,
             ease: "power3.inOut",
             onComplete: () => {
-              // Mark splash as complete in body class
               if (typeof document !== "undefined") {
                 document.body.classList.add("splash-complete");
               }
-              // Call parent's onComplete after fade out
               onComplete();
             },
           },
-          "+=0.2" // Shorter delay before fade (was 0.3)
+          "+=0.2"
         );
-      }
-    });
+      }, containerRef.current);
+    };
 
-    return () => ctx.revert();
+    // Start animation only after fonts are ready (Geist loaded), or after timeout
+    Promise.race([
+      document.fonts.ready,
+      new Promise<void>((r) => setTimeout(r, FONT_READY_TIMEOUT_MS)),
+    ]).then(runTimeline);
+
+    return () => {
+      gsapCtxRef.current?.revert();
+      gsapCtxRef.current = null;
+    };
   }, [onComplete]);
 
   const fontStack = "var(--font-geist-sans), system-ui, sans-serif";

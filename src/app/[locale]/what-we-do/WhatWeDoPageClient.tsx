@@ -147,190 +147,204 @@ const NarrativeImageSection = forwardRef<
     /** When true, opening edit on a card auto-opens the file picker (craft cards on What We Do) */
     autoOpenFilePicker?: boolean;
   }
->(({ columns, cards, title, description, sectionKeys, refetchSections, sectionsLoading, autoOpenFilePicker }, ref) => {
-  // Track which images have finished loading so we can fade them in smoothly
-  const [imageLoaded, setImageLoaded] = useState<{ [key: string]: boolean }>({});
+>(
+  (
+    {
+      columns,
+      cards,
+      title,
+      description,
+      sectionKeys,
+      refetchSections,
+      sectionsLoading,
+      autoOpenFilePicker,
+    },
+    ref
+  ) => {
+    // Track which images have finished loading so we can fade them in smoothly
+    const [imageLoaded, setImageLoaded] = useState<{ [key: string]: boolean }>({});
 
-  // Detect mobile for quality optimization
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
+    // Detect mobile for quality optimization
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+      const checkMobile = () => {
+        setIsMobile(window.innerWidth < 768);
+      };
+      checkMobile();
+      window.addEventListener("resize", checkMobile);
+      return () => window.removeEventListener("resize", checkMobile);
+    }, []);
 
-  /**
-   * Image loading strategy
-   *
-   * We let Next/Image handle caching and decoding, and only use a very small
-   * bit of state (`imageLoaded`) to fade images in once they've finished
-   * loading. No aggressive preloading or timeouts – this avoids race
-   * conditions where images might be marked as failed even though they are
-   * still loading, which could cause blank cards.
-   *
-   * Caching is handled by:
-   * - Stable R2 URLs via `getR2UrlClient`
-   * - Next/Image's internal cache
-   * - `priority` + `fetchPriority="high"` for the 3 main cards
-   */
+    /**
+     * Image loading strategy
+     *
+     * We let Next/Image handle caching and decoding, and only use a very small
+     * bit of state (`imageLoaded`) to fade images in once they've finished
+     * loading. No aggressive preloading or timeouts – this avoids race
+     * conditions where images might be marked as failed even though they are
+     * still loading, which could cause blank cards.
+     *
+     * Caching is handled by:
+     * - Stable R2 URLs via `getR2UrlClient`
+     * - Next/Image's internal cache
+     * - `priority` + `fetchPriority="high"` for the 3 main cards
+     */
 
-  return (
-    <section
-      ref={ref}
-      className="relative border-t border-white/5 bg-[#000] px-4 sm:px-6 md:px-8 lg:px-12 py-16 sm:py-20 md:py-24 lg:py-32 overflow-visible isolate"
-    >
-      <div className="relative z-10 mx-auto max-w-[1320px]">
-        {/* Text section at top - Pixelmatters style */}
-        <div className="mb-12 md:mb-16 lg:mb-20">
-          <div className="space-y-4 md:space-y-5 max-w-3xl">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight text-white">
-              {title || columns[0]?.title || "Craft from raw bullion"}
-            </h2>
-            <p className="text-base sm:text-lg md:text-xl leading-relaxed text-neutral-300 max-w-2xl">
-              {description ||
-                columns[0]?.description ||
-                "We transform responsibly sourced gold, silver, and palladium into investment-grade bars using tightly controlled refining and casting lines."}
-            </p>
+    return (
+      <section
+        ref={ref}
+        className="relative border-t border-white/5 bg-[#000] px-4 sm:px-6 md:px-8 lg:px-12 py-16 sm:py-20 md:py-24 lg:py-32 overflow-visible isolate"
+      >
+        <div className="relative z-10 mx-auto max-w-[1320px]">
+          {/* Text section at top - Pixelmatters style */}
+          <div className="mb-12 md:mb-16 lg:mb-20">
+            <div className="space-y-4 md:space-y-5 max-w-3xl">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight text-white">
+                {title || columns[0]?.title || "Craft from raw bullion"}
+              </h2>
+              <p className="text-base sm:text-lg md:text-xl leading-relaxed text-neutral-300 max-w-2xl">
+                {description ||
+                  columns[0]?.description ||
+                  "We transform responsibly sourced gold, silver, and palladium into investment-grade bars using tightly controlled refining and casting lines."}
+              </p>
+            </div>
           </div>
-        </div>
 
-        {/* Enhanced Cards - Pixelmatters style - aligned properly */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 lg:gap-8 pb-6 md:pb-0">
-          {cards.map((card, idx) => {
-            const mediaUrl = getCacheBustedMediaUrl(card.images[0], card.version);
-            const isVideo = card.mediaType?.toUpperCase() === "VIDEO";
-            const imageKey = `${idx}-0`;
-            const isImageLoaded = imageLoaded[imageKey];
+          {/* Enhanced Cards - Pixelmatters style - aligned properly */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 lg:gap-8 pb-6 md:pb-0">
+            {cards.map((card, idx) => {
+              const mediaUrl = getCacheBustedMediaUrl(card.images[0], card.version);
+              const isVideo = card.mediaType?.toUpperCase() === "VIDEO";
+              const imageKey = `${idx}-0`;
+              const isImageLoaded = imageLoaded[imageKey];
 
-            return (
-              <div
-                key={card.label}
-                className="relative w-full opacity-0 animate-fade-in"
-                style={{
-                  animationDelay: `${idx * 100}ms`,
-                  animationFillMode: "forwards",
-                }}
-              >
-                {/* Enhanced Card - Pixelmatters style */}
+              return (
                 <div
-                  className="relative w-full overflow-hidden rounded-2xl bg-black/40 border border-white/5 shadow-lg md:shadow-xl transition-all duration-300 flex flex-col"
+                  key={card.label}
+                  className="relative w-full opacity-0 animate-fade-in"
                   style={{
-                    aspectRatio: "4/3",
-                    minHeight: "280px",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "scale(1.02)";
-                    e.currentTarget.style.boxShadow = "0 25px 50px -12px rgba(0, 0, 0, 0.5)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "scale(1)";
-                    e.currentTarget.style.boxShadow = "";
+                    animationDelay: `${idx * 100}ms`,
+                    animationFillMode: "forwards",
                   }}
                 >
-                  {/* Media container - image or video at top */}
-                  <div className="relative w-full flex-[0_0_65%] overflow-hidden bg-black/40">
-                    {/* Loading placeholder (images only); or black when sections loading to prevent flash */}
-                    {(sectionsLoading || (!isVideo && !isImageLoaded)) && (
-                      <div className="absolute inset-0 z-10 flex items-center justify-center bg-luxury-black">
-                        {!sectionsLoading && (
-                          <div className="h-6 w-6 sm:h-8 sm:w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+                  {/* Enhanced Card - Pixelmatters style */}
+                  <div
+                    className="relative w-full overflow-hidden rounded-2xl bg-black/40 border border-white/5 shadow-lg md:shadow-xl transition-all duration-300 flex flex-col"
+                    style={{
+                      aspectRatio: "4/3",
+                      minHeight: "280px",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "scale(1.02)";
+                      e.currentTarget.style.boxShadow = "0 25px 50px -12px rgba(0, 0, 0, 0.5)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "scale(1)";
+                      e.currentTarget.style.boxShadow = "";
+                    }}
+                  >
+                    {/* Media container - image or video at top */}
+                    <div className="relative w-full flex-[0_0_65%] overflow-hidden bg-black/40">
+                      {/* Loading placeholder (images only); or black when sections loading to prevent flash */}
+                      {(sectionsLoading || (!isVideo && !isImageLoaded)) && (
+                        <div className="absolute inset-0 z-10 flex items-center justify-center bg-luxury-black">
+                          {!sectionsLoading && (
+                            <div className="h-6 w-6 sm:h-8 sm:w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+                          )}
+                        </div>
+                      )}
+
+                      {/* Image or video (flexible replace); placeholder when sections still loading to prevent flash */}
+                      <div
+                        className={`absolute inset-0 transition-opacity duration-300 ease-out ${
+                          sectionsLoading
+                            ? "opacity-0"
+                            : isVideo || isImageLoaded
+                              ? "opacity-100"
+                              : "opacity-0"
+                        }`}
+                        style={{
+                          willChange: sectionsLoading
+                            ? "auto"
+                            : isVideo || isImageLoaded
+                              ? "auto"
+                              : "opacity",
+                        }}
+                      >
+                        {sectionsLoading ? (
+                          <div className="absolute inset-0 bg-luxury-black" aria-hidden />
+                        ) : isVideo ? (
+                          <VideoLoadGuard
+                            url={card.images[0]}
+                            version={card.version}
+                            containerClassName="absolute inset-0 w-full h-full"
+                            className="absolute inset-0 w-full h-full object-cover"
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                          />
+                        ) : (
+                          <Image
+                            src={mediaUrl}
+                            alt={card.label}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 440px"
+                            priority
+                            loading="eager"
+                            quality={isMobile ? 75 : 92}
+                            fetchPriority="high"
+                            placeholder="blur"
+                            blurDataURL="data:image/svg+xml,%3Csvg width='16' height='12' xmlns='http://www.w3.org/2000/svg'%3E%3ClinearGradient id='g'%3E%3Cstop stop-color='%23090'/%3E%3Cstop offset='1' stop-color='%23000'/%3E%3C/linearGradient%3E%3Crect width='16' height='12' fill='url(%23g)'/%3E%3C/svg%3E"
+                            onLoadingComplete={() => {
+                              setImageLoaded((prev) => ({
+                                ...prev,
+                                [imageKey]: true,
+                              }));
+                            }}
+                          />
                         )}
                       </div>
-                    )}
-
-                    {/* Image or video (flexible replace); placeholder when sections still loading to prevent flash */}
-                    <div
-                      className={`absolute inset-0 transition-opacity duration-300 ease-out ${
-                        sectionsLoading
-                          ? "opacity-0"
-                          : isVideo || isImageLoaded
-                            ? "opacity-100"
-                            : "opacity-0"
-                      }`}
-                      style={{
-                        willChange: sectionsLoading
-                          ? "auto"
-                          : isVideo || isImageLoaded
-                            ? "auto"
-                            : "opacity",
-                      }}
-                    >
-                      {sectionsLoading ? (
-                        <div className="absolute inset-0 bg-luxury-black" aria-hidden />
-                      ) : isVideo ? (
-                        <VideoLoadGuard
-                          url={card.images[0]}
-                          version={card.version}
-                          containerClassName="absolute inset-0 w-full h-full"
-                          className="absolute inset-0 w-full h-full object-cover"
-                          autoPlay
-                          loop
-                          muted
-                          playsInline
-                        />
-                      ) : (
-                        <Image
-                          src={mediaUrl}
-                          alt={card.label}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 440px"
-                          priority
-                          loading="eager"
-                          quality={isMobile ? 75 : 92}
-                          fetchPriority="high"
-                          placeholder="blur"
-                          blurDataURL="data:image/svg+xml,%3Csvg width='16' height='12' xmlns='http://www.w3.org/2000/svg'%3E%3ClinearGradient id='g'%3E%3Cstop stop-color='%23090'/%3E%3Cstop offset='1' stop-color='%23000'/%3E%3C/linearGradient%3E%3Crect width='16' height='12' fill='url(%23g)'/%3E%3C/svg%3E"
-                          onLoadingComplete={() => {
-                            setImageLoaded((prev) => ({
-                              ...prev,
-                              [imageKey]: true,
-                            }));
-                          }}
-                        />
+                      {sectionKeys?.[idx] && refetchSections && (
+                        <div className="absolute top-2 right-2 z-20 pointer-events-auto rounded-xl border border-white/15 bg-black/60 px-2 py-1.5 shadow-lg backdrop-blur-sm">
+                          <EditableMedia
+                            page="what-we-do"
+                            section={sectionKeys[idx]}
+                            type="image"
+                            overlayOnly
+                            onUploadDone={refetchSections}
+                            editLabel="Edit foto"
+                            autoOpenFilePicker={autoOpenFilePicker}
+                          />
+                        </div>
                       )}
                     </div>
-                    {sectionKeys?.[idx] && refetchSections && (
-                      <div className="absolute top-2 right-2 z-20 pointer-events-auto rounded-xl border border-white/15 bg-black/60 px-2 py-1.5 shadow-lg backdrop-blur-sm">
-                        <EditableMedia
-                          page="what-we-do"
-                          section={sectionKeys[idx]}
-                          type="image"
-                          overlayOnly
-                          onUploadDone={refetchSections}
-                          editLabel="Edit foto"
-                          autoOpenFilePicker={autoOpenFilePicker}
-                        />
-                      </div>
-                    )}
-                  </div>
 
-                  {/* Content section - Logo and text below image */}
-                  <div className="relative flex-[0_0_35%] bg-black/60 p-4 md:p-5 flex flex-col justify-start min-h-0">
-                    {/* Logo/Client name - small text */}
-                    <div className="mb-2 flex-shrink-0">
-                      <p className="text-[10px] md:text-xs font-medium text-white/60 uppercase tracking-wider">
-                        {card.label}
+                    {/* Content section - Logo and text below image */}
+                    <div className="relative flex-[0_0_35%] bg-black/60 p-4 md:p-5 flex flex-col justify-start min-h-0">
+                      {/* Logo/Client name - small text */}
+                      <div className="mb-2 flex-shrink-0">
+                        <p className="text-[10px] md:text-xs font-medium text-white/60 uppercase tracking-wider">
+                          {card.label}
+                        </p>
+                      </div>
+
+                      {/* Description text - small and clean */}
+                      <p className="text-xs md:text-sm leading-relaxed text-neutral-300 line-clamp-2">
+                        {card.caption}
                       </p>
                     </div>
-
-                    {/* Description text - small and clean */}
-                    <p className="text-xs md:text-sm leading-relaxed text-neutral-300 line-clamp-2">
-                      {card.caption}
-                    </p>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      </div>
-    </section>
-  );
-});
+      </section>
+    );
+  }
+);
 
 NarrativeImageSection.displayName = "NarrativeImageSection";
 

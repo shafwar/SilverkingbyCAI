@@ -190,7 +190,11 @@ export default function AboutPageClient() {
   const noiseOverlay = useRef<HTMLDivElement | null>(null);
   const gradientOverlay = useRef<HTMLDivElement | null>(null);
   const heroVideoRef = useRef<HTMLVideoElement | null>(null);
-  const { sections: pageSections, loading: sectionsLoading, refetch: refetchPageSections } = usePageSections("about");
+  const {
+    sections: pageSections,
+    loading: sectionsLoading,
+    refetch: refetchPageSections,
+  } = usePageSections("about");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
   const heroMediaUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/gold-footage.mp4");
 
@@ -633,4 +637,3 @@ export default function AboutPageClient() {
     </div>
   );
 }
-
