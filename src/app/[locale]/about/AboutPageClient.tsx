@@ -30,6 +30,7 @@ import {
   Twitter,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { ScrollRevealSection, ScrollRevealStagger } from "@/components/shared/ScrollRevealSection";
 
 type FeatureItem = {
   icon: LucideIcon;
@@ -51,34 +52,9 @@ type ValueItem = {
   description: string;
 };
 
-const FeatureCard = ({ feature, index }: { feature: FeatureItem; index: number }) => {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const element = containerRef.current;
-    if (!element) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("fade-in-visible");
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
-
-    observer.observe(element);
-
-    return () => {
-      observer.unobserve(element);
-    };
-  }, []);
-
+const FeatureCard = ({ feature }: { feature: FeatureItem; index: number }) => {
   return (
-    <div ref={containerRef} className="group relative min-h-[360px] fade-in">
+    <div className="group relative min-h-[360px]">
       <div className="relative flex h-full flex-col rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] p-10 backdrop-blur-xl transition-all duration-300 hover:border-luxury-gold/40 hover:shadow-[0px_20px_60px_-30px_rgba(212,175,55,0.4)]">
         <div className="relative z-10">
           <div
@@ -95,33 +71,8 @@ const FeatureCard = ({ feature, index }: { feature: FeatureItem; index: number }
 };
 
 const StepCard = ({ step, index }: { step: StepItem; index: number }) => {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const element = containerRef.current;
-    if (!element) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("fade-in-visible");
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
-
-    observer.observe(element);
-
-    return () => {
-      observer.unobserve(element);
-    };
-  }, []);
-
   return (
-    <div ref={containerRef} className="relative min-h-[340px] fade-in">
+    <div className="relative min-h-[340px]">
       <div className="relative flex h-full flex-col items-center text-center">
         {index < 2 && (
           <div className="absolute left-full top-12 hidden h-0.5 w-12 bg-gradient-to-r from-luxury-gold/50 to-transparent md:block" />
@@ -144,34 +95,9 @@ const StepCard = ({ step, index }: { step: StepItem; index: number }) => {
   );
 };
 
-const ValueCard = ({ value, index }: { value: ValueItem; index: number }) => {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const element = containerRef.current;
-    if (!element) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("fade-in-visible");
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
-
-    observer.observe(element);
-
-    return () => {
-      observer.unobserve(element);
-    };
-  }, []);
-
+const ValueCard = ({ value }: { value: ValueItem; index: number }) => {
   return (
-    <div ref={containerRef} className="min-h-[220px] fade-in">
+    <div className="min-h-[220px]">
       <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 via-white/[0.03] to-transparent p-8 text-center backdrop-blur-xl shadow-[0_20px_70px_-30px_rgba(0,0,0,0.7)] transition-transform duration-300 hover:scale-[1.02]">
         <value.icon className="mx-auto mb-4 h-10 w-10 text-luxury-gold" />
         <h3 className="mb-2 text-lg font-semibold text-luxury-gold">{value.title}</h3>
@@ -276,37 +202,11 @@ export default function AboutPageClient() {
     []
   );
 
-  // Removed heavy GSAP animations - using lightweight IntersectionObserver + CSS transitions
-
   useEffect(() => {
     if (!noiseOverlay.current) return;
 
     noiseOverlay.current.style.backgroundImage =
       'url(\'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" preserveAspectRatio="none"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.15"/></svg>\')';
-  }, []);
-
-  // Global IntersectionObserver for all fade-in elements
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("fade-in-visible");
-            // Unobserve after animation to improve performance
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.1, rootMargin: "0px 0px -50px 0px" }
-    );
-
-    // Observe all elements with fade-in class that don't already have an observer
-    const fadeInElements = document.querySelectorAll(".fade-in:not(.fade-in-visible)");
-    fadeInElements.forEach((el) => observer.observe(el));
-
-    return () => {
-      fadeInElements.forEach((el) => observer.unobserve(el));
-    };
   }, []);
 
   return (
@@ -387,8 +287,8 @@ export default function AboutPageClient() {
       {/* Hero Section – same size & layout as Distributor (min-h-screen, left-aligned, scroll button) */}
       <section className="relative flex min-h-screen items-center justify-start overflow-hidden">
         <div className="relative z-20 w-full text-left pl-4 sm:pl-6 md:pl-8 lg:pl-12 xl:pl-16 2xl:pl-20 pr-4 sm:pr-6 md:pr-8 lg:pr-12">
-          <div className="space-y-6 sm:space-y-8 max-w-4xl hero-fade-in" ref={heroRef}>
-            <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-6 py-2 text-[12px] uppercase tracking-[0.45em] text-luxury-silver/60 backdrop-blur w-fit">
+          <ScrollRevealSection as="div" direction="up" delay={0.15} amount={0.4} className="space-y-6 sm:space-y-8 max-w-4xl">
+            <div ref={heroRef} className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-6 py-2 text-[12px] uppercase tracking-[0.45em] text-luxury-silver/60 backdrop-blur w-fit">
               <span className="h-1 w-1 rounded-full bg-luxury-gold" />
               {t("hero.badge")}
               <span className="h-1 w-1 rounded-full bg-luxury-gold" />
@@ -399,7 +299,7 @@ export default function AboutPageClient() {
             <p className="text-base sm:text-lg md:text-xl font-sans font-light leading-relaxed text-luxury-silver/90 max-w-2xl">
               {t("hero.subtitle")}
             </p>
-          </div>
+          </ScrollRevealSection>
         </div>
         {/* Scroll indicator – same as Distributor */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-3 pointer-events-none">
@@ -414,7 +314,7 @@ export default function AboutPageClient() {
         <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#171717] via-[#0f0f0f] to-[#060606]" />
 
         <div className="relative z-10 mx-auto max-w-[1320px]">
-          <div className="mb-20 text-center fade-in">
+          <ScrollRevealSection className="mb-20 text-center">
             <h2 className="mb-5 text-4xl md:text-5xl lg:text-6xl font-light tracking-tight">
               <span className="text-white">{t("whyChoose.title")}</span>{" "}
               <span className="bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text text-transparent">
@@ -424,13 +324,13 @@ export default function AboutPageClient() {
             <p className="mx-auto max-w-3xl text-lg md:text-xl text-luxury-silver/70">
               {t("whyChoose.subtitle")}
             </p>
-          </div>
+          </ScrollRevealSection>
 
-          <div className="grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-12">
+          <ScrollRevealStagger className="grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-12">
             {featureItems.map((feature, index) => (
               <FeatureCard key={feature.title} feature={feature} index={index} />
             ))}
-          </div>
+          </ScrollRevealStagger>
         </div>
       </section>
 
@@ -438,12 +338,11 @@ export default function AboutPageClient() {
       <section className="relative py-12 sm:py-16 md:py-20 lg:py-24 px-4 sm:px-6 md:px-8 flex flex-col items-center justify-center w-full">
         <div className="absolute inset-0 bg-gradient-to-b from-[#161616] via-[#0f0f0f] to-[#0a0a0a]" />
 
-        {/* Container with proper max-width and responsive padding */}
-        <div className="relative z-10 mx-auto w-full max-w-5xl px-2 sm:px-4 md:px-6">
+        <ScrollRevealSection className="relative z-10 mx-auto w-full max-w-5xl px-2 sm:px-4 md:px-6">
           <Suspense fallback={null}>
             <CertificateCard />
           </Suspense>
-        </div>
+        </ScrollRevealSection>
       </section>
 
       {/* How It Works Section */}
@@ -451,7 +350,7 @@ export default function AboutPageClient() {
         <div className="absolute inset-0 bg-gradient-to-b from-[#151515] via-[#0e0e0e] to-[#050505]" />
 
         <div className="relative mx-auto max-w-[1320px]">
-          <div className="mb-20 text-center space-y-5 fade-in">
+          <ScrollRevealSection className="mb-20 text-center space-y-5">
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-light tracking-tight">
               <span className="text-white">{t("howItWorks.title")}</span>{" "}
               <span className="bg-gradient-to-r from-luxury-gold to-luxury-silver bg-clip-text text-transparent">
@@ -461,13 +360,13 @@ export default function AboutPageClient() {
             <p className="mx-auto max-w-3xl text-lg md:text-xl text-luxury-silver/70">
               {t("howItWorks.subtitle")}
             </p>
-          </div>
+          </ScrollRevealSection>
 
-          <div className="grid grid-cols-1 gap-12 md:grid-cols-3 md:gap-10">
+          <ScrollRevealStagger className="grid grid-cols-1 gap-12 md:grid-cols-3 md:gap-10">
             {stepItems.map((step, index) => (
               <StepCard key={step.number} step={step} index={index} />
             ))}
-          </div>
+          </ScrollRevealStagger>
         </div>
       </section>
 
@@ -478,7 +377,7 @@ export default function AboutPageClient() {
         </div>
 
         <div className="relative mx-auto grid max-w-[1320px] grid-cols-1 items-center gap-16 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="space-y-8 fade-in">
+          <ScrollRevealSection className="space-y-8" direction="right">
             <h2 className="text-4xl md:text-5xl font-light tracking-tight text-luxury-gold">
               {t("story.title")}
             </h2>
@@ -487,20 +386,20 @@ export default function AboutPageClient() {
               <p>{t("story.paragraph2")}</p>
               <p>{t("story.paragraph3")}</p>
             </div>
-          </div>
+          </ScrollRevealSection>
 
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <ScrollRevealStagger className="grid grid-cols-1 gap-6 md:grid-cols-3">
             {valueItems.map((value, index) => (
               <ValueCard key={value.title} value={value} index={index} />
             ))}
-          </div>
+          </ScrollRevealStagger>
         </div>
       </section>
 
       {/* CTA Section */}
       <section className="relative py-32 md:py-40 px-6">
         <div className="mx-auto max-w-[1320px]">
-          <div className="group relative overflow-hidden rounded-[44px] border border-white/8 bg-[#090909] p-[1.5px] shadow-[0_70px_140px_-60px_rgba(0,0,0,0.85)] fade-in">
+          <ScrollRevealSection className="group relative overflow-hidden rounded-[44px] border border-white/8 bg-[#090909] p-[1.5px] shadow-[0_70px_140px_-60px_rgba(0,0,0,0.85)]">
             <div
               className="absolute inset-0 rounded-[44px] opacity-80 transition-opacity duration-700 group-hover:opacity-100"
               style={{
@@ -553,7 +452,7 @@ export default function AboutPageClient() {
                 </Link>
               </div>
             </div>
-          </div>
+          </ScrollRevealSection>
         </div>
       </section>
 
@@ -562,7 +461,7 @@ export default function AboutPageClient() {
         {/* Footer Navigation & Social */}
         <div className="relative z-10 mx-auto w-full max-w-[1320px] flex flex-col md:flex-row items-start md:items-end justify-between gap-8 md:gap-0">
           {/* Left: Navigation Links */}
-          <div className="flex flex-wrap items-center gap-6 md:gap-8 fade-in">
+          <ScrollRevealSection className="flex flex-wrap items-center gap-6 md:gap-8" direction="up" amount={0.1}>
             <span className="text-white/40 text-sm">×</span>
             <Link
               href={`/${locale}/what-we-do`}
@@ -592,10 +491,10 @@ export default function AboutPageClient() {
             >
               {tNav("aboutUs")}
             </Link>
-          </div>
+          </ScrollRevealSection>
 
           {/* Right: Social Media Icons */}
-          <div className="flex items-center gap-4 md:gap-5 fade-in">
+          <ScrollRevealSection className="flex items-center gap-4 md:gap-5" direction="up" amount={0.1}>
             <a
               href="https://instagram.com"
               target="_blank"
@@ -632,7 +531,7 @@ export default function AboutPageClient() {
             >
               <Youtube className="h-5 w-5 md:h-6 md:w-6" />
             </a>
-          </div>
+          </ScrollRevealSection>
         </div>
       </section>
     </div>

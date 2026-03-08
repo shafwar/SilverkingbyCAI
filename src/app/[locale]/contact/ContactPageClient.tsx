@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Toaster } from "sonner";
 import Navbar from "@/components/layout/Navbar";
 import { APP_NAME } from "@/utils/constants";
+import { ScrollRevealSection } from "@/components/shared/ScrollRevealSection";
 
 export default function ContactPageClient() {
   const t = useTranslations("contact");
@@ -455,7 +456,7 @@ export default function ContactPageClient() {
       {/* Footer */}
       <footer className="border-t border-white/5 px-6 py-12">
         <div className="mx-auto max-w-6xl">
-          <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
+          <ScrollRevealSection className="flex flex-col items-center justify-between gap-6 md:flex-row" amount={0.2}>
             <p className="text-xs text-white/40">
               © {new Date().getFullYear()} {APP_NAME}. {t("footer.rights")}
             </p>
@@ -489,7 +490,7 @@ export default function ContactPageClient() {
                 {tNav("aboutUs")}
               </Link>
             </div>
-          </div>
+          </ScrollRevealSection>
         </div>
       </footer>
     </div>
