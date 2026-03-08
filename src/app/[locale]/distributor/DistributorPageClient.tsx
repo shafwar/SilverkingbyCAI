@@ -66,9 +66,11 @@ export default function DistributorPageClient({
     refetch: refetchPageSections,
   } = usePageSections("distributor");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "IMAGE";
+  /** Show hero immediately with server URL; only use CMS URL after sections load (better LCP, no black flash) */
   const displayHeroUrl = heroImageError
     ? HERO_FALLBACK_PATH
-    : (pageSections.hero?.url ?? initialHeroImageUrl);
+    : (sectionsLoading ? initialHeroImageUrl : (pageSections.hero?.url ?? initialHeroImageUrl));
+  const displayHeroMediaType = sectionsLoading ? "IMAGE" : heroMediaType;
   const [editing, setEditing] = useState<DistributorItem | null>(null);
   const [saving, setSaving] = useState(false);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -240,11 +242,9 @@ export default function DistributorPageClient({
       >
         <div className="absolute inset-0 bg-luxury-black z-0" />
 
-        {/* Hero: no media until section data loaded (prevents flash of wrong asset) */}
+        {/* Hero: show image immediately (initialHeroImageUrl) so no black flash; CMS overlay when sections load */}
         <div className="absolute inset-[-6%] z-10 scale-90 md:scale-100 md:inset-0 origin-center overflow-hidden">
-          {sectionsLoading ? (
-            <div className="absolute inset-0 bg-luxury-black" aria-hidden />
-          ) : heroMediaType === "VIDEO" ? (
+          {displayHeroMediaType === "VIDEO" ? (
             <VideoLoadGuard
               url={displayHeroUrl}
               version={pageSections.hero?.version}
@@ -255,11 +255,12 @@ export default function DistributorPageClient({
               loop
               muted
               playsInline
+              preload="auto"
             />
           ) : (
             <ImageLoadGuard
               url={displayHeroUrl}
-              version={pageSections.hero?.version}
+              version={sectionsLoading ? undefined : pageSections.hero?.version}
               containerClassName="absolute inset-0 w-full h-full"
               className="absolute inset-0 w-full h-full object-cover"
               style={{ objectFit: "cover" }}
@@ -269,8 +270,20 @@ export default function DistributorPageClient({
             />
           )}
         </div>
-        {/* Subtle dark gradient overlay for readability and professional look */}
-        <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
+        {/* Overlay: darker center so title/subtitle don't clash with hero image; readable everywhere */}
+        <div
+          className="absolute inset-0 z-[11] pointer-events-none"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.4) 100%)",
+          }}
+        />
+        <div
+          className="absolute inset-0 z-[11] pointer-events-none"
+          style={{
+            background: "radial-gradient(ellipse 70% 60% at 50% 50%, rgba(0,0,0,0.25) 0%, transparent 70%)",
+          }}
+        />
       </div>
 
       <Navbar />
@@ -284,29 +297,39 @@ export default function DistributorPageClient({
         editLabel="Edit photo"
       />
 
-      {/* Hero Section – fixed height, no scroll: deskripsi stay still */}
-      <section className="relative flex h-screen min-h-0 flex-col justify-end overflow-hidden">
-        <div className="relative z-20 w-full flex-1 flex items-end text-left pl-4 sm:pl-6 md:pl-8 lg:pl-12 xl:pl-16 2xl:pl-20 pr-4 sm:pr-6 md:pr-8 lg:pr-12 pb-24 overflow-hidden">
+      {/* Hero Section – centered text so it doesn't clash with hero image; overlay keeps it readable */}
+      <section className="relative flex h-screen min-h-0 flex-col justify-center overflow-hidden">
+        <div className="relative z-20 w-full flex-1 flex items-center justify-center px-4 sm:px-6 md:px-8 lg:px-12 pb-24 overflow-hidden">
           <motion.div
             variants={revealVariants}
             initial="initial"
             animate="animate"
-            className="space-y-4 sm:space-y-6 max-w-4xl font-[family-name:var(--font-distributor)] overflow-hidden min-h-0"
+            className="relative text-center max-w-4xl font-[family-name:var(--font-distributor)] overflow-hidden min-h-0"
           >
-            <motion.h1
-              variants={revealVariants}
-              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold leading-[1.08] tracking-tight drop-shadow-[0_2px_24px_rgba(0,0,0,0.5)]"
-            >
-              <span className="bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent">
-                {t("hero.title")}
-              </span>
-            </motion.h1>
-            <motion.p
-              variants={revealVariants}
-              className="text-lg sm:text-xl md:text-2xl font-medium leading-relaxed text-white/95 max-w-2xl drop-shadow-[0_1px_12px_rgba(0,0,0,0.4)]"
-            >
-              {t("hero.subtitle")}
-            </motion.p>
+            {/* Subtle backdrop so text never clashes with busy hero image */}
+            <div
+              className="absolute inset-0 -inset-x-8 rounded-2xl pointer-events-none"
+              style={{
+                background:
+                  "radial-gradient(ellipse 100% 100% at 50% 50%, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.08) 50%, transparent 70%)",
+              }}
+            />
+            <div className="relative space-y-4 sm:space-y-6">
+              <motion.h1
+                variants={revealVariants}
+                className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold leading-[1.08] tracking-tight drop-shadow-[0_2px_24px_rgba(0,0,0,0.6)]"
+              >
+                <span className="bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent">
+                  {t("hero.title")}
+                </span>
+              </motion.h1>
+              <motion.p
+                variants={revealVariants}
+                className="text-lg sm:text-xl md:text-2xl font-medium leading-relaxed text-white/95 max-w-2xl mx-auto drop-shadow-[0_1px_16px_rgba(0,0,0,0.5)]"
+              >
+                {t("hero.subtitle")}
+              </motion.p>
+            </div>
           </motion.div>
         </div>
 
