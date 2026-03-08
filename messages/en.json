@@ -381,6 +381,11 @@
       "saving": "Saving...",
       "uploadingProgress": "Compressing & uploading... {percent}%",
       "confirmDelete": "Delete this item? This cannot be undone."
+    },
+    "footer": {
+      "contactAdmin": "Contact Admin",
+      "contactDescription": "For orders & merchandise enquiries",
+      "callOrWhatsApp": "Call or WhatsApp"
     }
   },
   "about": {

@@ -381,6 +381,11 @@
       "saving": "Menyimpan...",
       "uploadingProgress": "Mengompres & mengunggah... {percent}%",
       "confirmDelete": "Hapus item ini? Tindakan tidak dapat dibatalkan."
+    },
+    "footer": {
+      "contactAdmin": "Hubungi Admin",
+      "contactDescription": "Pemesanan & pertanyaan merchandise",
+      "callOrWhatsApp": "Telepon atau WhatsApp"
     }
   },
   "about": {
