@@ -13,6 +13,8 @@ type ImageGuardProps = Omit<React.ComponentPropsWithoutRef<"img">, "src"> & {
   url: string;
   version?: number;
   containerClassName?: string;
+  /** When true (hero/above-fold), use fetchPriority high and eager load for faster LCP */
+  priority?: boolean;
 };
 
 /**
@@ -52,6 +54,7 @@ export function ImageLoadGuard({
   version,
   containerClassName = "",
   style,
+  priority = false,
   ...imgProps
 }: ImageGuardProps) {
   const [ready, setReady] = useState(false);
@@ -62,6 +65,10 @@ export function ImageLoadGuard({
       <img
         key={src}
         src={src}
+        alt={imgProps.alt ?? ""}
+        decoding={priority ? "sync" : "async"}
+        fetchPriority={priority ? "high" : undefined}
+        loading={priority ? "eager" : "lazy"}
         onLoad={() => setReady(true)}
         style={{
           ...style,

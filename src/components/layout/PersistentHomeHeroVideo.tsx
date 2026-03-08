@@ -58,12 +58,11 @@ export function PersistentHomeHeroVideo({ splashComplete = true }: PersistentHom
         transition: "opacity 0.25s ease",
       }}
     >
-      {/* No media until section data loaded; cache-bust + load guard for stability (no glimpse of old asset) */}
+      {/* Only load video when on home – saves bandwidth on products/distributor/etc. */}
       {sectionsLoading ? (
         <div className="absolute inset-0 bg-luxury-black" aria-hidden />
-      ) : (
+      ) : isHome ? (
         <div className="absolute inset-0 overflow-hidden">
-          {/* Mobile: zoom out (112% container scaled to 90% = more of video visible) */}
           <div
             className="absolute left-1/2 top-1/2 h-[112%] w-[112%] min-h-[112%] min-w-[112%] -translate-x-1/2 -translate-y-1/2 origin-center scale-90 md:left-0 md:top-0 md:h-full md:w-full md:min-h-0 md:min-w-0 md:translate-x-0 md:translate-y-0 md:scale-100"
             aria-hidden
@@ -86,6 +85,8 @@ export function PersistentHomeHeroVideo({ splashComplete = true }: PersistentHom
             />
           </div>
         </div>
+      ) : (
+        <div className="absolute inset-0 bg-luxury-black" aria-hidden />
       )}
       {/* Vignette / dark motif - Home only */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/60 pointer-events-none" />

@@ -1141,6 +1141,7 @@ export default function ProductsPageClient() {
               pointerEvents: "none",
             }}
             alt=""
+            priority
           />
         )}
         {/* Fade to Black Overlay - Controlled by ScrollTrigger */}

@@ -655,6 +655,7 @@ export default function WhatWeDoPageClient() {
                 pointerEvents: "none",
               }}
               alt=""
+              priority
             />
           )}
         </div>

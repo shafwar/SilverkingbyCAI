@@ -92,7 +92,16 @@ export async function POST(request: NextRequest) {
       const pipeline = sharp(buf, { limitInputPixels: IMAGE_MAX_PIXELS })
         .resize(maxW, undefined, { withoutEnlargement: true })
         .rotate(); // auto-orient from EXIF
-      const outFormat = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpeg";
+      // Hero: prefer WebP for smaller size at same HD quality (except PNG keep PNG)
+      const preferWebpForHero = isHero && file.type !== "image/png";
+      const outFormat =
+        file.type === "image/png"
+          ? "png"
+          : preferWebpForHero
+            ? "webp"
+            : file.type === "image/webp"
+              ? "webp"
+              : "jpeg";
       const ext = outFormat === "png" ? "png" : outFormat === "webp" ? "webp" : "jpg";
       key = `static/page-media/${page}/${safeSection}_${ts}.${ext}`;
       const outBuf =

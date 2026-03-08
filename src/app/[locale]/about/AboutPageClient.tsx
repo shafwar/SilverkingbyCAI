@@ -369,6 +369,7 @@ export default function AboutPageClient() {
             className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
             style={{ pointerEvents: "none" }}
             alt=""
+            priority
           />
         )}
         <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />

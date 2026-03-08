@@ -264,6 +264,7 @@ export default function DistributorPageClient({
               className="absolute inset-0 w-full h-full object-cover"
               style={{ objectFit: "cover" }}
               alt=""
+              priority
               onError={() => setHeroImageError(true)}
             />
           )}
