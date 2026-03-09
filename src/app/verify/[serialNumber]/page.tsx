@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -34,6 +34,12 @@ interface VerificationResult {
   };
   error?: string;
 }
+
+/** Background images for verified-success state only. Random one per page load. Add more paths to public/images as needed. */
+const VERIFIED_BG_IMAGES = [
+  "/images/hero-fallback.jpg",
+  "/images/merchandise-hero.png",
+] as const;
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
@@ -104,6 +110,15 @@ export default function VerifyPage() {
   const [rootKey, setRootKey] = useState("");
   const [verifyingRootKey, setVerifyingRootKey] = useState(false);
   const [rootKeyError, setRootKeyError] = useState<string | null>(null);
+
+  /** Random background image index for verified-success only. Picked once when verified, UI-only. */
+  const verifiedBgIndex = useMemo(
+    () =>
+      result?.verified
+        ? Math.floor(Math.random() * VERIFIED_BG_IMAGES.length)
+        : null,
+    [result?.verified]
+  );
 
   // ---------- ALL LOGIC BELOW IS UNCHANGED ----------
 
@@ -309,9 +324,36 @@ export default function VerifyPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
+      {/* Verified-success only: random classy background image + dark overlay so text never clashes (UI only, no system change) */}
+      {result?.verified && verifiedBgIndex !== null && (
+        <>
+          <div
+            className="pointer-events-none fixed inset-0 z-0"
+            aria-hidden
+          >
+            <img
+              src={VERIFIED_BG_IMAGES[verifiedBgIndex]}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+              loading="lazy"
+              decoding="async"
+              fetchPriority="low"
+            />
+          </div>
+          <div
+            className="pointer-events-none fixed inset-0 z-[1]"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.58) 40%, rgba(0,0,0,0.62) 70%, rgba(0,0,0,0.78) 100%)",
+            }}
+            aria-hidden
+          />
+        </>
+      )}
+
       {/* Background ambient */}
       <div
-        className="pointer-events-none fixed inset-0"
+        className="pointer-events-none fixed inset-0 z-[2]"
         style={{
           background: result?.verified
             ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(34,197,94,0.04) 0%, transparent 60%), radial-gradient(ellipse 50% 35% at 50% 80%, rgba(212,175,55,0.03) 0%, transparent 50%)"
