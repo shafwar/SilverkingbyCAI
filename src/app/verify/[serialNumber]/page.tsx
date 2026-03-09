@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
-import Image from "next/image";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
@@ -127,9 +126,13 @@ export default function VerifyPage() {
 
   /** Hide background image if it fails to load (avoids broken icon). UI-only. */
   const [verifiedBgError, setVerifiedBgError] = useState(false);
+  const [imgBase, setImgBase] = useState("");
   useEffect(() => {
     if (!result?.verified) setVerifiedBgError(false);
   }, [result?.verified]);
+  useEffect(() => {
+    setImgBase(typeof window !== "undefined" ? window.location.origin : "");
+  }, []);
 
   // ---------- ALL LOGIC BELOW IS UNCHANGED ----------
 
@@ -338,26 +341,39 @@ export default function VerifyPage() {
       {/* Verified-success only: random background image (or fallback) + dark overlay. UI only. */}
       {result?.verified && verifiedBgIndex !== null && (
         <>
-          {/* Layer 1: image or fallback gradient */}
+          {/* Layer 1: image (CSS background) or fallback gradient */}
           {!verifiedBgError ? (
             <div
-              className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
+              className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[#0a0a0a]"
               aria-hidden
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                width: "100vw",
+                height: "100vh",
+                backgroundImage: imgBase
+                  ? `url(${imgBase}${VERIFIED_BG_IMAGES[verifiedBgIndex]})`
+                  : `url(${VERIFIED_BG_IMAGES[verifiedBgIndex]})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
+              }}
             >
-              <Image
-                src={VERIFIED_BG_IMAGES[verifiedBgIndex]}
+              {/* Invisible img to detect load error and fallback */}
+              <img
+                src={imgBase ? `${imgBase}${VERIFIED_BG_IMAGES[verifiedBgIndex]}` : VERIFIED_BG_IMAGES[verifiedBgIndex]}
                 alt=""
-                fill
-                className="object-cover"
-                sizes="100vw"
-                priority
+                className="absolute opacity-0 w-0 h-0"
                 onError={() => setVerifiedBgError(true)}
-                unoptimized
+                aria-hidden
               />
             </div>
           ) : (
             <div
-              className="pointer-events-none fixed inset-0 z-0"
+              className="pointer-events-none fixed inset-0 z-0 bg-[#0a0a0a]"
               style={{
                 background:
                   "linear-gradient(180deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.78) 50%, rgba(0,0,0,0.9) 100%)",
