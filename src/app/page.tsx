@@ -1,38 +1,12 @@
-import { NextIntlClientProvider } from "next-intl";
-import { getMessages } from "next-intl/server";
+import { redirect } from "next/navigation";
 import { routing } from "@/i18n/routing";
-import { GeistSans } from "geist/font/sans";
-import { Playfair_Display } from "next/font/google";
-import "@/styles/globals.css";
-import { Providers } from "./providers";
-import RootPageContent from "./RootPageContent";
 
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-playfair",
-  display: "swap",
-  preload: true,
-});
-
-// Root page - uses default locale without prefix
-export default async function RootPage() {
-  const locale = routing.defaultLocale;
-
-  // Add error handling for getMessages to prevent 502 errors
-  let messages;
-  try {
-    messages = await getMessages({ locale });
-  } catch (error) {
-    console.error("[RootPage] Error loading messages:", error);
-    // Fallback to empty messages object to prevent crash
-    messages = {};
-  }
-
-  return (
-    <NextIntlClientProvider messages={messages}>
-        <Providers>
-          <RootPageContent />
-        </Providers>
-    </NextIntlClientProvider>
-  );
+/**
+ * Root `/` page – redirects to the default locale route.
+ * All home page logic lives in `app/[locale]/page.tsx` (single source of truth).
+ * With `localePrefix: 'as-needed'`, `/en` is canonical for the default locale,
+ * but next-intl middleware rewrites it back to `/` for the user.
+ */
+export default function RootPage() {
+  redirect(`/${routing.defaultLocale}`);
 }
