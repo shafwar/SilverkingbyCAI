@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { motion, type Variants } from "framer-motion";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import {
@@ -12,21 +12,21 @@ import {
   ArrowLeft,
   Package,
   Scale,
-  Hash,
-  Calendar,
   Layers,
+  Calendar,
+  Hash,
   Banknote,
   KeyRound,
 } from "lucide-react";
 
 interface VerificationResult {
   verified: boolean;
-  requiresRootKey?: boolean; // Flag for Page 2 two-step verification
+  requiresRootKey?: boolean;
   product?: {
     name: string;
     weight: number;
     serialCode: string;
-    actualSerialCode?: string; // For Page 2: actual SKP serial code
+    actualSerialCode?: string;
     price?: number | null;
     stock?: number | null;
     qrImageUrl?: string;
@@ -35,31 +35,31 @@ interface VerificationResult {
   error?: string;
 }
 
-const EASE_SMOOTH: [number, number, number, number] = [0.22, 1, 0.36, 1];
+const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
-const staggerContainer: Variants = {
+const fadeUp = {
+  hidden: { opacity: 0, y: 24 },
+  visible: (delay: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, delay, ease: EASE },
+  }),
+};
+
+const staggerContainer = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.1, delayChildren: 0.05 },
+    transition: { staggerChildren: 0.07, delayChildren: 0.15 },
   },
 };
 
-const cardUp: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: EASE_SMOOTH },
-  },
-};
-
-const rowSlide: Variants = {
+const rowReveal = {
   hidden: { opacity: 0, x: -12 },
   visible: {
     opacity: 1,
     x: 0,
-    transition: { duration: 0.45, ease: EASE_SMOOTH },
+    transition: { duration: 0.45, ease: EASE },
   },
 };
 
@@ -69,19 +69,19 @@ function InfoRow({
   value,
   mono,
 }: {
-  icon: any;
+  icon: React.ElementType;
   label: string;
   value: string;
   mono?: boolean;
 }) {
   return (
     <motion.div
-      variants={rowSlide}
-      className="group flex items-center justify-between gap-4 py-4 border-b border-white/[0.06] last:border-0 transition-colors duration-200 hover:bg-white/[0.015] -mx-5 px-5 rounded-lg"
+      variants={rowReveal}
+      className="flex items-center justify-between gap-4 py-4 border-b border-white/[0.06] last:border-b-0"
     >
       <div className="flex items-center gap-3 min-w-0">
         <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/[0.04]">
-          <Icon className="h-3.5 w-3.5 text-luxury-gold/60" />
+          <Icon className="h-4 w-4 text-luxury-gold/60" />
         </div>
         <span className="text-[13px] text-white/45 font-medium">{label}</span>
       </div>
@@ -105,20 +105,19 @@ export default function VerifyPage() {
   const [verifyingRootKey, setVerifyingRootKey] = useState(false);
   const [rootKeyError, setRootKeyError] = useState<string | null>(null);
 
+  // ---------- ALL LOGIC BELOW IS UNCHANGED ----------
+
   useEffect(() => {
-    let isMounted = true; // Prevent state updates if component unmounts
+    let isMounted = true;
 
     async function verifyProduct() {
       try {
-        // SECURITY: Normalize and validate serial number input
-        // Remove any potentially malicious characters
         const normalizedSerial =
           serialNumber
             ?.trim()
             .toUpperCase()
             .replace(/[^A-Z0-9]/g, "") || "";
 
-        // SECURITY: Validate serial number format and length
         if (!normalizedSerial || normalizedSerial.length < 3 || normalizedSerial.length > 50) {
           if (isMounted) {
             setResult({
@@ -130,9 +129,8 @@ export default function VerifyPage() {
           return;
         }
 
-        // OPTIMIZATION: Add timeout to prevent hanging requests
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
 
         const response = await fetch(`/api/verify/${encodeURIComponent(normalizedSerial)}`, {
           method: "GET",
@@ -158,7 +156,6 @@ export default function VerifyPage() {
 
         const data = await response.json();
 
-        // SECURITY: Validate response structure
         if (!data || typeof data !== "object" || !("verified" in data)) {
           if (isMounted) {
             setResult({
@@ -170,9 +167,7 @@ export default function VerifyPage() {
           return;
         }
 
-        // SECURITY: Validate product data if verified
         if (data.verified && data.product) {
-          // Ensure product has required fields
           if (!data.product.serialCode || !data.product.name) {
             if (isMounted) {
               setResult({
@@ -190,7 +185,6 @@ export default function VerifyPage() {
           setLoading(false);
         }
       } catch (error: any) {
-        // Handle abort (timeout) gracefully
         if (error.name === "AbortError") {
           if (isMounted) {
             setResult({
@@ -223,7 +217,6 @@ export default function VerifyPage() {
       });
     }
 
-    // Cleanup: Prevent state updates if component unmounts
     return () => {
       isMounted = false;
     };
@@ -245,12 +238,8 @@ export default function VerifyPage() {
     setRootKeyError(null);
 
     try {
-      // For gram products with root key verification:
-      // - When user scans QR with uniqCode (GK...), API returns product.serialCode = uniqCode
-      // - We need to use the original uniqCode from the QR scan (serialNumber param)
-      // - Or use product.serialCode if it's actually the uniqCode
       const uniqCodeForVerification = result?.requiresRootKey
-        ? serialNumber // Use the original QR scan uniqCode
+        ? serialNumber
         : result?.product?.serialCode || serialNumber;
 
       console.log("[VerifyPage] Sending root key verification request:", {
@@ -299,10 +288,8 @@ export default function VerifyPage() {
         return;
       }
 
-      // Root key verified successfully, redirect to serial code verification page
       if (data.serialCode) {
         console.log("[VerifyPage] Root key verified, redirecting to:", data.serialCode);
-        // Use router.push for better Next.js navigation
         window.location.href = `/verify/${encodeURIComponent(data.serialCode)}`;
       } else {
         console.error("[VerifyPage] Verification successful but serialCode missing:", data);
@@ -318,76 +305,75 @@ export default function VerifyPage() {
     }
   };
 
+  // ---------- END UNCHANGED LOGIC ----------
+
   return (
-    <div className="min-h-screen bg-[#060606]">
+    <div className="min-h-screen bg-[#050505] text-white">
+      {/* Background ambient */}
+      <div
+        className="pointer-events-none fixed inset-0"
+        style={{
+          background: result?.verified
+            ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(34,197,94,0.04) 0%, transparent 60%), radial-gradient(ellipse 50% 35% at 50% 80%, rgba(212,175,55,0.03) 0%, transparent 50%)"
+            : result && !result.verified && !result.requiresRootKey
+              ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(239,68,68,0.04) 0%, transparent 60%)"
+              : "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(212,175,55,0.04) 0%, transparent 60%)",
+        }}
+      />
+
       <Navbar />
 
-      {/* Background glow */}
-      <div className="pointer-events-none fixed inset-0 z-0">
-        <motion.div
-          animate={{ opacity: [0.3, 0.5, 0.3] }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px]"
-          style={{
-            background:
-              "radial-gradient(ellipse at center, rgba(212,175,55,0.06) 0%, transparent 65%)",
-            filter: "blur(60px)",
-          }}
-        />
-      </div>
-
-      {/* Content */}
       <div className="relative z-10 pt-28 pb-20 px-4 sm:px-6">
-        <div className="max-w-2xl mx-auto">
+        <div className="mx-auto max-w-2xl">
+          {/* ---------- LOADING STATE ---------- */}
           {loading ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: 0.4 }}
-              className="flex flex-col items-center justify-center py-32"
+              className="flex flex-col items-center justify-center py-24"
             >
               <div className="relative">
                 <div className="h-14 w-14 rounded-full border-2 border-luxury-gold/20" />
-                <div className="absolute inset-0 h-14 w-14 rounded-full border-2 border-transparent border-t-luxury-gold animate-spin" />
+                <div className="absolute inset-0 h-14 w-14 animate-spin rounded-full border-2 border-transparent border-t-luxury-gold" />
               </div>
-              <p className="mt-5 text-sm text-white/40 tracking-wide">Verifying product...</p>
+              <p className="mt-5 text-sm font-light tracking-wide text-white/40">
+                Verifying product...
+              </p>
             </motion.div>
           ) : result?.requiresRootKey ? (
-            // Two-step verification: require root key before showing success
+            /* ---------- ROOT KEY REQUIRED ---------- */
             <motion.div
-              variants={staggerContainer}
               initial="hidden"
               animate="visible"
               className="space-y-5"
             >
               {/* Header */}
-              <motion.div variants={cardUp} className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025] p-8 text-center backdrop-blur-sm">
-                <div className="absolute top-0 inset-x-8 h-px bg-gradient-to-r from-transparent via-luxury-gold/30 to-transparent" />
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-luxury-gold/20 bg-luxury-gold/[0.08]">
+              <motion.div variants={fadeUp} custom={0} className="text-center mb-2">
+                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-luxury-gold/20 bg-luxury-gold/[0.06]">
                   <KeyRound className="h-7 w-7 text-luxury-gold" />
                 </div>
-                <h1 className="font-serif text-2xl font-semibold tracking-wide text-white">
+                <h1 className="font-serif text-[1.75rem] font-semibold tracking-[0.01em] text-white">
                   Root Key Required
                 </h1>
-                <p className="mt-2 text-sm text-white/40 max-w-md mx-auto leading-relaxed">
+                <p className="mt-2 text-sm font-light leading-relaxed text-white/45 max-w-md mx-auto">
                   Please enter the root key to complete verification for this product.
                 </p>
               </motion.div>
 
-              {/* Product info */}
-              <motion.div variants={cardUp} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] backdrop-blur-sm overflow-hidden">
-                <div className="px-5 pt-5 pb-2 flex items-center gap-2.5">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-luxury-gold/[0.08]">
-                    <Shield className="h-3.5 w-3.5 text-luxury-gold/70" />
-                  </div>
-                  <h2 className="text-[13px] font-semibold uppercase tracking-[0.2em] text-luxury-gold/60">
+              {/* Product info card */}
+              <motion.div
+                variants={fadeUp}
+                custom={0.1}
+                className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 sm:p-7 backdrop-blur-sm"
+              >
+                <div className="flex items-center gap-2.5 mb-5">
+                  <Shield className="h-[18px] w-[18px] text-luxury-gold/70" />
+                  <h2 className="text-[13px] font-bold uppercase tracking-[0.15em] text-luxury-gold/70">
                     Product Information
                   </h2>
                 </div>
-                <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="px-5 py-1">
-                  {result.product?.name && (
-                    <InfoRow icon={Package} label="Product Name" value={result.product.name} />
-                  )}
+                <motion.div variants={staggerContainer} initial="hidden" animate="visible">
+                  <InfoRow icon={Package} label="Product Name" value={result.product?.name || "—"} />
                   <InfoRow icon={Scale} label="Weight" value={getWeightLabel(result.product?.weight)} />
                   {typeof result.product?.stock === "number" && (
                     <InfoRow icon={Layers} label="Quantity" value={`${result.product.stock} pcs`} />
@@ -400,19 +386,26 @@ export default function VerifyPage() {
                 </motion.div>
               </motion.div>
 
-              {/* Root Key Form */}
-              <motion.div variants={cardUp} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-6 backdrop-blur-sm">
+              {/* Root key form */}
+              <motion.div
+                variants={fadeUp}
+                custom={0.2}
+                className="rounded-2xl border border-luxury-gold/10 bg-luxury-gold/[0.02] p-6 sm:p-7"
+              >
                 <div className="mb-5 rounded-xl border border-amber-500/15 bg-amber-500/[0.04] px-4 py-3.5">
                   <p className="text-amber-400/90 text-[13px] font-semibold mb-1">
                     Two-Step Verification Required
                   </p>
-                  <p className="text-white/35 text-[12px] leading-relaxed">
+                  <p className="text-white/40 text-[12px] leading-relaxed">
                     Please enter the root key (3-4 alphanumeric characters) provided by your
                     administrator to verify the specific SKP serial number.
                   </p>
                 </div>
                 <form onSubmit={handleRootKeySubmit} className="space-y-4">
                   <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-[0.25em] text-white/30 mb-2.5">
+                      Root Key (3-4 characters)
+                    </label>
                     <input
                       type="text"
                       value={rootKey}
@@ -422,15 +415,15 @@ export default function VerifyPage() {
                       }}
                       maxLength={4}
                       placeholder="e.g., A1H2"
-                      className="w-full rounded-xl border border-white/[0.1] bg-white/[0.03] px-5 py-4 text-white font-mono text-lg tracking-[0.15em] text-center uppercase placeholder:text-white/20 focus:border-luxury-gold/40 focus:outline-none focus:ring-1 focus:ring-luxury-gold/15 transition-all duration-300"
+                      className="w-full rounded-xl border border-white/[0.1] bg-white/[0.03] px-5 py-3.5 font-mono text-base tracking-[0.15em] text-white uppercase placeholder:text-white/20 outline-none transition-all duration-300 focus:border-luxury-gold/40 focus:ring-1 focus:ring-luxury-gold/15"
                       disabled={verifyingRootKey}
                     />
                     {rootKeyError && (
-                      <div className="mt-3 space-y-1">
+                      <div className="mt-2.5 space-y-1">
                         <p className="text-red-400/80 text-[12px]">{rootKeyError}</p>
                         {result?.product?.actualSerialCode && (
                           <p className="text-amber-400/70 text-[11px]">
-                            Tip: Use the root key for{" "}
+                            Tip: Make sure you&apos;re using the root key for serial code{" "}
                             <span className="font-mono font-semibold">
                               {result.product.actualSerialCode}
                             </span>{" "}
@@ -443,10 +436,10 @@ export default function VerifyPage() {
                   <button
                     type="submit"
                     disabled={verifyingRootKey || rootKey.trim().length < 3}
-                    className="group relative w-full overflow-hidden rounded-xl py-4 text-[13px] font-bold tracking-[0.06em] uppercase text-black transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
+                    className="group relative w-full overflow-hidden rounded-xl py-3.5 text-[13px] font-bold tracking-[0.04em] text-black transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
                     style={{
-                      background: "linear-gradient(135deg, #B8960E 0%, #D4AF37 25%, #FFD700 55%, #E8C84A 80%, #D4AF37 100%)",
-                      boxShadow: "0 6px 24px -6px rgba(212,175,55,0.3)",
+                      background:
+                        "linear-gradient(135deg, #B8960E 0%, #D4AF37 30%, #FFD700 65%, #D4AF37 100%)",
                     }}
                   >
                     <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-[200%] group-hover:translate-x-[200%] transition-transform duration-700 pointer-events-none" />
@@ -458,71 +451,88 @@ export default function VerifyPage() {
               </motion.div>
             </motion.div>
           ) : result?.verified ? (
+            /* ---------- VERIFIED SUCCESS ---------- */
             <motion.div
-              variants={staggerContainer}
               initial="hidden"
               animate="visible"
               className="space-y-5"
             >
               {/* Success header */}
-              <motion.div variants={cardUp} className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025] py-12 px-8 text-center backdrop-blur-sm">
-                <div className="absolute top-0 inset-x-8 h-px bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
-
-                <motion.div
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ duration: 0.5, delay: 0.15, type: "spring", stiffness: 200 }}
-                  className="relative mx-auto mb-6"
-                >
-                  <div className="relative flex h-20 w-20 mx-auto items-center justify-center">
+              <motion.div variants={fadeUp} custom={0} className="text-center pt-2 pb-1">
+                {/* Animated checkmark */}
+                <div className="relative mx-auto mb-6 h-20 w-20">
+                  {/* Outer pulse ring */}
+                  <motion.div
+                    className="absolute inset-0 rounded-full border-2 border-emerald-500/30"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: [0.8, 1.2, 1.2], opacity: [0, 0.5, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
+                  />
+                  {/* Inner circle */}
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center rounded-full"
+                    style={{
+                      background:
+                        "radial-gradient(circle, rgba(34,197,94,0.12) 0%, rgba(34,197,94,0.03) 70%, transparent 100%)",
+                    }}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  >
                     <motion.div
-                      animate={{ opacity: [0.08, 0.18, 0.08] }}
-                      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                      className="absolute inset-0 rounded-full bg-emerald-500 blur-xl"
-                    />
-                    <div className="absolute inset-0 rounded-full border-2 border-emerald-500/20" />
-                    <CheckCircle2 className="relative h-10 w-10 text-emerald-400" />
-                  </div>
-                </motion.div>
+                      initial={{ scale: 0, rotate: -45 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ duration: 0.4, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <CheckCircle2 className="h-12 w-12 text-emerald-500" />
+                    </motion.div>
+                  </motion.div>
+                </div>
 
                 <motion.h1
+                  className="font-serif text-[1.85rem] sm:text-[2.1rem] font-semibold tracking-[0.01em] text-white"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: 0.3, ease: EASE_SMOOTH }}
-                  className="font-serif text-3xl font-semibold tracking-wide text-white"
+                  transition={{ duration: 0.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
                 >
                   Product Verified
                 </motion.h1>
                 <motion.p
+                  className="mt-2.5 text-sm font-light text-white/40"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ duration: 0.4, delay: 0.4 }}
-                  className="mt-3 text-sm text-white/40 leading-relaxed max-w-md mx-auto"
+                  transition={{ duration: 0.5, delay: 0.45 }}
                 >
                   This product is officially verified by Silver King by CAI
                 </motion.p>
 
-                <div className="mt-6 flex items-center justify-center gap-2.5">
-                  <div className="h-px w-10 bg-gradient-to-r from-transparent to-white/10" />
-                  <div className="h-1 w-1 rounded-full bg-emerald-500/40" />
-                  <div className="h-px w-10 bg-gradient-to-l from-transparent to-white/10" />
-                </div>
+                {/* Decorative divider */}
+                <motion.div
+                  className="mx-auto mt-5 flex items-center justify-center gap-2.5"
+                  initial={{ opacity: 0, scaleX: 0 }}
+                  animate={{ opacity: 1, scaleX: 1 }}
+                  transition={{ duration: 0.6, delay: 0.5 }}
+                >
+                  <div className="h-px w-10 bg-gradient-to-r from-transparent to-emerald-500/20" />
+                  <div className="h-1 w-1 rounded-full bg-emerald-500/30" />
+                  <div className="h-px w-10 bg-gradient-to-l from-transparent to-emerald-500/20" />
+                </motion.div>
               </motion.div>
 
-              {/* Product information */}
-              <motion.div variants={cardUp} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] backdrop-blur-sm overflow-hidden">
-                <div className="px-5 pt-5 pb-2 flex items-center gap-2.5">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-luxury-gold/[0.08]">
-                    <Shield className="h-3.5 w-3.5 text-luxury-gold/70" />
-                  </div>
-                  <h2 className="text-[13px] font-semibold uppercase tracking-[0.2em] text-luxury-gold/60">
+              {/* Product info card */}
+              <motion.div
+                variants={fadeUp}
+                custom={0.25}
+                className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 sm:p-7 backdrop-blur-sm"
+              >
+                <div className="flex items-center gap-2.5 mb-5">
+                  <Shield className="h-[18px] w-[18px] text-luxury-gold/70" />
+                  <h2 className="text-[13px] font-bold uppercase tracking-[0.15em] text-luxury-gold/70">
                     Product Information
                   </h2>
                 </div>
-                <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="px-5 py-1">
-                  {result.product?.name && (
-                    <InfoRow icon={Package} label="Product Name" value={result.product.name} />
-                  )}
+                <motion.div variants={staggerContainer} initial="hidden" animate="visible">
+                  <InfoRow icon={Package} label="Product Name" value={result.product?.name || "—"} />
                   <InfoRow icon={Scale} label="Weight" value={getWeightLabel(result.product?.weight)} />
                   {typeof result.product?.stock === "number" && (
                     <InfoRow icon={Layers} label="Quantity" value={`${result.product.stock} pcs`} />
@@ -535,11 +545,20 @@ export default function VerifyPage() {
                 </motion.div>
               </motion.div>
 
-              {/* Serial & price */}
+              {/* Serial & Price card */}
               {!result.requiresRootKey && (
-                <motion.div variants={cardUp} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] px-5 py-1 backdrop-blur-sm">
+                <motion.div
+                  variants={fadeUp}
+                  custom={0.4}
+                  className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 sm:p-7 backdrop-blur-sm"
+                >
                   <motion.div variants={staggerContainer} initial="hidden" animate="visible">
-                    <InfoRow icon={Hash} label="Serial Number" value={result.product?.serialCode || "—"} mono />
+                    <InfoRow
+                      icon={Hash}
+                      label="Serial Number"
+                      value={result.product?.serialCode || "—"}
+                      mono
+                    />
                     {typeof result.product?.price === "number" && (
                       <InfoRow
                         icon={Banknote}
@@ -551,11 +570,15 @@ export default function VerifyPage() {
                 </motion.div>
               )}
 
-              {/* Back to home */}
-              <motion.div variants={cardUp} className="pt-2 text-center">
+              {/* Back button */}
+              <motion.div
+                variants={fadeUp}
+                custom={0.55}
+                className="flex justify-center pt-2"
+              >
                 <Link
                   href="/"
-                  className="group inline-flex items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.03] px-7 py-3.5 text-[13px] font-semibold text-white/70 transition-all duration-300 hover:border-white/[0.2] hover:bg-white/[0.06] hover:text-white"
+                  className="group inline-flex items-center gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-7 py-3 text-[13px] font-medium text-white/60 transition-all duration-300 hover:border-white/[0.15] hover:text-white hover:bg-white/[0.06]"
                 >
                   <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
                   Back to Home
@@ -563,50 +586,86 @@ export default function VerifyPage() {
               </motion.div>
             </motion.div>
           ) : (
+            /* ---------- VERIFICATION FAILED ---------- */
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
+              initial="hidden"
+              animate="visible"
               className="space-y-5"
             >
-              <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025] py-12 px-8 text-center backdrop-blur-sm">
-                <div className="absolute top-0 inset-x-8 h-px bg-gradient-to-r from-transparent via-red-500/20 to-transparent" />
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 0.5, delay: 0.1, type: "spring", stiffness: 200 }}
-                  className="relative mx-auto mb-6"
-                >
-                  <div className="relative flex h-20 w-20 mx-auto items-center justify-center">
-                    <motion.div
-                      animate={{ opacity: [0.08, 0.15, 0.08] }}
-                      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                      className="absolute inset-0 rounded-full bg-red-500 blur-xl"
-                    />
-                    <div className="absolute inset-0 rounded-full border-2 border-red-500/20" />
-                    <XCircle className="relative h-10 w-10 text-red-400" />
-                  </div>
-                </motion.div>
-                <h1 className="font-serif text-3xl font-semibold tracking-wide text-white">
-                  Verification Failed
-                </h1>
-                <p className="mt-3 text-sm text-white/40 max-w-md mx-auto leading-relaxed">
-                  {result?.error || "This product could not be verified."}
-                </p>
-                <p className="mt-2 text-[12px] text-white/25 max-w-sm mx-auto">
-                  If you believe this is an error, please contact our customer support.
-                </p>
-
-                <div className="mt-8">
-                  <Link
-                    href="/"
-                    className="group inline-flex items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.03] px-7 py-3.5 text-[13px] font-semibold text-white/70 transition-all duration-300 hover:border-white/[0.2] hover:bg-white/[0.06] hover:text-white"
+              <motion.div variants={fadeUp} custom={0} className="text-center pt-2 pb-1">
+                {/* Error icon */}
+                <div className="relative mx-auto mb-6 h-20 w-20">
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center rounded-full"
+                    style={{
+                      background:
+                        "radial-gradient(circle, rgba(239,68,68,0.1) 0%, rgba(239,68,68,0.02) 70%, transparent 100%)",
+                    }}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                   >
-                    <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
-                    Back to Home
-                  </Link>
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ duration: 0.4, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <XCircle className="h-12 w-12 text-red-500/80" />
+                    </motion.div>
+                  </motion.div>
                 </div>
-              </div>
+
+                <motion.h1
+                  className="font-serif text-[1.85rem] sm:text-[2.1rem] font-semibold tracking-[0.01em] text-white"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                >
+                  Verification Failed
+                </motion.h1>
+                <motion.p
+                  className="mt-3 text-sm font-light leading-relaxed text-white/40 max-w-md mx-auto"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.4 }}
+                >
+                  {result?.error || "This product could not be verified."}
+                </motion.p>
+                <motion.p
+                  className="mt-2 text-[12px] text-white/25"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.5 }}
+                >
+                  If you believe this is an error, please contact our customer support.
+                </motion.p>
+
+                {/* Decorative divider */}
+                <motion.div
+                  className="mx-auto mt-5 flex items-center justify-center gap-2.5"
+                  initial={{ opacity: 0, scaleX: 0 }}
+                  animate={{ opacity: 1, scaleX: 1 }}
+                  transition={{ duration: 0.6, delay: 0.5 }}
+                >
+                  <div className="h-px w-10 bg-gradient-to-r from-transparent to-red-500/15" />
+                  <div className="h-1 w-1 rounded-full bg-red-500/25" />
+                  <div className="h-px w-10 bg-gradient-to-l from-transparent to-red-500/15" />
+                </motion.div>
+              </motion.div>
+
+              <motion.div
+                variants={fadeUp}
+                custom={0.4}
+                className="flex justify-center pt-2"
+              >
+                <Link
+                  href="/"
+                  className="group inline-flex items-center gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-7 py-3 text-[13px] font-medium text-white/60 transition-all duration-300 hover:border-white/[0.15] hover:text-white hover:bg-white/[0.06]"
+                >
+                  <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
+                  Back to Home
+                </Link>
+              </motion.div>
             </motion.div>
           )}
         </div>
