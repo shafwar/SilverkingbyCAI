@@ -18,6 +18,7 @@ import {
   Banknote,
   KeyRound,
 } from "lucide-react";
+import { VERIFIED_BG_IMAGES } from "@/assets/verified-bg";
 
 interface VerificationResult {
   verified: boolean;
@@ -34,16 +35,6 @@ interface VerificationResult {
   };
   error?: string;
 }
-
-/** Background images for verified-success state only. Random one per page load. Use real image files from public/images. */
-const VERIFIED_BG_IMAGES = [
-  "/images/merchandise-hero.png",
-  "/images/gold-ingot.jpg",
-  "/images/pexels-3d-render-1058120333-33539240.jpg",
-  "/images/pexels-michael-steinberg-95604-386318.jpg",
-  "/images/pexels-sejio402-29336321.jpg",
-  "/images/pexels-sejio402-29336326.jpg",
-] as const;
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
@@ -126,13 +117,9 @@ export default function VerifyPage() {
 
   /** Hide background image if it fails to load (avoids broken icon). UI-only. */
   const [verifiedBgError, setVerifiedBgError] = useState(false);
-  const [imgBase, setImgBase] = useState("");
   useEffect(() => {
     if (!result?.verified) setVerifiedBgError(false);
   }, [result?.verified]);
-  useEffect(() => {
-    setImgBase(typeof window !== "undefined" ? window.location.origin : "");
-  }, []);
 
   // ---------- ALL LOGIC BELOW IS UNCHANGED ----------
 
@@ -354,9 +341,7 @@ export default function VerifyPage() {
                 bottom: 0,
                 width: "100vw",
                 height: "100vh",
-                backgroundImage: imgBase
-                  ? `url(${imgBase}${VERIFIED_BG_IMAGES[verifiedBgIndex]})`
-                  : `url(${VERIFIED_BG_IMAGES[verifiedBgIndex]})`,
+                backgroundImage: `url(${VERIFIED_BG_IMAGES[verifiedBgIndex]})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
                 backgroundRepeat: "no-repeat",
@@ -364,7 +349,7 @@ export default function VerifyPage() {
             >
               {/* Invisible img to detect load error and fallback */}
               <img
-                src={imgBase ? `${imgBase}${VERIFIED_BG_IMAGES[verifiedBgIndex]}` : VERIFIED_BG_IMAGES[verifiedBgIndex]}
+                src={VERIFIED_BG_IMAGES[verifiedBgIndex]}
                 alt=""
                 className="absolute opacity-0 w-0 h-0"
                 onError={() => setVerifiedBgError(true)}
