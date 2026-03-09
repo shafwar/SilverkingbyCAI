@@ -348,7 +348,7 @@ export default function VerifyPage() {
               className="space-y-5"
             >
               {/* Header */}
-              <motion.div variants={fadeUp} custom={0} className="text-center mb-2">
+              <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0} className="text-center mb-2">
                 <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-luxury-gold/20 bg-luxury-gold/[0.06]">
                   <KeyRound className="h-7 w-7 text-luxury-gold" />
                 </div>
@@ -363,6 +363,8 @@ export default function VerifyPage() {
               {/* Product info card */}
               <motion.div
                 variants={fadeUp}
+                initial="hidden"
+                animate="visible"
                 custom={0.1}
                 className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 sm:p-7 backdrop-blur-sm"
               >
@@ -389,6 +391,8 @@ export default function VerifyPage() {
               {/* Root key form */}
               <motion.div
                 variants={fadeUp}
+                initial="hidden"
+                animate="visible"
                 custom={0.2}
                 className="rounded-2xl border border-luxury-gold/10 bg-luxury-gold/[0.02] p-6 sm:p-7"
               >
@@ -458,7 +462,7 @@ export default function VerifyPage() {
               className="space-y-5"
             >
               {/* Success header */}
-              <motion.div variants={fadeUp} custom={0} className="text-center pt-2 pb-1">
+              <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0} className="text-center pt-2 pb-1">
                 {/* Animated checkmark */}
                 <div className="relative mx-auto mb-6 h-20 w-20">
                   {/* Outer pulse ring */}
@@ -522,6 +526,8 @@ export default function VerifyPage() {
               {/* Product info card */}
               <motion.div
                 variants={fadeUp}
+                initial="hidden"
+                animate="visible"
                 custom={0.25}
                 className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 sm:p-7 backdrop-blur-sm"
               >
@@ -549,6 +555,8 @@ export default function VerifyPage() {
               {!result.requiresRootKey && (
                 <motion.div
                   variants={fadeUp}
+                  initial="hidden"
+                  animate="visible"
                   custom={0.4}
                   className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 sm:p-7 backdrop-blur-sm"
                 >
@@ -573,6 +581,8 @@ export default function VerifyPage() {
               {/* Back button */}
               <motion.div
                 variants={fadeUp}
+                initial="hidden"
+                animate="visible"
                 custom={0.55}
                 className="flex justify-center pt-2"
               >
@@ -592,7 +602,7 @@ export default function VerifyPage() {
               animate="visible"
               className="space-y-5"
             >
-              <motion.div variants={fadeUp} custom={0} className="text-center pt-2 pb-1">
+              <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0} className="text-center pt-2 pb-1">
                 {/* Error icon */}
                 <div className="relative mx-auto mb-6 h-20 w-20">
                   <motion.div
@@ -655,6 +665,8 @@ export default function VerifyPage() {
 
               <motion.div
                 variants={fadeUp}
+                initial="hidden"
+                animate="visible"
                 custom={0.4}
                 className="flex justify-center pt-2"
               >
