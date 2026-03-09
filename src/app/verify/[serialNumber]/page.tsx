@@ -5,22 +5,71 @@ import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
-import { Shield, CheckCircle2, XCircle } from "lucide-react";
+import {
+  Shield,
+  CheckCircle2,
+  XCircle,
+  ArrowLeft,
+  Package,
+  Scale,
+  Hash,
+  Calendar,
+  Layers,
+  Banknote,
+  KeyRound,
+} from "lucide-react";
 
 interface VerificationResult {
   verified: boolean;
-  requiresRootKey?: boolean; // Flag for Page 2 two-step verification
+  requiresRootKey?: boolean;
   product?: {
     name: string;
     weight: number;
     serialCode: string;
-    actualSerialCode?: string; // For Page 2: actual SKP serial code
+    actualSerialCode?: string;
     price?: number | null;
     stock?: number | null;
     qrImageUrl?: string;
     createdAt: string;
   };
   error?: string;
+}
+
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+  mono,
+  delay = 0,
+}: {
+  icon: any;
+  label: string;
+  value: string;
+  mono?: boolean;
+  delay?: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay }}
+      className="group flex items-center justify-between gap-4 py-4 border-b border-white/[0.06] last:border-0 transition-colors duration-200 hover:bg-white/[0.015] -mx-5 px-5 rounded-lg"
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/[0.04]">
+          <Icon className="h-3.5 w-3.5 text-luxury-gold/60" />
+        </div>
+        <span className="text-[13px] text-white/45 font-medium">{label}</span>
+      </div>
+      <span
+        className={`text-[14px] font-semibold text-white text-right truncate ${
+          mono ? "font-mono tracking-wide text-[13px]" : ""
+        }`}
+      >
+        {value}
+      </span>
+    </motion.div>
+  );
 }
 
 export default function VerifyPage() {
@@ -33,39 +82,30 @@ export default function VerifyPage() {
   const [rootKeyError, setRootKeyError] = useState<string | null>(null);
 
   useEffect(() => {
-    let isMounted = true; // Prevent state updates if component unmounts
+    let isMounted = true;
 
     async function verifyProduct() {
       try {
-        // SECURITY: Normalize and validate serial number input
-        // Remove any potentially malicious characters
         const normalizedSerial =
           serialNumber
             ?.trim()
             .toUpperCase()
             .replace(/[^A-Z0-9]/g, "") || "";
 
-        // SECURITY: Validate serial number format and length
         if (!normalizedSerial || normalizedSerial.length < 3 || normalizedSerial.length > 50) {
           if (isMounted) {
-            setResult({
-              verified: false,
-              error: "Invalid serial number format",
-            });
+            setResult({ verified: false, error: "Invalid serial number format" });
             setLoading(false);
           }
           return;
         }
 
-        // OPTIMIZATION: Add timeout to prevent hanging requests
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
 
         const response = await fetch(`/api/verify/${encodeURIComponent(normalizedSerial)}`, {
           method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           signal: controller.signal,
         });
 
@@ -85,27 +125,18 @@ export default function VerifyPage() {
 
         const data = await response.json();
 
-        // SECURITY: Validate response structure
         if (!data || typeof data !== "object" || !("verified" in data)) {
           if (isMounted) {
-            setResult({
-              verified: false,
-              error: "Invalid response from server",
-            });
+            setResult({ verified: false, error: "Invalid response from server" });
             setLoading(false);
           }
           return;
         }
 
-        // SECURITY: Validate product data if verified
         if (data.verified && data.product) {
-          // Ensure product has required fields
           if (!data.product.serialCode || !data.product.name) {
             if (isMounted) {
-              setResult({
-                verified: false,
-                error: "Invalid product data received",
-              });
+              setResult({ verified: false, error: "Invalid product data received" });
               setLoading(false);
             }
             return;
@@ -117,18 +148,13 @@ export default function VerifyPage() {
           setLoading(false);
         }
       } catch (error: any) {
-        // Handle abort (timeout) gracefully
         if (error.name === "AbortError") {
           if (isMounted) {
-            setResult({
-              verified: false,
-              error: "Request timeout. Please try again.",
-            });
+            setResult({ verified: false, error: "Request timeout. Please try again." });
             setLoading(false);
           }
           return;
         }
-
         console.error("Verification error:", error);
         if (isMounted) {
           setResult({
@@ -144,13 +170,9 @@ export default function VerifyPage() {
       verifyProduct();
     } else {
       setLoading(false);
-      setResult({
-        verified: false,
-        error: "Serial number is required",
-      });
+      setResult({ verified: false, error: "Serial number is required" });
     }
 
-    // Cleanup: Prevent state updates if component unmounts
     return () => {
       isMounted = false;
     };
@@ -172,169 +194,138 @@ export default function VerifyPage() {
     setRootKeyError(null);
 
     try {
-      // For gram products with root key verification:
-      // - When user scans QR with uniqCode (GK...), API returns product.serialCode = uniqCode
-      // - We need to use the original uniqCode from the QR scan (serialNumber param)
-      // - Or use product.serialCode if it's actually the uniqCode
       const uniqCodeForVerification = result?.requiresRootKey
-        ? serialNumber // Use the original QR scan uniqCode
+        ? serialNumber
         : result?.product?.serialCode || serialNumber;
-
-      console.log("[VerifyPage] Sending root key verification request:", {
-        uniqCode: uniqCodeForVerification,
-        rootKey: rootKey.trim().toUpperCase(),
-        originalSerialNumber: serialNumber,
-        requiresRootKey: result?.requiresRootKey,
-      });
 
       const response = await fetch("/api/verify/root-key", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           uniqCode: uniqCodeForVerification,
           rootKey: rootKey.trim().toUpperCase(),
         }),
       });
 
-      console.log("[VerifyPage] Root key verification response:", {
-        status: response.status,
-        ok: response.ok,
-      });
-
       let data;
       try {
         data = await response.json();
-      } catch (jsonError) {
-        console.error("[VerifyPage] Failed to parse JSON response:", jsonError);
+      } catch {
         setRootKeyError("Server error. Please try again.");
         setVerifyingRootKey(false);
         return;
       }
 
       if (!response.ok || !data.verified) {
-        const errorMessage =
-          data.error || `Verification failed (${response.status}). Please try again.`;
-        console.error("[VerifyPage] Root key verification failed:", {
-          status: response.status,
-          error: errorMessage,
-          data,
-        });
-        setRootKeyError(errorMessage);
+        setRootKeyError(
+          data.error || `Verification failed (${response.status}). Please try again.`
+        );
         setVerifyingRootKey(false);
         return;
       }
 
-      // Root key verified successfully, redirect to serial code verification page
       if (data.serialCode) {
-        console.log("[VerifyPage] Root key verified, redirecting to:", data.serialCode);
-        // Use router.push for better Next.js navigation
         window.location.href = `/verify/${encodeURIComponent(data.serialCode)}`;
       } else {
-        console.error("[VerifyPage] Verification successful but serialCode missing:", data);
         setRootKeyError(
           "Verification successful but serial code not found. Please contact support."
         );
         setVerifyingRootKey(false);
       }
-    } catch (error: any) {
-      console.error("Root key verification error:", error);
+    } catch {
       setRootKeyError("Failed to verify root key. Please try again.");
       setVerifyingRootKey(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-luxury-black">
-      {/* Navbar */}
+    <div className="min-h-screen bg-[#060606]">
       <Navbar />
 
+      {/* Background accents */}
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <div
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] opacity-40"
+          style={{
+            background:
+              "radial-gradient(ellipse at center, rgba(212,175,55,0.06) 0%, transparent 65%)",
+            filter: "blur(60px)",
+          }}
+        />
+      </div>
+
       {/* Content */}
-      <div className="pt-32 pb-20 px-4">
-        <div className="max-w-3xl mx-auto">
+      <div className="relative z-10 pt-28 pb-20 px-4 sm:px-6">
+        <div className="max-w-2xl mx-auto">
           {loading ? (
+            /* Loading state */
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="luxury-card text-center"
+              className="flex flex-col items-center justify-center py-32"
             >
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-luxury-gold border-t-transparent mx-auto mb-4"></div>
-              <p className="text-luxury-silver text-lg">Verifying product...</p>
+              <div className="relative">
+                <div className="h-14 w-14 rounded-full border-2 border-luxury-gold/20" />
+                <div className="absolute inset-0 h-14 w-14 rounded-full border-2 border-transparent border-t-luxury-gold animate-spin" />
+              </div>
+              <p className="mt-5 text-sm text-white/40 tracking-wide">Verifying product...</p>
             </motion.div>
           ) : result?.requiresRootKey ? (
-            // Two-step verification: require root key before showing success
+            /* Root key required */
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="space-y-6"
+              className="space-y-5"
             >
-              <div className="luxury-card text-center">
-                <h1 className="text-3xl md:text-4xl font-sans font-bold text-luxury-gold mb-3">
+              {/* Header card */}
+              <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025] p-8 text-center backdrop-blur-sm">
+                <div className="absolute top-0 inset-x-8 h-px bg-gradient-to-r from-transparent via-luxury-gold/30 to-transparent" />
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-luxury-gold/20 bg-luxury-gold/[0.08]">
+                  <KeyRound className="h-7 w-7 text-luxury-gold" />
+                </div>
+                <h1 className="font-serif text-2xl font-semibold tracking-wide text-white">
                   Root Key Required
                 </h1>
-                <p className="text-luxury-silver text-lg">
-                  Please enter the root key to complete verification for this product.
+                <p className="mt-2 text-sm text-white/40 max-w-md mx-auto leading-relaxed">
+                  Enter the root key to complete verification for this product
                 </p>
               </div>
 
-              <div className="luxury-card">
-                <h2 className="text-2xl font-sans font-bold text-luxury-gold mb-6 flex items-center gap-2">
-                  <Shield className="w-6 h-6" />
-                  Product Information
-                </h2>
-                <div className="space-y-4">
-                  <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                    <span className="text-luxury-silver">Product Name</span>
-                    <span className="text-luxury-lightSilver font-semibold">
-                      {result.product?.name}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                    <span className="text-luxury-silver">Weight</span>
-                    <span className="text-luxury-lightSilver font-semibold">
-                      {getWeightLabel(result.product?.weight)}
-                    </span>
-                  </div>
-                  {typeof result.product?.stock === "number" && (
-                    <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                      <span className="text-luxury-silver">Quantity</span>
-                      <span className="text-luxury-lightSilver font-semibold">
-                        {result.product.stock} pcs
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                    <span className="text-luxury-silver">Manufacturing Date</span>
-                    <span className="text-luxury-lightSilver font-semibold">
-                      {new Date(result.product?.createdAt || "").toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
+              {/* Product info */}
+              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] px-5 py-2 backdrop-blur-sm">
+                {result.product?.name && (
+                  <InfoRow icon={Package} label="Product Name" value={result.product.name} delay={0.1} />
+                )}
+                <InfoRow icon={Scale} label="Weight" value={getWeightLabel(result.product?.weight)} delay={0.15} />
+                {typeof result.product?.stock === "number" && (
+                  <InfoRow icon={Layers} label="Quantity" value={`${result.product.stock} pcs`} delay={0.2} />
+                )}
+                <InfoRow
+                  icon={Calendar}
+                  label="Manufacturing Date"
+                  value={new Date(result.product?.createdAt || "").toLocaleDateString()}
+                  delay={0.25}
+                />
               </div>
 
-              {/* Root Key Verification Section */}
+              {/* Root key form */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="luxury-card"
+                className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-6 backdrop-blur-sm"
               >
-                <div className="mb-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4">
-                  <p className="text-yellow-400 text-sm font-semibold mb-2">
-                    ⚠️ Two-Step Verification Required
+                <div className="mb-5 rounded-xl border border-amber-500/15 bg-amber-500/[0.04] px-4 py-3.5">
+                  <p className="text-amber-400/90 text-[13px] font-semibold mb-1">
+                    Two-Step Verification
                   </p>
-                  <p className="text-luxury-silver text-sm">
-                    Please enter the root key (3-4 alphanumeric characters) provided by your
-                    administrator to verify the specific SKP serial number.
+                  <p className="text-white/35 text-[12px] leading-relaxed">
+                    Enter the root key (3-4 alphanumeric characters) from your administrator.
                   </p>
                 </div>
                 <form onSubmit={handleRootKeySubmit} className="space-y-4">
                   <div>
-                    <label className="block text-luxury-silver text-sm font-semibold mb-2">
-                      Root Key (3-4 characters)
-                    </label>
                     <input
                       type="text"
                       value={rootKey}
@@ -344,15 +335,15 @@ export default function VerifyPage() {
                       }}
                       maxLength={4}
                       placeholder="e.g., A1H2"
-                      className="w-full rounded-lg border border-luxury-silver/20 bg-luxury-black/50 px-4 py-3 text-luxury-lightSilver font-mono text-lg tracking-wider uppercase focus:border-luxury-gold focus:outline-none focus:ring-2 focus:ring-luxury-gold/20"
+                      className="w-full rounded-xl border border-white/[0.1] bg-white/[0.03] px-5 py-4 text-white font-mono text-lg tracking-[0.15em] text-center uppercase placeholder:text-white/20 focus:border-luxury-gold/40 focus:outline-none focus:ring-1 focus:ring-luxury-gold/15 transition-all duration-300"
                       disabled={verifyingRootKey}
                     />
                     {rootKeyError && (
-                      <div className="mt-2 space-y-1">
-                        <p className="text-red-400 text-sm">{rootKeyError}</p>
+                      <div className="mt-3 space-y-1">
+                        <p className="text-red-400/80 text-[12px]">{rootKeyError}</p>
                         {result?.product?.actualSerialCode && (
-                          <p className="text-yellow-400 text-xs">
-                            💡 Tip: Make sure you're using the root key for serial code{" "}
+                          <p className="text-amber-400/70 text-[11px]">
+                            Tip: Use the root key for{" "}
                             <span className="font-mono font-semibold">
                               {result.product.actualSerialCode}
                             </span>{" "}
@@ -365,112 +356,175 @@ export default function VerifyPage() {
                   <button
                     type="submit"
                     disabled={verifyingRootKey || rootKey.trim().length < 3}
-                    className="w-full luxury-button disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="group relative w-full overflow-hidden rounded-xl py-4 text-[13px] font-bold tracking-[0.06em] uppercase text-black transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
+                    style={{
+                      background: "linear-gradient(135deg, #B8960E 0%, #D4AF37 25%, #FFD700 55%, #E8C84A 80%, #D4AF37 100%)",
+                      boxShadow: "0 6px 24px -6px rgba(212,175,55,0.3)",
+                    }}
                   >
-                    {verifyingRootKey ? "Verifying..." : "Verify Root Key"}
+                    <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-[200%] group-hover:translate-x-[200%] transition-transform duration-700 pointer-events-none" />
+                    <span className="relative z-10">
+                      {verifyingRootKey ? "Verifying..." : "Verify Root Key"}
+                    </span>
                   </button>
                 </form>
               </motion.div>
             </motion.div>
           ) : result?.verified ? (
+            /* Verified */
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="space-y-6"
+              className="space-y-5"
             >
-              {/* Show product info first */}
-              <div className="luxury-card text-center">
-                <CheckCircle2 className="w-20 h-20 text-green-500 mx-auto mb-4" />
-                <h1 className="text-3xl md:text-4xl font-sans font-bold text-luxury-gold mb-3">
-                  Product Verified
-                </h1>
-                <p className="text-luxury-silver text-lg">
-                  This product is officially verified by Silver King by CAI
-                </p>
-              </div>
+              {/* Success header */}
+              <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025] py-12 px-8 text-center backdrop-blur-sm">
+                {/* Top gold accent */}
+                <div className="absolute top-0 inset-x-8 h-px bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
 
-              <div className="luxury-card">
-                <h2 className="text-2xl font-sans font-bold text-luxury-gold mb-6 flex items-center gap-2">
-                  <Shield className="w-6 h-6" />
-                  Product Information
-                </h2>
-                <div className="space-y-4">
-                  <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                    <span className="text-luxury-silver">Product Name</span>
-                    <span className="text-luxury-lightSilver font-semibold">
-                      {result.product?.name}
-                    </span>
+                {/* Animated check icon */}
+                <motion.div
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.15, type: "spring", stiffness: 200 }}
+                  className="relative mx-auto mb-6"
+                >
+                  <div className="relative flex h-20 w-20 mx-auto items-center justify-center">
+                    {/* Glow ring */}
+                    <div className="absolute inset-0 rounded-full bg-emerald-500/10 blur-xl" />
+                    {/* Outer ring */}
+                    <div className="absolute inset-0 rounded-full border-2 border-emerald-500/20" />
+                    {/* Icon */}
+                    <CheckCircle2 className="relative h-10 w-10 text-emerald-400" />
                   </div>
-                  <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                    <span className="text-luxury-silver">Weight</span>
-                    <span className="text-luxury-lightSilver font-semibold">
-                      {getWeightLabel(result.product?.weight)}
-                    </span>
-                  </div>
-                  {typeof result.product?.stock === "number" && (
-                    <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                      <span className="text-luxury-silver">Quantity</span>
-                      <span className="text-luxury-lightSilver font-semibold">
-                        {result.product.stock} pcs
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                    <span className="text-luxury-silver">Manufacturing Date</span>
-                    <span className="text-luxury-lightSilver font-semibold">
-                      {new Date(result.product?.createdAt || "").toLocaleDateString()}
-                    </span>
-                  </div>
+                </motion.div>
+
+                <motion.h1
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.3 }}
+                  className="font-serif text-3xl font-semibold tracking-wide text-white"
+                >
+                  Product Verified
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.4, delay: 0.4 }}
+                  className="mt-3 text-sm text-white/40 leading-relaxed max-w-md mx-auto"
+                >
+                  This product is officially verified by Silver King by CAI
+                </motion.p>
+
+                {/* Decorative divider */}
+                <div className="mt-6 flex items-center justify-center gap-2.5">
+                  <div className="h-px w-10 bg-gradient-to-r from-transparent to-white/10" />
+                  <div className="h-1 w-1 rounded-full bg-emerald-500/40" />
+                  <div className="h-px w-10 bg-gradient-to-l from-transparent to-white/10" />
                 </div>
               </div>
 
-              {/* Show serial code only if root key verification is not required or completed */}
-              {!result.requiresRootKey && (
-                <div className="luxury-card">
-                  <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                    <span className="text-luxury-silver">Serial Number</span>
-                    <span className="text-luxury-lightSilver font-mono font-semibold text-sm">
-                      {result.product?.serialCode}
-                    </span>
+              {/* Product information */}
+              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] backdrop-blur-sm overflow-hidden">
+                <div className="px-5 pt-5 pb-2 flex items-center gap-2.5">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-luxury-gold/[0.08]">
+                    <Shield className="h-3.5 w-3.5 text-luxury-gold/70" />
                   </div>
+                  <h2 className="text-[13px] font-semibold uppercase tracking-[0.2em] text-luxury-gold/60">
+                    Product Information
+                  </h2>
+                </div>
+                <div className="px-5 py-1">
+                  {result.product?.name && (
+                    <InfoRow icon={Package} label="Product Name" value={result.product.name} delay={0.35} />
+                  )}
+                  <InfoRow icon={Scale} label="Weight" value={getWeightLabel(result.product?.weight)} delay={0.4} />
+                  {typeof result.product?.stock === "number" && (
+                    <InfoRow icon={Layers} label="Quantity" value={`${result.product.stock} pcs`} delay={0.45} />
+                  )}
+                  <InfoRow
+                    icon={Calendar}
+                    label="Manufacturing Date"
+                    value={new Date(result.product?.createdAt || "").toLocaleDateString()}
+                    delay={0.5}
+                  />
+                </div>
+              </div>
+
+              {/* Serial & price */}
+              {!result.requiresRootKey && (
+                <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] px-5 py-1 backdrop-blur-sm">
+                  <InfoRow icon={Hash} label="Serial Number" value={result.product?.serialCode || "—"} mono delay={0.55} />
                   {typeof result.product?.price === "number" && (
-                    <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                      <span className="text-luxury-silver">Price</span>
-                      <span className="text-luxury-lightSilver font-semibold">
-                        Rp {result.product.price.toLocaleString("id-ID")}
-                      </span>
-                    </div>
+                    <InfoRow
+                      icon={Banknote}
+                      label="Price"
+                      value={`Rp ${result.product.price.toLocaleString("id-ID")}`}
+                      delay={0.6}
+                    />
                   )}
                 </div>
               )}
 
-              <div className="text-center">
-                <Link href="/" className="luxury-button inline-block">
+              {/* Back to home */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.65 }}
+                className="pt-2 text-center"
+              >
+                <Link
+                  href="/"
+                  className="group inline-flex items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.03] px-7 py-3.5 text-[13px] font-semibold text-white/70 transition-all duration-300 hover:border-white/[0.2] hover:bg-white/[0.06] hover:text-white"
+                >
+                  <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
                   Back to Home
                 </Link>
-              </div>
+              </motion.div>
             </motion.div>
           ) : (
+            /* Not verified / error */
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="luxury-card text-center"
+              className="space-y-5"
             >
-              <XCircle className="w-20 h-20 text-red-500 mx-auto mb-4" />
-              <h1 className="text-3xl md:text-4xl font-sans font-bold text-red-500 mb-3">
-                Verification Failed
-              </h1>
-              <p className="text-luxury-silver text-lg mb-6">
-                {result?.error || "This product could not be verified."}
-              </p>
-              <p className="text-luxury-silver/70 mb-8">
-                If you believe this is an error, please contact our customer support.
-              </p>
-              <Link href="/" className="luxury-button inline-block">
-                Back to Home
-              </Link>
+              <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025] py-12 px-8 text-center backdrop-blur-sm">
+                <div className="absolute top-0 inset-x-8 h-px bg-gradient-to-r from-transparent via-red-500/20 to-transparent" />
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.1, type: "spring", stiffness: 200 }}
+                  className="relative mx-auto mb-6"
+                >
+                  <div className="relative flex h-20 w-20 mx-auto items-center justify-center">
+                    <div className="absolute inset-0 rounded-full bg-red-500/10 blur-xl" />
+                    <div className="absolute inset-0 rounded-full border-2 border-red-500/20" />
+                    <XCircle className="relative h-10 w-10 text-red-400" />
+                  </div>
+                </motion.div>
+                <h1 className="font-serif text-3xl font-semibold tracking-wide text-white">
+                  Verification Failed
+                </h1>
+                <p className="mt-3 text-sm text-white/40 max-w-md mx-auto leading-relaxed">
+                  {result?.error || "This product could not be verified."}
+                </p>
+                <p className="mt-2 text-[12px] text-white/25 max-w-sm mx-auto">
+                  If you believe this is an error, please contact our customer support.
+                </p>
+
+                <div className="mt-8">
+                  <Link
+                    href="/"
+                    className="group inline-flex items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.03] px-7 py-3.5 text-[13px] font-semibold text-white/70 transition-all duration-300 hover:border-white/[0.2] hover:bg-white/[0.06] hover:text-white"
+                  >
+                    <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
+                    Back to Home
+                  </Link>
+                </div>
+              </div>
             </motion.div>
           )}
         </div>
