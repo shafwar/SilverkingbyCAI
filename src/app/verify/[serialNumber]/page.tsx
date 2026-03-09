@@ -21,12 +21,12 @@ import {
 
 interface VerificationResult {
   verified: boolean;
-  requiresRootKey?: boolean;
+  requiresRootKey?: boolean; // Flag for Page 2 two-step verification
   product?: {
     name: string;
     weight: number;
     serialCode: string;
-    actualSerialCode?: string;
+    actualSerialCode?: string; // For Page 2: actual SKP serial code
     price?: number | null;
     stock?: number | null;
     qrImageUrl?: string;
@@ -35,7 +35,7 @@ interface VerificationResult {
   error?: string;
 }
 
-const EASE_SMOOTH = [0.22, 1, 0.36, 1] as const;
+const EASE_SMOOTH: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
 const staggerContainer: Variants = {
   hidden: { opacity: 0 },
@@ -46,11 +46,10 @@ const staggerContainer: Variants = {
 };
 
 const cardUp: Variants = {
-  hidden: { opacity: 0, y: 20, filter: "blur(6px)" },
+  hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,
     y: 0,
-    filter: "blur(0px)",
     transition: { duration: 0.6, ease: EASE_SMOOTH },
   },
 };
@@ -107,30 +106,39 @@ export default function VerifyPage() {
   const [rootKeyError, setRootKeyError] = useState<string | null>(null);
 
   useEffect(() => {
-    let isMounted = true;
+    let isMounted = true; // Prevent state updates if component unmounts
 
     async function verifyProduct() {
       try {
+        // SECURITY: Normalize and validate serial number input
+        // Remove any potentially malicious characters
         const normalizedSerial =
           serialNumber
             ?.trim()
             .toUpperCase()
             .replace(/[^A-Z0-9]/g, "") || "";
 
+        // SECURITY: Validate serial number format and length
         if (!normalizedSerial || normalizedSerial.length < 3 || normalizedSerial.length > 50) {
           if (isMounted) {
-            setResult({ verified: false, error: "Invalid serial number format" });
+            setResult({
+              verified: false,
+              error: "Invalid serial number format",
+            });
             setLoading(false);
           }
           return;
         }
 
+        // OPTIMIZATION: Add timeout to prevent hanging requests
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
         const response = await fetch(`/api/verify/${encodeURIComponent(normalizedSerial)}`, {
           method: "GET",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+          },
           signal: controller.signal,
         });
 
@@ -150,18 +158,27 @@ export default function VerifyPage() {
 
         const data = await response.json();
 
+        // SECURITY: Validate response structure
         if (!data || typeof data !== "object" || !("verified" in data)) {
           if (isMounted) {
-            setResult({ verified: false, error: "Invalid response from server" });
+            setResult({
+              verified: false,
+              error: "Invalid response from server",
+            });
             setLoading(false);
           }
           return;
         }
 
+        // SECURITY: Validate product data if verified
         if (data.verified && data.product) {
+          // Ensure product has required fields
           if (!data.product.serialCode || !data.product.name) {
             if (isMounted) {
-              setResult({ verified: false, error: "Invalid product data received" });
+              setResult({
+                verified: false,
+                error: "Invalid product data received",
+              });
               setLoading(false);
             }
             return;
@@ -173,13 +190,18 @@ export default function VerifyPage() {
           setLoading(false);
         }
       } catch (error: any) {
+        // Handle abort (timeout) gracefully
         if (error.name === "AbortError") {
           if (isMounted) {
-            setResult({ verified: false, error: "Request timeout. Please try again." });
+            setResult({
+              verified: false,
+              error: "Request timeout. Please try again.",
+            });
             setLoading(false);
           }
           return;
         }
+
         console.error("Verification error:", error);
         if (isMounted) {
           setResult({
@@ -195,9 +217,13 @@ export default function VerifyPage() {
       verifyProduct();
     } else {
       setLoading(false);
-      setResult({ verified: false, error: "Serial number is required" });
+      setResult({
+        verified: false,
+        error: "Serial number is required",
+      });
     }
 
+    // Cleanup: Prevent state updates if component unmounts
     return () => {
       isMounted = false;
     };
@@ -219,45 +245,74 @@ export default function VerifyPage() {
     setRootKeyError(null);
 
     try {
+      // For gram products with root key verification:
+      // - When user scans QR with uniqCode (GK...), API returns product.serialCode = uniqCode
+      // - We need to use the original uniqCode from the QR scan (serialNumber param)
+      // - Or use product.serialCode if it's actually the uniqCode
       const uniqCodeForVerification = result?.requiresRootKey
-        ? serialNumber
+        ? serialNumber // Use the original QR scan uniqCode
         : result?.product?.serialCode || serialNumber;
+
+      console.log("[VerifyPage] Sending root key verification request:", {
+        uniqCode: uniqCodeForVerification,
+        rootKey: rootKey.trim().toUpperCase(),
+        originalSerialNumber: serialNumber,
+        requiresRootKey: result?.requiresRootKey,
+      });
 
       const response = await fetch("/api/verify/root-key", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           uniqCode: uniqCodeForVerification,
           rootKey: rootKey.trim().toUpperCase(),
         }),
       });
 
+      console.log("[VerifyPage] Root key verification response:", {
+        status: response.status,
+        ok: response.ok,
+      });
+
       let data;
       try {
         data = await response.json();
-      } catch {
+      } catch (jsonError) {
+        console.error("[VerifyPage] Failed to parse JSON response:", jsonError);
         setRootKeyError("Server error. Please try again.");
         setVerifyingRootKey(false);
         return;
       }
 
       if (!response.ok || !data.verified) {
-        setRootKeyError(
-          data.error || `Verification failed (${response.status}). Please try again.`
-        );
+        const errorMessage =
+          data.error || `Verification failed (${response.status}). Please try again.`;
+        console.error("[VerifyPage] Root key verification failed:", {
+          status: response.status,
+          error: errorMessage,
+          data,
+        });
+        setRootKeyError(errorMessage);
         setVerifyingRootKey(false);
         return;
       }
 
+      // Root key verified successfully, redirect to serial code verification page
       if (data.serialCode) {
+        console.log("[VerifyPage] Root key verified, redirecting to:", data.serialCode);
+        // Use router.push for better Next.js navigation
         window.location.href = `/verify/${encodeURIComponent(data.serialCode)}`;
       } else {
+        console.error("[VerifyPage] Verification successful but serialCode missing:", data);
         setRootKeyError(
           "Verification successful but serial code not found. Please contact support."
         );
         setVerifyingRootKey(false);
       }
-    } catch {
+    } catch (error: any) {
+      console.error("Root key verification error:", error);
       setRootKeyError("Failed to verify root key. Please try again.");
       setVerifyingRootKey(false);
     }
@@ -267,10 +322,10 @@ export default function VerifyPage() {
     <div className="min-h-screen bg-[#060606]">
       <Navbar />
 
-      {/* Background glow with gentle breathing */}
+      {/* Background glow */}
       <div className="pointer-events-none fixed inset-0 z-0">
         <motion.div
-          animate={{ opacity: [0.3, 0.5, 0.3], scale: [1, 1.05, 1] }}
+          animate={{ opacity: [0.3, 0.5, 0.3] }}
           transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
           className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px]"
           style={{
@@ -285,56 +340,51 @@ export default function VerifyPage() {
       <div className="relative z-10 pt-28 pb-20 px-4 sm:px-6">
         <div className="max-w-2xl mx-auto">
           {loading ? (
-            /* Loading */
             <motion.div
-              initial={{ opacity: 0, filter: "blur(8px)" }}
-              animate={{ opacity: 1, filter: "blur(0px)" }}
-              transition={{ duration: 0.5, ease: EASE_SMOOTH }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4 }}
               className="flex flex-col items-center justify-center py-32"
             >
               <div className="relative">
                 <div className="h-14 w-14 rounded-full border-2 border-luxury-gold/20" />
                 <div className="absolute inset-0 h-14 w-14 rounded-full border-2 border-transparent border-t-luxury-gold animate-spin" />
               </div>
-              <motion.p
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.2, ease: EASE_SMOOTH }}
-                className="mt-5 text-sm text-white/40 tracking-wide"
-              >
-                Verifying product...
-              </motion.p>
+              <p className="mt-5 text-sm text-white/40 tracking-wide">Verifying product...</p>
             </motion.div>
           ) : result?.requiresRootKey ? (
-            /* Root key required */
+            // Two-step verification: require root key before showing success
             <motion.div
               variants={staggerContainer}
               initial="hidden"
               animate="visible"
               className="space-y-5"
             >
-              {/* Header card */}
+              {/* Header */}
               <motion.div variants={cardUp} className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025] p-8 text-center backdrop-blur-sm">
                 <div className="absolute top-0 inset-x-8 h-px bg-gradient-to-r from-transparent via-luxury-gold/30 to-transparent" />
-                <motion.div
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ duration: 0.5, delay: 0.2, ease: EASE_SMOOTH }}
-                  className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-luxury-gold/20 bg-luxury-gold/[0.08]"
-                >
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-luxury-gold/20 bg-luxury-gold/[0.08]">
                   <KeyRound className="h-7 w-7 text-luxury-gold" />
-                </motion.div>
+                </div>
                 <h1 className="font-serif text-2xl font-semibold tracking-wide text-white">
                   Root Key Required
                 </h1>
                 <p className="mt-2 text-sm text-white/40 max-w-md mx-auto leading-relaxed">
-                  Enter the root key to complete verification for this product
+                  Please enter the root key to complete verification for this product.
                 </p>
               </motion.div>
 
               {/* Product info */}
-              <motion.div variants={cardUp} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] px-5 py-2 backdrop-blur-sm">
-                <motion.div variants={staggerContainer} initial="hidden" animate="visible">
+              <motion.div variants={cardUp} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] backdrop-blur-sm overflow-hidden">
+                <div className="px-5 pt-5 pb-2 flex items-center gap-2.5">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-luxury-gold/[0.08]">
+                    <Shield className="h-3.5 w-3.5 text-luxury-gold/70" />
+                  </div>
+                  <h2 className="text-[13px] font-semibold uppercase tracking-[0.2em] text-luxury-gold/60">
+                    Product Information
+                  </h2>
+                </div>
+                <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="px-5 py-1">
                   {result.product?.name && (
                     <InfoRow icon={Package} label="Product Name" value={result.product.name} />
                   )}
@@ -350,14 +400,15 @@ export default function VerifyPage() {
                 </motion.div>
               </motion.div>
 
-              {/* Root key form */}
+              {/* Root Key Form */}
               <motion.div variants={cardUp} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-6 backdrop-blur-sm">
                 <div className="mb-5 rounded-xl border border-amber-500/15 bg-amber-500/[0.04] px-4 py-3.5">
                   <p className="text-amber-400/90 text-[13px] font-semibold mb-1">
-                    Two-Step Verification
+                    Two-Step Verification Required
                   </p>
                   <p className="text-white/35 text-[12px] leading-relaxed">
-                    Enter the root key (3-4 alphanumeric characters) from your administrator.
+                    Please enter the root key (3-4 alphanumeric characters) provided by your
+                    administrator to verify the specific SKP serial number.
                   </p>
                 </div>
                 <form onSubmit={handleRootKeySubmit} className="space-y-4">
@@ -407,7 +458,6 @@ export default function VerifyPage() {
               </motion.div>
             </motion.div>
           ) : result?.verified ? (
-            /* Verified */
             <motion.div
               variants={staggerContainer}
               initial="hidden"
@@ -416,81 +466,47 @@ export default function VerifyPage() {
             >
               {/* Success header */}
               <motion.div variants={cardUp} className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025] py-12 px-8 text-center backdrop-blur-sm">
-                {/* Top accent */}
-                <motion.div
-                  initial={{ scaleX: 0 }}
-                  animate={{ scaleX: 1 }}
-                  transition={{ duration: 0.8, delay: 0.3, ease: EASE_SMOOTH }}
-                  className="absolute top-0 inset-x-8 h-px bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent origin-center"
-                />
+                <div className="absolute top-0 inset-x-8 h-px bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
 
-                {/* Animated check icon */}
                 <motion.div
-                  initial={{ scale: 0, opacity: 0, rotate: -20 }}
-                  animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                  transition={{ duration: 0.6, delay: 0.2, type: "spring", stiffness: 180, damping: 14 }}
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.15, type: "spring", stiffness: 200 }}
                   className="relative mx-auto mb-6"
                 >
                   <div className="relative flex h-20 w-20 mx-auto items-center justify-center">
-                    {/* Breathing glow */}
                     <motion.div
-                      animate={{ opacity: [0.08, 0.18, 0.08], scale: [1, 1.15, 1] }}
+                      animate={{ opacity: [0.08, 0.18, 0.08] }}
                       transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                       className="absolute inset-0 rounded-full bg-emerald-500 blur-xl"
                     />
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ duration: 0.5, delay: 0.35, ease: EASE_SMOOTH }}
-                      className="absolute inset-0 rounded-full border-2 border-emerald-500/20"
-                    />
+                    <div className="absolute inset-0 rounded-full border-2 border-emerald-500/20" />
                     <CheckCircle2 className="relative h-10 w-10 text-emerald-400" />
                   </div>
                 </motion.div>
 
                 <motion.h1
-                  initial={{ opacity: 0, y: 12, filter: "blur(4px)" }}
-                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                  transition={{ duration: 0.5, delay: 0.35, ease: EASE_SMOOTH }}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.3, ease: EASE_SMOOTH }}
                   className="font-serif text-3xl font-semibold tracking-wide text-white"
                 >
                   Product Verified
                 </motion.h1>
                 <motion.p
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.45, delay: 0.45, ease: EASE_SMOOTH }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.4, delay: 0.4 }}
                   className="mt-3 text-sm text-white/40 leading-relaxed max-w-md mx-auto"
                 >
                   This product is officially verified by Silver King by CAI
                 </motion.p>
 
-                {/* Divider animating in */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.5, delay: 0.55 }}
-                  className="mt-6 flex items-center justify-center gap-2.5"
-                >
-                  <motion.div
-                    initial={{ scaleX: 0 }}
-                    animate={{ scaleX: 1 }}
-                    transition={{ duration: 0.5, delay: 0.6, ease: EASE_SMOOTH }}
-                    className="h-px w-10 bg-gradient-to-r from-transparent to-white/10 origin-right"
-                  />
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ duration: 0.3, delay: 0.7, ease: EASE_SMOOTH }}
-                    className="h-1 w-1 rounded-full bg-emerald-500/40"
-                  />
-                  <motion.div
-                    initial={{ scaleX: 0 }}
-                    animate={{ scaleX: 1 }}
-                    transition={{ duration: 0.5, delay: 0.6, ease: EASE_SMOOTH }}
-                    className="h-px w-10 bg-gradient-to-l from-transparent to-white/10 origin-left"
-                  />
-                </motion.div>
+                <div className="mt-6 flex items-center justify-center gap-2.5">
+                  <div className="h-px w-10 bg-gradient-to-r from-transparent to-white/10" />
+                  <div className="h-1 w-1 rounded-full bg-emerald-500/40" />
+                  <div className="h-px w-10 bg-gradient-to-l from-transparent to-white/10" />
+                </div>
               </motion.div>
 
               {/* Product information */}
@@ -547,24 +563,18 @@ export default function VerifyPage() {
               </motion.div>
             </motion.div>
           ) : (
-            /* Not verified / error */
             <motion.div
-              variants={staggerContainer}
-              initial="hidden"
-              animate="visible"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
               className="space-y-5"
             >
-              <motion.div variants={cardUp} className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025] py-12 px-8 text-center backdrop-blur-sm">
+              <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025] py-12 px-8 text-center backdrop-blur-sm">
+                <div className="absolute top-0 inset-x-8 h-px bg-gradient-to-r from-transparent via-red-500/20 to-transparent" />
                 <motion.div
-                  initial={{ scaleX: 0 }}
-                  animate={{ scaleX: 1 }}
-                  transition={{ duration: 0.8, delay: 0.3, ease: EASE_SMOOTH }}
-                  className="absolute top-0 inset-x-8 h-px bg-gradient-to-r from-transparent via-red-500/20 to-transparent origin-center"
-                />
-                <motion.div
-                  initial={{ scale: 0, opacity: 0, rotate: 15 }}
-                  animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                  transition={{ duration: 0.6, delay: 0.15, type: "spring", stiffness: 180, damping: 14 }}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.1, type: "spring", stiffness: 200 }}
                   className="relative mx-auto mb-6"
                 >
                   <div className="relative flex h-20 w-20 mx-auto items-center justify-center">
@@ -577,37 +587,17 @@ export default function VerifyPage() {
                     <XCircle className="relative h-10 w-10 text-red-400" />
                   </div>
                 </motion.div>
-                <motion.h1
-                  initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
-                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                  transition={{ duration: 0.5, delay: 0.3, ease: EASE_SMOOTH }}
-                  className="font-serif text-3xl font-semibold tracking-wide text-white"
-                >
+                <h1 className="font-serif text-3xl font-semibold tracking-wide text-white">
                   Verification Failed
-                </motion.h1>
-                <motion.p
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: 0.4, ease: EASE_SMOOTH }}
-                  className="mt-3 text-sm text-white/40 max-w-md mx-auto leading-relaxed"
-                >
+                </h1>
+                <p className="mt-3 text-sm text-white/40 max-w-md mx-auto leading-relaxed">
                   {result?.error || "This product could not be verified."}
-                </motion.p>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.4, delay: 0.5 }}
-                  className="mt-2 text-[12px] text-white/25 max-w-sm mx-auto"
-                >
+                </p>
+                <p className="mt-2 text-[12px] text-white/25 max-w-sm mx-auto">
                   If you believe this is an error, please contact our customer support.
-                </motion.p>
+                </p>
 
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: 0.6, ease: EASE_SMOOTH }}
-                  className="mt-8"
-                >
+                <div className="mt-8">
                   <Link
                     href="/"
                     className="group inline-flex items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.03] px-7 py-3.5 text-[13px] font-semibold text-white/70 transition-all duration-300 hover:border-white/[0.2] hover:bg-white/[0.06] hover:text-white"
@@ -615,8 +605,8 @@ export default function VerifyPage() {
                     <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
                     Back to Home
                   </Link>
-                </motion.div>
-              </motion.div>
+                </div>
+              </div>
             </motion.div>
           )}
         </div>
