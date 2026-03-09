@@ -5,7 +5,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Eye, EyeOff, ArrowRight, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, ArrowRight } from "lucide-react";
 
 export function AdminLoginForm() {
   const t = useTranslations("admin.login");
@@ -51,72 +51,98 @@ export function AdminLoginForm() {
     }
   }
 
-  const inputBase =
-    "w-full rounded-[10px] border bg-transparent px-4 py-3.5 pl-11 text-[13px] font-light text-white placeholder:text-white/25 outline-none transition-all duration-300";
-  const inputIdle = "border-white/[0.08] hover:border-white/[0.14]";
-  const inputFocused =
-    "border-luxury-gold/40 ring-1 ring-luxury-gold/15 shadow-[0_0_20px_-6px_rgba(212,175,55,0.12)]";
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-7">
       {/* Email */}
-      <div className="space-y-2">
-        <label className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/35">
+      <div>
+        <label className="block text-[10px] font-semibold uppercase tracking-[0.3em] text-white/30 mb-3">
           {t("email")}
         </label>
         <div className="relative">
-          <Mail
-            className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-[15px] w-[15px] transition-colors duration-300 ${
-              focused === "email" ? "text-luxury-gold/70" : "text-white/20"
-            }`}
-          />
           <input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onFocus={() => setFocused("email")}
             onBlur={() => setFocused(null)}
-            className={`${inputBase} ${focused === "email" ? inputFocused : inputIdle}`}
+            className="w-full border-0 border-b bg-transparent pb-3 text-[15px] text-white placeholder:text-white/20 outline-none transition-all duration-300"
+            style={{
+              borderBottomWidth: "1px",
+              borderBottomColor:
+                focused === "email"
+                  ? "rgba(212,175,55,0.6)"
+                  : "rgba(255,255,255,0.1)",
+            }}
             type="email"
             placeholder="admin@silverking.id"
             autoComplete="email"
             required
           />
+          {/* Focus glow line */}
+          <div
+            className="absolute bottom-0 left-0 right-0 h-px transition-all duration-500"
+            style={{
+              background:
+                focused === "email"
+                  ? "linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.6) 50%, transparent 100%)"
+                  : "transparent",
+              boxShadow:
+                focused === "email"
+                  ? "0 1px 12px -2px rgba(212,175,55,0.25)"
+                  : "none",
+            }}
+          />
         </div>
       </div>
 
       {/* Password */}
-      <div className="space-y-2">
-        <label className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/35">
+      <div>
+        <label className="block text-[10px] font-semibold uppercase tracking-[0.3em] text-white/30 mb-3">
           {t("password")}
         </label>
         <div className="relative">
-          <Lock
-            className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-[15px] w-[15px] transition-colors duration-300 ${
-              focused === "password" ? "text-luxury-gold/70" : "text-white/20"
-            }`}
-          />
           <input
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onFocus={() => setFocused("password")}
             onBlur={() => setFocused(null)}
-            className={`${inputBase} pr-12 ${focused === "password" ? inputFocused : inputIdle}`}
+            className="w-full border-0 border-b bg-transparent pb-3 pr-11 text-[15px] text-white placeholder:text-white/20 outline-none transition-all duration-300"
+            style={{
+              borderBottomWidth: "1px",
+              borderBottomColor:
+                focused === "password"
+                  ? "rgba(212,175,55,0.6)"
+                  : "rgba(255,255,255,0.1)",
+            }}
             type={showPassword ? "text" : "password"}
-            placeholder="••••••••"
+            placeholder="Enter your password"
             autoComplete="current-password"
             required
+          />
+          {/* Focus glow line */}
+          <div
+            className="absolute bottom-0 left-0 right-0 h-px transition-all duration-500"
+            style={{
+              background:
+                focused === "password"
+                  ? "linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.6) 50%, transparent 100%)"
+                  : "transparent",
+              boxShadow:
+                focused === "password"
+                  ? "0 1px 12px -2px rgba(212,175,55,0.25)"
+                  : "none",
+            }}
           />
           <button
             type="button"
             onClick={() => setShowPassword((p) => !p)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-white/25 hover:text-luxury-gold/80 hover:bg-white/[0.04] transition-all duration-200"
+            className="absolute right-0 bottom-2.5 rounded-md p-1 text-white/20 hover:text-luxury-gold/70 transition-colors duration-200"
             aria-label={showPassword ? "Hide password" : "Show password"}
             tabIndex={-1}
           >
             {showPassword ? (
-              <EyeOff className="h-[15px] w-[15px]" />
+              <EyeOff className="h-4 w-4" />
             ) : (
-              <Eye className="h-[15px] w-[15px]" />
+              <Eye className="h-4 w-4" />
             )}
           </button>
         </div>
@@ -124,38 +150,38 @@ export function AdminLoginForm() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-[10px] border border-red-500/20 bg-red-500/[0.06] px-4 py-3 text-[12px] text-red-400/90">
+        <div className="rounded-lg border border-red-500/15 bg-red-500/[0.05] px-4 py-3 text-[13px] text-red-400/80">
           {error}
         </div>
       )}
 
       {/* Submit */}
-      <div className="pt-1">
+      <div className="pt-2">
         <button
           type="submit"
           disabled={loading}
-          className="group relative w-full overflow-hidden rounded-[10px] py-3.5 text-[13px] font-bold tracking-[0.04em] text-black transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
+          className="group relative w-full overflow-hidden rounded-xl py-4 text-[13px] font-bold tracking-[0.06em] uppercase text-black transition-all duration-400 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
           style={{
             background:
-              "linear-gradient(135deg, #D4AF37 0%, #E8C84A 40%, #FFD700 70%, #D4AF37 100%)",
+              "linear-gradient(135deg, #B8960E 0%, #D4AF37 25%, #FFD700 55%, #E8C84A 80%, #D4AF37 100%)",
+            boxShadow: "0 8px 32px -8px rgba(212,175,55,0.3)",
           }}
         >
-          {/* Shine */}
-          <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-[200%] group-hover:translate-x-[200%] transition-transform duration-700 pointer-events-none" />
+          {/* Shine sweep */}
+          <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-[200%] group-hover:translate-x-[200%] transition-transform duration-[800ms] ease-out pointer-events-none" />
 
-          {/* Hover glow */}
-          <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" style={{ boxShadow: "0 14px 40px -8px rgba(212,175,55,0.55)" }} />
-
-          <span className="relative z-10 inline-flex items-center justify-center gap-2">
+          <span className="relative z-10 inline-flex items-center justify-center gap-2.5">
             {loading ? (
               <>
-                <span className="h-3.5 w-3.5 animate-spin rounded-full border-[1.5px] border-black/20 border-t-black/70" />
-                <span>{t("signingIn")}</span>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-black/15 border-t-black/60" />
+                <span className="normal-case tracking-normal font-semibold">
+                  {t("signingIn")}
+                </span>
               </>
             ) : (
               <>
                 <span>{t("signIn")}</span>
-                <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
+                <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
               </>
             )}
           </span>
