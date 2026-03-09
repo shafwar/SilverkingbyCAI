@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { EditableMedia } from "@/components/editable-media";
 
-const EDIT_BUTTON_DELAY_MS = 2000;
+const EDIT_BUTTON_DELAY_MS = 800;
 
 export type HeroEditPortalProps = {
   page: string;
@@ -16,11 +16,10 @@ export type HeroEditPortalProps = {
 };
 
 /**
- * Hero edit button (Edit video / Edit photo) with the same pattern as Home:
- * - Portaled to document.body so same stacking and behavior on all pages
- * - Shown after 2s delay so it doesn’t appear on first paint
- * - Same modal (Replace video / Replace image) from EditableMedia
- * Use on: Home, What we do, Authenticity, Products, Distributor, About us.
+ * Hero edit button (Edit video / Edit photo):
+ * - Portaled to document.body for consistent stacking across pages
+ * - Parent controls when this mounts (splash/animation timing)
+ * - Smooth opacity+translateY entrance once mounted
  */
 export function HeroEditPortal({
   page,
@@ -42,14 +41,21 @@ export function HeroEditPortal({
     return () => clearTimeout(t);
   }, [mounted]);
 
-  if (!mounted || !showEditButton || typeof document === "undefined" || !document.body) {
+  if (!mounted || typeof document === "undefined" || !document.body) {
     return null;
   }
 
   return createPortal(
     <div
-      className="fixed top-20 right-4 sm:right-6 z-[10002] pointer-events-auto animate-fade-in"
+      className="fixed top-20 right-4 sm:right-6 z-[10002] pointer-events-auto"
       data-hero-edit-portal
+      style={{
+        opacity: showEditButton ? 1 : 0,
+        transform: showEditButton ? "translateY(0)" : "translateY(-8px)",
+        transition:
+          "opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1), transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)",
+        pointerEvents: showEditButton ? "auto" : "none",
+      }}
     >
       <EditableMedia
         page={page}

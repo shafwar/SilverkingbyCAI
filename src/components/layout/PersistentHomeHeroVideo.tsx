@@ -9,27 +9,71 @@ import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 
 const HERO_VIDEO_FALLBACK = "/videos/hero/hero-background.mp4";
 
+/** Delay (ms) after splash finishes before allowing edit button.
+ *  Must exceed the hero entrance GSAP animation (~2.7s) + content fade (0.3s). */
+const POST_SPLASH_BUFFER_MS = 3500;
+
+/** Delay (ms) on subsequent visits (splash already shown) before allowing edit button.
+ *  Hero entrance animation still plays (~2.7s), so we wait for it. */
+const SUBSEQUENT_VISIT_BUFFER_MS = 3200;
+
 function isHomePath(pathname: string | null): boolean {
   const path = (pathname ?? "").replace(/\/$/, "").trim() || "/";
   return path === "/" || path === "/en" || path === "/id";
 }
 
-type PersistentHomeHeroVideoProps = {
-  /** When false, edit button is hidden until splash is done. Omit on locale home (no splash). */
-  splashComplete?: boolean;
-};
+/**
+ * Detects whether the splash screen has completed AND all entrance animations
+ * have settled, so the edit button can appear without overlapping with content transitions.
+ */
+function useSplashComplete(): boolean {
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const alreadyShown =
+      sessionStorage.getItem("splashShown") === "true" ||
+      document.body.classList.contains("splash-complete");
+
+    if (alreadyShown) {
+      const t = setTimeout(() => setDone(true), SUBSEQUENT_VISIT_BUFFER_MS);
+      return () => clearTimeout(t);
+    }
+
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const observer = new MutationObserver(() => {
+      if (document.body.classList.contains("splash-complete")) {
+        observer.disconnect();
+        timer = setTimeout(() => setDone(true), POST_SPLASH_BUFFER_MS);
+      }
+    });
+
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => {
+      observer.disconnect();
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
+
+  return done;
+}
 
 /**
  * Persistent hero video for Home. Rendered in layout so it does NOT unmount
  * when navigating away. Video URL from page-sections (CMS) or fallback.
- * Admin sees edit icon (after delay) and can replace video (upload to R2).
- * On root home, pass splashComplete so the edit button only appears after splash.
- * Uses simple isHome from pathname (no window in initial state) to avoid hydration mismatch.
+ * Admin sees edit icon only after splash + fade-in are fully complete.
  */
-export function PersistentHomeHeroVideo({ splashComplete = true }: PersistentHomeHeroVideoProps) {
+export function PersistentHomeHeroVideo() {
   const pathname = usePathname();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isHome, setIsHome] = useState(false);
+  const splashComplete = useSplashComplete();
   const { sections, loading: sectionsLoading, refetch } = usePageSections("home");
   const heroUrl = sections.hero?.url ?? getR2UrlClient(HERO_VIDEO_FALLBACK);
   const heroVersion = sections.hero?.version;
@@ -58,7 +102,6 @@ export function PersistentHomeHeroVideo({ splashComplete = true }: PersistentHom
         transition: "opacity 0.25s ease",
       }}
     >
-      {/* Only load video when on home – saves bandwidth on products/distributor/etc. */}
       {sectionsLoading ? (
         <div className="absolute inset-0 bg-luxury-black" aria-hidden />
       ) : isHome ? (
@@ -91,7 +134,7 @@ export function PersistentHomeHeroVideo({ splashComplete = true }: PersistentHom
       {/* Vignette / dark motif - Home only */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/60 pointer-events-none" />
       <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-transparent to-black/40 pointer-events-none" />
-      {/* Edit video: only after splash is complete (root home) or after delay (locale home) */}
+      {/* Edit video: only after splash + fade-in are fully complete */}
       {isHome && splashComplete && (
         <HeroEditPortal
           page="home"
