@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
@@ -35,10 +36,14 @@ interface VerificationResult {
   error?: string;
 }
 
-/** Background images for verified-success state only. Random one per page load. Add more paths to public/images as needed. */
+/** Background images for verified-success state only. Random one per page load. Use real image files from public/images. */
 const VERIFIED_BG_IMAGES = [
-  "/images/hero-fallback.jpg",
   "/images/merchandise-hero.png",
+  "/images/gold-ingot.jpg",
+  "/images/pexels-3d-render-1058120333-33539240.jpg",
+  "/images/pexels-michael-steinberg-95604-386318.jpg",
+  "/images/pexels-sejio402-29336321.jpg",
+  "/images/pexels-sejio402-29336326.jpg",
 ] as const;
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
@@ -119,6 +124,12 @@ export default function VerifyPage() {
         : null,
     [result?.verified]
   );
+
+  /** Hide background image if it fails to load (avoids broken icon). UI-only. */
+  const [verifiedBgError, setVerifiedBgError] = useState(false);
+  useEffect(() => {
+    if (!result?.verified) setVerifiedBgError(false);
+  }, [result?.verified]);
 
   // ---------- ALL LOGIC BELOW IS UNCHANGED ----------
 
@@ -324,22 +335,37 @@ export default function VerifyPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-      {/* Verified-success only: random classy background image + dark overlay so text never clashes (UI only, no system change) */}
+      {/* Verified-success only: random background image (or fallback) + dark overlay. UI only. */}
       {result?.verified && verifiedBgIndex !== null && (
         <>
-          <div
-            className="pointer-events-none fixed inset-0 z-0"
-            aria-hidden
-          >
-            <img
-              src={VERIFIED_BG_IMAGES[verifiedBgIndex]}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover"
-              loading="lazy"
-              decoding="async"
-              fetchPriority="low"
+          {/* Layer 1: image or fallback gradient */}
+          {!verifiedBgError ? (
+            <div
+              className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
+              aria-hidden
+            >
+              <Image
+                src={VERIFIED_BG_IMAGES[verifiedBgIndex]}
+                alt=""
+                fill
+                className="object-cover"
+                sizes="100vw"
+                priority
+                onError={() => setVerifiedBgError(true)}
+                unoptimized
+              />
+            </div>
+          ) : (
+            <div
+              className="pointer-events-none fixed inset-0 z-0"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.78) 50%, rgba(0,0,0,0.9) 100%)",
+              }}
+              aria-hidden
             />
-          </div>
+          )}
+          {/* Layer 2: dark overlay so text never clashes */}
           <div
             className="pointer-events-none fixed inset-0 z-[1]"
             style={{
