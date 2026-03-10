@@ -19,6 +19,7 @@ import {
   KeyRound,
 } from "lucide-react";
 import { VERIFIED_BG_IMAGES } from "@/assets/verified-bg";
+import { getR2UrlClient } from "@/utils/r2-url";
 
 interface VerificationResult {
   verified: boolean;
@@ -97,88 +98,69 @@ function InfoRow({
   );
 }
 
-/** Full-viewport background "image" for verify page (SVG, no network). Covers entire screen. */
 function VerifiedBackgroundSvg({ seed }: { seed: string }) {
   const s = seed.slice(0, 10);
   return (
-    <div
-      className="pointer-events-none fixed inset-0 z-0"
+    <svg
+      className="pointer-events-none fixed inset-0 z-0 h-screen w-screen"
       aria-hidden
-      style={{
-        minWidth: "100vw",
-        minHeight: "100vh",
-        width: "100vw",
-        height: "100vh",
-        left: 0,
-        top: 0,
-        right: 0,
-        bottom: 0,
-      }}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 1600 900"
+      preserveAspectRatio="xMidYMid slice"
     >
-      <svg
-        className="absolute inset-0 h-full w-full"
-        style={{ minWidth: "100%", minHeight: "100%", display: "block" }}
-        aria-hidden
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 1600 900"
-        preserveAspectRatio="xMidYMid slice"
+      <defs>
+        <linearGradient id="verify_g1" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#050505" />
+          <stop offset="0.55" stopColor="#0b0b0b" />
+          <stop offset="1" stopColor="#050505" />
+        </linearGradient>
+        <radialGradient id="verify_glow" cx="50%" cy="18%" r="62%">
+          <stop offset="0" stopColor="#22c55e" stopOpacity="0.12" />
+          <stop offset="0.55" stopColor="#d4af37" stopOpacity="0.08" />
+          <stop offset="1" stopColor="#000000" stopOpacity="0" />
+        </radialGradient>
+        <filter id="verify_noise">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.9"
+            numOctaves="2"
+            stitchTiles="stitch"
+            seed="7"
+          />
+          <feColorMatrix
+            type="matrix"
+            values="
+              0 0 0 0 0.60
+              0 0 0 0 0.52
+              0 0 0 0 0.10
+              0 0 0 0.18 0
+            "
+          />
+        </filter>
+        <filter id="verify_blur">
+          <feGaussianBlur stdDeviation="22" />
+        </filter>
+      </defs>
+      <rect width="1600" height="900" fill="url(#verify_g1)" />
+      <rect width="1600" height="900" fill="url(#verify_glow)" />
+      <g opacity="0.55" filter="url(#verify_blur)">
+        <circle cx="240" cy="760" r="220" fill="#d4af37" fillOpacity="0.10" />
+        <circle cx="1340" cy="720" r="260" fill="#22c55e" fillOpacity="0.08" />
+        <circle cx="860" cy="130" r="220" fill="#d4af37" fillOpacity="0.06" />
+      </g>
+      <rect width="1600" height="900" filter="url(#verify_noise)" opacity="0.9" />
+      <text
+        x="1500"
+        y="860"
+        textAnchor="end"
+        fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+        fontSize="18"
+        fill="#ffffff"
+        opacity="0.06"
       >
-        <defs>
-          <linearGradient id="verify_g1" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#080808" />
-            <stop offset="0.35" stopColor="#0a0f0a" />
-            <stop offset="0.55" stopColor="#0d1210" />
-            <stop offset="0.75" stopColor="#0a0d0a" />
-            <stop offset="1" stopColor="#080808" />
-          </linearGradient>
-          <radialGradient id="verify_glow" cx="50%" cy="20%" r="70%">
-            <stop offset="0" stopColor="#22c55e" stopOpacity="0.18" />
-            <stop offset="0.5" stopColor="#d4af37" stopOpacity="0.12" />
-            <stop offset="1" stopColor="#000000" stopOpacity="0" />
-          </radialGradient>
-          <radialGradient id="verify_glow2" cx="85%" cy="75%" r="50%">
-            <stop offset="0" stopColor="#d4af37" stopOpacity="0.12" />
-            <stop offset="1" stopColor="transparent" stopOpacity="0" />
-          </radialGradient>
-          <filter id="verify_noise">
-            <feTurbulence
-              type="fractalNoise"
-              baseFrequency="0.7"
-              numOctaves="2"
-              stitchTiles="stitch"
-              seed="7"
-            />
-            <feColorMatrix
-              type="matrix"
-              values="0 0 0 0 0.45 0 0 0 0 0.4 0 0 0 0 0.08 0 0 0 0.25 0"
-            />
-          </filter>
-          <filter id="verify_blur">
-            <feGaussianBlur stdDeviation="28" />
-          </filter>
-        </defs>
-        <rect width="1600" height="900" fill="url(#verify_g1)" />
-        <rect width="1600" height="900" fill="url(#verify_glow)" />
-        <rect width="1600" height="900" fill="url(#verify_glow2)" />
-        <g opacity="0.6" filter="url(#verify_blur)">
-          <circle cx="200" cy="800" r="280" fill="#d4af37" fillOpacity="0.14" />
-          <circle cx="1400" cy="700" r="320" fill="#22c55e" fillOpacity="0.12" />
-          <circle cx="800" cy="100" r="260" fill="#d4af37" fillOpacity="0.10" />
-        </g>
-        <rect width="1600" height="900" filter="url(#verify_noise)" opacity="0.85" />
-        <text
-          x="1500"
-          y="860"
-          textAnchor="end"
-          fontFamily="ui-monospace, monospace"
-          fontSize="18"
-          fill="#ffffff"
-          opacity="0.06"
-        >
-          {s}
-        </text>
-      </svg>
-    </div>
+        {s}
+      </text>
+    </svg>
   );
 }
 
@@ -191,7 +173,7 @@ export default function VerifyPage() {
   const [verifyingRootKey, setVerifyingRootKey] = useState(false);
   const [rootKeyError, setRootKeyError] = useState<string | null>(null);
 
-  /** When verified, we fetch bg URLs from server (R2_PUBLIC_URL guaranteed in production). */
+  /** Same R2 endpoint pattern as Merchandise, Navbar, What We Do: getR2UrlClient(path). */
   const verifiedBgIndex = useMemo(
     () =>
       result?.verified
@@ -200,62 +182,39 @@ export default function VerifyPage() {
     [result?.verified]
   );
 
-  const [verifiedBgUrls, setVerifiedBgUrls] = useState<{
-    primary: string;
-    fallback: string;
-  } | null>(null);
+  const verifiedBgUrls = useMemo(() => {
+    if (!result?.verified || verifiedBgIndex === null) return null;
+    const len = VERIFIED_BG_IMAGES.length;
+    const primaryPath = VERIFIED_BG_IMAGES[verifiedBgIndex];
+    const fallbackIndex = (verifiedBgIndex + 1) % len;
+    const fallbackPath = VERIFIED_BG_IMAGES[fallbackIndex];
+    return {
+      primary: getR2UrlClient(primaryPath),
+      fallback: getR2UrlClient(fallbackPath),
+    };
+  }, [result?.verified, verifiedBgIndex]);
+
   const [verifiedBgDisplayUrl, setVerifiedBgDisplayUrl] = useState<string | null>(null);
   const [verifiedBgError, setVerifiedBgError] = useState(false);
-  /** Only show R2 image layer after it has loaded to prevent flicker. */
-  const [verifiedBgImageLoaded, setVerifiedBgImageLoaded] = useState(false);
 
   useEffect(() => {
-    if (verifiedBgDisplayUrl) setVerifiedBgImageLoaded(false);
-  }, [verifiedBgDisplayUrl]);
-
-  useEffect(() => {
-    if (!result?.verified || verifiedBgIndex === null) {
-      setVerifiedBgUrls(null);
+    if (!result?.verified || !verifiedBgUrls) {
       setVerifiedBgDisplayUrl(null);
       setVerifiedBgError(false);
       return;
     }
-    let cancelled = false;
-    fetch("/api/verified-bg-url")
-      .then((r) => r.json())
-      .then((data: { urls?: string[] }) => {
-        if (cancelled) return;
-        const list = Array.isArray(data?.urls) ? data.urls : [];
-        const primary = list[verifiedBgIndex] ?? VERIFIED_BG_IMAGES[verifiedBgIndex];
-        const makeAbs = (url: string) =>
-          url.startsWith("http")
-            ? url
-            : (typeof window !== "undefined" ? `${window.location.origin}${url}` : url);
-        // Fallback value is kept for state consistency; the always-on SVG handles guaranteed visuals.
-        setVerifiedBgUrls({ primary: makeAbs(primary), fallback: makeAbs(primary) });
-        setVerifiedBgDisplayUrl(makeAbs(primary));
-        setVerifiedBgError(false);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setVerifiedBgUrls(null);
-        setVerifiedBgDisplayUrl(null);
-        setVerifiedBgError(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [result?.verified, verifiedBgIndex]);
+    setVerifiedBgDisplayUrl(verifiedBgUrls.primary);
+    setVerifiedBgError(false);
+  }, [result?.verified, verifiedBgUrls?.primary]);
 
-  /** Effective URL: what we show (primary or fallback after error). */
   const effectiveVerifiedBgUrl = verifiedBgDisplayUrl;
 
   const handleVerifiedBgError = () => {
-    if (
-      verifiedBgUrls &&
-      verifiedBgDisplayUrl &&
-      verifiedBgDisplayUrl === verifiedBgUrls.primary
-    ) {
+    if (!verifiedBgUrls) {
+      setVerifiedBgError(true);
+      return;
+    }
+    if (verifiedBgDisplayUrl === verifiedBgUrls.primary) {
       setVerifiedBgDisplayUrl(verifiedBgUrls.fallback);
     } else {
       setVerifiedBgError(true);
@@ -464,92 +423,72 @@ export default function VerifyPage() {
 
   // ---------- END UNCHANGED LOGIC ----------
 
-  const showVerifyBackground =
-    (result?.verified && verifiedBgIndex !== null) || result?.requiresRootKey;
-
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-      {/* Full-screen background for verify flow: both "verified" and "root key required" */}
-      {showVerifyBackground && (
+      {/* Verified-success only: random background image (or fallback) + dark overlay. UI only. */}
+      {result?.verified && verifiedBgIndex !== null && (
         <>
-          {/* Layer 0: full-viewport SVG background (entire screen, no network) */}
+          {/* Layer 0: guaranteed SVG background (no network, CSP-safe) */}
           <VerifiedBackgroundSvg seed={serialNumber || "SK"} />
 
-          {/* Layer 1: optional R2 image (verified only, after load to avoid flicker) */}
-          {result?.verified &&
-            verifiedBgIndex !== null &&
-            !verifiedBgError &&
-            effectiveVerifiedBgUrl && (
-              <>
-                {verifiedBgImageLoaded && (
-                  <div
-                    className="pointer-events-none fixed inset-0 z-[1] overflow-hidden bg-[#0a0a0a]"
-                    aria-hidden
-                    style={{
-                      minWidth: "100vw",
-                      minHeight: "100vh",
-                      width: "100vw",
-                      height: "100vh",
-                      left: 0,
-                      top: 0,
-                      right: 0,
-                      bottom: 0,
-                      backgroundImage: `url(${effectiveVerifiedBgUrl})`,
-                      backgroundSize: "cover",
-                      backgroundPosition: "center",
-                      backgroundRepeat: "no-repeat",
-                    }}
-                  />
-                )}
-                <div className="fixed inset-0 z-0 overflow-hidden opacity-0 pointer-events-none w-0 h-0" aria-hidden>
-                  <img
-                    src={effectiveVerifiedBgUrl}
-                    alt=""
-                    onLoad={() => setVerifiedBgImageLoaded(true)}
-                    onError={handleVerifiedBgError}
-                  />
-                </div>
-              </>
-            )}
-
-          {/* Layer 2: overlay so text is readable; full viewport */}
+          {/* Layer 1: image from R2; absolute URL on client; try fallback image on error before gradient */}
+          {!verifiedBgError && effectiveVerifiedBgUrl ? (
+            <div
+              className="pointer-events-none fixed inset-0 z-[1] overflow-hidden bg-[#0a0a0a]"
+              aria-hidden
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                width: "100vw",
+                height: "100vh",
+                backgroundImage: `url(${effectiveVerifiedBgUrl})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
+              }}
+            >
+              <img
+                src={effectiveVerifiedBgUrl}
+                alt=""
+                className="absolute opacity-0 w-0 h-0"
+                onError={handleVerifiedBgError}
+                aria-hidden
+              />
+            </div>
+          ) : !verifiedBgError ? null : (
+            <div
+              className="pointer-events-none fixed inset-0 z-[1] bg-[#0a0a0a]"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.78) 50%, rgba(0,0,0,0.9) 100%)",
+              }}
+              aria-hidden
+            />
+          )}
+          {/* Layer 2: dark overlay so text never clashes; lighter so background is visible */}
           <div
             className="pointer-events-none fixed inset-0 z-[2]"
             style={{
-              minWidth: "100vw",
-              minHeight: "100vh",
-              width: "100vw",
-              height: "100vh",
-              left: 0,
-              top: 0,
-              right: 0,
-              bottom: 0,
               background:
-                "linear-gradient(180deg, rgba(0,0,0,0.48) 0%, rgba(0,0,0,0.36) 40%, rgba(0,0,0,0.42) 70%, rgba(0,0,0,0.58) 100%)",
+                "linear-gradient(180deg, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.40) 40%, rgba(0,0,0,0.46) 70%, rgba(0,0,0,0.62) 100%)",
             }}
             aria-hidden
           />
         </>
       )}
 
-      {/* Background ambient — full viewport */}
+      {/* Background ambient */}
       <div
         className="pointer-events-none fixed inset-0 z-[3]"
         style={{
-          minWidth: "100vw",
-          minHeight: "100vh",
-          width: "100vw",
-          height: "100vh",
-          left: 0,
-          top: 0,
-          right: 0,
-          bottom: 0,
-          background:
-            result?.verified || result?.requiresRootKey
-              ? "radial-gradient(ellipse 80% 50% at 50% 20%, rgba(34,197,94,0.06) 0%, transparent 55%), radial-gradient(ellipse 60% 45% at 50% 85%, rgba(212,175,55,0.05) 0%, transparent 55%)"
-              : result && !result.verified
-                ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(239,68,68,0.04) 0%, transparent 60%)"
-                : "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(212,175,55,0.04) 0%, transparent 60%)",
+          background: result?.verified
+            ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(34,197,94,0.04) 0%, transparent 60%), radial-gradient(ellipse 50% 35% at 50% 80%, rgba(212,175,55,0.03) 0%, transparent 50%)"
+            : result && !result.verified && !result.requiresRootKey
+              ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(239,68,68,0.04) 0%, transparent 60%)"
+              : "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(212,175,55,0.04) 0%, transparent 60%)",
         }}
       />
 
