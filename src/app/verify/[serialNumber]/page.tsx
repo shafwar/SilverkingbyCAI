@@ -19,7 +19,6 @@ import {
   KeyRound,
 } from "lucide-react";
 import { VERIFIED_BG_IMAGES } from "@/assets/verified-bg";
-import { getR2UrlClient } from "@/utils/r2-url";
 
 interface VerificationResult {
   verified: boolean;
@@ -107,7 +106,7 @@ export default function VerifyPage() {
   const [verifyingRootKey, setVerifyingRootKey] = useState(false);
   const [rootKeyError, setRootKeyError] = useState<string | null>(null);
 
-  /** Random background image index for verified-success only. Picked once when verified, UI-only. */
+  /** When verified, we fetch bg URLs from server (R2_PUBLIC_URL guaranteed in production). */
   const verifiedBgIndex = useMemo(
     () =>
       result?.verified
@@ -116,56 +115,61 @@ export default function VerifyPage() {
     [result?.verified]
   );
 
-  /** Primary & fallback URLs (R2 or relative). Always 2 so we can try the other on error. */
-  const verifiedBgUrls = useMemo(() => {
-    if (!result?.verified || verifiedBgIndex === null) return { primary: null, fallback: null };
-    const primaryPath = VERIFIED_BG_IMAGES[verifiedBgIndex];
-    const fallbackPath = VERIFIED_BG_IMAGES[verifiedBgIndex === 0 ? 1 : 0];
-    const toUrl = (p: string) => {
-      const u = getR2UrlClient(p);
-      return u.startsWith("http") ? u : u;
-    };
-    return { primary: toUrl(primaryPath), fallback: toUrl(fallbackPath) };
-  }, [result?.verified, verifiedBgIndex]);
-
-  /** Display URL (absolute on client so request is unambiguous). Switches to fallback if primary fails. */
+  const [verifiedBgUrls, setVerifiedBgUrls] = useState<{
+    primary: string;
+    fallback: string;
+  } | null>(null);
   const [verifiedBgDisplayUrl, setVerifiedBgDisplayUrl] = useState<string | null>(null);
   const [verifiedBgError, setVerifiedBgError] = useState(false);
+
   useEffect(() => {
-    if (!result?.verified) {
+    if (!result?.verified || verifiedBgIndex === null) {
+      setVerifiedBgUrls(null);
       setVerifiedBgDisplayUrl(null);
       setVerifiedBgError(false);
       return;
     }
-    if (verifiedBgUrls.primary == null) return;
-    const makeAbsolute = (url: string) => {
-      if (url.startsWith("http")) return url;
-      if (typeof window !== "undefined") return `${window.location.origin}${url}`;
-      return url;
+    let cancelled = false;
+    fetch("/api/verified-bg-url")
+      .then((r) => r.json())
+      .then((data: { urls?: string[] }) => {
+        if (cancelled) return;
+        const list = Array.isArray(data?.urls) ? data.urls : [];
+        const primary = list[verifiedBgIndex] ?? VERIFIED_BG_IMAGES[verifiedBgIndex];
+        const fallback = list[verifiedBgIndex === 0 ? 1 : 0] ?? VERIFIED_BG_IMAGES[verifiedBgIndex === 0 ? 1 : 0] ?? primary;
+        const makeAbs = (url: string) =>
+          url.startsWith("http")
+            ? url
+            : (typeof window !== "undefined" ? `${window.location.origin}${url}` : url);
+        setVerifiedBgUrls({ primary: makeAbs(primary), fallback: makeAbs(fallback) });
+        setVerifiedBgDisplayUrl(makeAbs(primary));
+        setVerifiedBgError(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        const makeAbs = (p: string) =>
+          typeof window !== "undefined" ? `${window.location.origin}${p}` : p;
+        const primary = VERIFIED_BG_IMAGES[verifiedBgIndex];
+        const fallback = VERIFIED_BG_IMAGES[verifiedBgIndex === 0 ? 1 : 0] ?? primary;
+        setVerifiedBgUrls({ primary: makeAbs(primary), fallback: makeAbs(fallback) });
+        setVerifiedBgDisplayUrl(makeAbs(primary));
+        setVerifiedBgError(false);
+      });
+    return () => {
+      cancelled = true;
     };
-    setVerifiedBgDisplayUrl(makeAbsolute(verifiedBgUrls.primary));
-    setVerifiedBgError(false);
-  }, [result?.verified, verifiedBgUrls.primary]);
+  }, [result?.verified, verifiedBgIndex]);
 
-  /** Effective URL for layer: state (with absolute) or R2 primary so image shows on first paint when R2 is set. */
-  const effectiveVerifiedBgUrl =
-    verifiedBgDisplayUrl ??
-    (verifiedBgUrls.primary?.startsWith("http") ? verifiedBgUrls.primary : null);
+  /** Effective URL: what we show (primary or fallback after error). */
+  const effectiveVerifiedBgUrl = verifiedBgDisplayUrl;
 
-  /** On image load error: try fallback image first; only then show gradient. */
   const handleVerifiedBgError = () => {
-    if (!verifiedBgUrls.fallback) {
-      setVerifiedBgError(true);
-      return;
-    }
-    const makeAbs = (url: string) =>
-      url.startsWith("http") ? url : (typeof window !== "undefined" ? `${window.location.origin}${url}` : url);
-    const absPrimary = makeAbs(verifiedBgUrls.primary!);
-    const absFallback = makeAbs(verifiedBgUrls.fallback);
-    const isShowingPrimary =
-      verifiedBgDisplayUrl === null || verifiedBgDisplayUrl === absPrimary;
-    if (isShowingPrimary) {
-      setVerifiedBgDisplayUrl(absFallback);
+    if (
+      verifiedBgUrls &&
+      verifiedBgDisplayUrl &&
+      verifiedBgDisplayUrl === verifiedBgUrls.primary
+    ) {
+      setVerifiedBgDisplayUrl(verifiedBgUrls.fallback);
     } else {
       setVerifiedBgError(true);
     }
