@@ -267,7 +267,7 @@ export function QrPreviewGridGram({ batches }: Props) {
       const target = event.target as Node;
       if (downloadModalRef.current?.contains(target)) return;
       if (downloadDropdownRef.current?.contains(target)) return;
-      setDownloadDropdownOpen(null);
+        setDownloadDropdownOpen(null);
       setZipDownloadResult(null);
       setZipProgress(null);
     };
@@ -1612,8 +1612,8 @@ export function QrPreviewGridGram({ batches }: Props) {
                                             {downloadedCount > 0 ? `Pernah diunduh: ${downloadedCount}x` : "Belum pernah diunduh"}
                                           </span>
                                         </div>
-                                      </div>
-                                    );
+    </div>
+  );
                                   })}
                                 </div>
                               ) : zipDownloadResult.download_url ? (

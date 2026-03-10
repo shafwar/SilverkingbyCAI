@@ -42,7 +42,7 @@ const sectionVariants: Variants = {
     opacity: 1,
     y: 0,
     transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] },
-  },
+    },
 };
 
 type DistributorPageClientProps = {
@@ -264,10 +264,10 @@ export default function DistributorPageClient({
               containerClassName="absolute inset-0 w-full h-full"
               className="absolute inset-0 w-full h-full object-cover"
               style={{ objectFit: "cover" }}
-              alt=""
-              priority
-              onError={() => setHeroImageError(true)}
-            />
+            alt=""
+            priority
+            onError={() => setHeroImageError(true)}
+          />
           )}
         </div>
         {/* Overlay: darker center so title/subtitle don't clash with hero image; readable everywhere */}
@@ -320,15 +320,15 @@ export default function DistributorPageClient({
                 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold leading-[1.08] tracking-tight drop-shadow-[0_2px_24px_rgba(0,0,0,0.6)]"
               >
                 <span className="bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent">
-                  {t("hero.title")}
+            {t("hero.title")}
                 </span>
-              </motion.h1>
-              <motion.p
+          </motion.h1>
+          <motion.p
                 variants={revealVariants}
                 className="text-lg sm:text-xl md:text-2xl font-medium leading-relaxed text-white/95 max-w-2xl mx-auto drop-shadow-[0_1px_16px_rgba(0,0,0,0.5)]"
-              >
-                {t("hero.subtitle")}
-              </motion.p>
+          >
+            {t("hero.subtitle")}
+          </motion.p>
             </div>
           </motion.div>
         </div>
@@ -362,8 +362,8 @@ export default function DistributorPageClient({
                 {t("hero.subtitle")}
               </p>
               <p className="mt-5 text-base leading-relaxed text-white/90 md:text-lg lg:text-xl max-w-2xl mx-auto">
-                {t("description")}
-              </p>
+              {t("description")}
+            </p>
               <div className="mt-8 mx-auto w-32 md:w-40 h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent" />
             </div>
           </motion.div>
@@ -395,8 +395,8 @@ export default function DistributorPageClient({
           >
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-3 sm:gap-4">
               <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold tracking-tight bg-gradient-to-r from-white via-white/95 to-luxury-silver/90 bg-clip-text text-transparent">
-                {t("listTitle")}
-              </h2>
+              {t("listTitle")}
+            </h2>
               {isAdmin && (
                 <button
                   type="button"

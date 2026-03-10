@@ -117,9 +117,18 @@ export default function VerifyPage() {
 
   /** Hide background image if it fails to load (avoids broken icon). UI-only. */
   const [verifiedBgError, setVerifiedBgError] = useState(false);
+  /** Full URL for bg image (client-only) so request always hits same origin; helps on some hosts. */
+  const [verifiedBgFullUrl, setVerifiedBgFullUrl] = useState<string | null>(null);
   useEffect(() => {
     if (!result?.verified) setVerifiedBgError(false);
   }, [result?.verified]);
+  useEffect(() => {
+    if (typeof window !== "undefined" && result?.verified && verifiedBgIndex !== null) {
+      setVerifiedBgFullUrl(`${window.location.origin}${VERIFIED_BG_IMAGES[verifiedBgIndex]}`);
+    } else {
+      setVerifiedBgFullUrl(null);
+    }
+  }, [result?.verified, verifiedBgIndex]);
 
   // ---------- ALL LOGIC BELOW IS UNCHANGED ----------
 
@@ -328,8 +337,8 @@ export default function VerifyPage() {
       {/* Verified-success only: random background image (or fallback) + dark overlay. UI only. */}
       {result?.verified && verifiedBgIndex !== null && (
         <>
-          {/* Layer 1: image (CSS background) or fallback gradient */}
-          {!verifiedBgError ? (
+          {/* Layer 1: image (full URL on client so it loads on all hosts) or fallback gradient */}
+          {!verifiedBgError && (verifiedBgFullUrl ?? VERIFIED_BG_IMAGES[verifiedBgIndex]) ? (
             <div
               className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[#0a0a0a]"
               aria-hidden
@@ -341,7 +350,7 @@ export default function VerifyPage() {
                 bottom: 0,
                 width: "100vw",
                 height: "100vh",
-                backgroundImage: `url(${VERIFIED_BG_IMAGES[verifiedBgIndex]})`,
+                backgroundImage: `url(${verifiedBgFullUrl ?? VERIFIED_BG_IMAGES[verifiedBgIndex]})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
                 backgroundRepeat: "no-repeat",
@@ -349,14 +358,14 @@ export default function VerifyPage() {
             >
               {/* Invisible img to detect load error and fallback */}
               <img
-                src={VERIFIED_BG_IMAGES[verifiedBgIndex]}
+                src={verifiedBgFullUrl ?? VERIFIED_BG_IMAGES[verifiedBgIndex]}
                 alt=""
                 className="absolute opacity-0 w-0 h-0"
                 onError={() => setVerifiedBgError(true)}
                 aria-hidden
               />
             </div>
-          ) : (
+          ) : !verifiedBgError ? null : (
             <div
               className="pointer-events-none fixed inset-0 z-0 bg-[#0a0a0a]"
               style={{
@@ -366,12 +375,12 @@ export default function VerifyPage() {
               aria-hidden
             />
           )}
-          {/* Layer 2: dark overlay so text never clashes */}
+          {/* Layer 2: dark overlay so text never clashes; slightly lighter so bg image shows through */}
           <div
             className="pointer-events-none fixed inset-0 z-[1]"
             style={{
               background:
-                "linear-gradient(180deg, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.58) 40%, rgba(0,0,0,0.62) 70%, rgba(0,0,0,0.78) 100%)",
+                "linear-gradient(180deg, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.48) 40%, rgba(0,0,0,0.52) 70%, rgba(0,0,0,0.68) 100%)",
             }}
             aria-hidden
           />
@@ -532,8 +541,8 @@ export default function VerifyPage() {
             >
               {/* Success header */}
               <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0} className="text-center pt-2 pb-1">
-                {/* Animated checkmark */}
-                <div className="relative mx-auto mb-6 h-20 w-20">
+                {/* Animated checkmark — larger for clearer “verified” emphasis */}
+                <div className="relative mx-auto mb-6 h-28 w-28 sm:h-32 sm:w-32">
                   {/* Outer pulse ring */}
                   <motion.div
                     className="absolute inset-0 rounded-full border-2 border-emerald-500/30"
@@ -557,7 +566,7 @@ export default function VerifyPage() {
                       animate={{ scale: 1, rotate: 0 }}
                       transition={{ duration: 0.4, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
                     >
-                      <CheckCircle2 className="h-12 w-12 text-emerald-500" />
+                      <CheckCircle2 className="h-20 w-20 sm:h-24 sm:w-24 text-emerald-500" />
                     </motion.div>
                   </motion.div>
                 </div>
