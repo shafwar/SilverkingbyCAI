@@ -189,7 +189,12 @@ export default function VerifyPage() {
   const [verifyingRootKey, setVerifyingRootKey] = useState(false);
   const [rootKeyError, setRootKeyError] = useState<string | null>(null);
 
-  /** When verified: fetch up to 7 product images from R2 (same as Products page), pick one for bg. Single-image load. */
+  /** Guaranteed pool: static URLs always included so we never have empty; try next on error until one loads. */
+  const staticUrls = useMemo(
+    () => VERIFIED_BG_IMAGES.map((p) => getR2UrlClient(p)),
+    []
+  );
+
   const [verifiedBgDisplayUrl, setVerifiedBgDisplayUrl] = useState<string | null>(null);
   const [verifiedBgError, setVerifiedBgError] = useState(false);
   const verifiedBgFallbackUrls = useRef<string[]>([]);
@@ -201,39 +206,45 @@ export default function VerifyPage() {
       verifiedBgFallbackUrls.current = [];
       return;
     }
+    // Show first static image immediately so something appears 100% while API runs
+    const firstStatic = staticUrls[0];
+    setVerifiedBgDisplayUrl(firstStatic);
+    setVerifiedBgError(false);
+    verifiedBgFallbackUrls.current = staticUrls.slice(1);
+
     let cancelled = false;
     fetch("/api/verified-bg-images")
       .then((r) => r.json())
       .then((data: { urls?: string[] }) => {
         if (cancelled) return;
-        const list = Array.isArray(data?.urls) ? data.urls.filter((u) => u && u.startsWith("http")) : [];
-        if (list.length > 0) {
-          const pick = list[Math.floor(Math.random() * list.length)];
-          verifiedBgFallbackUrls.current = list.filter((u) => u !== pick);
-          setVerifiedBgDisplayUrl(pick);
-        } else {
-          const staticPaths = [...VERIFIED_BG_IMAGES];
-          const idx = Math.floor(Math.random() * staticPaths.length);
-          verifiedBgFallbackUrls.current = staticPaths
-            .filter((_, i) => i !== idx)
-            .map((p) => getR2UrlClient(p));
-          setVerifiedBgDisplayUrl(getR2UrlClient(staticPaths[idx]));
+        const apiList = Array.isArray(data?.urls) ? data.urls.filter((u) => u && u.startsWith("http")) : [];
+        const seen = new Set<string>();
+        const merged: string[] = [];
+        for (const u of [...apiList, ...staticUrls]) {
+          if (u && !seen.has(u)) {
+            seen.add(u);
+            merged.push(u);
+          }
         }
+        if (merged.length === 0) return;
+        const idx = Math.floor(Math.random() * merged.length);
+        const primary = merged[idx];
+        const fallbacks = merged.filter((_, i) => i !== idx);
+        setVerifiedBgDisplayUrl(primary);
+        verifiedBgFallbackUrls.current = fallbacks;
         setVerifiedBgError(false);
       })
       .catch(() => {
         if (cancelled) return;
-        const idx = Math.floor(Math.random() * VERIFIED_BG_IMAGES.length);
-        setVerifiedBgDisplayUrl(getR2UrlClient(VERIFIED_BG_IMAGES[idx]));
-        verifiedBgFallbackUrls.current = VERIFIED_BG_IMAGES.filter((_, i) => i !== idx).map((p) =>
-          getR2UrlClient(p)
-        );
+        const idx = Math.floor(Math.random() * staticUrls.length);
+        setVerifiedBgDisplayUrl(staticUrls[idx]);
+        verifiedBgFallbackUrls.current = staticUrls.filter((_, i) => i !== idx);
         setVerifiedBgError(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [result?.verified]);
+  }, [result?.verified, staticUrls]);
 
   const effectiveVerifiedBgUrl = verifiedBgDisplayUrl;
 
@@ -460,6 +471,7 @@ export default function VerifyPage() {
 
           {!verifiedBgError && effectiveVerifiedBgUrl ? (
             <div
+              key={effectiveVerifiedBgUrl}
               className="pointer-events-none fixed inset-0 z-[1] overflow-hidden bg-[#0a0a0a]"
               aria-hidden
               style={{
@@ -479,10 +491,11 @@ export default function VerifyPage() {
               }}
             >
               <img
+                key={effectiveVerifiedBgUrl}
                 src={effectiveVerifiedBgUrl}
                 alt=""
                 className="absolute opacity-0 w-0 h-0"
-                loading="lazy"
+                loading="eager"
                 decoding="async"
                 onError={handleVerifiedBgError}
                 aria-hidden
