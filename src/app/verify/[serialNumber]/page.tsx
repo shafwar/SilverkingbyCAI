@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -189,49 +189,59 @@ export default function VerifyPage() {
   const [verifyingRootKey, setVerifyingRootKey] = useState(false);
   const [rootKeyError, setRootKeyError] = useState<string | null>(null);
 
-  /** Same R2 endpoint pattern as Merchandise, Navbar, What We Do: getR2UrlClient(path). */
-  const verifiedBgIndex = useMemo(
-    () =>
-      result?.verified
-        ? Math.floor(Math.random() * VERIFIED_BG_IMAGES.length)
-        : null,
-    [result?.verified]
-  );
-
-  const verifiedBgUrls = useMemo(() => {
-    if (!result?.verified || verifiedBgIndex === null) return null;
-    const len = VERIFIED_BG_IMAGES.length;
-    const primaryPath = VERIFIED_BG_IMAGES[verifiedBgIndex];
-    const fallbackIndex = (verifiedBgIndex + 1) % len;
-    const fallbackPath = VERIFIED_BG_IMAGES[fallbackIndex];
-    return {
-      primary: getR2UrlClient(primaryPath),
-      fallback: getR2UrlClient(fallbackPath),
-    };
-  }, [result?.verified, verifiedBgIndex]);
-
+  /** When verified: fetch up to 7 product images from R2 (same as Products page), pick one for bg. Single-image load. */
   const [verifiedBgDisplayUrl, setVerifiedBgDisplayUrl] = useState<string | null>(null);
   const [verifiedBgError, setVerifiedBgError] = useState(false);
+  const verifiedBgFallbackUrls = useRef<string[]>([]);
 
   useEffect(() => {
-    if (!result?.verified || !verifiedBgUrls) {
+    if (!result?.verified) {
       setVerifiedBgDisplayUrl(null);
       setVerifiedBgError(false);
+      verifiedBgFallbackUrls.current = [];
       return;
     }
-    setVerifiedBgDisplayUrl(verifiedBgUrls.primary);
-    setVerifiedBgError(false);
-  }, [result?.verified, verifiedBgUrls?.primary]);
+    let cancelled = false;
+    fetch("/api/verified-bg-images")
+      .then((r) => r.json())
+      .then((data: { urls?: string[] }) => {
+        if (cancelled) return;
+        const list = Array.isArray(data?.urls) ? data.urls.filter((u) => u && u.startsWith("http")) : [];
+        if (list.length > 0) {
+          const pick = list[Math.floor(Math.random() * list.length)];
+          verifiedBgFallbackUrls.current = list.filter((u) => u !== pick);
+          setVerifiedBgDisplayUrl(pick);
+        } else {
+          const staticPaths = [...VERIFIED_BG_IMAGES];
+          const idx = Math.floor(Math.random() * staticPaths.length);
+          verifiedBgFallbackUrls.current = staticPaths
+            .filter((_, i) => i !== idx)
+            .map((p) => getR2UrlClient(p));
+          setVerifiedBgDisplayUrl(getR2UrlClient(staticPaths[idx]));
+        }
+        setVerifiedBgError(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        const idx = Math.floor(Math.random() * VERIFIED_BG_IMAGES.length);
+        setVerifiedBgDisplayUrl(getR2UrlClient(VERIFIED_BG_IMAGES[idx]));
+        verifiedBgFallbackUrls.current = VERIFIED_BG_IMAGES.filter((_, i) => i !== idx).map((p) =>
+          getR2UrlClient(p)
+        );
+        setVerifiedBgError(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [result?.verified]);
 
   const effectiveVerifiedBgUrl = verifiedBgDisplayUrl;
 
   const handleVerifiedBgError = () => {
-    if (!verifiedBgUrls) {
-      setVerifiedBgError(true);
-      return;
-    }
-    if (verifiedBgDisplayUrl === verifiedBgUrls.primary) {
-      setVerifiedBgDisplayUrl(verifiedBgUrls.fallback);
+    const fallbacks = verifiedBgFallbackUrls.current;
+    if (fallbacks.length > 0) {
+      verifiedBgFallbackUrls.current = fallbacks.slice(1);
+      setVerifiedBgDisplayUrl(fallbacks[0]);
     } else {
       setVerifiedBgError(true);
     }
@@ -439,9 +449,7 @@ export default function VerifyPage() {
 
   // ---------- END UNCHANGED LOGIC ----------
 
-  const showVerifiedBackground = Boolean(
-    result?.verified && !result?.requiresRootKey && verifiedBgIndex !== null
-  );
+  const showVerifiedBackground = Boolean(result?.verified && !result?.requiresRootKey);
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
@@ -474,6 +482,8 @@ export default function VerifyPage() {
                 src={effectiveVerifiedBgUrl}
                 alt=""
                 className="absolute opacity-0 w-0 h-0"
+                loading="lazy"
+                decoding="async"
                 onError={handleVerifiedBgError}
                 aria-hidden
               />
@@ -488,12 +498,12 @@ export default function VerifyPage() {
               aria-hidden
             />
           )}
-          {/* Overlay: uniform so image visible top to bottom, not cut off */}
+          {/* Overlay: darker so Product Verified text and table stay readable on all devices */}
           <div
             className="pointer-events-none fixed inset-0 z-[2] min-h-full"
             style={{
               background:
-                "linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.42) 50%, rgba(0,0,0,0.48) 100%)",
+                "linear-gradient(180deg, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.58) 50%, rgba(0,0,0,0.65) 100%)",
             }}
             aria-hidden
           />
@@ -514,8 +524,8 @@ export default function VerifyPage() {
 
       <Navbar />
 
-      <div className="relative z-10 pt-28 pb-20 px-4 sm:px-6">
-        <div className="mx-auto max-w-2xl">
+      <div className="relative z-10 min-h-screen pt-24 pb-16 px-4 sm:pt-28 sm:pb-20 sm:px-6">
+        <div className="mx-auto w-full max-w-2xl">
           {/* ---------- LOADING STATE ---------- */}
           {loading ? (
             <motion.div
@@ -681,8 +691,8 @@ export default function VerifyPage() {
                   </motion.div>
                 </div>
 
-                {/* Title + subtitle on dark bar so they stay readable on any background */}
-                <div className="mx-auto inline-block rounded-2xl bg-black/60 px-6 py-4 shadow-lg ring-1 ring-white/10 backdrop-blur-sm">
+                {/* Title + subtitle on dark bar — readable on any background; responsive */}
+                <div className="mx-auto inline-block max-w-[90vw] rounded-xl bg-black/60 px-4 py-3 shadow-lg ring-1 ring-white/10 backdrop-blur-sm sm:max-w-none sm:rounded-2xl sm:px-6 sm:py-4">
                   <motion.h1
                     className="font-serif text-[1.9rem] sm:text-[2.25rem] font-extrabold tracking-tight text-white"
                     style={{
