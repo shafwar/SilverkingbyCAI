@@ -70,27 +70,43 @@ function InfoRow({
   label,
   value,
   mono,
+  bold,
 }: {
   icon: React.ElementType;
   label: string;
   value: string;
   mono?: boolean;
+  bold?: boolean;
 }) {
   return (
     <motion.div
       variants={rowReveal}
-      className="flex items-center justify-between gap-4 py-4 border-b border-white/[0.06] last:border-b-0"
+      className={`flex items-center justify-between gap-4 py-4 border-b last:border-b-0 ${
+        bold ? "border-white/20" : "border-white/[0.06]"
+      }`}
     >
       <div className="flex items-center gap-3 min-w-0">
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/[0.04]">
-          <Icon className="h-4 w-4 text-luxury-gold/60" />
+        <div
+          className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${
+            bold ? "bg-white/10" : "bg-white/[0.04]"
+          }`}
+        >
+          <Icon className={`h-4 w-4 ${bold ? "text-luxury-gold" : "text-luxury-gold/60"}`} />
         </div>
-        <span className="text-[13px] text-white/45 font-medium">{label}</span>
+        <span
+          className={
+            bold
+              ? "text-[13px] font-semibold text-white/95"
+              : "text-[13px] text-white/45 font-medium"
+          }
+        >
+          {label}
+        </span>
       </div>
       <span
-        className={`text-[14px] font-semibold text-white text-right truncate ${
-          mono ? "font-mono tracking-wide text-[13px]" : ""
-        }`}
+        className={`text-right truncate ${
+          bold ? "text-[14px] font-bold text-white" : "text-[14px] font-semibold text-white"
+        } ${mono ? "font-mono tracking-wide text-[13px]" : ""}`}
       >
         {value}
       </span>
@@ -423,15 +439,17 @@ export default function VerifyPage() {
 
   // ---------- END UNCHANGED LOGIC ----------
 
+  const showVerifiedBackground = Boolean(
+    result?.verified && !result?.requiresRootKey && verifiedBgIndex !== null
+  );
+
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-      {/* Verified-success only: random background image (or fallback) + dark overlay. UI only. */}
-      {result?.verified && verifiedBgIndex !== null && (
+      {/* Background only when product is verified (not on root-key input screen). */}
+      {showVerifiedBackground && (
         <>
-          {/* Layer 0: guaranteed SVG background (no network, CSP-safe) */}
           <VerifiedBackgroundSvg seed={serialNumber || "SK"} />
 
-          {/* Layer 1: image from R2; absolute URL on client; try fallback image on error before gradient */}
           {!verifiedBgError && effectiveVerifiedBgUrl ? (
             <div
               className="pointer-events-none fixed inset-0 z-[1] overflow-hidden bg-[#0a0a0a]"
@@ -443,11 +461,13 @@ export default function VerifyPage() {
                 right: 0,
                 bottom: 0,
                 width: "100vw",
-                height: "100vh",
+                minHeight: "100vh",
+                height: "100%",
                 backgroundImage: `url(${effectiveVerifiedBgUrl})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
                 backgroundRepeat: "no-repeat",
+                backgroundAttachment: "fixed",
               }}
             >
               <img
@@ -468,23 +488,23 @@ export default function VerifyPage() {
               aria-hidden
             />
           )}
-          {/* Layer 2: dark overlay so text never clashes; lighter so background is visible */}
+          {/* Overlay: uniform so image visible top to bottom, not cut off */}
           <div
-            className="pointer-events-none fixed inset-0 z-[2]"
+            className="pointer-events-none fixed inset-0 z-[2] min-h-full"
             style={{
               background:
-                "linear-gradient(180deg, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.40) 40%, rgba(0,0,0,0.46) 70%, rgba(0,0,0,0.62) 100%)",
+                "linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.42) 50%, rgba(0,0,0,0.48) 100%)",
             }}
             aria-hidden
           />
         </>
       )}
 
-      {/* Background ambient */}
+      {/* Background ambient — only tint when verified success; root key stays clean */}
       <div
         className="pointer-events-none fixed inset-0 z-[3]"
         style={{
-          background: result?.verified
+          background: showVerifiedBackground
             ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(34,197,94,0.04) 0%, transparent 60%), radial-gradient(ellipse 50% 35% at 50% 80%, rgba(212,175,55,0.03) 0%, transparent 50%)"
             : result && !result.verified && !result.requiresRootKey
               ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(239,68,68,0.04) 0%, transparent 60%)"
@@ -632,18 +652,15 @@ export default function VerifyPage() {
               animate="visible"
               className="space-y-5"
             >
-              {/* Success header */}
+              {/* Success header — strong contrast so "Product Verified" never clashes with bg */}
               <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0} className="text-center pt-2 pb-1">
-                {/* Animated checkmark — larger for clearer “verified” emphasis */}
                 <div className="relative mx-auto mb-6 h-28 w-28 sm:h-32 sm:w-32">
-                  {/* Outer pulse ring */}
                   <motion.div
                     className="absolute inset-0 rounded-full border-2 border-emerald-500/30"
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: [0.8, 1.2, 1.2], opacity: [0, 0.5, 0] }}
                     transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
                   />
-                  {/* Inner circle */}
                   <motion.div
                     className="absolute inset-0 flex items-center justify-center rounded-full"
                     style={{
@@ -664,24 +681,33 @@ export default function VerifyPage() {
                   </motion.div>
                 </div>
 
-                <motion.h1
-                  className="font-serif text-[1.85rem] sm:text-[2.1rem] font-semibold tracking-[0.01em] text-white"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                >
-                  Product Verified
-                </motion.h1>
-                <motion.p
-                  className="mt-2.5 text-sm font-light text-white/40"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.5, delay: 0.45 }}
-                >
-                  This product is officially verified by Silver King by CAI
-                </motion.p>
+                {/* Title + subtitle on dark bar so they stay readable on any background */}
+                <div className="mx-auto inline-block rounded-2xl bg-black/60 px-6 py-4 shadow-lg ring-1 ring-white/10 backdrop-blur-sm">
+                  <motion.h1
+                    className="font-serif text-[1.9rem] sm:text-[2.25rem] font-extrabold tracking-tight text-white"
+                    style={{
+                      textShadow:
+                        "0 0 20px rgba(0,0,0,0.9), 0 2px 4px rgba(0,0,0,0.8), 0 1px 2px rgba(0,0,0,0.9)",
+                    }}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    Product Verified
+                  </motion.h1>
+                  <motion.p
+                    className="mt-2 text-sm font-semibold text-white/95"
+                    style={{
+                      textShadow: "0 1px 8px rgba(0,0,0,0.85), 0 1px 2px rgba(0,0,0,0.8)",
+                    }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.5, delay: 0.45 }}
+                  >
+                    This product is officially verified by Silver King by CAI
+                  </motion.p>
+                </div>
 
-                {/* Decorative divider */}
                 <motion.div
                   className="mx-auto mt-5 flex items-center justify-center gap-2.5"
                   initial={{ opacity: 0, scaleX: 0 }}
@@ -694,27 +720,28 @@ export default function VerifyPage() {
                 </motion.div>
               </motion.div>
 
-              {/* Product info card */}
+              {/* Product info card — bold panel so text is clear over background image */}
               <motion.div
                 variants={fadeUp}
                 initial="hidden"
                 animate="visible"
                 custom={0.25}
-                className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 sm:p-7 backdrop-blur-sm"
+                className="rounded-2xl border-2 border-white/20 bg-black/85 shadow-xl shadow-black/40 p-6 sm:p-7 backdrop-blur-md"
               >
                 <div className="flex items-center gap-2.5 mb-5">
-                  <Shield className="h-[18px] w-[18px] text-luxury-gold/70" />
-                  <h2 className="text-[13px] font-bold uppercase tracking-[0.15em] text-luxury-gold/70">
+                  <Shield className="h-[18px] w-[18px] text-luxury-gold" />
+                  <h2 className="text-[13px] font-bold uppercase tracking-[0.15em] text-luxury-gold">
                     Product Information
                   </h2>
                 </div>
                 <motion.div variants={staggerContainer} initial="hidden" animate="visible">
-                  <InfoRow icon={Package} label="Product Name" value={result.product?.name || "—"} />
-                  <InfoRow icon={Scale} label="Weight" value={getWeightLabel(result.product?.weight)} />
+                  <InfoRow bold icon={Package} label="Product Name" value={result.product?.name || "—"} />
+                  <InfoRow bold icon={Scale} label="Weight" value={getWeightLabel(result.product?.weight)} />
                   {typeof result.product?.stock === "number" && (
-                    <InfoRow icon={Layers} label="Quantity" value={`${result.product.stock} pcs`} />
+                    <InfoRow bold icon={Layers} label="Quantity" value={`${result.product.stock} pcs`} />
                   )}
                   <InfoRow
+                    bold
                     icon={Calendar}
                     label="Manufacturing Date"
                     value={new Date(result.product?.createdAt || "").toLocaleDateString()}
@@ -729,10 +756,11 @@ export default function VerifyPage() {
                   initial="hidden"
                   animate="visible"
                   custom={0.4}
-                  className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 sm:p-7 backdrop-blur-sm"
+                  className="rounded-2xl border-2 border-white/20 bg-black/85 shadow-xl shadow-black/40 p-6 sm:p-7 backdrop-blur-md"
                 >
                   <motion.div variants={staggerContainer} initial="hidden" animate="visible">
                     <InfoRow
+                      bold
                       icon={Hash}
                       label="Serial Number"
                       value={result.product?.serialCode || "—"}
@@ -740,6 +768,7 @@ export default function VerifyPage() {
                     />
                     {typeof result.product?.price === "number" && (
                       <InfoRow
+                        bold
                         icon={Banknote}
                         label="Price"
                         value={`Rp ${result.product.price.toLocaleString("id-ID")}`}
