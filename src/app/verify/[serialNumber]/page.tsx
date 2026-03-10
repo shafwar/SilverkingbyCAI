@@ -106,6 +106,50 @@ export default function VerifyPage() {
   const [verifyingRootKey, setVerifyingRootKey] = useState(false);
   const [rootKeyError, setRootKeyError] = useState<string | null>(null);
 
+  /**
+   * Guaranteed, network-free verified background (SVG data URI).
+   * This ensures an "image" background always renders even if R2/public routes are down.
+   */
+  const verifiedBgGuaranteedDataUrl = useMemo(() => {
+    const seed = (serialNumber || "SK").slice(0, 10);
+    const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#050505"/>
+      <stop offset="0.55" stop-color="#0b0b0b"/>
+      <stop offset="1" stop-color="#050505"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="18%" r="62%">
+      <stop offset="0" stop-color="#22c55e" stop-opacity="0.12"/>
+      <stop offset="0.55" stop-color="#d4af37" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="noise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" seed="7"/>
+      <feColorMatrix type="matrix" values="
+        0 0 0 0 0.60
+        0 0 0 0 0.52
+        0 0 0 0 0.10
+        0 0 0 0.18 0"/>
+    </filter>
+    <filter id="blur">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+  </defs>
+  <rect width="1600" height="900" fill="url(#g1)"/>
+  <rect width="1600" height="900" fill="url(#glow)"/>
+  <g opacity="0.55" filter="url(#blur)">
+    <circle cx="240" cy="760" r="220" fill="#d4af37" fill-opacity="0.10"/>
+    <circle cx="1340" cy="720" r="260" fill="#22c55e" fill-opacity="0.08"/>
+    <circle cx="860" cy="130" r="220" fill="#d4af37" fill-opacity="0.06"/>
+  </g>
+  <rect width="1600" height="900" filter="url(#noise)" opacity="0.9"/>
+  <text x="1500" y="860" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="18" fill="#ffffff" fill-opacity="0.06">${seed}</text>
+</svg>`;
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  }, [serialNumber]);
+
   /** When verified, we fetch bg URLs from server (R2_PUBLIC_URL guaranteed in production). */
   const verifiedBgIndex = useMemo(
     () =>
@@ -136,29 +180,26 @@ export default function VerifyPage() {
         if (cancelled) return;
         const list = Array.isArray(data?.urls) ? data.urls : [];
         const primary = list[verifiedBgIndex] ?? VERIFIED_BG_IMAGES[verifiedBgIndex];
-        const fallback = list[verifiedBgIndex === 0 ? 1 : 0] ?? VERIFIED_BG_IMAGES[verifiedBgIndex === 0 ? 1 : 0] ?? primary;
+        // Fallback is always network-free so background always appears.
+        const fallback = verifiedBgGuaranteedDataUrl;
         const makeAbs = (url: string) =>
           url.startsWith("http")
             ? url
             : (typeof window !== "undefined" ? `${window.location.origin}${url}` : url);
-        setVerifiedBgUrls({ primary: makeAbs(primary), fallback: makeAbs(fallback) });
+        setVerifiedBgUrls({ primary: makeAbs(primary), fallback });
         setVerifiedBgDisplayUrl(makeAbs(primary));
         setVerifiedBgError(false);
       })
       .catch(() => {
         if (cancelled) return;
-        const makeAbs = (p: string) =>
-          typeof window !== "undefined" ? `${window.location.origin}${p}` : p;
-        const primary = VERIFIED_BG_IMAGES[verifiedBgIndex];
-        const fallback = VERIFIED_BG_IMAGES[verifiedBgIndex === 0 ? 1 : 0] ?? primary;
-        setVerifiedBgUrls({ primary: makeAbs(primary), fallback: makeAbs(fallback) });
-        setVerifiedBgDisplayUrl(makeAbs(primary));
+        setVerifiedBgUrls({ primary: verifiedBgGuaranteedDataUrl, fallback: verifiedBgGuaranteedDataUrl });
+        setVerifiedBgDisplayUrl(verifiedBgGuaranteedDataUrl);
         setVerifiedBgError(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [result?.verified, verifiedBgIndex]);
+  }, [result?.verified, verifiedBgIndex, verifiedBgGuaranteedDataUrl]);
 
   /** Effective URL: what we show (primary or fallback after error). */
   const effectiveVerifiedBgUrl = verifiedBgDisplayUrl;
