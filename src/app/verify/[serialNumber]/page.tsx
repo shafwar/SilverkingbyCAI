@@ -19,6 +19,7 @@ import {
   KeyRound,
 } from "lucide-react";
 import { VERIFIED_BG_IMAGES } from "@/assets/verified-bg";
+import { getR2UrlClient } from "@/utils/r2-url";
 
 interface VerificationResult {
   verified: boolean;
@@ -117,17 +118,17 @@ export default function VerifyPage() {
 
   /** Hide background image if it fails to load (avoids broken icon). UI-only. */
   const [verifiedBgError, setVerifiedBgError] = useState(false);
-  /** Full URL for bg image (client-only) so request always hits same origin; helps on some hosts. */
-  const [verifiedBgFullUrl, setVerifiedBgFullUrl] = useState<string | null>(null);
   useEffect(() => {
     if (!result?.verified) setVerifiedBgError(false);
   }, [result?.verified]);
-  useEffect(() => {
-    if (typeof window !== "undefined" && result?.verified && verifiedBgIndex !== null) {
-      setVerifiedBgFullUrl(`${window.location.origin}${VERIFIED_BG_IMAGES[verifiedBgIndex]}`);
-    } else {
-      setVerifiedBgFullUrl(null);
-    }
+
+  /** Resolved URL for verified bg: R2 in production (same route as Hero/Merchandise), same-origin in dev. */
+  const verifiedBgUrl = useMemo(() => {
+    if (!result?.verified || verifiedBgIndex === null) return null;
+    const path = VERIFIED_BG_IMAGES[verifiedBgIndex];
+    const r2Url = getR2UrlClient(path);
+    if (r2Url.startsWith("http")) return r2Url;
+    return r2Url; // relative path; client will request same-origin, or use useEffect to set origin in dev
   }, [result?.verified, verifiedBgIndex]);
 
   // ---------- ALL LOGIC BELOW IS UNCHANGED ----------
@@ -337,8 +338,8 @@ export default function VerifyPage() {
       {/* Verified-success only: random background image (or fallback) + dark overlay. UI only. */}
       {result?.verified && verifiedBgIndex !== null && (
         <>
-          {/* Layer 1: image (full URL on client so it loads on all hosts) or fallback gradient */}
-          {!verifiedBgError && (verifiedBgFullUrl ?? VERIFIED_BG_IMAGES[verifiedBgIndex]) ? (
+          {/* Layer 1: image from R2 (same route as Hero/Merchandise) or fallback gradient */}
+          {!verifiedBgError && verifiedBgUrl ? (
             <div
               className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[#0a0a0a]"
               aria-hidden
@@ -350,7 +351,7 @@ export default function VerifyPage() {
                 bottom: 0,
                 width: "100vw",
                 height: "100vh",
-                backgroundImage: `url(${verifiedBgFullUrl ?? VERIFIED_BG_IMAGES[verifiedBgIndex]})`,
+                backgroundImage: `url(${verifiedBgUrl})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
                 backgroundRepeat: "no-repeat",
@@ -358,7 +359,7 @@ export default function VerifyPage() {
             >
               {/* Invisible img to detect load error and fallback */}
               <img
-                src={verifiedBgFullUrl ?? VERIFIED_BG_IMAGES[verifiedBgIndex]}
+                src={verifiedBgUrl}
                 alt=""
                 className="absolute opacity-0 w-0 h-0"
                 onError={() => setVerifiedBgError(true)}
