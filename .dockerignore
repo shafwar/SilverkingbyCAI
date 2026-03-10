@@ -90,13 +90,9 @@ public/images/**/*.png
 !public/images/sertificate.jpeg
 !public/images/hero-fallback.jpg
 !public/images/DSC02998.JPG
-# Verified-success background images (bundled via src/assets/verified-bg)
+# Verified-success background images (verify page; only these exist in repo)
 !public/images/merchandise-hero.png
-!public/images/gold-ingot.jpg
-!public/images/pexels-3d-render-1058120333-33539240.jpg
-!public/images/pexels-michael-steinberg-95604-386318.jpg
-!public/images/pexels-sejio402-29336321.jpg
-!public/images/pexels-sejio402-29336326.jpg
+!public/images/hero-fallback.jpg
 
 # Keep fonts (needed for QR code generation)
 !public/fonts/**
