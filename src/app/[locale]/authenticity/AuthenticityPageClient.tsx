@@ -1,7 +1,5 @@
 "use client";
 
-"use client";
-
 import { useState, useRef, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useGSAP } from "@gsap/react";
@@ -11,7 +9,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   QrCode,
   Search,
-  ArrowRight,
   ArrowDown,
   Sparkles,
   Camera,
@@ -30,95 +27,33 @@ import { useRouter } from "next/navigation";
 import { APP_NAME } from "@/utils/constants";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
+import { usePageSections } from "@/hooks/usePageSections";
+import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
+import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 
 // workflowSteps will be created inside AuthenticityPage component using translations
 
-function CTASection({ t }: { t: (key: string) => string }) {
+function ScrollToVerificationButton({ t }: { t: (key: string) => string }) {
   const scrollToVerification = () => {
     try {
-      const verificationSection = document.querySelector("[data-verification-section]");
-      if (verificationSection) {
-        verificationSection.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    } catch (error) {
-      console.error("Error scrolling to verification section:", error);
-    }
+      const el = document.querySelector("[data-verification-section]");
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch {}
   };
 
   return (
-    <section className="relative  lg:mb-8 px-6 md:px-8 lg:px-12 py-20 md:py-6 lg:py-4 xl:py-2">
-      <div className="relative z-10 mx-auto max-w-[1400px]">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="text-center"
-        >
-          <motion.button
-            onClick={scrollToVerification}
-            className="group relative inline-flex flex-col items-center gap-2 text-white/60 hover:text-white transition-all duration-300 cursor-pointer"
-            animate={{
-              y: [0, -12, 0],
-            }}
-            transition={{
-              duration: 7,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            whileHover={{
-              scale: 1.05,
-              transition: { duration: 0.3 },
-            }}
-          >
-            {/* Subtle glow effect */}
-            <motion.div
-              className="absolute inset-0 rounded-full bg-white/5 blur-xl"
-              animate={{
-                opacity: [0.3, 0.6, 0.3],
-                scale: [1, 1.2, 1],
-              }}
-              transition={{
-                duration: 2.5,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-            />
-
-            <motion.span
-              className="relative z-10 text-sm md:text-base font-light tracking-wide"
-              animate={{
-                opacity: [0.6, 1, 0.6],
-              }}
-              transition={{
-                duration: 2.5,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: 0.2,
-              }}
-            >
-              {t("learnProcess")}
-            </motion.span>
-
-            <motion.div
-              className="relative z-10"
-              animate={{
-                y: [0, 4, 0],
-                opacity: [0.7, 1, 0.7],
-              }}
-              transition={{
-                duration: 1.5,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: 0.1,
-              }}
-            >
-              <ArrowDown className="h-4 w-4 md:h-5 md:w-5 transition-transform duration-300 group-hover:translate-y-1" />
-            </motion.div>
-          </motion.button>
-        </motion.div>
-      </div>
-    </section>
+    <motion.button
+      type="button"
+      onClick={scrollToVerification}
+      className="group inline-flex flex-col items-center gap-1.5 text-white/50 hover:text-white/80 transition-colors duration-300 cursor-pointer"
+      animate={{ y: [0, 6, 0] }}
+      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+    >
+      <span className="text-[11px] font-light tracking-[0.2em] uppercase">
+        {t("learnProcess")}
+      </span>
+      <ArrowDown className="h-4 w-4" />
+    </motion.button>
   );
 }
 
@@ -355,6 +290,14 @@ export default function AuthenticityPageClient() {
   const heroRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const router = useRouter();
+  const {
+    sections: pageSections,
+    loading: sectionsLoading,
+    refetch: refetchPageSections,
+  } = usePageSections("authenticity");
+  const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
+  const heroMediaUrl =
+    pageSections.hero?.url ?? getR2UrlClient("/videos/hero/mobile scanning qr.mp4");
 
   // Register ScrollTrigger only on the client to avoid SSR/window issues
   useEffect(() => {
@@ -553,27 +496,28 @@ export default function AuthenticityPageClient() {
 
   return (
     <div ref={pageRef} className="min-h-screen bg-luxury-black text-white">
-      {/* Simplified Background */}
-      <div className="pointer-events-none fixed inset-0 bg-gradient-to-b from-luxury-black via-[#0a0a0a] to-luxury-black" />
+      <div className="pointer-events-none fixed inset-0 bg-luxury-black" />
 
       <Navbar />
 
-      {/* Hero Section with Video Background */}
-      <section
-        ref={(element) => {
-          const divElement = element as HTMLDivElement | null;
-          sectionsRef.current[0] = divElement;
-          heroRef.current = divElement;
-        }}
-        className="relative flex min-h-[80vh] md:min-h-[85vh] lg:min-h-[90vh] items-center justify-center overflow-hidden px-6 pt-24 pb-12"
-      >
-        
-        {/* Video Background */}
-        <div className="absolute inset-0 z-0 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-luxury-black via-luxury-black/95 to-luxury-black z-0" />
-
-          <video
+      {/* Hero background media — fixed behind content */}
+      <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
+        <div className="absolute inset-0 bg-luxury-black z-0" />
+        {sectionsLoading ? (
+          <div className="absolute inset-0 z-10 bg-luxury-black" aria-hidden />
+        ) : heroMediaType === "VIDEO" ? (
+          <VideoLoadGuard
             ref={videoRef}
+            url={heroMediaUrl}
+            version={pageSections.hero?.version}
+            containerClassName="absolute inset-0 h-full w-full z-10"
+            className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
+            style={{
+              pointerEvents: "none",
+              outline: "none",
+              WebkitTapHighlightColor: "transparent",
+              userSelect: "none",
+            }}
             autoPlay
             loop
             muted
@@ -581,107 +525,141 @@ export default function AuthenticityPageClient() {
             preload="auto"
             disablePictureInPicture
             disableRemotePlayback
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 will-change-transform z-10 pointer-events-none select-none ${
-              isVideoLoaded ? "opacity-100" : "opacity-0"
-            }`}
-            style={{
-              transform: "scale(1.05)",
-              transformOrigin: "center center",
-              pointerEvents: "none",
-              outline: "none",
-              WebkitTapHighlightColor: "transparent",
-              WebkitTouchCallout: "none",
-              userSelect: "none",
-            }}
             onContextMenu={(e) => e.preventDefault()}
-            onPlay={(e) => {
-              const video = e.currentTarget;
-              if (video.paused) {
-                video.play().catch(() => {});
-              }
-            }}
-          >
-            <source src={getR2UrlClient("/videos/hero/mobile scanning qr.mp4")} type="video/mp4" />
-          </video>
-
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70 z-20" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(10,10,10,0.6)_100%)] z-20" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.8)_100%)] z-20" />
-          <div className="absolute inset-x-0 bottom-0 h-40 md:h-52 lg:h-64 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-transparent pointer-events-none z-20" />
-        </div>
-
-        {/* Minimal Particles */}
+          />
+        ) : (
+          <ImageLoadGuard
+            url={heroMediaUrl}
+            version={pageSections.hero?.version}
+            containerClassName="absolute inset-0 h-full w-full z-10"
+            className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
+            style={{ pointerEvents: "none" }}
+            alt=""
+            priority
+          />
+        )}
+        {/* Multi-layer overlays for text readability */}
+        <div className="absolute inset-0 z-[11] pointer-events-none" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 35%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.35) 75%, rgba(0,0,0,0.7) 100%)" }} />
+        <div className="absolute inset-0 z-[12] pointer-events-none" style={{ background: "linear-gradient(90deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.15) 50%, transparent 100%)" }} />
+        {/* Subtle gold particles */}
         <div className="absolute inset-0 pointer-events-none z-[15]">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: 5 }).map((_, i) => (
             <motion.div
               key={i}
               data-particle
-              className="absolute h-1.5 w-1.5 rounded-full bg-luxury-gold/30 pointer-events-none"
+              className="absolute h-1 w-1 rounded-full bg-luxury-gold/20"
               style={{
-                left: `${((i * 17) % 90) + 5}%`,
-                top: `${((i * 23) % 80) + 10}%`,
+                left: `${((i * 17) % 85) + 8}%`,
+                top: `${((i * 23) % 75) + 12}%`,
               }}
             />
           ))}
         </div>
+      </div>
 
-        {/* Content */}
-        <div className="relative z-20 mx-auto w-full max-w-3xl text-center">
-          <motion.div data-hero className="mb-4">
-            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-luxury-gold/30 bg-luxury-gold/5">
-              <QrCode className="h-10 w-10 text-luxury-gold" />
+      {/* Hero edit button */}
+      <HeroEditPortal
+        page="authenticity"
+        section="hero"
+        type="video"
+        onUploadDone={refetchPageSections}
+        editLabel="Edit video"
+      />
+
+      {/* Hero Section */}
+      <section
+        ref={(element) => {
+          const divElement = element as HTMLDivElement | null;
+          sectionsRef.current[0] = divElement;
+          heroRef.current = divElement;
+        }}
+        className="relative flex min-h-screen flex-col justify-center overflow-hidden"
+      >
+        <div className="relative z-20 mx-auto w-full max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 xl:px-20">
+          <motion.div data-hero className="max-w-2xl space-y-7">
+            {/* Refined badge */}
+            <div data-hero className="inline-flex items-center gap-3 rounded-full border border-luxury-gold/20 bg-black/30 px-4 py-2 backdrop-blur-sm">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-luxury-gold/15">
+                <QrCode className="h-4 w-4 text-luxury-gold" />
+              </div>
+              <span className="text-[11px] font-medium uppercase tracking-[0.25em] text-luxury-gold/80">
+                {t("authenticateYour")}
+              </span>
             </div>
-          </motion.div>
 
-          <motion.h1
-            data-hero
-            className="mb-4 text-4xl font-sans font-light leading-tight text-white sm:text-5xl md:text-6xl"
-          >
-            {t("authenticateYour")}
-            <span className="block bg-gradient-to-r from-luxury-gold to-luxury-lightGold bg-clip-text font-sans font-semibold text-transparent">
-              {t("silverKingBar")}
-            </span>
-          </motion.h1>
-
-          <motion.p
-            data-hero
-            className="mx-auto mb-8 max-w-xl text-base leading-relaxed text-luxury-silver/70 sm:text-lg"
-          >
-            {t("heroDescription")}
-          </motion.p>
-
-          <motion.div
-            data-hero
-            className="relative z-20 flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:items-center"
-          >
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleOpenScanner}
-              className="group relative z-20 inline-flex w-full items-center justify-center gap-2 rounded-full bg-luxury-gold px-8 py-3.5 text-sm font-semibold text-black transition-all hover:bg-luxury-lightGold sm:w-auto cursor-pointer active:scale-95"
+            {/* Headline */}
+            <motion.h1
+              data-hero
+              className="text-4xl sm:text-5xl md:text-6xl lg:text-[4.25rem] font-sans font-bold leading-[1.08] tracking-tight text-white"
             >
-              <QrCode className="h-4 w-4" />
-              {t("scanQR")}
-            </motion.button>
+              {t("authenticateYour")}{" "}
+              <span className="bg-gradient-to-r from-luxury-gold via-luxury-lightGold to-luxury-gold bg-clip-text text-transparent">
+                {t("silverKingBar")}
+              </span>
+            </motion.h1>
 
-            <span className="relative z-20 text-sm text-white/40 font-light">{t("or")}</span>
-
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleOpenManualInput}
-              className="relative z-20 inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-8 py-3.5 text-sm font-semibold text-white transition-all hover:border-white/30 hover:bg-white/10 sm:w-auto cursor-pointer active:scale-95"
+            {/* Description */}
+            <motion.p
+              data-hero
+              className="text-base sm:text-lg font-light leading-[1.75] text-white/70 max-w-xl"
             >
-              <Search className="h-4 w-4" />
-              {t("enterSerial")}
-            </motion.button>
+              {t("heroDescription")}
+            </motion.p>
+
+            {/* Action buttons */}
+            <motion.div
+              data-hero
+              className="flex flex-col items-start gap-3 pt-1 sm:flex-row sm:items-center sm:gap-4"
+            >
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={handleOpenScanner}
+                className="group relative inline-flex items-center justify-center gap-2.5 overflow-hidden rounded-xl bg-gradient-to-r from-luxury-gold to-luxury-lightGold px-8 py-3.5 text-sm font-bold tracking-wide text-black transition-shadow duration-300 hover:shadow-[0_12px_32px_-8px_rgba(212,175,55,0.45)] cursor-pointer"
+              >
+                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700 pointer-events-none" />
+                <QrCode className="relative z-10 h-4 w-4" />
+                <span className="relative z-10">{t("scanQR")}</span>
+              </motion.button>
+
+              <span className="hidden sm:inline text-xs text-white/30 font-light">{t("or")}</span>
+              <span className="sm:hidden text-xs text-white/30 font-light pl-1">{t("or")}</span>
+
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={handleOpenManualInput}
+                className="inline-flex items-center justify-center gap-2.5 rounded-xl border border-white/15 bg-white/[0.06] px-8 py-3.5 text-sm font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:border-white/25 hover:bg-white/[0.1] cursor-pointer"
+              >
+                <Search className="h-4 w-4" />
+                {t("enterSerial")}
+              </motion.button>
+            </motion.div>
           </motion.div>
         </div>
-      </section>
 
-      <CTASection t={t} />
+        {/* Bottom area: scroll indicator + "Learn process" */}
+        <div className="absolute bottom-10 inset-x-0 z-30 flex flex-col items-center gap-3 pointer-events-auto">
+          {/* Mouse scroll indicator */}
+          <motion.div
+            className="relative w-[22px] h-[34px] rounded-full border-2 border-white/30 flex items-start justify-center pt-2"
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <motion.div
+              className="w-[3px] h-[6px] rounded-full bg-white/70"
+              animate={{ y: [0, 8, 0], opacity: [1, 0.3, 1] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            />
+          </motion.div>
+          <ScrollToVerificationButton t={t} />
+        </div>
+
+        {/* Bottom gradient fade */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-transparent pointer-events-none z-20" />
+      </section>
 
       {/* Verification Workflow Section - ALWAYS VISIBLE */}
       <section

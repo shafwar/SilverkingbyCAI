@@ -18,6 +18,35 @@ const products = [
 async function main() {
   console.log("🌱 Starting Silver King seed…");
 
+  // Seed distributors if none exist (runs every time seed runs, idempotent)
+  const distributorCount = await prisma.distributor.count();
+  if (distributorCount === 0) {
+    await prisma.distributor.createMany({
+      data: [
+        {
+          distributorName: "Youceu",
+          storeName: "Toko Kang Emas",
+          address:
+            "Jl. Ahmad Yani No.161, Sumur Bandung – Kebon Pisang, Kosambi, Bandung",
+          city: "Bandung",
+          phone: "082297131527",
+          mapLink: "https://maps.app.goo.gl/xBZELvl6oLOztuFlJ",
+          status: "ACTIVE",
+        },
+        {
+          distributorName: "Tasik",
+          storeName: "Info menyusul",
+          address: "Detail alamat dan kontak menyusul",
+          city: "Tasikmalaya",
+          phone: "-",
+          mapLink: null,
+          status: "ACTIVE",
+        },
+      ],
+    });
+    console.log("✨ Seeded 2 distributors (Bandung + Tasik placeholder)");
+  }
+
   // Check if admin user already exists
   const existingAdmin = await prisma.user.findUnique({
     where: { email: "admin@silverking.com" },

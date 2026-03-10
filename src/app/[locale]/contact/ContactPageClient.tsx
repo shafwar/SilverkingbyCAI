@@ -3,19 +3,13 @@
 import { useState, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { motion } from "framer-motion";
-import {
-  Mail,
-  Phone,
-  MapPin,
-  Send,
-  Instagram,
-  CheckCircle2,
-} from "lucide-react";
+import { Mail, Phone, MapPin, Send, Instagram, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Toaster } from "sonner";
 import Navbar from "@/components/layout/Navbar";
 import { APP_NAME } from "@/utils/constants";
+import { ScrollRevealSection } from "@/components/shared/ScrollRevealSection";
 
 export default function ContactPageClient() {
   const t = useTranslations("contact");
@@ -56,7 +50,7 @@ export default function ContactPageClient() {
 
       // Success - reset form
       setFormData({ name: "", email: "", message: "" });
-      
+
       // Show success notification with checkmark - centered and prominent
       toast.success(t("successMessage") || "Message sent successfully!", {
         description: t("successDescription") || "We'll get back to you as soon as possible.",
@@ -74,7 +68,7 @@ export default function ContactPageClient() {
       console.error("Error submitting feedback:", error);
       const errorMessage = error.message || "Failed to send message. Please try again.";
       setSubmitError(errorMessage);
-      
+
       // Show error notification
       toast.error("Failed to send message", {
         description: errorMessage,
@@ -95,7 +89,7 @@ export default function ContactPageClient() {
   return (
     <div className="min-h-screen bg-luxury-black text-white">
       <Navbar />
-      
+
       {/* Toast Notifications - Centered and Prominent */}
       <Toaster
         position="top-center"
@@ -131,7 +125,7 @@ export default function ContactPageClient() {
       <section className="relative overflow-hidden border-b border-white/5 px-6 py-24 md:py-36">
         {/* Animated Background Gradients */}
         <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-b from-luxury-black via-luxury-black/98 to-luxury-black" />
+          <div className="absolute inset-0 bg-luxury-black" />
           <motion.div
             className="absolute inset-0 bg-gradient-to-br from-luxury-gold/10 via-transparent to-transparent"
             animate={{
@@ -170,7 +164,7 @@ export default function ContactPageClient() {
             }}
           />
         </div>
-        
+
         <div className="relative z-10 mx-auto max-w-5xl text-center">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -189,7 +183,7 @@ export default function ContactPageClient() {
               <span className="h-1.5 w-1.5 rounded-full bg-luxury-gold animate-pulse" />
             </motion.span>
           </motion.div>
-          
+
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -200,7 +194,7 @@ export default function ContactPageClient() {
               {t("title")}
             </span>
           </motion.h1>
-          
+
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -241,100 +235,108 @@ export default function ContactPageClient() {
                 {/* Decorative corner accents */}
                 <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-luxury-gold/10 to-transparent rounded-br-full blur-2xl" />
                 <div className="absolute bottom-0 right-0 w-40 h-40 bg-gradient-to-tl from-luxury-gold/10 to-transparent rounded-tl-full blur-2xl" />
-                
+
                 <div className="relative z-10">
                   <div className="mb-6">
                     <h2 className="mb-3 text-3xl font-bold text-white">{t("formTitle")}</h2>
-                    <p className="text-base text-white/70 leading-relaxed">{t("formSubtitle") || "Fill out the form below and we'll get back to you."}</p>
+                    <p className="text-base text-white/70 leading-relaxed">
+                      {t("formSubtitle") || "Fill out the form below and we'll get back to you."}
+                    </p>
                   </div>
-                <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
-                  <div>
-                    <label htmlFor="name" className="mb-2 block text-sm font-medium text-white/80">
-                      {t("form.name")}
-                    </label>
-                    <input
-                      type="text"
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      required
-                      className="w-full rounded-2xl border border-white/20 bg-white/[0.1] px-5 py-4 text-white placeholder:text-white/50 focus:border-luxury-gold/80 focus:outline-none focus:ring-2 focus:ring-luxury-gold/40 focus:bg-white/[0.15] focus:shadow-lg focus:shadow-luxury-gold/20 transition-all duration-300"
-                      placeholder={t("form.namePlaceholder")}
-                    />
-                  </div>
+                  <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
+                    <div>
+                      <label
+                        htmlFor="name"
+                        className="mb-2 block text-sm font-medium text-white/80"
+                      >
+                        {t("form.name")}
+                      </label>
+                      <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleChange}
+                        required
+                        className="w-full rounded-2xl border border-white/20 bg-white/[0.1] px-5 py-4 text-white placeholder:text-white/50 focus:border-luxury-gold/80 focus:outline-none focus:ring-2 focus:ring-luxury-gold/40 focus:bg-white/[0.15] focus:shadow-lg focus:shadow-luxury-gold/20 transition-all duration-300"
+                        placeholder={t("form.namePlaceholder")}
+                      />
+                    </div>
 
-                  <div>
-                    <label htmlFor="email" className="mb-2 block text-sm font-medium text-white/80">
-                      {t("form.email")}
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      required
-                      className="w-full rounded-2xl border border-white/20 bg-white/[0.1] px-5 py-4 text-white placeholder:text-white/50 focus:border-luxury-gold/80 focus:outline-none focus:ring-2 focus:ring-luxury-gold/40 focus:bg-white/[0.15] focus:shadow-lg focus:shadow-luxury-gold/20 transition-all duration-300"
-                      placeholder={t("form.emailPlaceholder")}
-                    />
-                  </div>
+                    <div>
+                      <label
+                        htmlFor="email"
+                        className="mb-2 block text-sm font-medium text-white/80"
+                      >
+                        {t("form.email")}
+                      </label>
+                      <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        required
+                        className="w-full rounded-2xl border border-white/20 bg-white/[0.1] px-5 py-4 text-white placeholder:text-white/50 focus:border-luxury-gold/80 focus:outline-none focus:ring-2 focus:ring-luxury-gold/40 focus:bg-white/[0.15] focus:shadow-lg focus:shadow-luxury-gold/20 transition-all duration-300"
+                        placeholder={t("form.emailPlaceholder")}
+                      />
+                    </div>
 
-                  <div>
-                    <label
-                      htmlFor="message"
-                      className="mb-2 block text-sm font-medium text-white/80"
-                    >
-                      {t("form.message")}
-                    </label>
-                    <textarea
-                      id="message"
-                      name="message"
-                      value={formData.message}
-                      onChange={handleChange}
-                      required
-                      rows={7}
-                      className="w-full rounded-2xl border border-white/20 bg-white/[0.1] px-5 py-4 text-white placeholder:text-white/50 focus:border-luxury-gold/80 focus:outline-none focus:ring-2 focus:ring-luxury-gold/40 focus:bg-white/[0.15] focus:shadow-lg focus:shadow-luxury-gold/20 transition-all duration-300 resize-none"
-                      placeholder={t("form.messagePlaceholder")}
-                    />
-                  </div>
+                    <div>
+                      <label
+                        htmlFor="message"
+                        className="mb-2 block text-sm font-medium text-white/80"
+                      >
+                        {t("form.message")}
+                      </label>
+                      <textarea
+                        id="message"
+                        name="message"
+                        value={formData.message}
+                        onChange={handleChange}
+                        required
+                        rows={7}
+                        className="w-full rounded-2xl border border-white/20 bg-white/[0.1] px-5 py-4 text-white placeholder:text-white/50 focus:border-luxury-gold/80 focus:outline-none focus:ring-2 focus:ring-luxury-gold/40 focus:bg-white/[0.15] focus:shadow-lg focus:shadow-luxury-gold/20 transition-all duration-300 resize-none"
+                        placeholder={t("form.messagePlaceholder")}
+                      />
+                    </div>
 
-                  {submitError && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="rounded-xl border border-red-500/50 bg-red-500/10 px-4 py-3 text-sm text-red-400 backdrop-blur-sm"
-                    >
-                      {submitError}
-                    </motion.div>
-                  )}
-                  <motion.button
-                    type="submit"
-                    disabled={isSubmitting}
-                    whileHover={{ scale: isSubmitting ? 1 : 1.03, y: isSubmitting ? 0 : -2 }}
-                    whileTap={{ scale: isSubmitting ? 1 : 0.97 }}
-                    className="group relative w-full rounded-2xl bg-gradient-to-r from-luxury-gold via-luxury-gold to-luxury-lightGold px-8 py-5 text-base font-bold text-black transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-2xl shadow-luxury-gold/30 hover:shadow-2xl hover:shadow-luxury-gold/50 overflow-hidden"
-                  >
-                    {/* Shine effect on hover */}
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                      initial={{ x: "-100%" }}
-                      whileHover={{ x: "100%" }}
-                      transition={{ duration: 0.6 }}
-                    />
-                    {isSubmitting ? (
-                      <>
-                        <div className="relative z-10 h-5 w-5 animate-spin rounded-full border-2 border-black/20 border-t-black" />
-                        <span className="relative z-10">{t("form.submitting")}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Send className="relative z-10 h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
-                        <span className="relative z-10">{t("form.submit")}</span>
-                      </>
+                    {submitError && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="rounded-xl border border-red-500/50 bg-red-500/10 px-4 py-3 text-sm text-red-400 backdrop-blur-sm"
+                      >
+                        {submitError}
+                      </motion.div>
                     )}
-                  </motion.button>
-                </form>
+                    <motion.button
+                      type="submit"
+                      disabled={isSubmitting}
+                      whileHover={{ scale: isSubmitting ? 1 : 1.03, y: isSubmitting ? 0 : -2 }}
+                      whileTap={{ scale: isSubmitting ? 1 : 0.97 }}
+                      className="group relative w-full rounded-2xl bg-gradient-to-r from-luxury-gold via-luxury-gold to-luxury-lightGold px-8 py-5 text-base font-bold text-black transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-2xl shadow-luxury-gold/30 hover:shadow-2xl hover:shadow-luxury-gold/50 overflow-hidden"
+                    >
+                      {/* Shine effect on hover */}
+                      <motion.div
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                        initial={{ x: "-100%" }}
+                        whileHover={{ x: "100%" }}
+                        transition={{ duration: 0.6 }}
+                      />
+                      {isSubmitting ? (
+                        <>
+                          <div className="relative z-10 h-5 w-5 animate-spin rounded-full border-2 border-black/20 border-t-black" />
+                          <span className="relative z-10">{t("form.submitting")}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="relative z-10 h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
+                          <span className="relative z-10">{t("form.submit")}</span>
+                        </>
+                      )}
+                    </motion.button>
+                  </form>
                 </div>
               </div>
             </motion.div>
@@ -363,7 +365,7 @@ export default function ContactPageClient() {
                 >
                   {/* Hover glow effect */}
                   <div className="absolute inset-0 bg-gradient-to-br from-luxury-gold/0 via-luxury-gold/0 to-luxury-gold/0 group-hover:from-luxury-gold/10 group-hover:via-luxury-gold/5 group-hover:to-luxury-gold/0 transition-all duration-300 pointer-events-none" />
-                  
+
                   <div className="relative z-10 rounded-2xl bg-gradient-to-br from-luxury-gold/30 to-luxury-gold/15 p-4 shadow-xl shadow-luxury-gold/20 group-hover:shadow-2xl group-hover:shadow-luxury-gold/30 transition-all duration-300">
                     <Mail className="h-6 w-6 text-luxury-gold" />
                   </div>
@@ -386,7 +388,7 @@ export default function ContactPageClient() {
                 >
                   {/* Hover glow effect */}
                   <div className="absolute inset-0 bg-gradient-to-br from-luxury-gold/0 via-luxury-gold/0 to-luxury-gold/0 group-hover:from-luxury-gold/10 group-hover:via-luxury-gold/5 group-hover:to-luxury-gold/0 transition-all duration-300 pointer-events-none" />
-                  
+
                   <div className="relative z-10 rounded-2xl bg-gradient-to-br from-luxury-gold/30 to-luxury-gold/15 p-4 shadow-xl shadow-luxury-gold/20 group-hover:shadow-2xl group-hover:shadow-luxury-gold/30 transition-all duration-300">
                     <Phone className="h-6 w-6 text-luxury-gold" />
                   </div>
@@ -409,13 +411,15 @@ export default function ContactPageClient() {
                 >
                   {/* Hover glow effect */}
                   <div className="absolute inset-0 bg-gradient-to-br from-luxury-gold/0 via-luxury-gold/0 to-luxury-gold/0 group-hover:from-luxury-gold/10 group-hover:via-luxury-gold/5 group-hover:to-luxury-gold/0 transition-all duration-300 pointer-events-none" />
-                  
+
                   <div className="relative z-10 rounded-2xl bg-gradient-to-br from-luxury-gold/30 to-luxury-gold/15 p-4 shadow-xl shadow-luxury-gold/20 group-hover:shadow-2xl group-hover:shadow-luxury-gold/30 transition-all duration-300">
                     <MapPin className="h-6 w-6 text-luxury-gold" />
                   </div>
                   <div className="relative z-10 flex-1">
                     <h3 className="mb-2 text-base font-bold text-white">{t("info.address")}</h3>
-                    <p className="text-base text-luxury-silver/80 leading-relaxed font-medium">{t("info.addressValue")}</p>
+                    <p className="text-base text-luxury-silver/80 leading-relaxed font-medium">
+                      {t("info.addressValue")}
+                    </p>
                   </div>
                 </motion.div>
               </div>
@@ -452,7 +456,7 @@ export default function ContactPageClient() {
       {/* Footer */}
       <footer className="border-t border-white/5 px-6 py-12">
         <div className="mx-auto max-w-6xl">
-          <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
+          <ScrollRevealSection className="flex flex-col items-center justify-between gap-6 md:flex-row" amount={0.2}>
             <p className="text-xs text-white/40">
               © {new Date().getFullYear()} {APP_NAME}. {t("footer.rights")}
             </p>
@@ -486,10 +490,9 @@ export default function ContactPageClient() {
                 {tNav("aboutUs")}
               </Link>
             </div>
-          </div>
+          </ScrollRevealSection>
         </div>
       </footer>
     </div>
   );
 }
-

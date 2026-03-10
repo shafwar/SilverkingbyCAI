@@ -90,6 +90,19 @@ model CmsProduct {
   updatedAt        DateTime @updatedAt
 }
 
+/// CMS merchandise items for the public merchandise page (Polo, Knitware, T-Shirt & Cap).
+model MerchandiseItem {
+  id        Int      @id @default(autoincrement())
+  category  String   // polo | knitware | tshirt_cap
+  title     String?  // optional display title
+  imageUrl  String   // R2 or local URL
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+}
+
 model QrRecord {
   id            Int         @id @default(autoincrement())
   productId     Int         @unique
@@ -229,4 +242,115 @@ model Feedback {
 
   @@index([createdAt])
   @@index([read])
+}
+
+/// Official distributors – public list + admin CMS (soft delete)
+model Distributor {
+  id               Int       @id @default(autoincrement())
+  distributorName  String
+  storeName        String
+  address          String    @db.Text
+  city             String
+  phone            String
+  mapLink          String?   @db.Text
+  status           String    @default("ACTIVE") // ACTIVE | INACTIVE
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  @@index([status])
+  @@index([city])
+  @@index([deletedAt])
+}
+
+/// Enterprise CMS: translatable page/section content (ID ↔ EN).
+/// title/description stored as JSON { id: string, en: string } for scalability.
+/// translation_meta marks which fields are auto-translated (vs manually edited).
+model ContentEntry {
+  id                 Int       @id @default(autoincrement())
+  pageName           String    // e.g. what-we-do, authenticity, products, distributor, about
+  sectionName        String    // e.g. hero, intro, features
+  /// Bilingual title: { id: string, en: string }
+  title              Json      // { id: string, en: string }
+  /// Bilingual description (optional): { id: string, en: string }
+  description        Json?     // { id: string, en: string }
+  /// Which fields are auto-translated (true = can be overwritten by Regenerate)
+  translationMeta    Json?     // { titleIdAuto: boolean, titleEnAuto: boolean, descriptionIdAuto: boolean, descriptionEnAuto: boolean }
+  createdBy          String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@unique([pageName, sectionName])
+  @@index([pageName])
+}
+
+/// Hero media per page (image/video). Admin uploads → stored in R2, key saved here.
+model PageMedia {
+  id              Int       @id @default(autoincrement())
+  pageName        String    @unique // e.g. distributor, about, what-we-do
+  heroImageR2Key   String?   // R2 key e.g. static/images/pages/distributor-hero.jpg
+  heroVideoR2Key  String?   // R2 key e.g. static/videos/pages/distributor-hero.mp4
+  updatedAt       DateTime  @updatedAt
+
+  @@index([pageName])
+}
+
+/// Per-section media (inline CMS). One row per page+section. Admin edits from frontend.
+model PageSection {
+  id         Int       @id @default(autoincrement())
+  pageName   String    // e.g. home, what-we-do, authenticity, products, distributor, about
+  sectionKey String    // e.g. hero, craft_card_1, craft_card_2
+  mediaType  String    // IMAGE | VIDEO
+  r2Key      String?   // R2 object key; null = use fallback
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([pageName, sectionKey])
+  @@index([pageName])
+}
+
+/// Background job for large ZIP downloads (avoid 524 timeout).
+/// POST returns jobId immediately; client polls GET /api/qr/download-job/[jobId].
+model QrZipDownloadJob {
+  id               Int       @id @default(autoincrement())
+  status           String    // PENDING | PROCESSING | COMPLETED | FAILED
+  cacheKey         String?   // request signature to reuse existing R2 result
+  requestPayload   Json      // { products, batchId, productTitle, templateVariant, useCustomTemplate }
+  result           Json?     // { download_url, product_title, product_id, rootkey, total_files }
+  errorMessage     String?   @db.Text
+  progressPercent  Int       @default(0)   // 0-100, untuk tampilan progress
+  progressMessage  String?   @db.Text      // e.g. "Item 1-100: 45%" atau "Item 101-200: 30% (batch 2 dari 14)"
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status])
+  @@index([cacheKey])
+  @@index([createdAt])
+}
+
+/// Cache hasil ZIP yang sudah tersimpan di R2 agar request yang sama tidak render ulang.
+model QrZipDownloadCache {
+  id             Int      @id @default(autoincrement())
+  cacheKey        String   @unique
+  result          Json
+  hitCount        Int      @default(0)
+  lastAccessedAt  DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([createdAt])
+}
+
+/// Audit klik download admin (tidak bisa deteksi file benar-benar ada di folder lokal, tapi bisa catat "pernah diunduh").
+model QrZipDownloadAudit {
+  id                Int      @id @default(autoincrement())
+  cacheKey          String
+  r2Key             String
+  batchIndex        Int?
+  totalBatches      Int?
+  downloadedByEmail String?
+  downloadedAt      DateTime @default(now())
+
+  @@index([cacheKey])
+  @@index([r2Key])
+  @@index([downloadedAt])
 }

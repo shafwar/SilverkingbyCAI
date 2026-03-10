@@ -13,6 +13,8 @@ import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 
 interface HeroSectionProps {
   shouldAnimate?: boolean;
+  /** When true, video is rendered by layout (PersistentHomeHeroVideo) — no duplicate video, avoids re-mount on navigation */
+  skipVideo?: boolean;
 }
 
 const videoIntroVariants: Variants = {
@@ -110,7 +112,7 @@ const bubbleOrbs = [
   },
 ];
 
-export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) {
+export default function HeroSection({ shouldAnimate = true, skipVideo = false }: HeroSectionProps) {
   const t = useTranslations("home.hero");
   const pathname = usePathname();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -497,7 +499,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
   return (
     <section
       ref={containerRef}
-      className="relative h-screen w-full overflow-hidden bg-black hero-section-transition"
+      className={`relative h-screen w-full overflow-hidden hero-section-transition ${skipVideo ? "bg-transparent" : "bg-black"}`}
       style={{
         pointerEvents: "auto",
         // ALWAYS ensure HeroSection participates in page transition blur
@@ -506,91 +508,118 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         // Don't set opacity to 0 if not transitioning to prevent flash
       }}
     >
-      {/* Video Background */}
-      <motion.div
-        style={{ opacity: isLoaded ? videoOpacity : 0, scale }}
-        className="absolute inset-0 z-0 will-change-transform overflow-hidden"
-      >
+      {/* Video Background — skip when PersistentHomeHeroVideo in layout is used (skipVideo) */}
+      {!skipVideo && (
         <motion.div
-          className="absolute inset-0"
-          variants={videoIntroVariants}
-          initial="hidden"
-          animate={animationState}
+          style={{ opacity: isLoaded ? videoOpacity : 0, scale }}
+          className="absolute inset-0 z-0 will-change-transform overflow-hidden"
         >
-          <video
-            ref={videoRef}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            disablePictureInPicture
-            disableRemotePlayback
-            className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
-            style={{
-              pointerEvents: "none",
-              outline: "none",
-              WebkitTapHighlightColor: "transparent",
-              WebkitTouchCallout: "none",
-              userSelect: "none",
-            }}
-            onContextMenu={(e) => e.preventDefault()}
-            onPlay={(e) => {
-              // Ensure video stays playing
-              const video = e.currentTarget;
-              if (video.paused) {
-                video.play().catch(() => {});
-              }
-            }}
+          <motion.div
+            className="absolute inset-0"
+            variants={videoIntroVariants}
+            initial="hidden"
+            animate={animationState}
           >
-            <source src={getR2UrlClient("/videos/hero/hero-background.mp4")} type="video/mp4" />
-          </video>
-          {/* Fallback gradient background if video fails to load */}
-          {videoError && (
-            <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black" />
-          )}
-        </motion.div>
-
-        <motion.div
-          className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/60"
-          variants={gradientIntroVariants}
-          initial="hidden"
-          animate={animationState}
-        />
-
-        <motion.div
-          className="absolute inset-0 bg-gradient-to-r from-black/65 via-transparent to-black/40"
-          variants={secondaryGradientVariants}
-          initial="hidden"
-          animate={animationState}
-        />
-
-        <motion.div
-          className="absolute inset-0 pointer-events-none z-[1]"
-          variants={bubbleLayerVariants}
-          initial="hidden"
-          animate={animationState}
-        >
-          {bubbleOrbs.map((orb) => (
-            <motion.span
-              key={orb.id}
-              className="absolute rounded-full blur-3xl opacity-70"
+            <video
+              ref={videoRef}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="metadata"
+              disablePictureInPicture
+              disableRemotePlayback
+              className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
               style={{
-                width: orb.size,
-                height: orb.size,
-                top: orb.top,
-                left: orb.left,
-                background: orb.gradient,
-                mixBlendMode: "screen",
+                pointerEvents: "none",
+                outline: "none",
+                WebkitTapHighlightColor: "transparent",
+                WebkitTouchCallout: "none",
+                userSelect: "none",
               }}
-              variants={bubbleVariants}
-              custom={{ delay: orb.delay, duration: orb.duration }}
-              initial="hidden"
-              animate={animationState}
-            />
-          ))}
+              onContextMenu={(e) => e.preventDefault()}
+              onPlay={(e) => {
+                const video = e.currentTarget;
+                if (video.paused) video.play().catch(() => {});
+              }}
+            >
+              <source src={getR2UrlClient("/videos/hero/hero-background.mp4")} type="video/mp4" />
+            </video>
+            {videoError && (
+              <div className="absolute inset-0 bg-black" />
+            )}
+          </motion.div>
+
+          <motion.div
+            className="absolute inset-0 pointer-events-none z-[1]"
+            variants={bubbleLayerVariants}
+            initial="hidden"
+            animate={animationState}
+          >
+            {bubbleOrbs.map((orb) => (
+              <motion.span
+                key={orb.id}
+                className="absolute rounded-full blur-3xl opacity-70"
+                style={{
+                  width: orb.size,
+                  height: orb.size,
+                  top: orb.top,
+                  left: orb.left,
+                  background: orb.gradient,
+                  mixBlendMode: "screen",
+                }}
+                variants={bubbleVariants}
+                custom={{ delay: orb.delay, duration: orb.duration }}
+                initial="hidden"
+                animate={animationState}
+              />
+            ))}
+          </motion.div>
         </motion.div>
-      </motion.div>
+      )}
+
+      {/* When skipVideo: overlays only (video from PersistentHomeHeroVideo) + vignette dark motif */}
+      {skipVideo && (
+        <>
+          <motion.div
+            className="absolute inset-0 z-0 bg-gradient-to-b from-black/55 via-black/25 to-black/60"
+            variants={gradientIntroVariants}
+            initial="hidden"
+            animate={animationState}
+          />
+          <motion.div
+            className="absolute inset-0 z-0 bg-gradient-to-r from-black/65 via-transparent to-black/40"
+            variants={secondaryGradientVariants}
+            initial="hidden"
+            animate={animationState}
+          />
+          <motion.div
+            className="absolute inset-0 pointer-events-none z-[1]"
+            variants={bubbleLayerVariants}
+            initial="hidden"
+            animate={animationState}
+          >
+            {bubbleOrbs.map((orb) => (
+              <motion.span
+                key={orb.id}
+                className="absolute rounded-full blur-3xl opacity-70"
+                style={{
+                  width: orb.size,
+                  height: orb.size,
+                  top: orb.top,
+                  left: orb.left,
+                  background: orb.gradient,
+                  mixBlendMode: "screen",
+                }}
+                variants={bubbleVariants}
+                custom={{ delay: orb.delay, duration: orb.duration }}
+                initial="hidden"
+                animate={animationState}
+              />
+            ))}
+          </motion.div>
+        </>
+      )}
 
       {/* Content - UNIVERSAL untuk SEMUA device mobile */}
       <div className="relative z-10 flex h-full items-center pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:pt-8 md:pt-0 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-16 md:pb-0 pointer-events-none">
@@ -601,10 +630,7 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             <h1
               ref={headlineRef}
               className="mb-2 sm:mb-3 md:mb-5 font-sans text-[1.7rem] sm:text-[2.25rem] md:text-[3rem] lg:text-[3.5rem] xl:text-[4rem] 2xl:text-[4.5rem] font-semibold tracking-tight md:tracking-[-0.03em] leading-[1.2] sm:leading-[1.2] md:leading-[1.25] text-white"
-              style={{
-                perspective: "1000px",
-                fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c",
-              }}
+              style={{ perspective: "1000px" }}
             >
               {/* Fragment 1 */}
               <span
@@ -645,7 +671,6 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
             <p
               ref={subtitleRef}
               className="max-w-[92%] sm:max-w-[88%] md:max-w-[85%] font-sans text-[0.875rem] sm:text-[0.9375rem] md:text-[1rem] lg:text-[1.0625rem] leading-[1.65] sm:leading-[1.65] md:leading-[1.7] font-light text-white/75 mt-3.5 sm:mt-5 md:mt-0"
-              style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
             >
               {t.rich("subtitle", {
                 gold: (chunks) => <span className="font-medium text-white/90">{chunks}</span>,
@@ -665,19 +690,16 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
                   </div>
                   <p
                     className="font-sans text-[0.52rem] uppercase tracking-[0.45em] text-white/45"
-                    style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
                   >
                     {item.label}
                   </p>
                   <p
                     className="mt-1 font-sans text-[1.05rem] font-semibold bg-gradient-to-r from-white via-white/80 to-white/60 bg-clip-text text-transparent tracking-tight leading-snug"
-                    style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
                   >
                     {item.title}
                   </p>
                   <p
                     className="mt-1 font-sans text-[0.75rem] text-white/55 leading-relaxed"
-                    style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
                   >
                     {item.body}
                   </p>
@@ -688,8 +710,8 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         </div>
       </div>
 
-      {/* Mobile: Scrolling Features - DINAIKKAN untuk proporsi dengan QR Card baru */}
-      <div className="md:hidden absolute left-0 right-0 bottom-[calc(140px+env(safe-area-inset-bottom))] sm:bottom-[calc(148px+env(safe-area-inset-bottom))] z-20 px-4 sm:px-6 pointer-events-auto">
+      {/* Mobile: Scrolling Features - dinaikkan agar tidak mepet dengan Scan & Verify */}
+      <div className="md:hidden absolute left-0 right-0 bottom-[calc(200px+env(safe-area-inset-bottom))] sm:bottom-[calc(208px+env(safe-area-inset-bottom))] z-20 px-4 sm:px-6 pointer-events-auto">
         <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate} />
       </div>
 
@@ -707,7 +729,6 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         <OptimizedLink
           href="/authenticity"
           className="group inline-flex items-center gap-2.5 sm:gap-3 text-left w-full max-w-[min(calc(100vw-28px),358px)] sm:max-w-[368px] backdrop-blur-sm bg-black/50 border border-white/10 rounded-2xl p-3 sm:p-3.5 transition-all duration-300 hover:bg-black/60 hover:border-white/20 pointer-events-auto"
-          style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
         >
           <div className="flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border border-white/20 bg-black/40">
             <QrCode className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
@@ -715,19 +736,16 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
           <div className="flex-1 min-w-0">
             <p
               className="text-[0.45rem] sm:text-[0.5rem] uppercase tracking-[0.4em] sm:tracking-[0.45em] text-white/55"
-              style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
             >
               {t("qrCard.label")}
             </p>
             <p
               className="mt-0.5 text-[0.75rem] sm:text-[0.8125rem] md:text-[0.95rem] font-sans font-semibold text-white tracking-tight leading-tight"
-              style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
             >
               {t("qrCard.title")}
             </p>
             <p
               className="mt-0.5 text-[0.6rem] sm:text-[0.625rem] font-sans text-white/60 leading-relaxed line-clamp-2"
-              style={{ fontFamily: "__GeistSans_fb8f2c, __GeistSans_Fallback_fb8f2c" }}
             >
               {t("qrCard.description")}
             </p>
@@ -735,13 +753,17 @@ export default function HeroSection({ shouldAnimate = true }: HeroSectionProps) 
         </OptimizedLink>
       </motion.div>
 
-      {/* Bottom Fade */}
+      {/* Bottom fade - dark vignette (Home only); translateZ + solid cap to prevent flickering line */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 2, delay: 1 }}
-        className="absolute bottom-0 left-0 right-0 h-20 sm:h-24 md:h-36 bg-gradient-to-t from-black via-black/50 to-transparent pointer-events-none"
-      />
+        className="absolute bottom-0 left-0 right-0 h-20 sm:h-24 md:h-36 pointer-events-none"
+        style={{ transform: "translateZ(0)", WebkitBackfaceVisibility: "hidden" }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-black" aria-hidden />
+      </motion.div>
     </section>
   );
 }

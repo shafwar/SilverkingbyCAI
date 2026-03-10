@@ -246,8 +246,23 @@ export async function GET(request: Request) {
         page2Count: bucket.page2Count,
       })),
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching scan trend:", error);
-    return NextResponse.json({ error: "Failed to fetch scan trend" }, { status: 500 });
+    
+    // Provide more specific error messages
+    if (error.code === "P1001" || error.message?.includes("Can't reach database")) {
+      return NextResponse.json(
+        { 
+          error: "Database connection failed. MySQL service may be down.",
+          details: "Please check Railway MySQL service status and restart if needed."
+        },
+        { status: 503 }
+      );
+    }
+    
+    return NextResponse.json(
+      { error: "Failed to fetch scan trend", details: error.message },
+      { status: 500 }
+    );
   }
 }

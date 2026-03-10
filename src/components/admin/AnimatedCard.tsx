@@ -28,7 +28,7 @@ export function AnimatedCard({
       tabIndex={role ? 0 : undefined}
       onClick={onClick}
       className={clsx(
-        "rounded-xl sm:rounded-2xl border border-white/5 bg-[#0c0c0c] p-4 sm:p-5 text-white shadow-[0_6px_30px_rgba(0,0,0,0.35)] backdrop-blur-xl transition hover:border-[#FFD700]/40 hover:bg-[#111111]",
+        "rounded-2xl border border-white/10 bg-white/[0.02] p-4 sm:p-5 md:p-6 text-white shadow-sm backdrop-blur-xl transition hover:border-white/15",
         className
       )}
       initial={{ opacity: 0, y: 16 }}

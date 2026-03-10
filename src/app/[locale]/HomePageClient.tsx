@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import Navbar from "@/components/layout/Navbar";
 import SplashScreen from "@/components/sections/SplashScreen";
 import { PageLoadingSkeleton } from "@/components/ui/PageLoadingSkeleton";
-
 // Lazy load HeroSection to improve initial page load
 const HeroSection = dynamic(() => import("@/components/sections/HeroSection"), {
   loading: () => <PageLoadingSkeleton />,
@@ -96,8 +95,8 @@ export default function HomePageClient() {
         className="home-page-content"
       >
         <Navbar />
-        <main className="min-h-screen bg-black">
-          <HeroSection shouldAnimate={splashComplete} />
+        <main className="min-h-screen bg-transparent">
+          <HeroSection shouldAnimate={splashComplete} skipVideo />
         </main>
       </div>
     </>

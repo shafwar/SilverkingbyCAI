@@ -10,9 +10,15 @@
 
 import * as dotenv from "dotenv";
 import { syncPublicToR2, uploadPublicFolders } from "../src/lib/r2-static-sync";
+import * as fs from "fs";
+import * as path from "path";
 
-// Load environment variables
-dotenv.config({ path: ".env.local" });
+// Load environment variables: .env dulu, lalu .env.local (override)
+const projectRoot = process.cwd();
+const envLocalPath = path.join(projectRoot, ".env.local");
+const envPath = path.join(projectRoot, ".env");
+if (fs.existsSync(envPath)) dotenv.config({ path: envPath });
+if (fs.existsSync(envLocalPath)) dotenv.config({ path: envLocalPath });
 
 // Workaround for Windows SSL handshake failure
 // Set NODE_TLS_REJECT_UNAUTHORIZED=0 to bypass SSL verification (testing only)
@@ -51,24 +57,33 @@ async function main() {
   console.log("🚀 Cloudflare R2 Static Assets Sync");
   console.log("=====================================\n");
 
+  // R2_BUCKET dan R2_BUCKET_NAME keduanya didukung (konsisten dengan bagian lain di project)
+  const bucketName = process.env.R2_BUCKET_NAME || process.env.R2_BUCKET;
+  if (bucketName) process.env.R2_BUCKET_NAME = bucketName;
+
   // Validate environment variables
-  const requiredEnvVars = [
-    "R2_ACCOUNT_ID",
-    "R2_ACCESS_KEY_ID",
-    "R2_SECRET_ACCESS_KEY",
-    "R2_BUCKET_NAME",
+  const required: { name: string; value: string | undefined }[] = [
+    { name: "R2_ACCOUNT_ID", value: process.env.R2_ACCOUNT_ID },
+    { name: "R2_ACCESS_KEY_ID", value: process.env.R2_ACCESS_KEY_ID },
+    { name: "R2_SECRET_ACCESS_KEY", value: process.env.R2_SECRET_ACCESS_KEY },
+    { name: "R2_BUCKET_NAME atau R2_BUCKET", value: bucketName },
   ];
 
-  const missingVars = requiredEnvVars.filter((varName) => !process.env[varName]);
+  const missingVars = required.filter((r) => !r.value?.trim()).map((r) => r.name);
 
   if (missingVars.length > 0) {
     console.error("❌ Missing required environment variables:");
-    missingVars.forEach((varName) => console.error(`   - ${varName}`));
-    console.error("\nPlease check your .env.local file.");
+    missingVars.forEach((name) => console.error(`   - ${name}`));
+    console.error("\nPastikan variabel ada di .env atau .env.local (di root project, sebelah package.json).");
+    console.error("Contoh .env.local:");
+    console.error("  R2_ACCOUNT_ID=your_account_id");
+    console.error("  R2_ACCESS_KEY_ID=...");
+    console.error("  R2_SECRET_ACCESS_KEY=...");
+    console.error("  R2_BUCKET_NAME=silverking-assets");
     process.exit(1);
   }
 
-  console.log(`📦 Bucket: ${process.env.R2_BUCKET_NAME}`);
+  console.log(`📦 Bucket: ${bucketName}`);
   console.log(`🌐 Public URL: ${process.env.R2_PUBLIC_URL || "Not set"}`);
   console.log(`🔄 Mode: ${force ? "Force overwrite" : "Skip existing"}\n`);
 

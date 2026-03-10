@@ -1,26 +1,167 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
-import { Shield, CheckCircle2, XCircle } from "lucide-react";
+import {
+  Shield,
+  CheckCircle2,
+  XCircle,
+  ArrowLeft,
+  Package,
+  Scale,
+  Layers,
+  Calendar,
+  Hash,
+  Banknote,
+  KeyRound,
+} from "lucide-react";
+import { VERIFIED_BG_IMAGES } from "@/assets/verified-bg";
+import { getR2UrlClient } from "@/utils/r2-url";
 
 interface VerificationResult {
   verified: boolean;
-  requiresRootKey?: boolean; // Flag for Page 2 two-step verification
+  requiresRootKey?: boolean;
   product?: {
     name: string;
     weight: number;
     serialCode: string;
-    actualSerialCode?: string; // For Page 2: actual SKP serial code
+    actualSerialCode?: string;
     price?: number | null;
     stock?: number | null;
     qrImageUrl?: string;
     createdAt: string;
   };
   error?: string;
+}
+
+const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 24 },
+  visible: (delay: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, delay, ease: EASE },
+  }),
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.07, delayChildren: 0.15 },
+  },
+};
+
+const rowReveal = {
+  hidden: { opacity: 0, x: -12 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.45, ease: EASE },
+  },
+};
+
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+  mono,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <motion.div
+      variants={rowReveal}
+      className="flex items-center justify-between gap-4 py-4 border-b border-white/[0.06] last:border-b-0"
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/[0.04]">
+          <Icon className="h-4 w-4 text-luxury-gold/60" />
+        </div>
+        <span className="text-[13px] text-white/45 font-medium">{label}</span>
+      </div>
+      <span
+        className={`text-[14px] font-semibold text-white text-right truncate ${
+          mono ? "font-mono tracking-wide text-[13px]" : ""
+        }`}
+      >
+        {value}
+      </span>
+    </motion.div>
+  );
+}
+
+function VerifiedBackgroundSvg({ seed }: { seed: string }) {
+  const s = seed.slice(0, 10);
+  return (
+    <svg
+      className="pointer-events-none fixed inset-0 z-0 h-screen w-screen"
+      aria-hidden
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 1600 900"
+      preserveAspectRatio="xMidYMid slice"
+    >
+      <defs>
+        <linearGradient id="verify_g1" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#050505" />
+          <stop offset="0.55" stopColor="#0b0b0b" />
+          <stop offset="1" stopColor="#050505" />
+        </linearGradient>
+        <radialGradient id="verify_glow" cx="50%" cy="18%" r="62%">
+          <stop offset="0" stopColor="#22c55e" stopOpacity="0.12" />
+          <stop offset="0.55" stopColor="#d4af37" stopOpacity="0.08" />
+          <stop offset="1" stopColor="#000000" stopOpacity="0" />
+        </radialGradient>
+        <filter id="verify_noise">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.9"
+            numOctaves="2"
+            stitchTiles="stitch"
+            seed="7"
+          />
+          <feColorMatrix
+            type="matrix"
+            values="
+              0 0 0 0 0.60
+              0 0 0 0 0.52
+              0 0 0 0 0.10
+              0 0 0 0.18 0
+            "
+          />
+        </filter>
+        <filter id="verify_blur">
+          <feGaussianBlur stdDeviation="22" />
+        </filter>
+      </defs>
+      <rect width="1600" height="900" fill="url(#verify_g1)" />
+      <rect width="1600" height="900" fill="url(#verify_glow)" />
+      <g opacity="0.55" filter="url(#verify_blur)">
+        <circle cx="240" cy="760" r="220" fill="#d4af37" fillOpacity="0.10" />
+        <circle cx="1340" cy="720" r="260" fill="#22c55e" fillOpacity="0.08" />
+        <circle cx="860" cy="130" r="220" fill="#d4af37" fillOpacity="0.06" />
+      </g>
+      <rect width="1600" height="900" filter="url(#verify_noise)" opacity="0.9" />
+      <text
+        x="1500"
+        y="860"
+        textAnchor="end"
+        fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+        fontSize="18"
+        fill="#ffffff"
+        opacity="0.06"
+      >
+        {s}
+      </text>
+    </svg>
+  );
 }
 
 export default function VerifyPage() {
@@ -32,20 +173,67 @@ export default function VerifyPage() {
   const [verifyingRootKey, setVerifyingRootKey] = useState(false);
   const [rootKeyError, setRootKeyError] = useState<string | null>(null);
 
+  /** Same R2 endpoint pattern as Merchandise, Navbar, What We Do: getR2UrlClient(path). */
+  const verifiedBgIndex = useMemo(
+    () =>
+      result?.verified
+        ? Math.floor(Math.random() * VERIFIED_BG_IMAGES.length)
+        : null,
+    [result?.verified]
+  );
+
+  const verifiedBgUrls = useMemo(() => {
+    if (!result?.verified || verifiedBgIndex === null) return null;
+    const len = VERIFIED_BG_IMAGES.length;
+    const primaryPath = VERIFIED_BG_IMAGES[verifiedBgIndex];
+    const fallbackIndex = (verifiedBgIndex + 1) % len;
+    const fallbackPath = VERIFIED_BG_IMAGES[fallbackIndex];
+    return {
+      primary: getR2UrlClient(primaryPath),
+      fallback: getR2UrlClient(fallbackPath),
+    };
+  }, [result?.verified, verifiedBgIndex]);
+
+  const [verifiedBgDisplayUrl, setVerifiedBgDisplayUrl] = useState<string | null>(null);
+  const [verifiedBgError, setVerifiedBgError] = useState(false);
+
   useEffect(() => {
-    let isMounted = true; // Prevent state updates if component unmounts
+    if (!result?.verified || !verifiedBgUrls) {
+      setVerifiedBgDisplayUrl(null);
+      setVerifiedBgError(false);
+      return;
+    }
+    setVerifiedBgDisplayUrl(verifiedBgUrls.primary);
+    setVerifiedBgError(false);
+  }, [result?.verified, verifiedBgUrls?.primary]);
+
+  const effectiveVerifiedBgUrl = verifiedBgDisplayUrl;
+
+  const handleVerifiedBgError = () => {
+    if (!verifiedBgUrls) {
+      setVerifiedBgError(true);
+      return;
+    }
+    if (verifiedBgDisplayUrl === verifiedBgUrls.primary) {
+      setVerifiedBgDisplayUrl(verifiedBgUrls.fallback);
+    } else {
+      setVerifiedBgError(true);
+    }
+  };
+
+  // ---------- ALL LOGIC BELOW IS UNCHANGED ----------
+
+  useEffect(() => {
+    let isMounted = true;
 
     async function verifyProduct() {
       try {
-        // SECURITY: Normalize and validate serial number input
-        // Remove any potentially malicious characters
         const normalizedSerial =
           serialNumber
             ?.trim()
             .toUpperCase()
             .replace(/[^A-Z0-9]/g, "") || "";
 
-        // SECURITY: Validate serial number format and length
         if (!normalizedSerial || normalizedSerial.length < 3 || normalizedSerial.length > 50) {
           if (isMounted) {
             setResult({
@@ -57,9 +245,8 @@ export default function VerifyPage() {
           return;
         }
 
-        // OPTIMIZATION: Add timeout to prevent hanging requests
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
 
         const response = await fetch(`/api/verify/${encodeURIComponent(normalizedSerial)}`, {
           method: "GET",
@@ -85,7 +272,6 @@ export default function VerifyPage() {
 
         const data = await response.json();
 
-        // SECURITY: Validate response structure
         if (!data || typeof data !== "object" || !("verified" in data)) {
           if (isMounted) {
             setResult({
@@ -97,9 +283,7 @@ export default function VerifyPage() {
           return;
         }
 
-        // SECURITY: Validate product data if verified
         if (data.verified && data.product) {
-          // Ensure product has required fields
           if (!data.product.serialCode || !data.product.name) {
             if (isMounted) {
               setResult({
@@ -117,7 +301,6 @@ export default function VerifyPage() {
           setLoading(false);
         }
       } catch (error: any) {
-        // Handle abort (timeout) gracefully
         if (error.name === "AbortError") {
           if (isMounted) {
             setResult({
@@ -150,7 +333,6 @@ export default function VerifyPage() {
       });
     }
 
-    // Cleanup: Prevent state updates if component unmounts
     return () => {
       isMounted = false;
     };
@@ -172,12 +354,8 @@ export default function VerifyPage() {
     setRootKeyError(null);
 
     try {
-      // For gram products with root key verification:
-      // - When user scans QR with uniqCode (GK...), API returns product.serialCode = uniqCode
-      // - We need to use the original uniqCode from the QR scan (serialNumber param)
-      // - Or use product.serialCode if it's actually the uniqCode
       const uniqCodeForVerification = result?.requiresRootKey
-        ? serialNumber // Use the original QR scan uniqCode
+        ? serialNumber
         : result?.product?.serialCode || serialNumber;
 
       console.log("[VerifyPage] Sending root key verification request:", {
@@ -226,10 +404,8 @@ export default function VerifyPage() {
         return;
       }
 
-      // Root key verified successfully, redirect to serial code verification page
       if (data.serialCode) {
         console.log("[VerifyPage] Root key verified, redirecting to:", data.serialCode);
-        // Use router.push for better Next.js navigation
         window.location.href = `/verify/${encodeURIComponent(data.serialCode)}`;
       } else {
         console.error("[VerifyPage] Verification successful but serialCode missing:", data);
@@ -245,94 +421,164 @@ export default function VerifyPage() {
     }
   };
 
+  // ---------- END UNCHANGED LOGIC ----------
+
   return (
-    <div className="min-h-screen bg-luxury-black">
-      {/* Navbar */}
+    <div className="min-h-screen bg-[#050505] text-white">
+      {/* Verified-success only: random background image (or fallback) + dark overlay. UI only. */}
+      {result?.verified && verifiedBgIndex !== null && (
+        <>
+          {/* Layer 0: guaranteed SVG background (no network, CSP-safe) */}
+          <VerifiedBackgroundSvg seed={serialNumber || "SK"} />
+
+          {/* Layer 1: image from R2; absolute URL on client; try fallback image on error before gradient */}
+          {!verifiedBgError && effectiveVerifiedBgUrl ? (
+            <div
+              className="pointer-events-none fixed inset-0 z-[1] overflow-hidden bg-[#0a0a0a]"
+              aria-hidden
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                width: "100vw",
+                height: "100vh",
+                backgroundImage: `url(${effectiveVerifiedBgUrl})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
+              }}
+            >
+              <img
+                src={effectiveVerifiedBgUrl}
+                alt=""
+                className="absolute opacity-0 w-0 h-0"
+                onError={handleVerifiedBgError}
+                aria-hidden
+              />
+            </div>
+          ) : !verifiedBgError ? null : (
+            <div
+              className="pointer-events-none fixed inset-0 z-[1] bg-[#0a0a0a]"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.78) 50%, rgba(0,0,0,0.9) 100%)",
+              }}
+              aria-hidden
+            />
+          )}
+          {/* Layer 2: dark overlay so text never clashes; lighter so background is visible */}
+          <div
+            className="pointer-events-none fixed inset-0 z-[2]"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.40) 40%, rgba(0,0,0,0.46) 70%, rgba(0,0,0,0.62) 100%)",
+            }}
+            aria-hidden
+          />
+        </>
+      )}
+
+      {/* Background ambient */}
+      <div
+        className="pointer-events-none fixed inset-0 z-[3]"
+        style={{
+          background: result?.verified
+            ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(34,197,94,0.04) 0%, transparent 60%), radial-gradient(ellipse 50% 35% at 50% 80%, rgba(212,175,55,0.03) 0%, transparent 50%)"
+            : result && !result.verified && !result.requiresRootKey
+              ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(239,68,68,0.04) 0%, transparent 60%)"
+              : "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(212,175,55,0.04) 0%, transparent 60%)",
+        }}
+      />
+
       <Navbar />
 
-      {/* Content */}
-      <div className="pt-32 pb-20 px-4">
-        <div className="max-w-3xl mx-auto">
+      <div className="relative z-10 pt-28 pb-20 px-4 sm:px-6">
+        <div className="mx-auto max-w-2xl">
+          {/* ---------- LOADING STATE ---------- */}
           {loading ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="luxury-card text-center"
+              className="flex flex-col items-center justify-center py-24"
             >
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-luxury-gold border-t-transparent mx-auto mb-4"></div>
-              <p className="text-luxury-silver text-lg">Verifying product...</p>
+              <div className="relative">
+                <div className="h-14 w-14 rounded-full border-2 border-luxury-gold/20" />
+                <div className="absolute inset-0 h-14 w-14 animate-spin rounded-full border-2 border-transparent border-t-luxury-gold" />
+              </div>
+              <p className="mt-5 text-sm font-light tracking-wide text-white/40">
+                Verifying product...
+              </p>
             </motion.div>
           ) : result?.requiresRootKey ? (
-            // Two-step verification: require root key before showing success
+            /* ---------- ROOT KEY REQUIRED ---------- */
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="space-y-6"
+              initial="hidden"
+              animate="visible"
+              className="space-y-5"
             >
-              <div className="luxury-card text-center">
-                <h1 className="text-3xl md:text-4xl font-serif font-bold text-luxury-gold mb-3">
+              {/* Header */}
+              <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0} className="text-center mb-2">
+                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-luxury-gold/20 bg-luxury-gold/[0.06]">
+                  <KeyRound className="h-7 w-7 text-luxury-gold" />
+                </div>
+                <h1 className="font-serif text-[1.75rem] font-semibold tracking-[0.01em] text-white">
                   Root Key Required
                 </h1>
-                <p className="text-luxury-silver text-lg">
+                <p className="mt-2 text-sm font-light leading-relaxed text-white/45 max-w-md mx-auto">
                   Please enter the root key to complete verification for this product.
                 </p>
-              </div>
+              </motion.div>
 
-              <div className="luxury-card">
-                <h2 className="text-2xl font-serif font-bold text-luxury-gold mb-6 flex items-center gap-2">
-                  <Shield className="w-6 h-6" />
-                  Product Information
-                </h2>
-                <div className="space-y-4">
-                  <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                    <span className="text-luxury-silver">Product Name</span>
-                    <span className="text-luxury-lightSilver font-semibold">
-                      {result.product?.name}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                    <span className="text-luxury-silver">Weight</span>
-                    <span className="text-luxury-lightSilver font-semibold">
-                      {getWeightLabel(result.product?.weight)}
-                    </span>
-                  </div>
-                  {typeof result.product?.stock === "number" && (
-                    <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                      <span className="text-luxury-silver">Quantity</span>
-                      <span className="text-luxury-lightSilver font-semibold">
-                        {result.product.stock} pcs
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                    <span className="text-luxury-silver">Manufacturing Date</span>
-                    <span className="text-luxury-lightSilver font-semibold">
-                      {new Date(result.product?.createdAt || "").toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Root Key Verification Section */}
+              {/* Product info card */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="luxury-card"
+                variants={fadeUp}
+                initial="hidden"
+                animate="visible"
+                custom={0.1}
+                className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 sm:p-7 backdrop-blur-sm"
               >
-                <div className="mb-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4">
-                  <p className="text-yellow-400 text-sm font-semibold mb-2">
-                    ⚠️ Two-Step Verification Required
+                <div className="flex items-center gap-2.5 mb-5">
+                  <Shield className="h-[18px] w-[18px] text-luxury-gold/70" />
+                  <h2 className="text-[13px] font-bold uppercase tracking-[0.15em] text-luxury-gold/70">
+                    Product Information
+                  </h2>
+                </div>
+                <motion.div variants={staggerContainer} initial="hidden" animate="visible">
+                  <InfoRow icon={Package} label="Product Name" value={result.product?.name || "—"} />
+                  <InfoRow icon={Scale} label="Weight" value={getWeightLabel(result.product?.weight)} />
+                  {typeof result.product?.stock === "number" && (
+                    <InfoRow icon={Layers} label="Quantity" value={`${result.product.stock} pcs`} />
+                  )}
+                  <InfoRow
+                    icon={Calendar}
+                    label="Manufacturing Date"
+                    value={new Date(result.product?.createdAt || "").toLocaleDateString()}
+                  />
+                </motion.div>
+              </motion.div>
+
+              {/* Root key form */}
+              <motion.div
+                variants={fadeUp}
+                initial="hidden"
+                animate="visible"
+                custom={0.2}
+                className="rounded-2xl border border-luxury-gold/10 bg-luxury-gold/[0.02] p-6 sm:p-7"
+              >
+                <div className="mb-5 rounded-xl border border-amber-500/15 bg-amber-500/[0.04] px-4 py-3.5">
+                  <p className="text-amber-400/90 text-[13px] font-semibold mb-1">
+                    Two-Step Verification Required
                   </p>
-                  <p className="text-luxury-silver text-sm">
+                  <p className="text-white/40 text-[12px] leading-relaxed">
                     Please enter the root key (3-4 alphanumeric characters) provided by your
                     administrator to verify the specific SKP serial number.
                   </p>
                 </div>
                 <form onSubmit={handleRootKeySubmit} className="space-y-4">
                   <div>
-                    <label className="block text-luxury-silver text-sm font-semibold mb-2">
+                    <label className="block text-[10px] font-semibold uppercase tracking-[0.25em] text-white/30 mb-2.5">
                       Root Key (3-4 characters)
                     </label>
                     <input
@@ -344,15 +590,15 @@ export default function VerifyPage() {
                       }}
                       maxLength={4}
                       placeholder="e.g., A1H2"
-                      className="w-full rounded-lg border border-luxury-silver/20 bg-luxury-black/50 px-4 py-3 text-luxury-lightSilver font-mono text-lg tracking-wider uppercase focus:border-luxury-gold focus:outline-none focus:ring-2 focus:ring-luxury-gold/20"
+                      className="w-full rounded-xl border border-white/[0.1] bg-white/[0.03] px-5 py-3.5 font-mono text-base tracking-[0.15em] text-white uppercase placeholder:text-white/20 outline-none transition-all duration-300 focus:border-luxury-gold/40 focus:ring-1 focus:ring-luxury-gold/15"
                       disabled={verifyingRootKey}
                     />
                     {rootKeyError && (
-                      <div className="mt-2 space-y-1">
-                        <p className="text-red-400 text-sm">{rootKeyError}</p>
+                      <div className="mt-2.5 space-y-1">
+                        <p className="text-red-400/80 text-[12px]">{rootKeyError}</p>
                         {result?.product?.actualSerialCode && (
-                          <p className="text-yellow-400 text-xs">
-                            💡 Tip: Make sure you're using the root key for serial code{" "}
+                          <p className="text-amber-400/70 text-[11px]">
+                            Tip: Make sure you&apos;re using the root key for serial code{" "}
                             <span className="font-mono font-semibold">
                               {result.product.actualSerialCode}
                             </span>{" "}
@@ -365,112 +611,244 @@ export default function VerifyPage() {
                   <button
                     type="submit"
                     disabled={verifyingRootKey || rootKey.trim().length < 3}
-                    className="w-full luxury-button disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="group relative w-full overflow-hidden rounded-xl py-3.5 text-[13px] font-bold tracking-[0.04em] text-black transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, #B8960E 0%, #D4AF37 30%, #FFD700 65%, #D4AF37 100%)",
+                    }}
                   >
-                    {verifyingRootKey ? "Verifying..." : "Verify Root Key"}
+                    <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-[200%] group-hover:translate-x-[200%] transition-transform duration-700 pointer-events-none" />
+                    <span className="relative z-10">
+                      {verifyingRootKey ? "Verifying..." : "Verify Root Key"}
+                    </span>
                   </button>
                 </form>
               </motion.div>
             </motion.div>
           ) : result?.verified ? (
+            /* ---------- VERIFIED SUCCESS ---------- */
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="space-y-6"
+              initial="hidden"
+              animate="visible"
+              className="space-y-5"
             >
-              {/* Show product info first */}
-              <div className="luxury-card text-center">
-                <CheckCircle2 className="w-20 h-20 text-green-500 mx-auto mb-4" />
-                <h1 className="text-3xl md:text-4xl font-serif font-bold text-luxury-gold mb-3">
+              {/* Success header */}
+              <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0} className="text-center pt-2 pb-1">
+                {/* Animated checkmark — larger for clearer “verified” emphasis */}
+                <div className="relative mx-auto mb-6 h-28 w-28 sm:h-32 sm:w-32">
+                  {/* Outer pulse ring */}
+                  <motion.div
+                    className="absolute inset-0 rounded-full border-2 border-emerald-500/30"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: [0.8, 1.2, 1.2], opacity: [0, 0.5, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
+                  />
+                  {/* Inner circle */}
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center rounded-full"
+                    style={{
+                      background:
+                        "radial-gradient(circle, rgba(34,197,94,0.12) 0%, rgba(34,197,94,0.03) 70%, transparent 100%)",
+                    }}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <motion.div
+                      initial={{ scale: 0, rotate: -45 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ duration: 0.4, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <CheckCircle2 className="h-20 w-20 sm:h-24 sm:w-24 text-emerald-500" />
+                    </motion.div>
+                  </motion.div>
+                </div>
+
+                <motion.h1
+                  className="font-serif text-[1.85rem] sm:text-[2.1rem] font-semibold tracking-[0.01em] text-white"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                >
                   Product Verified
-                </h1>
-                <p className="text-luxury-silver text-lg">
+                </motion.h1>
+                <motion.p
+                  className="mt-2.5 text-sm font-light text-white/40"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.45 }}
+                >
                   This product is officially verified by Silver King by CAI
-                </p>
-              </div>
+                </motion.p>
 
-              <div className="luxury-card">
-                <h2 className="text-2xl font-serif font-bold text-luxury-gold mb-6 flex items-center gap-2">
-                  <Shield className="w-6 h-6" />
-                  Product Information
-                </h2>
-                <div className="space-y-4">
-                  <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                    <span className="text-luxury-silver">Product Name</span>
-                    <span className="text-luxury-lightSilver font-semibold">
-                      {result.product?.name}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                    <span className="text-luxury-silver">Weight</span>
-                    <span className="text-luxury-lightSilver font-semibold">
-                      {getWeightLabel(result.product?.weight)}
-                    </span>
-                  </div>
+                {/* Decorative divider */}
+                <motion.div
+                  className="mx-auto mt-5 flex items-center justify-center gap-2.5"
+                  initial={{ opacity: 0, scaleX: 0 }}
+                  animate={{ opacity: 1, scaleX: 1 }}
+                  transition={{ duration: 0.6, delay: 0.5 }}
+                >
+                  <div className="h-px w-10 bg-gradient-to-r from-transparent to-emerald-500/20" />
+                  <div className="h-1 w-1 rounded-full bg-emerald-500/30" />
+                  <div className="h-px w-10 bg-gradient-to-l from-transparent to-emerald-500/20" />
+                </motion.div>
+              </motion.div>
+
+              {/* Product info card */}
+              <motion.div
+                variants={fadeUp}
+                initial="hidden"
+                animate="visible"
+                custom={0.25}
+                className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 sm:p-7 backdrop-blur-sm"
+              >
+                <div className="flex items-center gap-2.5 mb-5">
+                  <Shield className="h-[18px] w-[18px] text-luxury-gold/70" />
+                  <h2 className="text-[13px] font-bold uppercase tracking-[0.15em] text-luxury-gold/70">
+                    Product Information
+                  </h2>
+                </div>
+                <motion.div variants={staggerContainer} initial="hidden" animate="visible">
+                  <InfoRow icon={Package} label="Product Name" value={result.product?.name || "—"} />
+                  <InfoRow icon={Scale} label="Weight" value={getWeightLabel(result.product?.weight)} />
                   {typeof result.product?.stock === "number" && (
-                    <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                      <span className="text-luxury-silver">Quantity</span>
-                      <span className="text-luxury-lightSilver font-semibold">
-                        {result.product.stock} pcs
-                      </span>
-                    </div>
+                    <InfoRow icon={Layers} label="Quantity" value={`${result.product.stock} pcs`} />
                   )}
-                  <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                    <span className="text-luxury-silver">Manufacturing Date</span>
-                    <span className="text-luxury-lightSilver font-semibold">
-                      {new Date(result.product?.createdAt || "").toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
+                  <InfoRow
+                    icon={Calendar}
+                    label="Manufacturing Date"
+                    value={new Date(result.product?.createdAt || "").toLocaleDateString()}
+                  />
+                </motion.div>
+              </motion.div>
 
-              {/* Show serial code only if root key verification is not required or completed */}
+              {/* Serial & Price card */}
               {!result.requiresRootKey && (
-                <div className="luxury-card">
-                  <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                    <span className="text-luxury-silver">Serial Number</span>
-                    <span className="text-luxury-lightSilver font-mono font-semibold text-sm">
-                      {result.product?.serialCode}
-                    </span>
-                  </div>
-                  {typeof result.product?.price === "number" && (
-                    <div className="flex justify-between py-3 border-b border-luxury-silver/10">
-                      <span className="text-luxury-silver">Price</span>
-                      <span className="text-luxury-lightSilver font-semibold">
-                        Rp {result.product.price.toLocaleString("id-ID")}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                <motion.div
+                  variants={fadeUp}
+                  initial="hidden"
+                  animate="visible"
+                  custom={0.4}
+                  className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 sm:p-7 backdrop-blur-sm"
+                >
+                  <motion.div variants={staggerContainer} initial="hidden" animate="visible">
+                    <InfoRow
+                      icon={Hash}
+                      label="Serial Number"
+                      value={result.product?.serialCode || "—"}
+                      mono
+                    />
+                    {typeof result.product?.price === "number" && (
+                      <InfoRow
+                        icon={Banknote}
+                        label="Price"
+                        value={`Rp ${result.product.price.toLocaleString("id-ID")}`}
+                      />
+                    )}
+                  </motion.div>
+                </motion.div>
               )}
 
-              <div className="text-center">
-                <Link href="/" className="luxury-button inline-block">
+              {/* Back button */}
+              <motion.div
+                variants={fadeUp}
+                initial="hidden"
+                animate="visible"
+                custom={0.55}
+                className="flex justify-center pt-2"
+              >
+                <Link
+                  href="/"
+                  className="group inline-flex items-center gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-7 py-3 text-[13px] font-medium text-white/60 transition-all duration-300 hover:border-white/[0.15] hover:text-white hover:bg-white/[0.06]"
+                >
+                  <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
                   Back to Home
                 </Link>
-              </div>
+              </motion.div>
             </motion.div>
           ) : (
+            /* ---------- VERIFICATION FAILED ---------- */
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="luxury-card text-center"
+              initial="hidden"
+              animate="visible"
+              className="space-y-5"
             >
-              <XCircle className="w-20 h-20 text-red-500 mx-auto mb-4" />
-              <h1 className="text-3xl md:text-4xl font-serif font-bold text-red-500 mb-3">
-                Verification Failed
-              </h1>
-              <p className="text-luxury-silver text-lg mb-6">
-                {result?.error || "This product could not be verified."}
-              </p>
-              <p className="text-luxury-silver/70 mb-8">
-                If you believe this is an error, please contact our customer support.
-              </p>
-              <Link href="/" className="luxury-button inline-block">
-                Back to Home
-              </Link>
+              <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0} className="text-center pt-2 pb-1">
+                {/* Error icon */}
+                <div className="relative mx-auto mb-6 h-20 w-20">
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center rounded-full"
+                    style={{
+                      background:
+                        "radial-gradient(circle, rgba(239,68,68,0.1) 0%, rgba(239,68,68,0.02) 70%, transparent 100%)",
+                    }}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ duration: 0.4, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <XCircle className="h-12 w-12 text-red-500/80" />
+                    </motion.div>
+                  </motion.div>
+                </div>
+
+                <motion.h1
+                  className="font-serif text-[1.85rem] sm:text-[2.1rem] font-semibold tracking-[0.01em] text-white"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                >
+                  Verification Failed
+                </motion.h1>
+                <motion.p
+                  className="mt-3 text-sm font-light leading-relaxed text-white/40 max-w-md mx-auto"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.4 }}
+                >
+                  {result?.error || "This product could not be verified."}
+                </motion.p>
+                <motion.p
+                  className="mt-2 text-[12px] text-white/25"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.5 }}
+                >
+                  If you believe this is an error, please contact our customer support.
+                </motion.p>
+
+                {/* Decorative divider */}
+                <motion.div
+                  className="mx-auto mt-5 flex items-center justify-center gap-2.5"
+                  initial={{ opacity: 0, scaleX: 0 }}
+                  animate={{ opacity: 1, scaleX: 1 }}
+                  transition={{ duration: 0.6, delay: 0.5 }}
+                >
+                  <div className="h-px w-10 bg-gradient-to-r from-transparent to-red-500/15" />
+                  <div className="h-1 w-1 rounded-full bg-red-500/25" />
+                  <div className="h-px w-10 bg-gradient-to-l from-transparent to-red-500/15" />
+                </motion.div>
+              </motion.div>
+
+              <motion.div
+                variants={fadeUp}
+                initial="hidden"
+                animate="visible"
+                custom={0.4}
+                className="flex justify-center pt-2"
+              >
+                <Link
+                  href="/"
+                  className="group inline-flex items-center gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-7 py-3 text-[13px] font-medium text-white/60 transition-all duration-300 hover:border-white/[0.15] hover:text-white hover:bg-white/[0.06]"
+                >
+                  <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
+                  Back to Home
+                </Link>
+              </motion.div>
             </motion.div>
           )}
         </div>

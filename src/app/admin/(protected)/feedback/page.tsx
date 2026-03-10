@@ -1,16 +1,21 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { StatsHeader } from "@/components/admin/StatsHeader";
+import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { FeedbackTable } from "@/components/admin/FeedbackTable";
 
 export default function FeedbackPage() {
   const t = useTranslations("admin.feedback");
 
   return (
-    <div className="space-y-8">
-      <StatsHeader eyebrow={t("eyebrow")} title={t("title")} description={t("description")} />
-      <FeedbackTable />
-    </div>
+    <AdminPageLayout
+      eyebrow={t("eyebrow")}
+      title={t("title")}
+      description={t("description")}
+    >
+      <div className="space-y-4 sm:space-y-6">
+        <FeedbackTable />
+      </div>
+    </AdminPageLayout>
   );
 }

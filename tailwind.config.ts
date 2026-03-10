@@ -20,7 +20,7 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
+        sans: ["var(--font-geist-sans)", "sans-serif"],
         serif: ["var(--font-playfair)", "Playfair Display", "serif"],
       },
       backgroundImage: {

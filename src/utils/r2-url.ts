@@ -37,6 +37,16 @@ export function getR2Url(localPath: string): string {
 }
 
 /**
+ * Distributor hero image: prefers explicit R2 URL, then R2 base + path, then local.
+ * Set NEXT_PUBLIC_DISTRIBUTOR_HERO_IMAGE_URL to the full R2 URL (e.g. https://your-bucket.r2.dev/static/images/DSC02998.JPG).
+ */
+export function getDistributorHeroImageUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_DISTRIBUTOR_HERO_IMAGE_URL;
+  if (explicit && explicit.startsWith("http")) return explicit;
+  return getR2UrlClient("/images/DSC02998.JPG");
+}
+
+/**
  * Get R2 URL for a static asset (client-side safe)
  * This version can be used in client components
  * @param localPath - Local public path (e.g., "/images/logo.png")

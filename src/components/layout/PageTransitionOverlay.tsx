@@ -142,6 +142,8 @@ export function PageTransitionOverlay() {
     }
 
     if (isActive) {
+      // Do not start blur when CMS replace-media modal is open (any page: Home, What We Do, Authenticity, Products, About, Distributor)
+      if (document.body?.getAttribute("data-cms-modal-open") === "true") return;
       // Start blur effect on CURRENT page - ALWAYS for ALL pages
       setIsBlurring(true);
 
@@ -326,6 +328,9 @@ export function PageTransitionOverlay() {
     if (typeof window === "undefined" || !isMounted) return;
 
     if (isBlurring && transitionSettings.blur > 0) {
+      // Do not blur when CMS replace-media modal is open on any page (avoids conflict and freeze)
+      if (document.body?.getAttribute("data-cms-modal-open") === "true") return;
+
       // PRODUCTION-SAFE: Enhanced DOM readiness check with multiple retry attempts
       if (!document.body) {
         let retryCount = 0;

@@ -63,35 +63,35 @@ export function DataTable<T extends Record<string, any>>({
 
   if (!sortedData.length) {
     return (
-      <div className="rounded-xl sm:rounded-2xl md:rounded-3xl border border-white/5 bg-white/5 p-6 sm:p-8 md:p-10 text-center text-white/60 text-sm sm:text-base">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-5 py-12 text-center text-white/50 text-sm">
         {defaultEmptyState}
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-xl sm:rounded-2xl md:rounded-3xl border border-white/10">
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02]">
       {/* Desktop Table */}
       <div className="hidden md:block overflow-x-auto">
-        <table className="min-w-full divide-y divide-white/10">
-          <thead>
-            <tr className="bg-white/5">
+        <table className="min-w-full">
+          <thead className="border-b border-white/10 bg-white/[0.04]">
+            <tr>
               {columns.map((column) => (
                 <th
                   key={String(column.key)}
                   scope="col"
                   onClick={() => handleSort(column)}
                   className={clsx(
-                    "px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 text-left text-[10px] sm:text-xs font-light uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/60",
+                    "px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-white/60",
                     column.align === "center" && "text-center",
                     column.align === "right" && "text-right",
-                    column.sortable && "cursor-pointer select-none hover:text-white"
+                    column.sortable && "cursor-pointer select-none hover:text-white/90"
                   )}
                 >
-                  <span className="inline-flex items-center gap-1 sm:gap-2">
+                  <span className="inline-flex items-center gap-1.5">
                     {column.header}
                     {column.sortable && (
-                      <ArrowDownUp className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white/40" />
+                      <ArrowDownUp className="h-3 w-3 text-white/40" />
                     )}
                   </span>
                 </th>
@@ -103,17 +103,17 @@ export function DataTable<T extends Record<string, any>>({
               {sortedData.map((row, rowIndex) => (
                 <motion.tr
                   key={rowIndex}
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.25, delay: rowIndex * 0.02 }}
-                  className="bg-white/[0.015] text-xs sm:text-sm text-white/80"
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2, delay: rowIndex * 0.02 }}
+                  className="text-sm text-white/80 transition-colors hover:bg-white/[0.04]"
                 >
                   {columns.map((column) => (
                     <td
                       key={String(column.key)}
                       className={clsx(
-                        "px-2 sm:px-3 md:px-4 py-2.5 sm:py-3 md:py-4",
+                        "px-5 py-3.5",
                         column.align === "center" && "text-center",
                         column.align === "right" && "text-right"
                       )}

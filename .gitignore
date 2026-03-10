@@ -45,3 +45,8 @@ prisma/*.db-journal
 /generated/prisma
 public/videos/hero/backup_*/
 public/videos/hero/temp_compress/
+public/images/.merchandise-out/
+# Merchandise source JPGs (used by scripts/compress-and-upload-merchandise.ts; output goes to R2)
+public/images/Knitware *.JPG
+public/images/Polo *.JPG
+public/images/T-Shirt & Cap *.JPG

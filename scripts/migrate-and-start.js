@@ -2,6 +2,11 @@ const { execSync } = require('child_process');
 const { spawn } = require('child_process');
 const { createDatabaseIfNotExists } = require('./create-database');
 
+// Ensure fontconfig can find config in container (fixes "Cannot load default config file" on Railway)
+if (!process.env.FONTCONFIG_PATH) {
+  process.env.FONTCONFIG_PATH = '/etc/fonts';
+}
+
 console.log('🚀 Starting application...\n');
 
 // Function to run seed

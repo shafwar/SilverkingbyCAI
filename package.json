@@ -21,7 +21,10 @@
     "r2:sync:force": "ts-node --project tsconfig.scripts.json scripts/sync-r2.ts -- --force",
     "r2:sync:skip-ssl": "ts-node --project tsconfig.scripts.json scripts/sync-r2.ts -- --skip-ssl-verify",
     "r2:upload": "powershell -ExecutionPolicy Bypass -File scripts/upload-r2-wrangler.ps1",
-    "r2:upload-serticards": "ts-node -r dotenv/config --project tsconfig.scripts.json scripts/upload-all-serticard-templates.ts"
+    "r2:upload-serticards": "ts-node -r dotenv/config --project tsconfig.scripts.json scripts/upload-all-serticard-templates.ts",
+    "r2:ensure-hero": "ts-node -r dotenv/config --project tsconfig.scripts.json scripts/ensure-distributor-hero-r2.ts",
+    "merchandise:compress-upload": "ts-node -r dotenv/config --project tsconfig.scripts.json scripts/compress-and-upload-merchandise.ts",
+    "merchandise:seed": "ts-node -r dotenv/config --project tsconfig.scripts.json scripts/seed-merchandise.ts"
   },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
@@ -64,6 +67,7 @@
     "react-hook-form": "^7.66.0",
     "recharts": "^2.12.7",
     "resend": "^6.9.1",
+    "sharp": "^0.34.5",
     "sonner": "^2.0.7",
     "swr": "^2.3.6",
     "tailwind-merge": "^3.4.0",

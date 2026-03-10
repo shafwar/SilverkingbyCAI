@@ -3,6 +3,8 @@
     "whatWeDo": "Apa yang kami lakukan",
     "authenticity": "Keaslian",
     "products": "Produk",
+    "merchandise": "Merchandise",
+    "distributor": "Distributor",
     "aboutUs": "Tentang kami",
     "getInTouch": "Hubungi kami"
   },
@@ -40,7 +42,7 @@
       "headline4": "abadi.",
       "headline5": "Presisi",
       "headline6": "murni.",
-      "subtitle": "Pembuatan ahli dari produk <gold>emas, perak, dan paladium</gold>. <custom>Fabrikasi batangan khusus</custom>, kemurnian tanpa kompromi, dan <qr>keaslian terverifikasi QR</qr>—mendefinisikan ulang kepercayaan dalam logam mulia.",
+      "subtitle": "Pembuatan ahli dari produk <gold>emas, perak, dan paladium</gold>. <custom>Fabrikasi batangan khusus</custom>, kemurnian tanpa kompromi, dan <qr>keaslian terverifikasi QR</qr>, mendefinisikan ulang kepercayaan dalam logam mulia.",
       "features": {
         "chainOfCustody": {
           "label": "Rantai Kepemilikan",
@@ -295,6 +297,97 @@
       }
     }
   },
+  "merchandise": {
+    "title": "Merchandise",
+    "hero": {
+      "title": "Merchandise",
+      "subtitle": "Apparel resmi Silver King by CAI",
+      "subtitleProducts": "Polo, Knitware, Kaos & Topi.",
+      "tagline": "Kualitas premium, gaya elegan."
+    },
+    "sections": {
+      "polo": "Polo",
+      "tshirtCap": "T-Shirt & Topi",
+      "knitware": "Knitware"
+    },
+    "detail": {
+      "knitware": {
+        "tagline": "Clean look. Sharp fit. Serious presence.",
+        "description": "Detail half-zip di bagian leher memberi kesan modern dan versatile — bisa dipakai full zip untuk look yang lebih neat, atau sedikit terbuka untuk vibe yang lebih relaxed.",
+        "highlights": [
+          "Bahan nyaman dan breathable",
+          "Cutting slim yang membentuk badan",
+          "Look clean & elegan",
+          "Mudah dipadukan dengan celana formal atau semi-casual"
+        ],
+        "colorsLabel": "Warna Tersedia",
+        "colors": "Hitam • Putih • Abu-abu • Navy"
+      },
+      "polo": {
+        "tagline": "The polo that hits different.",
+        "description": "Detail pada collar dan finishing di bagian lengan memberi sentuhan eksklusif.",
+        "highlights": [
+          "Bahan adem & nyaman dipakai seharian",
+          "Fit yang clean dan maskulin",
+          "Detail collar premium",
+          "Easy mix & match"
+        ],
+        "colorsLabel": "Warna Tersedia",
+        "colors": "Hitam • Putih • Abu-abu • Navy"
+      },
+      "tshirt": {
+        "tagline": "Basic, but make it premium.",
+        "description": "T-shirt ini didesain dengan potongan yang pas di badan dan bahan yang nyaman. Logo minimalis memberi kesan clean dan premium tanpa terlihat berlebihan.",
+        "highlights": [
+          "Bahan lembut & breathable",
+          "Potongan fit dan proporsional",
+          "Desain minimalis & modern",
+          "Daily wear friendly"
+        ],
+        "colorsLabel": "Warna Tersedia",
+        "colors": "Hitam • Putih • Abu-abu • Navy"
+      },
+      "tshirtCapCombined": {
+        "tagline": "T-Shirt & Topi",
+        "description": "Potongan yang pas, bahan nyaman, dan logo minimalis untuk tampilan bersih dan premium. Bahan lembut dan breathable dengan potongan proporsional—nyaman dipakai sehari-hari.",
+        "highlights": [
+          "Bahan lembut & breathable",
+          "Potongan fit dan proporsional",
+          "Desain minimalis & modern",
+          "Nyaman dipakai sehari-hari"
+        ],
+        "colorsTshirt": "Kaos: Hitam • Putih • Abu-abu • Navy",
+        "colorsCap": "Topi: Hitam & Putih"
+      },
+      "cap": {
+        "tagline": "Finishing touch that changes the game.",
+        "description": "Clean embroidery. Perfect shape. Daily essential.",
+        "colorsLabel": "Warna Tersedia",
+        "colors": "Hitam & Putih"
+      },
+      "highlightsLabel": "Highlight"
+    },
+    "cms": {
+      "addCard": "Tambah kartu",
+      "editCard": "Edit kartu",
+      "edit": "Edit",
+      "delete": "Hapus",
+      "title": "Judul",
+      "titlePlaceholder": "Judul tampilan (opsional)",
+      "image": "Gambar (JPG)",
+      "keepCurrent": "Kosongkan untuk tetap pakai gambar saat ini",
+      "cancel": "Batal",
+      "save": "Simpan",
+      "saving": "Menyimpan...",
+      "uploadingProgress": "Mengompres & mengunggah... {percent}%",
+      "confirmDelete": "Hapus item ini? Tindakan tidak dapat dibatalkan."
+    },
+    "footer": {
+      "contactAdmin": "Hubungi Admin",
+      "contactDescription": "Pemesanan & pertanyaan merchandise",
+      "callOrWhatsApp": "Telepon atau WhatsApp"
+    }
+  },
   "about": {
     "title": "Tentang Kami",
     "description": "Pelajari lebih lanjut tentang Silver King by CAI.",
@@ -386,6 +479,35 @@
       "backToHome": "Kembali ke Beranda"
     }
   },
+  "distributor": {
+    "hero": {
+      "title": "Distributor Resmi Kami",
+      "subtitle": "Temukan distributor resmi kami di berbagai kota untuk mendapatkan produk asli dengan pelayanan terbaik.",
+      "replaceImage": "Ganti gambar hero",
+      "replaceVideo": "Ganti video hero"
+    },
+    "description": "Kami bekerja sama dengan distributor resmi di berbagai kota untuk memastikan ketersediaan produk, kualitas layanan, serta kemudahan transaksi bagi pelanggan. Setiap distributor yang terdaftar merupakan mitra terpercaya yang telah melalui proses verifikasi.",
+    "noDistributors": "Belum ada distributor yang ditampilkan.",
+    "listTitle": "Daftar Distributor",
+    "listSubtitle": "Mitra resmi kami siap melayani Anda di kota terdekat.",
+    "addDistributor": "Tambah Distributor",
+    "countDistributors": "{count} lokasi",
+    "card": {
+      "distributor": "Distributor",
+      "store": "Toko",
+      "address": "Alamat",
+      "phone": "Nomor Transaksi",
+      "map": "Lokasi Map",
+      "contact": "Hubungi",
+      "viewMap": "Lihat di Peta",
+      "city": "Kota",
+      "edit": "Edit"
+    },
+    "meta": {
+      "title": "Distributor Resmi",
+      "description": "Temukan distributor resmi Silver King di berbagai kota untuk produk asli dan pelayanan terbaik."
+    }
+  },
   "contact": {
     "title": "Hubungi Kami",
     "subtitle": "Halaman ini sedang dalam pengembangan.",
@@ -420,6 +542,8 @@
   },
   "admin": {
     "products": "Produk",
+    "distributor": "Distributor",
+    "content": "Konten",
     "qrPreview": "Pratinjau QR",
     "logs": "Log",
     "analytics": "Analitik",
@@ -627,6 +751,8 @@
       "found": "Ditemukan",
       "of": "dari",
       "product": "produk",
+      "refresh": "Muat Ulang",
+      "refreshing": "Memuat ulang...",
       "form": {
         "basicInformation": "Informasi Dasar",
         "productName": "Nama Produk",
@@ -673,6 +799,48 @@
         "saveFailed": "Gagal menyimpan produk",
         "saveFailedDescription": "Silakan periksa input Anda dan coba lagi"
       }
+    },
+    "distributorsDetail": {
+      "title": "Distributor",
+      "addDistributor": "Tambah Distributor",
+      "distributorName": "Nama Distributor",
+      "storeName": "Nama Toko",
+      "address": "Alamat Lengkap",
+      "city": "Kota",
+      "phone": "Nomor Telepon",
+      "mapLink": "Link Google Maps",
+      "status": "Status",
+      "statusActive": "Aktif",
+      "statusInactive": "Nonaktif",
+      "actions": "Tindakan",
+      "edit": "Edit",
+      "delete": "Hapus",
+      "noDistributors": "Belum ada distributor.",
+      "deleteConfirm": "Hapus distributor ini?",
+      "saving": "Menyimpan…",
+      "saveFailed": "Gagal menyimpan",
+      "deleteFailed": "Gagal menghapus"
+    },
+    "contentDetail": {
+      "title": "Konten (Bilingual)",
+      "addEntry": "Tambah konten",
+      "pageName": "Halaman",
+      "sectionName": "Bagian",
+      "titleId": "Judul (ID)",
+      "titleEn": "Judul (EN)",
+      "descriptionId": "Deskripsi (ID)",
+      "descriptionEn": "Deskripsi (EN)",
+      "autoTranslate": "Auto-translate saat simpan",
+      "regenerateTranslation": "Regenerasi terjemahan",
+      "autoGenerated": "Auto-generated",
+      "manuallyEdited": "Diedit manual",
+      "save": "Simpan",
+      "saving": "Menyimpan…",
+      "saveFailed": "Gagal menyimpan",
+      "delete": "Hapus",
+      "deleteConfirm": "Hapus entri konten ini?",
+      "noEntries": "Belum ada entri konten.",
+      "translationUnavailable": "Auto-translate dinonaktifkan. Isi Judul (ID) dan Judul (EN) secara manual."
     },
     "products": "Produk",
     "qrPreviewDetail": {

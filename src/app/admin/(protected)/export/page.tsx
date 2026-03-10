@@ -2,16 +2,17 @@
 
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 
 export default function ExportPage() {
-  const t = useTranslations('admin.export');
-  const tCommon = useTranslations('common');
+  const t = useTranslations("admin.export");
+  const tCommon = useTranslations("common");
 
   async function handleExport() {
     try {
       const res = await fetch("/api/export/excel");
       if (!res.ok) {
-        throw new Error(t('exportFailed'));
+        throw new Error(t("exportFailed"));
       }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -23,34 +24,33 @@ export default function ExportPage() {
       link.remove();
       URL.revokeObjectURL(url);
 
-      toast.success(t('exportSuccessful'), {
-        description: t('excelDownloaded'),
+      toast.success(t("exportSuccessful"), {
+        description: t("excelDownloaded"),
         duration: 3000,
       });
-    } catch (error: any) {
-      toast.error(t('exportFailed'), {
-        description: error.message || tCommon('tryAgain'),
+    } catch (error: unknown) {
+      toast.error(t("exportFailed"), {
+        description: error instanceof Error ? error.message : tCommon("tryAgain"),
         duration: 4000,
       });
     }
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-xs uppercase tracking-[0.5em] text-white/60">{t('data')}</p>
-        <h1 className="text-2xl font-semibold text-white">{t('title')}</h1>
-        <p className="text-sm text-white/50">
-          {t('description')}
-        </p>
+    <AdminPageLayout
+      eyebrow={t("data")}
+      title={t("title")}
+      description={t("description")}
+    >
+      <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 sm:p-8 max-w-lg">
+        <button
+          onClick={handleExport}
+          className="rounded-xl border border-[#FFD700]/40 bg-[#FFD700]/10 px-6 py-3 text-sm font-semibold text-[#FFD700] transition hover:bg-[#FFD700]/20"
+        >
+          {t("exportToExcel")}
+        </button>
       </div>
-      <button
-        onClick={handleExport}
-        className="rounded-full bg-gradient-to-r from-[#FFD700] to-[#C0C0C0] px-6 py-3 text-black font-semibold"
-      >
-        {t('exportToExcel')}
-      </button>
-    </div>
+    </AdminPageLayout>
   );
 }
 

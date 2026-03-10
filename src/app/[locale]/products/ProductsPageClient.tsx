@@ -1,6 +1,5 @@
 "use client";
 
-
 "use client";
 
 import Navbar from "@/components/layout/Navbar";
@@ -18,6 +17,9 @@ import ProductModal, { type Product } from "@/components/ui/ProductModal";
 import ProductCard, { type ProductWithPricing } from "@/components/ui/ProductCard";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
+import { usePageSections } from "@/hooks/usePageSections";
+import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
+import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import Image from "next/image";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -276,6 +278,13 @@ export default function ProductsPageClient() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
   const [isMounted, setIsMounted] = useState(false);
+  const {
+    sections: pageSections,
+    loading: sectionsLoading,
+    refetch: refetchPageSections,
+  } = usePageSections("products");
+  const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
+  const heroMediaUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/gold-stone.mp4");
 
   // Ensure products hero video autoplays reliably on all devices
   useReliableVideoAutoplay(videoRef);
@@ -1080,63 +1089,61 @@ export default function ProductsPageClient() {
           WebkitTransform: "translateZ(0)",
         }}
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-luxury-black via-luxury-black/95 to-luxury-black z-0" />
+        <div className="absolute inset-0 bg-luxury-black z-0" />
+        <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
 
-        <video
-          ref={videoRef}
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          className={`absolute inset-0 w-screen h-screen object-cover transition-opacity duration-1000 z-10 pointer-events-none select-none ${
-            isVideoLoaded ? "opacity-100" : "opacity-0"
-          }`}
-          style={{
-            objectFit: "cover",
-            objectPosition: "center center",
-            width: "100vw",
-            height: "100vh",
-            transform: "translateZ(0)",
-            WebkitTransform: "translateZ(0)",
-            willChange: "opacity, transform",
-            backfaceVisibility: "hidden",
-            WebkitBackfaceVisibility: "hidden",
-            filter: "none",
-            WebkitFilter: "none",
-            pointerEvents: "none",
-            outline: "none",
-            WebkitTapHighlightColor: "transparent",
-            WebkitTouchCallout: "none",
-            userSelect: "none",
-          }}
-          disablePictureInPicture
-          disableRemotePlayback
-          onContextMenu={(e) => e.preventDefault()}
-          onCanPlay={() => setIsVideoLoaded(true)}
-          onLoadedData={() => setIsVideoLoaded(true)}
-          onError={() => {
-            setIsVideoLoaded(false);
-            console.warn("[ProductsPage] Video error occurred");
-          }}
-          onPlay={(e) => {
-            const video = e.currentTarget;
-            if (video.paused) {
-              video.play().catch(() => {});
-            }
-          }}
-        >
-          <source src={getR2UrlClient("/videos/hero/gold-stone.mp4")} type="video/mp4" />
-        </video>
-
-        {/* Optimized Vignette Layer - Stable, optimal, and consistent */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80 z-20" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.5)_60%,rgba(0,0,0,0.85)_100%)] z-20" />
-        <div className="absolute inset-x-0 top-0 h-32 md:h-40 lg:h-48 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none z-20" />
-        <div className="absolute inset-x-0 bottom-0 h-48 md:h-56 lg:h-64 bg-gradient-to-t from-black/90 via-black/60 to-transparent pointer-events-none z-20" />
-        <div className="absolute inset-y-0 left-0 w-32 md:w-40 lg:w-48 bg-gradient-to-r from-black/70 via-black/30 to-transparent pointer-events-none z-20" />
-        <div className="absolute inset-y-0 right-0 w-32 md:w-40 lg:w-48 bg-gradient-to-l from-black/70 via-black/30 to-transparent pointer-events-none z-20" />
-
+        {sectionsLoading ? (
+          <div className="absolute inset-0 z-10 bg-luxury-black" aria-hidden />
+        ) : heroMediaType === "VIDEO" ? (
+          <VideoLoadGuard
+            ref={videoRef}
+            url={heroMediaUrl}
+            version={pageSections.hero?.version}
+            containerClassName="absolute inset-0 w-screen h-screen z-10"
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+            style={{
+              objectFit: "cover",
+              objectPosition: "center center",
+              width: "100%",
+              height: "100%",
+              transform: "translateZ(0)",
+              WebkitTransform: "translateZ(0)",
+              pointerEvents: "none",
+              outline: "none",
+              WebkitTapHighlightColor: "transparent",
+              WebkitTouchCallout: "none",
+              userSelect: "none",
+            }}
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+            disablePictureInPicture
+            disableRemotePlayback
+            onContextMenu={(e) => e.preventDefault()}
+            onPlay={(e) => {
+              const video = e.currentTarget;
+              if (video.paused) video.play().catch(() => {});
+            }}
+          />
+        ) : (
+          <ImageLoadGuard
+            url={heroMediaUrl}
+            version={pageSections.hero?.version}
+            containerClassName="absolute inset-0 w-screen h-screen z-10"
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+            style={{
+              objectFit: "cover",
+              objectPosition: "center center",
+              width: "100%",
+              height: "100%",
+              pointerEvents: "none",
+            }}
+            alt=""
+            priority
+          />
+        )}
         {/* Fade to Black Overlay - Controlled by ScrollTrigger */}
         <div
           ref={fadeOverlayRef}
@@ -1146,6 +1153,15 @@ export default function ProductsPageClient() {
       </div>
 
       <Navbar />
+
+      {/* Hero edit: same pattern as Home (portal + delay, same Replace video pop-up) */}
+      <HeroEditPortal
+        page="products"
+        section="hero"
+        type="video"
+        onUploadDone={refetchPageSections}
+        editLabel="Edit video"
+      />
 
       {/* ENHANCED: Hero Section - Full Screen, matching What We Do exactly */}
       <section
@@ -1164,12 +1180,12 @@ export default function ProductsPageClient() {
             className="space-y-6 sm:space-y-8 max-w-4xl"
           >
             <motion.h1
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-light leading-[1.1] tracking-tight text-white"
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-semibold md:font-bold leading-[1.1] tracking-tight text-white drop-shadow-sm"
               data-hero
             >
               {t("hero.title")}
               <br />
-              <span className="font-sans font-normal">{t("hero.titleBold")}</span>
+              <span className="font-sans font-semibold md:font-bold">{t("hero.titleBold")}</span>
             </motion.h1>
             <motion.p
               data-hero
@@ -1181,17 +1197,15 @@ export default function ProductsPageClient() {
           </motion.div>
         </div>
 
-        {/* Scroll Indicator - Minimalist with GSAP Fluid Scroll Animation */}
+        {/* Scroll indicator – same as Distributor */}
         <div
           ref={scrollIndicatorRef}
           className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-3 pointer-events-none"
         >
-          {/* Minimalist Mouse Icon */}
           <div
             data-mouse-icon
             className="relative w-5 h-8 border border-white/50 rounded-full flex items-start justify-center pt-2.5"
           >
-            {/* Scroll wheel indicator - animated */}
             <div data-scroll-wheel className="w-1 h-1.5 bg-white/70 rounded-full" />
           </div>
         </div>
@@ -1784,10 +1798,6 @@ export default function ProductsPageClient() {
               ))}
             </motion.div>
           </div>
-
-          {/* Gradient Fade Edges */}
-          <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-black to-transparent pointer-events-none z-10" />
-          <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-black to-transparent pointer-events-none z-10" />
         </div>
       </section>
 
@@ -1806,10 +1816,6 @@ export default function ProductsPageClient() {
           backgroundAttachment: "fixed",
         }}
       >
-        {/* Overlay for better text readability */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/70 z-0" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_20%,rgba(0,0,0,0.5)_80%)] z-0" />
-
         {/* Reading Text Container - Scrolls normally */}
         <div
           ref={readingTextRef}

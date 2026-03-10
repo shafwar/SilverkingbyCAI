@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { createCanvas, loadImage } from "canvas";
 import { PDFDocument } from "pdf-lib";
 import { loadSerticardTemplates } from "@/lib/load-serticard-templates";
@@ -15,12 +16,10 @@ import { getSerticardAdjustment, type SerticardAdjustmentData } from "@/lib/sert
  *
  * Body:
  * {
- *   "product": {
- *     "id": number,
- *     "name": string,
- *     "serialCode": string, // for page 2 this is uniqCode
- *     "weight": number
- *   }
+ *   "product": { "id", "name", "serialCode", "weight", "isGram?", "rootKey?" },
+ *   "templateVariant": string,
+ *   "useCustomTemplate": boolean,
+ *   "includeRootKey": boolean  // if false, PDF output hanya judul + serial (no root key)
  * }
  */
 export async function POST(request: NextRequest) {
@@ -75,11 +74,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Resolve rootKey: when includeRootKey is false, output PDF hanya judul + id (no root key), like previous system
+    const includeRootKey = body?.includeRootKey !== false;
+    let rootKeyValue: string | null =
+      product.rootKey != null && String(product.rootKey).trim() !== ""
+        ? String(product.rootKey).trim()
+        : null;
+    if (includeRootKey && !rootKeyValue && isGram) {
+      const gramItem = await prisma.gramProductItem.findFirst({
+        where: { uniqCode: productSerialCode },
+        select: { rootKey: true },
+      });
+      if (gramItem?.rootKey?.trim()) rootKeyValue = gramItem.rootKey.trim();
+    }
+
     console.log("[QR Single PDF] Processing:", {
       productName,
       productSerialCode,
       isGram,
       templateVariant,
+      hasRootKey: !!rootKeyValue,
     });
 
     // --- Load Serticard templates (custom or variant) ---
@@ -171,10 +185,26 @@ export async function POST(request: NextRequest) {
     frontCtx.font = serialFont;
     frontCtx.fillText(displaySerialCode, frontTemplateImage.width / 2, serialY);
 
+    // Root key below serial: smaller font, proportional (optional)
+    const productRootKey =
+      rootKeyValue != null && rootKeyValue.length > 0 ? rootKeyValue.toUpperCase() : null;
+    if (productRootKey) {
+      const rootKeyFontSize = Math.max(10, Math.floor(serialFontSize * 0.65));
+      const rootKeyGap = 8;
+      const rootKeyY = serialY + serialFontSize + rootKeyGap;
+      const rootKeyFont = `${rootKeyFontSize}px ${fontConfig.fontFamily}, monospace`;
+      frontCtx.font = rootKeyFont;
+      frontCtx.fillStyle = textColor;
+      frontCtx.textAlign = "center";
+      frontCtx.textBaseline = "top";
+      frontCtx.fillText(productRootKey, frontTemplateImage.width / 2, rootKeyY);
+    }
+
     console.log("[QR Single PDF] Serial code rendered:", {
       text: displaySerialCode,
       fontSize: serialFontSize,
       font: serialFont,
+      hasRootKey: !!productRootKey,
     });
 
     const frontBuffer = frontCanvas.toBuffer("image/png");

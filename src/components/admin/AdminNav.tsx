@@ -21,6 +21,8 @@ export function AdminNav({ email }: { email?: string | null }) {
       { label: t("products"), href: "/admin/products" },
       // Page 2 – gram-based inventory
       { label: `${t("products")} 2`, href: "/admin/products/page2" },
+      { label: t("distributor"), href: "/admin/distributors" },
+      { label: t("content"), href: "/admin/content" },
       { label: t("qrPreview"), href: "/admin/qr-preview" },
       // Page 2 – gram-based QR preview
       { label: `${t("qrPreview")} 2`, href: "/admin/qr-preview/page2" },

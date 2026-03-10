@@ -8,6 +8,10 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { motion, useInView, AnimatePresence, type Variants } from "framer-motion";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
+import { usePageSections, getCacheBustedMediaUrl } from "@/hooks/usePageSections";
+import { EditableMedia } from "@/components/editable-media";
+import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
+import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import {
   Sparkles,
   FlaskConical,
@@ -122,7 +126,7 @@ const FeatureCard = ({
   );
 };
 
-// Narrative Section with Dynamic Images & Mobile Swipe
+// Narrative Section with Dynamic Images & Mobile Swipe (CMS: sectionKeys + refetchSections for edit overlay)
 const NarrativeImageSection = forwardRef<
   HTMLDivElement,
   {
@@ -130,156 +134,217 @@ const NarrativeImageSection = forwardRef<
     cards: ReadonlyArray<{
       readonly label: string;
       readonly caption: string;
+      readonly mediaType?: string;
+      readonly version?: number;
       readonly images: readonly string[];
     }>;
     title?: string;
     description?: string;
+    sectionKeys?: readonly [string, string, string];
+    refetchSections?: () => void;
+    /** When true, show placeholder for card media until section data is loaded (prevents flash of wrong asset) */
+    sectionsLoading?: boolean;
+    /** When true, opening edit on a card auto-opens the file picker (craft cards on What We Do) */
+    autoOpenFilePicker?: boolean;
   }
->(({ columns, cards, title, description }, ref) => {
-  // Track which images have finished loading so we can fade them in smoothly
-  const [imageLoaded, setImageLoaded] = useState<{ [key: string]: boolean }>({});
+>(
+  (
+    {
+      columns,
+      cards,
+      title,
+      description,
+      sectionKeys,
+      refetchSections,
+      sectionsLoading,
+      autoOpenFilePicker,
+    },
+    ref
+  ) => {
+    // Track which images have finished loading so we can fade them in smoothly
+    const [imageLoaded, setImageLoaded] = useState<{ [key: string]: boolean }>({});
 
-  // Detect mobile for quality optimization
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
+    // Detect mobile for quality optimization
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+      const checkMobile = () => {
+        setIsMobile(window.innerWidth < 768);
+      };
+      checkMobile();
+      window.addEventListener("resize", checkMobile);
+      return () => window.removeEventListener("resize", checkMobile);
+    }, []);
 
-  /**
-   * Image loading strategy
-   *
-   * We let Next/Image handle caching and decoding, and only use a very small
-   * bit of state (`imageLoaded`) to fade images in once they've finished
-   * loading. No aggressive preloading or timeouts – this avoids race
-   * conditions where images might be marked as failed even though they are
-   * still loading, which could cause blank cards.
-   *
-   * Caching is handled by:
-   * - Stable R2 URLs via `getR2UrlClient`
-   * - Next/Image's internal cache
-   * - `priority` + `fetchPriority="high"` for the 3 main cards
-   */
+    /**
+     * Image loading strategy
+     *
+     * We let Next/Image handle caching and decoding, and only use a very small
+     * bit of state (`imageLoaded`) to fade images in once they've finished
+     * loading. No aggressive preloading or timeouts – this avoids race
+     * conditions where images might be marked as failed even though they are
+     * still loading, which could cause blank cards.
+     *
+     * Caching is handled by:
+     * - Stable R2 URLs via `getR2UrlClient`
+     * - Next/Image's internal cache
+     * - `priority` + `fetchPriority="high"` for the 3 main cards
+     */
 
-  return (
-    <section
-      ref={ref}
-      className="relative border-t border-white/5 bg-[#000] px-4 sm:px-6 md:px-8 lg:px-12 py-16 sm:py-20 md:py-24 lg:py-32 overflow-visible isolate"
-    >
-      <div className="relative z-10 mx-auto max-w-[1320px]">
-        {/* Text section at top - Pixelmatters style */}
-        <div className="mb-12 md:mb-16 lg:mb-20">
-          <div className="space-y-4 md:space-y-5 max-w-3xl">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight text-white">
-              {title || columns[0]?.title || "Craft from raw bullion"}
-            </h2>
-            <p className="text-base sm:text-lg md:text-xl leading-relaxed text-neutral-300 max-w-2xl">
-              {description ||
-                columns[0]?.description ||
-                "We transform responsibly sourced gold, silver, and palladium into investment-grade bars using tightly controlled refining and casting lines."}
-            </p>
+    return (
+      <section
+        ref={ref}
+        className="relative border-t border-white/5 bg-[#000] px-4 sm:px-6 md:px-8 lg:px-12 py-16 sm:py-20 md:py-24 lg:py-32 overflow-visible isolate"
+      >
+        <div className="relative z-10 mx-auto max-w-[1320px]">
+          {/* Text section at top - Pixelmatters style */}
+          <div className="mb-12 md:mb-16 lg:mb-20">
+            <div className="space-y-4 md:space-y-5 max-w-3xl">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight text-white">
+                {title || columns[0]?.title || "Craft from raw bullion"}
+              </h2>
+              <p className="text-base sm:text-lg md:text-xl leading-relaxed text-neutral-300 max-w-2xl">
+                {description ||
+                  columns[0]?.description ||
+                  "We transform responsibly sourced gold, silver, and palladium into investment-grade bars using tightly controlled refining and casting lines."}
+              </p>
+            </div>
           </div>
-        </div>
 
-        {/* Enhanced Cards - Pixelmatters style - aligned properly */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 lg:gap-8 pb-6 md:pb-0">
-          {cards.map((card, idx) => {
-            const currentImage = card.images[0];
-            const imageKey = `${idx}-0`;
-            const isImageLoaded = imageLoaded[imageKey];
+          {/* Enhanced Cards - Pixelmatters style - aligned properly */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 lg:gap-8 pb-6 md:pb-0">
+            {cards.map((card, idx) => {
+              const mediaUrl = getCacheBustedMediaUrl(card.images[0], card.version);
+              const isVideo = card.mediaType?.toUpperCase() === "VIDEO";
+              const imageKey = `${idx}-0`;
+              const isImageLoaded = imageLoaded[imageKey];
 
-            return (
-              <div
-                key={card.label}
-                className="relative w-full opacity-0 animate-fade-in"
-                style={{
-                  animationDelay: `${idx * 100}ms`,
-                  animationFillMode: "forwards",
-                }}
-              >
-                {/* Enhanced Card - Pixelmatters style */}
+              return (
                 <div
-                  className="relative w-full overflow-hidden rounded-2xl bg-black/40 border border-white/5 shadow-lg md:shadow-xl transition-all duration-300 flex flex-col"
+                  key={card.label}
+                  className="relative w-full opacity-0 animate-fade-in"
                   style={{
-                    aspectRatio: "4/3",
-                    minHeight: "280px",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "scale(1.02)";
-                    e.currentTarget.style.boxShadow = "0 25px 50px -12px rgba(0, 0, 0, 0.5)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "scale(1)";
-                    e.currentTarget.style.boxShadow = "";
+                    animationDelay: `${idx * 100}ms`,
+                    animationFillMode: "forwards",
                   }}
                 >
-                  {/* Image container - large image at top */}
-                  <div className="relative w-full flex-[0_0_65%] overflow-hidden bg-black/40">
-                    {/* Loading placeholder */}
-                    {!isImageLoaded && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-black/60 to-black/40 z-10">
-                        <div className="h-6 w-6 sm:h-8 sm:w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
-                      </div>
-                    )}
+                  {/* Enhanced Card - Pixelmatters style */}
+                  <div
+                    className="relative w-full overflow-hidden rounded-2xl bg-black/40 border border-white/5 shadow-lg md:shadow-xl transition-all duration-300 flex flex-col"
+                    style={{
+                      aspectRatio: "4/3",
+                      minHeight: "280px",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "scale(1.02)";
+                      e.currentTarget.style.boxShadow = "0 25px 50px -12px rgba(0, 0, 0, 0.5)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "scale(1)";
+                      e.currentTarget.style.boxShadow = "";
+                    }}
+                  >
+                    {/* Media container - image or video at top */}
+                    <div className="relative w-full flex-[0_0_65%] overflow-hidden bg-black/40">
+                      {/* Loading placeholder (images only); or black when sections loading to prevent flash */}
+                      {(sectionsLoading || (!isVideo && !isImageLoaded)) && (
+                        <div className="absolute inset-0 z-10 flex items-center justify-center bg-luxury-black">
+                          {!sectionsLoading && (
+                            <div className="h-6 w-6 sm:h-8 sm:w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+                          )}
+                        </div>
+                      )}
 
-                    {/* Image */}
-                    <div
-                      className={`absolute inset-0 transition-opacity duration-300 ease-out ${
-                        isImageLoaded ? "opacity-100" : "opacity-0"
-                      }`}
-                      style={{
-                        willChange: isImageLoaded ? "auto" : "opacity",
-                      }}
-                    >
-                      <Image
-                        src={currentImage}
-                        alt={card.label}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 440px"
-                        priority
-                        loading="eager"
-                        quality={isMobile ? 75 : 92}
-                        fetchPriority="high"
-                        placeholder="blur"
-                        blurDataURL="data:image/svg+xml,%3Csvg width='16' height='12' xmlns='http://www.w3.org/2000/svg'%3E%3ClinearGradient id='g'%3E%3Cstop stop-color='%23090'/%3E%3Cstop offset='1' stop-color='%23000'/%3E%3C/linearGradient%3E%3Crect width='16' height='12' fill='url(%23g)'/%3E%3C/svg%3E"
-                        onLoadingComplete={() => {
-                          setImageLoaded((prev) => ({
-                            ...prev,
-                            [imageKey]: true,
-                          }));
+                      {/* Image or video (flexible replace); placeholder when sections still loading to prevent flash */}
+                      <div
+                        className={`absolute inset-0 transition-opacity duration-300 ease-out ${
+                          sectionsLoading
+                            ? "opacity-0"
+                            : isVideo || isImageLoaded
+                              ? "opacity-100"
+                              : "opacity-0"
+                        }`}
+                        style={{
+                          willChange: sectionsLoading
+                            ? "auto"
+                            : isVideo || isImageLoaded
+                              ? "auto"
+                              : "opacity",
                         }}
-                      />
+                      >
+                        {sectionsLoading ? (
+                          <div className="absolute inset-0 bg-luxury-black" aria-hidden />
+                        ) : isVideo ? (
+                          <VideoLoadGuard
+                            url={card.images[0]}
+                            version={card.version}
+                            containerClassName="absolute inset-0 w-full h-full"
+                            className="absolute inset-0 w-full h-full object-cover"
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                          />
+                        ) : (
+                          <Image
+                            src={mediaUrl}
+                            alt={card.label}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 440px"
+                            priority
+                            loading="eager"
+                            quality={isMobile ? 75 : 92}
+                            fetchPriority="high"
+                            placeholder="blur"
+                            blurDataURL="data:image/svg+xml,%3Csvg width='16' height='12' xmlns='http://www.w3.org/2000/svg'%3E%3ClinearGradient id='g'%3E%3Cstop stop-color='%23090'/%3E%3Cstop offset='1' stop-color='%23000'/%3E%3C/linearGradient%3E%3Crect width='16' height='12' fill='url(%23g)'/%3E%3C/svg%3E"
+                            onLoadingComplete={() => {
+                              setImageLoaded((prev) => ({
+                                ...prev,
+                                [imageKey]: true,
+                              }));
+                            }}
+                          />
+                        )}
+                      </div>
+                      {sectionKeys?.[idx] && refetchSections && (
+                        <div className="absolute top-2 right-2 z-20 pointer-events-auto rounded-xl border border-white/15 bg-black/60 px-2 py-1.5 shadow-lg backdrop-blur-sm">
+                          <EditableMedia
+                            page="what-we-do"
+                            section={sectionKeys[idx]}
+                            type="image"
+                            overlayOnly
+                            onUploadDone={refetchSections}
+                            editLabel="Edit foto"
+                            autoOpenFilePicker={autoOpenFilePicker}
+                          />
+                        </div>
+                      )}
                     </div>
-                  </div>
 
-                  {/* Content section - Logo and text below image */}
-                  <div className="relative flex-[0_0_35%] bg-black/60 p-4 md:p-5 flex flex-col justify-start min-h-0">
-                    {/* Logo/Client name - small text */}
-                    <div className="mb-2 flex-shrink-0">
-                      <p className="text-[10px] md:text-xs font-medium text-white/60 uppercase tracking-wider">
-                        {card.label}
+                    {/* Content section - Logo and text below image */}
+                    <div className="relative flex-[0_0_35%] bg-black/60 p-4 md:p-5 flex flex-col justify-start min-h-0">
+                      {/* Logo/Client name - small text */}
+                      <div className="mb-2 flex-shrink-0">
+                        <p className="text-[10px] md:text-xs font-medium text-white/60 uppercase tracking-wider">
+                          {card.label}
+                        </p>
+                      </div>
+
+                      {/* Description text - small and clean */}
+                      <p className="text-xs md:text-sm leading-relaxed text-neutral-300 line-clamp-2">
+                        {card.caption}
                       </p>
                     </div>
-
-                    {/* Description text - small and clean */}
-                    <p className="text-xs md:text-sm leading-relaxed text-neutral-300 line-clamp-2">
-                      {card.caption}
-                    </p>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      </div>
-    </section>
-  );
-});
+      </section>
+    );
+  }
+);
 
 NarrativeImageSection.displayName = "NarrativeImageSection";
 
@@ -295,9 +360,82 @@ export default function WhatWeDoPageClient() {
   const gradientOverlay = useRef<HTMLDivElement | null>(null);
   const sectionsRef = useRef<(HTMLDivElement | null)[]>([]);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const footerVideoRef = useRef<HTMLVideoElement | null>(null);
+  const {
+    sections: pageSections,
+    loading: sectionsLoading,
+    refetch: refetchPageSections,
+  } = usePageSections("what-we-do");
+  const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
+  const heroMediaUrl =
+    pageSections.hero?.url ?? getR2UrlClient("/videos/hero/metal crafting hands.mp4");
+  const footerMediaType = pageSections.section_footer_video?.mediaType?.toUpperCase() ?? "VIDEO";
+  const footerMediaUrl =
+    pageSections.section_footer_video?.url ??
+    getR2UrlClient("/videos/hero/molten metal slow motion.mp4");
+
+  // Preload first craft card image when it's an image (flexible replace)
+  const firstCraftIsImage =
+    (pageSections.craft_card_1?.mediaType?.toUpperCase() ?? "IMAGE") === "IMAGE";
+  const firstCraftMediaUrl =
+    pageSections.craft_card_1?.url ??
+    getR2UrlClient("/images/pexels-3d-render-1058120333-33539240.jpg");
+  useEffect(() => {
+    if (!firstCraftIsImage || !firstCraftMediaUrl) return;
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "image";
+    link.href = firstCraftMediaUrl;
+    document.head.appendChild(link);
+    return () => link.remove();
+  }, [firstCraftIsImage, firstCraftMediaUrl]);
 
   // Ensure what-we-do hero video autoplays reliably on all devices
   useReliableVideoAutoplay(videoRef);
+
+  // Footer video autoplay (same pattern as hero)
+  useEffect(() => {
+    const video = footerVideoRef.current;
+    if (!video || footerMediaType !== "VIDEO") return;
+    const forcePlay = async () => {
+      try {
+        if (video.paused && !video.ended) await video.play();
+      } catch {
+        setTimeout(() => video.play().catch(() => {}), 100);
+      }
+    };
+    const onCanPlay = () => forcePlay();
+    const onPause = () => {
+      if (!video.ended)
+        setTimeout(() => {
+          if (video.paused && !video.ended) forcePlay();
+        }, 50);
+    };
+    const onVisibility = () => {
+      if (!document.hidden && video.paused && !video.ended) forcePlay();
+    };
+    const onEnded = () => {
+      video.currentTime = 0;
+      forcePlay();
+    };
+    forcePlay();
+    video.addEventListener("canplay", onCanPlay);
+    video.addEventListener("loadeddata", onCanPlay);
+    video.addEventListener("pause", onPause);
+    video.addEventListener("ended", onEnded);
+    document.addEventListener("visibilitychange", onVisibility);
+    const t = setInterval(() => {
+      if (video.paused && !video.ended && !document.hidden) forcePlay();
+    }, 2000);
+    return () => {
+      video.removeEventListener("canplay", onCanPlay);
+      video.removeEventListener("loadeddata", onCanPlay);
+      video.removeEventListener("pause", onPause);
+      video.removeEventListener("ended", onEnded);
+      document.removeEventListener("visibilitychange", onVisibility);
+      clearInterval(t);
+    };
+  }, [footerMediaUrl, footerMediaType]);
 
   const featureItems = useMemo(
     () => [
@@ -344,35 +482,57 @@ export default function WhatWeDoPageClient() {
     },
   ] as const;
 
-  const narrativeCards = [
-    {
-      label: t("card1.label"),
-      caption: t("card1.caption"),
-      images: [
-        getR2UrlClient("/images/pexels-3d-render-1058120333-33539240.jpg"),
-        getR2UrlClient("/images/pexels-sejio402-29336321.jpg"),
-        getR2UrlClient("/images/silverking-gold.jpeg"),
-      ],
-    },
-    {
-      label: t("card2.label"),
-      caption: t("card2.caption"),
-      images: [
-        getR2UrlClient("/images/pexels-michael-steinberg-95604-386318.jpg"),
-        getR2UrlClient("/images/pexels-sejio402-29336326.jpg"),
-        getR2UrlClient("/images/silverking-gold.jpeg"),
-      ],
-    },
-    {
-      label: t("card3.label"),
-      caption: t("card3.caption"),
-      images: [
-        getR2UrlClient("/images/pexels-sejio402-29336327.jpg"),
-        getR2UrlClient("/images/pexels-sejio402-29336321.jpg"),
-        getR2UrlClient("/images/silverking-gold.jpeg"),
-      ],
-    },
-  ] as const;
+  const narrativeCards = useMemo(
+    () => [
+      {
+        label: t("card1.label"),
+        caption: t("card1.caption"),
+        mediaType: pageSections.craft_card_1?.mediaType ?? "IMAGE",
+        version: pageSections.craft_card_1?.version,
+        images: [
+          pageSections.craft_card_1?.url ??
+            getR2UrlClient("/images/pexels-3d-render-1058120333-33539240.jpg"),
+          getR2UrlClient("/images/pexels-sejio402-29336321.jpg"),
+          getR2UrlClient("/images/silverking-gold.jpeg"),
+        ],
+      },
+      {
+        label: t("card2.label"),
+        caption: t("card2.caption"),
+        mediaType: pageSections.craft_card_2?.mediaType ?? "IMAGE",
+        version: pageSections.craft_card_2?.version,
+        images: [
+          pageSections.craft_card_2?.url ??
+            getR2UrlClient("/images/pexels-michael-steinberg-95604-386318.jpg"),
+          getR2UrlClient("/images/pexels-sejio402-29336326.jpg"),
+          getR2UrlClient("/images/silverking-gold.jpeg"),
+        ],
+      },
+      {
+        label: t("card3.label"),
+        caption: t("card3.caption"),
+        mediaType: pageSections.craft_card_3?.mediaType ?? "IMAGE",
+        version: pageSections.craft_card_3?.version,
+        images: [
+          pageSections.craft_card_3?.url ?? getR2UrlClient("/images/pexels-sejio402-29336327.jpg"),
+          getR2UrlClient("/images/pexels-sejio402-29336321.jpg"),
+          getR2UrlClient("/images/silverking-gold.jpeg"),
+        ],
+      },
+    ],
+    [
+      t,
+      pageSections.craft_card_1?.url,
+      pageSections.craft_card_1?.mediaType,
+      pageSections.craft_card_1?.version,
+      pageSections.craft_card_2?.url,
+      pageSections.craft_card_2?.mediaType,
+      pageSections.craft_card_2?.version,
+      pageSections.craft_card_3?.url,
+      pageSections.craft_card_3?.mediaType,
+      pageSections.craft_card_3?.version,
+    ]
+  );
 
   useGSAP(
     () => {
@@ -441,54 +601,73 @@ export default function WhatWeDoPageClient() {
       {/* Shared Navbar */}
       <Navbar />
 
-      {/* Hero Section with Full Screen Video Background */}
+      {/* Hero Section – same size & layout as Distributor (fixed full viewport, gradient, scroll button) */}
       <section
         ref={(element) => {
           sectionsRef.current[0] = element as HTMLDivElement | null;
         }}
         className="relative flex min-h-screen items-center justify-start overflow-hidden"
       >
-        {/* Full Screen Video Background - No Zoom */}
+        {/* Full Screen Hero Background – no media until section data loaded (prevents any flash of wrong asset) */}
         <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-luxury-black via-luxury-black/95 to-luxury-black z-0" />
+          <div className="absolute inset-0 bg-luxury-black z-0" />
+          <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
 
-          <video
-            ref={videoRef}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            className="absolute inset-0 w-screen h-screen object-cover transition-opacity duration-1000 z-10 pointer-events-none select-none"
-            style={{
-              objectFit: "cover",
-              objectPosition: "center center",
-              width: "100vw",
-              height: "100vh",
-              pointerEvents: "none",
-              outline: "none",
-              WebkitTapHighlightColor: "transparent",
-              WebkitTouchCallout: "none",
-              userSelect: "none",
-              transform: "none",
-            }}
-            disablePictureInPicture
-            disableRemotePlayback
-          >
-            <source
-              src={getR2UrlClient("/videos/hero/metal crafting hands.mp4")}
-              type="video/mp4"
+          {sectionsLoading ? (
+            <div className="absolute inset-0 z-10 bg-luxury-black" aria-hidden />
+          ) : heroMediaType === "VIDEO" ? (
+            <VideoLoadGuard
+              ref={videoRef}
+              url={heroMediaUrl}
+              version={pageSections.hero?.version}
+              containerClassName="absolute inset-0 w-screen h-screen z-10"
+              className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+              style={{
+                objectFit: "cover",
+                objectPosition: "center center",
+                width: "100%",
+                height: "100%",
+                pointerEvents: "none",
+                outline: "none",
+                WebkitTapHighlightColor: "transparent",
+                WebkitTouchCallout: "none",
+                userSelect: "none",
+              }}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="auto"
+              disablePictureInPicture
+              disableRemotePlayback
             />
-          </video>
-
-          {/* Optimized Vignette Layer - Stable, optimal, and consistent */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80 z-20" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.5)_60%,rgba(0,0,0,0.85)_100%)] z-20" />
-          <div className="absolute inset-x-0 top-0 h-32 md:h-40 lg:h-48 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none z-20" />
-          <div className="absolute inset-x-0 bottom-0 h-48 md:h-56 lg:h-64 bg-gradient-to-t from-black/90 via-black/60 to-transparent pointer-events-none z-20" />
-          <div className="absolute inset-y-0 left-0 w-32 md:w-40 lg:w-48 bg-gradient-to-r from-black/70 via-black/30 to-transparent pointer-events-none z-20" />
-          <div className="absolute inset-y-0 right-0 w-32 md:w-40 lg:w-48 bg-gradient-to-l from-black/70 via-black/30 to-transparent pointer-events-none z-20" />
+          ) : (
+            <ImageLoadGuard
+              url={heroMediaUrl}
+              version={pageSections.hero?.version}
+              containerClassName="absolute inset-0 w-screen h-screen z-10"
+              className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+              style={{
+                objectFit: "cover",
+                objectPosition: "center center",
+                width: "100%",
+                height: "100%",
+                pointerEvents: "none",
+              }}
+              alt=""
+              priority
+            />
+          )}
         </div>
+
+        {/* Hero edit: same pattern as Home (portal + delay, same Replace video pop-up) */}
+        <HeroEditPortal
+          page="what-we-do"
+          section="hero"
+          type="video"
+          onUploadDone={refetchPageSections}
+          editLabel="Edit video"
+        />
 
         {/* Hero Content - Full left alignment, flush to left edge */}
         <div className="relative z-20 w-full text-left pl-4 sm:pl-6 md:pl-8 lg:pl-12 xl:pl-16 2xl:pl-20 pr-4 sm:pr-6 md:pr-8 lg:pr-12">
@@ -500,12 +679,12 @@ export default function WhatWeDoPageClient() {
             className="space-y-6 sm:space-y-8 max-w-4xl"
           >
             <motion.h1
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-light leading-[1.1] tracking-tight text-white"
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-semibold md:font-bold leading-[1.1] tracking-tight text-white drop-shadow-sm"
               data-hero
             >
               {t("hero.title")}
               <br />
-              <span className="font-sans font-normal">{t("hero.titleBold")}</span>
+              <span className="font-sans font-semibold md:font-bold">{t("hero.titleBold")}</span>
             </motion.h1>
             <motion.p
               data-hero
@@ -515,9 +694,15 @@ export default function WhatWeDoPageClient() {
             </motion.p>
           </motion.div>
         </div>
+        {/* Scroll indicator – same as Distributor */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-3 pointer-events-none">
+          <div className="relative w-5 h-8 border border-white/50 rounded-full flex items-start justify-center pt-2.5">
+            <div className="w-1 h-1.5 bg-white/70 rounded-full" />
+          </div>
+        </div>
       </section>
 
-      {/* Narrative + Image Grid – Pixelmatters-style with dynamic images */}
+      {/* Narrative + Image Grid – no card media until section data loaded (prevents flash) */}
       <NarrativeImageSection
         ref={(element: HTMLDivElement | null) => {
           sectionsRef.current[1] = element;
@@ -526,6 +711,10 @@ export default function WhatWeDoPageClient() {
         cards={narrativeCards}
         title={t("title")}
         description={t("description")}
+        sectionKeys={["craft_card_1", "craft_card_2", "craft_card_3"]}
+        refetchSections={refetchPageSections}
+        sectionsLoading={sectionsLoading}
+        autoOpenFilePicker
       />
 
       {/* Impact Section – similar to Pixelmatters "The impact you can expect" - Mobile optimized */}
@@ -636,152 +825,64 @@ export default function WhatWeDoPageClient() {
         }}
         className="relative min-h-[50vh] sm:min-h-[60vh] md:min-h-[70vh] flex flex-col justify-between px-4 sm:px-6 md:px-8 lg:px-12 py-12 sm:py-16 md:py-20 lg:py-24 overflow-hidden isolate"
       >
-        {/* Video Background - properly contained */}
+        {/* Footer background – no media until section data loaded (prevents flash of wrong asset) */}
         <div className="absolute inset-0 z-0 overflow-hidden">
-          <video
-            ref={(video) => {
-              if (video) {
-                // Optimal video autoplay handling - ensure video never pauses or breaks
-                const forcePlay = async () => {
-                  try {
-                    if (video.paused && !video.ended) {
-                      await video.play();
-                    }
-                  } catch (error) {
-                    console.warn("[WhatWeDoPage] Video autoplay prevented, retrying:", error);
-                    // Retry after a short delay with exponential backoff
-                    setTimeout(() => {
-                      video.play().catch(() => {
-                        // Second retry after longer delay
-                        setTimeout(() => {
-                          video.play().catch(() => {
-                            console.warn(
-                              "[WhatWeDoPage] Video autoplay failed after multiple retries"
-                            );
-                          });
-                        }, 500);
-                      });
-                    }, 100);
-                  }
-                };
-
-                // Handle video ready states
-                const handleCanPlay = () => {
-                  forcePlay();
-                };
-
-                const handleLoadedData = () => {
-                  forcePlay();
-                };
-
-                // Handle video errors
-                const handleError = () => {
-                  console.warn("[WhatWeDoPage] Video error occurred");
-                };
-
-                // Resume video if it pauses (prevent breaks)
-                const handlePause = () => {
-                  if (!video.ended) {
-                    // Small delay to avoid infinite loop
-                    setTimeout(() => {
-                      if (video.paused && !video.ended) {
-                        forcePlay();
-                      }
-                    }, 50);
-                  }
-                };
-
-                // Handle visibility change - resume video when page becomes visible
-                const handleVisibilityChange = () => {
-                  if (!document.hidden && video.paused && !video.ended) {
-                    forcePlay();
-                  }
-                };
-
-                // Handle video end - restart immediately for seamless loop
-                const handleEnded = () => {
-                  video.currentTime = 0;
-                  forcePlay();
-                };
-
-                // Handle video waiting/buffering - resume when ready
-                const handleWaiting = () => {
-                  // Video is buffering, will resume automatically when ready
-                  // But we can also try to play if it's paused
-                  if (video.paused && !video.ended) {
-                    setTimeout(() => {
-                      forcePlay();
-                    }, 100);
-                  }
-                };
-
-                // Initial play attempt
-                forcePlay();
-
-                // Event listeners
-                video.addEventListener("canplay", handleCanPlay);
-                video.addEventListener("loadeddata", handleLoadedData);
-                video.addEventListener("error", handleError);
-                video.addEventListener("pause", handlePause);
-                video.addEventListener("ended", handleEnded);
-                video.addEventListener("waiting", handleWaiting);
-                document.addEventListener("visibilitychange", handleVisibilityChange);
-
-                // Force load video to ensure it starts loading immediately
-                video.load();
-
-                // Periodic check to ensure video is playing (fallback mechanism)
-                const playCheckInterval = setInterval(() => {
-                  if (video.paused && !video.ended && !document.hidden) {
-                    forcePlay();
-                  }
-                }, 2000); // Check every 2 seconds
-
-                // Cleanup stored on video element
-                (video as any).__cleanup = () => {
-                  video.removeEventListener("canplay", handleCanPlay);
-                  video.removeEventListener("loadeddata", handleLoadedData);
-                  video.removeEventListener("error", handleError);
-                  video.removeEventListener("pause", handlePause);
-                  video.removeEventListener("ended", handleEnded);
-                  video.removeEventListener("waiting", handleWaiting);
-                  document.removeEventListener("visibilitychange", handleVisibilityChange);
-                  clearInterval(playCheckInterval);
-                };
-              }
-            }}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            className="absolute inset-0 w-full h-full transition-opacity duration-1000 z-10"
-            style={{
-              // ENHANCED: Better proportional scaling for footer video - NO zoom
-              objectFit: "cover",
-              objectPosition: "center center",
-              width: "100%",
-              height: "100%",
-              transform: "scale(1)", // Explicitly set scale to 1 (no zoom)
-              transformOrigin: "center center",
-            }}
-            disablePictureInPicture
-            disableRemotePlayback
-            onContextMenu={(e) => e.preventDefault()}
-            onPlay={(e) => {
-              const video = e.currentTarget;
-              if (video.paused) {
-                video.play().catch(() => {});
-              }
-            }}
-          >
-            <source
-              src={getR2UrlClient("/videos/hero/molten metal slow motion.mp4")}
-              type="video/mp4"
+          {sectionsLoading ? (
+            <div className="absolute inset-0 z-10 bg-luxury-black" aria-hidden />
+          ) : footerMediaType === "VIDEO" ? (
+            <VideoLoadGuard
+              ref={footerVideoRef}
+              url={footerMediaUrl}
+              version={pageSections.section_footer_video?.version}
+              containerClassName="absolute inset-0 w-full h-full z-10"
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{
+                objectFit: "cover",
+                objectPosition: "center center",
+                width: "100%",
+                height: "100%",
+                transform: "scale(1)",
+                transformOrigin: "center center",
+              }}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="auto"
+              disablePictureInPicture
+              disableRemotePlayback
+              onContextMenu={(e) => e.preventDefault()}
+              onPlay={(e) => {
+                const v = e.currentTarget;
+                if (v.paused) v.play().catch(() => {});
+              }}
             />
-          </video>
-          {/* ENHANCED: Dark overlay for text readability - properly contained */}
-          <div className="absolute inset-0 bg-gradient-to-b from-luxury-black/85 via-luxury-black/75 to-luxury-black/85 z-10" />
+          ) : (
+            <ImageLoadGuard
+              url={footerMediaUrl}
+              version={pageSections.section_footer_video?.version}
+              containerClassName="absolute inset-0 w-full h-full z-10"
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{
+                objectFit: "cover",
+                objectPosition: "center center",
+                width: "100%",
+                height: "100%",
+              }}
+              alt=""
+            />
+          )}
+          <div className="absolute top-3 right-3 z-20 pointer-events-auto rounded-xl border border-white/15 bg-black/60 px-2 py-1.5 shadow-lg backdrop-blur-sm">
+            <EditableMedia
+              page="what-we-do"
+              section="section_footer_video"
+              type="video"
+              overlayOnly
+              onUploadDone={refetchPageSections}
+              editLabel="Edit video"
+              autoOpenFilePicker
+            />
+          </div>
         </div>
 
         {/* Main Content - Centered - Mobile optimized */}

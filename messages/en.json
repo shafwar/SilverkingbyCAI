@@ -3,6 +3,8 @@
     "whatWeDo": "What we do",
     "authenticity": "Authenticity",
     "products": "Products",
+    "merchandise": "Merchandise",
+    "distributor": "Distributor",
     "aboutUs": "About us",
     "getInTouch": "Get in touch"
   },
@@ -40,7 +42,7 @@
       "headline4": "value.",
       "headline5": "Pure",
       "headline6": "precision.",
-      "subtitle": "Expert manufacturing of <gold>gold, silver, and palladium</gold> products. <custom>Custom bar fabrication</custom>, uncompromising purity, and <qr>QR-verified authenticity</qr>—redefining trust in precious metals.",
+      "subtitle": "Expert manufacturing of <gold>gold, silver, and palladium</gold> products. <custom>Custom bar fabrication</custom>, uncompromising purity, and <qr>QR-verified authenticity</qr>, redefining trust in precious metals.",
       "features": {
         "chainOfCustody": {
           "label": "Chain-of-Custody",
@@ -295,6 +297,97 @@
       }
     }
   },
+  "merchandise": {
+    "title": "Merchandise",
+    "hero": {
+      "title": "Merchandise",
+      "subtitle": "Official Silver King by CAI apparel",
+      "subtitleProducts": "Polo, Knitware, T-Shirts & Caps.",
+      "tagline": "Premium quality, timeless style."
+    },
+    "sections": {
+      "polo": "Polo",
+      "tshirtCap": "T-Shirt & Cap",
+      "knitware": "Knitware"
+    },
+    "detail": {
+      "knitware": {
+        "tagline": "Clean look. Sharp fit. Serious presence.",
+        "description": "The half-zip at the neck adds a modern, versatile touch — wear it fully zipped for a neater look, or slightly open for a more relaxed vibe.",
+        "highlights": [
+          "Comfortable, breathable fabric",
+          "Slim cut that flatters the body",
+          "Clean & elegant look",
+          "Pairs easily with formal or semi-casual trousers"
+        ],
+        "colorsLabel": "Available Colors",
+        "colors": "Black • White • Grey • Navy"
+      },
+      "polo": {
+        "tagline": "The polo that hits different.",
+        "description": "Refined collar and sleeve finishing for an exclusive touch.",
+        "highlights": [
+          "Cool, comfortable for all-day wear",
+          "Clean, masculine fit",
+          "Premium collar detail",
+          "Easy mix & match"
+        ],
+        "colorsLabel": "Available Colors",
+        "colors": "Black • White • Grey • Navy"
+      },
+      "tshirt": {
+        "tagline": "Basic, but make it premium.",
+        "description": "Designed with a flattering fit and comfortable fabric. Minimalist logo for a clean, premium look without going overboard.",
+        "highlights": [
+          "Soft, breathable fabric",
+          "Fit, proportional cut",
+          "Minimalist & modern design",
+          "Daily wear friendly"
+        ],
+        "colorsLabel": "Available Colors",
+        "colors": "Black • White • Grey • Navy"
+      },
+      "tshirtCapCombined": {
+        "tagline": "T-Shirt & Cap",
+        "description": "Flattering fit, comfortable fabric, and a minimalist logo for a clean, premium look. Soft, breathable materials with a proportional cut—daily wear that feels right.",
+        "highlights": [
+          "Soft, breathable fabric",
+          "Fit, proportional cut",
+          "Minimalist & modern design",
+          "Daily wear friendly"
+        ],
+        "colorsTshirt": "T-Shirt: Black • White • Grey • Navy",
+        "colorsCap": "Cap: Black & White"
+      },
+      "cap": {
+        "tagline": "Finishing touch that changes the game.",
+        "description": "Clean embroidery. Perfect shape. Daily essential.",
+        "colorsLabel": "Available Colors",
+        "colors": "Black & White"
+      },
+      "highlightsLabel": "Highlights"
+    },
+    "cms": {
+      "addCard": "Add card",
+      "editCard": "Edit card",
+      "edit": "Edit",
+      "delete": "Delete",
+      "title": "Title",
+      "titlePlaceholder": "Optional display title",
+      "image": "Image (JPG)",
+      "keepCurrent": "Leave empty to keep current image",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving...",
+      "uploadingProgress": "Compressing & uploading... {percent}%",
+      "confirmDelete": "Delete this item? This cannot be undone."
+    },
+    "footer": {
+      "contactAdmin": "Contact Admin",
+      "contactDescription": "For orders & merchandise enquiries",
+      "callOrWhatsApp": "Call or WhatsApp"
+    }
+  },
   "about": {
     "title": "About Us",
     "description": "Learn more about Silver King by CAI.",
@@ -386,6 +479,35 @@
       "backToHome": "Back to Home"
     }
   },
+  "distributor": {
+    "hero": {
+      "title": "Our Official Distributors",
+      "subtitle": "Find our official distributors in various cities for authentic products and the best service.",
+      "replaceImage": "Replace hero image",
+      "replaceVideo": "Replace hero video"
+    },
+    "description": "We work with official distributors in various cities to ensure product availability, service quality, and ease of transaction for customers. Every listed distributor is a trusted partner that has gone through a verification process.",
+    "noDistributors": "No distributors to display yet.",
+    "listTitle": "Distributor List",
+    "listSubtitle": "Our official partners are ready to serve you in your city.",
+    "addDistributor": "Add Distributor",
+    "countDistributors": "{count} locations",
+    "card": {
+      "distributor": "Distributor",
+      "store": "Store",
+      "address": "Address",
+      "phone": "Transaction Number",
+      "map": "Map Location",
+      "contact": "Contact",
+      "viewMap": "View on Map",
+      "city": "City",
+      "edit": "Edit"
+    },
+    "meta": {
+      "title": "Official Distributors",
+      "description": "Find Silver King official distributors in various cities for authentic products and the best service."
+    }
+  },
   "contact": {
     "title": "Contact Us",
     "subtitle": "This page is under construction.",
@@ -419,6 +541,9 @@
     }
   },
   "admin": {
+    "products": "Products",
+    "distributor": "Distributor",
+    "content": "Content",
     "logout": "Logout",
     "login": "Login",
     "email": "Email",
@@ -623,6 +748,8 @@
       "found": "Found",
       "of": "of",
       "product": "product(s)",
+      "refresh": "Refresh",
+      "refreshing": "Refreshing...",
       "form": {
         "basicInformation": "Basic Information",
         "productName": "Product Name",
@@ -669,6 +796,48 @@
         "saveFailed": "Failed to save product",
         "saveFailedDescription": "Please check your input and try again"
       }
+    },
+    "distributorsDetail": {
+      "title": "Distributors",
+      "addDistributor": "Add Distributor",
+      "distributorName": "Distributor Name",
+      "storeName": "Store Name",
+      "address": "Full Address",
+      "city": "City",
+      "phone": "Phone Number",
+      "mapLink": "Google Maps Link",
+      "status": "Status",
+      "statusActive": "Active",
+      "statusInactive": "Inactive",
+      "actions": "Actions",
+      "edit": "Edit",
+      "delete": "Delete",
+      "noDistributors": "No distributors yet.",
+      "deleteConfirm": "Delete this distributor?",
+      "saving": "Saving…",
+      "saveFailed": "Failed to save",
+      "deleteFailed": "Failed to delete"
+    },
+    "contentDetail": {
+      "title": "Content (Bilingual)",
+      "addEntry": "Add content",
+      "pageName": "Page",
+      "sectionName": "Section",
+      "titleId": "Title (ID)",
+      "titleEn": "Title (EN)",
+      "descriptionId": "Description (ID)",
+      "descriptionEn": "Description (EN)",
+      "autoTranslate": "Auto-translate on save",
+      "regenerateTranslation": "Regenerate translation",
+      "autoGenerated": "Auto-generated",
+      "manuallyEdited": "Manually edited",
+      "save": "Save",
+      "saving": "Saving…",
+      "saveFailed": "Failed to save",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this content entry?",
+      "noEntries": "No content entries yet.",
+      "translationUnavailable": "Auto-translation is disabled. Fill both Title (ID) and Title (EN) manually."
     },
     "products": "Products",
     "qrPreviewDetail": {
