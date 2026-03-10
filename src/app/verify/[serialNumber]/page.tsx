@@ -116,20 +116,60 @@ export default function VerifyPage() {
     [result?.verified]
   );
 
-  /** Hide background image if it fails to load (avoids broken icon). UI-only. */
+  /** Primary & fallback URLs (R2 or relative). Always 2 so we can try the other on error. */
+  const verifiedBgUrls = useMemo(() => {
+    if (!result?.verified || verifiedBgIndex === null) return { primary: null, fallback: null };
+    const primaryPath = VERIFIED_BG_IMAGES[verifiedBgIndex];
+    const fallbackPath = VERIFIED_BG_IMAGES[verifiedBgIndex === 0 ? 1 : 0];
+    const toUrl = (p: string) => {
+      const u = getR2UrlClient(p);
+      return u.startsWith("http") ? u : u;
+    };
+    return { primary: toUrl(primaryPath), fallback: toUrl(fallbackPath) };
+  }, [result?.verified, verifiedBgIndex]);
+
+  /** Display URL (absolute on client so request is unambiguous). Switches to fallback if primary fails. */
+  const [verifiedBgDisplayUrl, setVerifiedBgDisplayUrl] = useState<string | null>(null);
   const [verifiedBgError, setVerifiedBgError] = useState(false);
   useEffect(() => {
-    if (!result?.verified) setVerifiedBgError(false);
-  }, [result?.verified]);
+    if (!result?.verified) {
+      setVerifiedBgDisplayUrl(null);
+      setVerifiedBgError(false);
+      return;
+    }
+    if (verifiedBgUrls.primary == null) return;
+    const makeAbsolute = (url: string) => {
+      if (url.startsWith("http")) return url;
+      if (typeof window !== "undefined") return `${window.location.origin}${url}`;
+      return url;
+    };
+    setVerifiedBgDisplayUrl(makeAbsolute(verifiedBgUrls.primary));
+    setVerifiedBgError(false);
+  }, [result?.verified, verifiedBgUrls.primary]);
 
-  /** Resolved URL for verified bg: R2 in production (same route as Hero/Merchandise), same-origin in dev. */
-  const verifiedBgUrl = useMemo(() => {
-    if (!result?.verified || verifiedBgIndex === null) return null;
-    const path = VERIFIED_BG_IMAGES[verifiedBgIndex];
-    const r2Url = getR2UrlClient(path);
-    if (r2Url.startsWith("http")) return r2Url;
-    return r2Url; // relative path; client will request same-origin, or use useEffect to set origin in dev
-  }, [result?.verified, verifiedBgIndex]);
+  /** Effective URL for layer: state (with absolute) or R2 primary so image shows on first paint when R2 is set. */
+  const effectiveVerifiedBgUrl =
+    verifiedBgDisplayUrl ??
+    (verifiedBgUrls.primary?.startsWith("http") ? verifiedBgUrls.primary : null);
+
+  /** On image load error: try fallback image first; only then show gradient. */
+  const handleVerifiedBgError = () => {
+    if (!verifiedBgUrls.fallback) {
+      setVerifiedBgError(true);
+      return;
+    }
+    const makeAbs = (url: string) =>
+      url.startsWith("http") ? url : (typeof window !== "undefined" ? `${window.location.origin}${url}` : url);
+    const absPrimary = makeAbs(verifiedBgUrls.primary!);
+    const absFallback = makeAbs(verifiedBgUrls.fallback);
+    const isShowingPrimary =
+      verifiedBgDisplayUrl === null || verifiedBgDisplayUrl === absPrimary;
+    if (isShowingPrimary) {
+      setVerifiedBgDisplayUrl(absFallback);
+    } else {
+      setVerifiedBgError(true);
+    }
+  };
 
   // ---------- ALL LOGIC BELOW IS UNCHANGED ----------
 
@@ -338,8 +378,8 @@ export default function VerifyPage() {
       {/* Verified-success only: random background image (or fallback) + dark overlay. UI only. */}
       {result?.verified && verifiedBgIndex !== null && (
         <>
-          {/* Layer 1: image from R2 (same route as Hero/Merchandise) or fallback gradient */}
-          {!verifiedBgError && verifiedBgUrl ? (
+          {/* Layer 1: image from R2; absolute URL on client; try fallback image on error before gradient */}
+          {!verifiedBgError && effectiveVerifiedBgUrl ? (
             <div
               className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[#0a0a0a]"
               aria-hidden
@@ -351,18 +391,17 @@ export default function VerifyPage() {
                 bottom: 0,
                 width: "100vw",
                 height: "100vh",
-                backgroundImage: `url(${verifiedBgUrl})`,
+                backgroundImage: `url(${effectiveVerifiedBgUrl})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
                 backgroundRepeat: "no-repeat",
               }}
             >
-              {/* Invisible img to detect load error and fallback */}
               <img
-                src={verifiedBgUrl}
+                src={effectiveVerifiedBgUrl}
                 alt=""
                 className="absolute opacity-0 w-0 h-0"
-                onError={() => setVerifiedBgError(true)}
+                onError={handleVerifiedBgError}
                 aria-hidden
               />
             </div>
