@@ -652,18 +652,15 @@ export default function VerifyPage() {
               animate="visible"
               className="space-y-5"
             >
-              {/* Success header */}
+              {/* Success header — strong contrast so "Product Verified" never clashes with bg */}
               <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0} className="text-center pt-2 pb-1">
-                {/* Animated checkmark — larger for clearer “verified” emphasis */}
                 <div className="relative mx-auto mb-6 h-28 w-28 sm:h-32 sm:w-32">
-                  {/* Outer pulse ring */}
                   <motion.div
                     className="absolute inset-0 rounded-full border-2 border-emerald-500/30"
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: [0.8, 1.2, 1.2], opacity: [0, 0.5, 0] }}
                     transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
                   />
-                  {/* Inner circle */}
                   <motion.div
                     className="absolute inset-0 flex items-center justify-center rounded-full"
                     style={{
@@ -684,24 +681,33 @@ export default function VerifyPage() {
                   </motion.div>
                 </div>
 
-                <motion.h1
-                  className="font-serif text-[1.85rem] sm:text-[2.1rem] font-bold tracking-[0.01em] text-white drop-shadow-md"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                >
-                  Product Verified
-                </motion.h1>
-                <motion.p
-                  className="mt-2.5 text-sm font-medium text-white/90 drop-shadow-sm"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.5, delay: 0.45 }}
-                >
-                  This product is officially verified by Silver King by CAI
-                </motion.p>
+                {/* Title + subtitle on dark bar so they stay readable on any background */}
+                <div className="mx-auto inline-block rounded-2xl bg-black/60 px-6 py-4 shadow-lg ring-1 ring-white/10 backdrop-blur-sm">
+                  <motion.h1
+                    className="font-serif text-[1.9rem] sm:text-[2.25rem] font-extrabold tracking-tight text-white"
+                    style={{
+                      textShadow:
+                        "0 0 20px rgba(0,0,0,0.9), 0 2px 4px rgba(0,0,0,0.8), 0 1px 2px rgba(0,0,0,0.9)",
+                    }}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    Product Verified
+                  </motion.h1>
+                  <motion.p
+                    className="mt-2 text-sm font-semibold text-white/95"
+                    style={{
+                      textShadow: "0 1px 8px rgba(0,0,0,0.85), 0 1px 2px rgba(0,0,0,0.8)",
+                    }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.5, delay: 0.45 }}
+                  >
+                    This product is officially verified by Silver King by CAI
+                  </motion.p>
+                </div>
 
-                {/* Decorative divider */}
                 <motion.div
                   className="mx-auto mt-5 flex items-center justify-center gap-2.5"
                   initial={{ opacity: 0, scaleX: 0 }}
