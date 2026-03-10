@@ -522,7 +522,7 @@ export default function AboutPageClient() {
 
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-center">
                 <Link
-                  href="/verify"
+                  href="/authenticity"
                   prefetch={true}
                   className="group relative inline-flex items-center justify-center gap-3 overflow-hidden rounded-full bg-gradient-to-r from-luxury-gold to-luxury-lightGold px-9 py-4 text-base font-semibold text-black transition-all duration-300 hover:shadow-[0_25px_70px_-30px_rgba(212,175,55,0.6)]"
                 >
