@@ -187,6 +187,12 @@ export default function VerifyPage() {
   } | null>(null);
   const [verifiedBgDisplayUrl, setVerifiedBgDisplayUrl] = useState<string | null>(null);
   const [verifiedBgError, setVerifiedBgError] = useState(false);
+  /** Only show R2 image layer after it has loaded to prevent flicker. */
+  const [verifiedBgImageLoaded, setVerifiedBgImageLoaded] = useState(false);
+
+  useEffect(() => {
+    if (verifiedBgDisplayUrl) setVerifiedBgImageLoaded(false);
+  }, [verifiedBgDisplayUrl]);
 
   useEffect(() => {
     if (!result?.verified || verifiedBgIndex === null) {
@@ -447,42 +453,37 @@ export default function VerifyPage() {
           {/* Layer 0: guaranteed SVG background (no network, CSP-safe) */}
           <VerifiedBackgroundSvg seed={serialNumber || "SK"} />
 
-          {/* Layer 1: image from R2; absolute URL on client; try fallback image on error before gradient */}
-          {!verifiedBgError && effectiveVerifiedBgUrl ? (
-            <div
-              className="pointer-events-none fixed inset-0 z-[1] overflow-hidden bg-[#0a0a0a]"
-              aria-hidden
-              style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                width: "100vw",
-                height: "100vh",
-                backgroundImage: `url(${effectiveVerifiedBgUrl})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                backgroundRepeat: "no-repeat",
-              }}
-            >
-              <img
-                src={effectiveVerifiedBgUrl}
-                alt=""
-                className="absolute opacity-0 w-0 h-0"
-                onError={handleVerifiedBgError}
-                aria-hidden
-              />
-            </div>
-          ) : !verifiedBgError ? null : (
-            <div
-              className="pointer-events-none fixed inset-0 z-[1] bg-[#0a0a0a]"
-              style={{
-                background:
-                  "linear-gradient(180deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.78) 50%, rgba(0,0,0,0.9) 100%)",
-              }}
-              aria-hidden
-            />
+          {/* Layer 1: R2 image only after load to avoid flicker; SVG remains if image fails */}
+          {!verifiedBgError && effectiveVerifiedBgUrl && (
+            <>
+              {verifiedBgImageLoaded && (
+                <div
+                  className="pointer-events-none fixed inset-0 z-[1] overflow-hidden bg-[#0a0a0a]"
+                  aria-hidden
+                  style={{
+                    position: "fixed",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    width: "100vw",
+                    height: "100vh",
+                    backgroundImage: `url(${effectiveVerifiedBgUrl})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                    backgroundRepeat: "no-repeat",
+                  }}
+                />
+              )}
+              <div className="fixed inset-0 z-0 overflow-hidden opacity-0 pointer-events-none w-0 h-0" aria-hidden>
+                <img
+                  src={effectiveVerifiedBgUrl}
+                  alt=""
+                  onLoad={() => setVerifiedBgImageLoaded(true)}
+                  onError={handleVerifiedBgError}
+                />
+              </div>
+            </>
           )}
           {/* Layer 2: dark overlay so text never clashes; lighter so background is visible */}
           <div
