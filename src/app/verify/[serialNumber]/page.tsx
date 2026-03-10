@@ -97,6 +97,72 @@ function InfoRow({
   );
 }
 
+function VerifiedBackgroundSvg({ seed }: { seed: string }) {
+  const s = seed.slice(0, 10);
+  return (
+    <svg
+      className="pointer-events-none fixed inset-0 z-0 h-screen w-screen"
+      aria-hidden
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 1600 900"
+      preserveAspectRatio="xMidYMid slice"
+    >
+      <defs>
+        <linearGradient id="verify_g1" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#050505" />
+          <stop offset="0.55" stopColor="#0b0b0b" />
+          <stop offset="1" stopColor="#050505" />
+        </linearGradient>
+        <radialGradient id="verify_glow" cx="50%" cy="18%" r="62%">
+          <stop offset="0" stopColor="#22c55e" stopOpacity="0.12" />
+          <stop offset="0.55" stopColor="#d4af37" stopOpacity="0.08" />
+          <stop offset="1" stopColor="#000000" stopOpacity="0" />
+        </radialGradient>
+        <filter id="verify_noise">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.9"
+            numOctaves="2"
+            stitchTiles="stitch"
+            seed="7"
+          />
+          <feColorMatrix
+            type="matrix"
+            values="
+              0 0 0 0 0.60
+              0 0 0 0 0.52
+              0 0 0 0 0.10
+              0 0 0 0.18 0
+            "
+          />
+        </filter>
+        <filter id="verify_blur">
+          <feGaussianBlur stdDeviation="22" />
+        </filter>
+      </defs>
+      <rect width="1600" height="900" fill="url(#verify_g1)" />
+      <rect width="1600" height="900" fill="url(#verify_glow)" />
+      <g opacity="0.55" filter="url(#verify_blur)">
+        <circle cx="240" cy="760" r="220" fill="#d4af37" fillOpacity="0.10" />
+        <circle cx="1340" cy="720" r="260" fill="#22c55e" fillOpacity="0.08" />
+        <circle cx="860" cy="130" r="220" fill="#d4af37" fillOpacity="0.06" />
+      </g>
+      <rect width="1600" height="900" filter="url(#verify_noise)" opacity="0.9" />
+      <text
+        x="1500"
+        y="860"
+        textAnchor="end"
+        fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+        fontSize="18"
+        fill="#ffffff"
+        opacity="0.06"
+      >
+        {s}
+      </text>
+    </svg>
+  );
+}
+
 export default function VerifyPage() {
   const params = useParams();
   const serialNumber = params.serialNumber as string;
@@ -105,50 +171,6 @@ export default function VerifyPage() {
   const [rootKey, setRootKey] = useState("");
   const [verifyingRootKey, setVerifyingRootKey] = useState(false);
   const [rootKeyError, setRootKeyError] = useState<string | null>(null);
-
-  /**
-   * Guaranteed, network-free verified background (SVG data URI).
-   * This ensures an "image" background always renders even if R2/public routes are down.
-   */
-  const verifiedBgGuaranteedDataUrl = useMemo(() => {
-    const seed = (serialNumber || "SK").slice(0, 10);
-    const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
-  <defs>
-    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#050505"/>
-      <stop offset="0.55" stop-color="#0b0b0b"/>
-      <stop offset="1" stop-color="#050505"/>
-    </linearGradient>
-    <radialGradient id="glow" cx="50%" cy="18%" r="62%">
-      <stop offset="0" stop-color="#22c55e" stop-opacity="0.12"/>
-      <stop offset="0.55" stop-color="#d4af37" stop-opacity="0.08"/>
-      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
-    </radialGradient>
-    <filter id="noise">
-      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" seed="7"/>
-      <feColorMatrix type="matrix" values="
-        0 0 0 0 0.60
-        0 0 0 0 0.52
-        0 0 0 0 0.10
-        0 0 0 0.18 0"/>
-    </filter>
-    <filter id="blur">
-      <feGaussianBlur stdDeviation="22"/>
-    </filter>
-  </defs>
-  <rect width="1600" height="900" fill="url(#g1)"/>
-  <rect width="1600" height="900" fill="url(#glow)"/>
-  <g opacity="0.55" filter="url(#blur)">
-    <circle cx="240" cy="760" r="220" fill="#d4af37" fill-opacity="0.10"/>
-    <circle cx="1340" cy="720" r="260" fill="#22c55e" fill-opacity="0.08"/>
-    <circle cx="860" cy="130" r="220" fill="#d4af37" fill-opacity="0.06"/>
-  </g>
-  <rect width="1600" height="900" filter="url(#noise)" opacity="0.9"/>
-  <text x="1500" y="860" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="18" fill="#ffffff" fill-opacity="0.06">${seed}</text>
-</svg>`;
-    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-  }, [serialNumber]);
 
   /** When verified, we fetch bg URLs from server (R2_PUBLIC_URL guaranteed in production). */
   const verifiedBgIndex = useMemo(
@@ -180,26 +202,25 @@ export default function VerifyPage() {
         if (cancelled) return;
         const list = Array.isArray(data?.urls) ? data.urls : [];
         const primary = list[verifiedBgIndex] ?? VERIFIED_BG_IMAGES[verifiedBgIndex];
-        // Fallback is always network-free so background always appears.
-        const fallback = verifiedBgGuaranteedDataUrl;
         const makeAbs = (url: string) =>
           url.startsWith("http")
             ? url
             : (typeof window !== "undefined" ? `${window.location.origin}${url}` : url);
-        setVerifiedBgUrls({ primary: makeAbs(primary), fallback });
+        // Fallback value is kept for state consistency; the always-on SVG handles guaranteed visuals.
+        setVerifiedBgUrls({ primary: makeAbs(primary), fallback: makeAbs(primary) });
         setVerifiedBgDisplayUrl(makeAbs(primary));
         setVerifiedBgError(false);
       })
       .catch(() => {
         if (cancelled) return;
-        setVerifiedBgUrls({ primary: verifiedBgGuaranteedDataUrl, fallback: verifiedBgGuaranteedDataUrl });
-        setVerifiedBgDisplayUrl(verifiedBgGuaranteedDataUrl);
+        setVerifiedBgUrls(null);
+        setVerifiedBgDisplayUrl(null);
         setVerifiedBgError(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [result?.verified, verifiedBgIndex, verifiedBgGuaranteedDataUrl]);
+  }, [result?.verified, verifiedBgIndex]);
 
   /** Effective URL: what we show (primary or fallback after error). */
   const effectiveVerifiedBgUrl = verifiedBgDisplayUrl;
@@ -423,10 +444,13 @@ export default function VerifyPage() {
       {/* Verified-success only: random background image (or fallback) + dark overlay. UI only. */}
       {result?.verified && verifiedBgIndex !== null && (
         <>
+          {/* Layer 0: guaranteed SVG background (no network, CSP-safe) */}
+          <VerifiedBackgroundSvg seed={serialNumber || "SK"} />
+
           {/* Layer 1: image from R2; absolute URL on client; try fallback image on error before gradient */}
           {!verifiedBgError && effectiveVerifiedBgUrl ? (
             <div
-              className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[#0a0a0a]"
+              className="pointer-events-none fixed inset-0 z-[1] overflow-hidden bg-[#0a0a0a]"
               aria-hidden
               style={{
                 position: "fixed",
@@ -452,7 +476,7 @@ export default function VerifyPage() {
             </div>
           ) : !verifiedBgError ? null : (
             <div
-              className="pointer-events-none fixed inset-0 z-0 bg-[#0a0a0a]"
+              className="pointer-events-none fixed inset-0 z-[1] bg-[#0a0a0a]"
               style={{
                 background:
                   "linear-gradient(180deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.78) 50%, rgba(0,0,0,0.9) 100%)",
@@ -460,12 +484,12 @@ export default function VerifyPage() {
               aria-hidden
             />
           )}
-          {/* Layer 2: dark overlay so text never clashes; slightly lighter so bg image shows through */}
+          {/* Layer 2: dark overlay so text never clashes; lighter so background is visible */}
           <div
-            className="pointer-events-none fixed inset-0 z-[1]"
+            className="pointer-events-none fixed inset-0 z-[2]"
             style={{
               background:
-                "linear-gradient(180deg, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.48) 40%, rgba(0,0,0,0.52) 70%, rgba(0,0,0,0.68) 100%)",
+                "linear-gradient(180deg, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.40) 40%, rgba(0,0,0,0.46) 70%, rgba(0,0,0,0.62) 100%)",
             }}
             aria-hidden
           />
@@ -474,7 +498,7 @@ export default function VerifyPage() {
 
       {/* Background ambient */}
       <div
-        className="pointer-events-none fixed inset-0 z-[2]"
+        className="pointer-events-none fixed inset-0 z-[3]"
         style={{
           background: result?.verified
             ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(34,197,94,0.04) 0%, transparent 60%), radial-gradient(ellipse 50% 35% at 50% 80%, rgba(212,175,55,0.03) 0%, transparent 50%)"
