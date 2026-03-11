@@ -514,11 +514,13 @@ export default function VerifyPage() {
       <div
         className="pointer-events-none fixed inset-0 z-[3]"
         style={{
-          background: showVerifiedBackground
-            ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(34,197,94,0.04) 0%, transparent 60%), radial-gradient(ellipse 50% 35% at 50% 80%, rgba(212,175,55,0.03) 0%, transparent 50%)"
-            : result && !result.verified && !result.requiresRootKey
-              ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(239,68,68,0.04) 0%, transparent 60%)"
-              : "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(212,175,55,0.04) 0%, transparent 60%)",
+          background: result?.requiresRootKey
+            ? "none"
+            : showVerifiedBackground
+              ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(34,197,94,0.04) 0%, transparent 60%), radial-gradient(ellipse 50% 35% at 50% 80%, rgba(212,175,55,0.03) 0%, transparent 50%)"
+              : result && !result.verified && !result.requiresRootKey
+                ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(239,68,68,0.04) 0%, transparent 60%)"
+                : "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(212,175,55,0.04) 0%, transparent 60%)",
         }}
       />
 
@@ -567,7 +569,7 @@ export default function VerifyPage() {
                 initial="hidden"
                 animate="visible"
                 custom={0.1}
-                className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 sm:p-7 backdrop-blur-sm"
+                className="rounded-2xl border border-white/[0.10] bg-[#0b0b0b]/95 p-6 sm:p-7 shadow-xl shadow-black/30"
               >
                 <div className="flex items-center gap-2.5 mb-5">
                   <Shield className="h-[18px] w-[18px] text-luxury-gold/70" />
@@ -595,7 +597,7 @@ export default function VerifyPage() {
                 initial="hidden"
                 animate="visible"
                 custom={0.2}
-                className="rounded-2xl border border-luxury-gold/10 bg-luxury-gold/[0.02] p-6 sm:p-7"
+                className="rounded-2xl border border-luxury-gold/20 bg-[#0b0b0b]/95 p-6 sm:p-7 shadow-xl shadow-black/30"
               >
                 <div className="mb-5 rounded-xl border border-amber-500/15 bg-amber-500/[0.04] px-4 py-3.5">
                   <p className="text-amber-400/90 text-[13px] font-semibold mb-1">
@@ -620,7 +622,7 @@ export default function VerifyPage() {
                       }}
                       maxLength={4}
                       placeholder="e.g., A1H2"
-                      className="w-full rounded-xl border border-white/[0.1] bg-white/[0.03] px-5 py-3.5 font-mono text-base tracking-[0.15em] text-white uppercase placeholder:text-white/20 outline-none transition-all duration-300 focus:border-luxury-gold/40 focus:ring-1 focus:ring-luxury-gold/15"
+                      className="w-full rounded-xl border border-white/[0.14] bg-black/40 px-5 py-3.5 font-mono text-base tracking-[0.15em] text-white uppercase placeholder:text-white/25 outline-none transition-all duration-300 focus:border-luxury-gold/45 focus:ring-2 focus:ring-luxury-gold/20"
                       disabled={verifyingRootKey}
                     />
                     {rootKeyError && (
@@ -736,7 +738,7 @@ export default function VerifyPage() {
                 initial="hidden"
                 animate="visible"
                 custom={0.25}
-                className="rounded-2xl border-2 border-white/20 bg-black/85 shadow-xl shadow-black/40 p-6 sm:p-7 backdrop-blur-md"
+                className="rounded-2xl border-2 border-white/25 bg-black/92 shadow-2xl shadow-black/50 p-6 sm:p-7"
               >
                 <div className="flex items-center gap-2.5 mb-5">
                   <Shield className="h-[18px] w-[18px] text-luxury-gold" />
@@ -766,7 +768,7 @@ export default function VerifyPage() {
                   initial="hidden"
                   animate="visible"
                   custom={0.4}
-                  className="rounded-2xl border-2 border-white/20 bg-black/85 shadow-xl shadow-black/40 p-6 sm:p-7 backdrop-blur-md"
+                  className="rounded-2xl border-2 border-white/25 bg-black/92 shadow-2xl shadow-black/50 p-6 sm:p-7"
                 >
                   <motion.div variants={staggerContainer} initial="hidden" animate="visible">
                     <InfoRow
