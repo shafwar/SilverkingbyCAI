@@ -474,31 +474,18 @@ export default function VerifyPage() {
               key={effectiveVerifiedBgUrl}
               className="pointer-events-none fixed inset-0 z-[1] overflow-hidden bg-[#0a0a0a]"
               aria-hidden
-              style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                width: "100vw",
-                minHeight: "100vh",
-                height: "100%",
-                backgroundImage: `url(${effectiveVerifiedBgUrl})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                backgroundRepeat: "no-repeat",
-                backgroundAttachment: "fixed",
-              }}
             >
+              {/* Use a real <img> (not CSS background-image) for deterministic loading + onError across browsers */}
               <img
                 key={effectiveVerifiedBgUrl}
                 src={effectiveVerifiedBgUrl}
                 alt=""
-                className="absolute opacity-0 w-0 h-0"
+                className="absolute inset-0 h-full w-full object-cover"
                 loading="eager"
                 decoding="async"
                 onError={handleVerifiedBgError}
                 aria-hidden
+                fetchPriority="high"
               />
             </div>
           ) : !verifiedBgError ? null : (
