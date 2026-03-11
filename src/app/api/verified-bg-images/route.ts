@@ -24,6 +24,7 @@ export async function GET() {
     const db = prisma as any;
     const products = await db.cmsProduct.findMany({
       orderBy: { createdAt: "desc" },
+      take: MAX_IMAGES,
       select: { images: true },
     });
 

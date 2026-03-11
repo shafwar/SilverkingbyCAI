@@ -185,6 +185,7 @@ export default function VerifyPage() {
   const serialNumber = params.serialNumber as string;
   const [result, setResult] = useState<VerificationResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [verifyKey, setVerifyKey] = useState(0);
   const [rootKey, setRootKey] = useState("");
   const [verifyingRootKey, setVerifyingRootKey] = useState(false);
   const [rootKeyError, setRootKeyError] = useState<string | null>(null);
@@ -267,7 +268,7 @@ export default function VerifyPage() {
           const apiList = Array.isArray(data?.urls) ? data.urls.filter((u) => u && u.startsWith("http")) : [];
           const seen = new Set<string>();
           const merged: string[] = [];
-          for (const u of [...staticUrls, ...apiList]) {
+          for (const u of [...apiList, ...staticUrls]) {
             if (u && !seen.has(u)) {
               seen.add(u);
               merged.push(u);
@@ -307,6 +308,7 @@ export default function VerifyPage() {
     verifiedBgFallbackUrls.current = [];
     currentVerifiedBgUrlRef.current = null;
     preloadSeqIdRef.current += 1;
+    recoveryRetryRef.current = null;
 
     if (!serialNumber) {
       setLoading(false);
@@ -428,7 +430,17 @@ export default function VerifyPage() {
     return () => {
       isMounted = false;
     };
-  }, [serialNumber]);
+  }, [serialNumber, verifyKey]);
+
+  const recoveryRetryRef = useRef<string | null>(null);
+  // Recovery: when stuck (result null, !loading) after e.g. nav from Authenticity, re-trigger verify once per serial
+  useEffect(() => {
+    if (result !== null || loading || !serialNumber) return;
+    if (recoveryRetryRef.current === serialNumber) return;
+    recoveryRetryRef.current = serialNumber;
+    const tid = window.setTimeout(() => setVerifyKey((k) => k + 1), 400);
+    return () => window.clearTimeout(tid);
+  }, [result, loading, serialNumber]);
 
   const getWeightLabel = (weight?: number) => {
     if (!weight) return "—";
@@ -590,27 +602,34 @@ export default function VerifyPage() {
       <Navbar />
 
       <div className="relative z-10 min-h-screen pt-24 pb-16 px-4 sm:pt-28 sm:pb-20 sm:px-6">
-        <div className="mx-auto w-full max-w-2xl">
-          {/* ---------- LOADING STATE ---------- */}
+        <div key={serialNumber || "verify"} className="mx-auto w-full max-w-2xl">
+          {/* ---------- LOADING STATE: visible immediately (no opacity 0) to avoid blank on nav from Authenticity ---------- */}
           {loading ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center py-24"
-            >
+            <div className="flex flex-col items-center justify-center py-24 opacity-100">
               <div className="relative">
                 <div className="h-14 w-14 rounded-full border-2 border-luxury-gold/20" />
                 <div className="absolute inset-0 h-14 w-14 animate-spin rounded-full border-2 border-transparent border-t-luxury-gold" />
               </div>
-              <p className="mt-5 text-sm font-light tracking-wide text-white/40">
+              <p className="mt-5 text-sm font-light tracking-wide text-white/70">
                 Verifying product...
               </p>
-            </motion.div>
+            </div>
+          ) : result === null && serialNumber ? (
+            /* ---------- RECOVERY: stuck state (e.g. after nav from Authenticity) — show message and re-verify ---------- */
+            <div className="flex flex-col items-center justify-center py-24 opacity-100">
+              <div className="relative">
+                <div className="h-14 w-14 rounded-full border-2 border-luxury-gold/20" />
+                <div className="absolute inset-0 h-14 w-14 animate-spin rounded-full border-2 border-transparent border-t-luxury-gold" />
+              </div>
+              <p className="mt-5 text-sm font-light tracking-wide text-white/70">
+                Preparing...
+              </p>
+            </div>
           ) : result?.requiresRootKey ? (
-            /* ---------- ROOT KEY REQUIRED ---------- */
+            /* ---------- ROOT KEY REQUIRED (visible immediately to avoid blank) ---------- */
             <motion.div
-              initial="hidden"
-              animate="visible"
+              initial={{ opacity: 1 }}
+              animate={{ opacity: 1 }}
               className="space-y-5"
             >
               {/* Header */}
