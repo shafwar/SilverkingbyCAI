@@ -201,6 +201,7 @@ export default function VerifyPage() {
   const preloadSeqIdRef = useRef(0);
   const currentVerifiedBgUrlRef = useRef<string | null>(null);
 
+  // Background image: load ONLY after "Product Verified" text has painted (deferred). Prefer static URLs first (easiest/closest).
   useEffect(() => {
     if (!result?.verified) {
       setVerifiedBgDisplayUrl(null);
@@ -208,21 +209,17 @@ export default function VerifyPage() {
       verifiedBgFallbackUrls.current = [];
       return;
     }
-    // Show first static image immediately so something appears 100% while API runs
-    const firstStatic = staticUrls[0];
-    currentVerifiedBgUrlRef.current = firstStatic;
-    setVerifiedBgDisplayUrl(firstStatic);
+    // Do NOT set any image here — first paint is text + SVG only (sacred for client).
+    setVerifiedBgDisplayUrl(null);
     setVerifiedBgError(false);
-    verifiedBgFallbackUrls.current = staticUrls.slice(1);
-
+    verifiedBgFallbackUrls.current = [];
     const mySeq = ++preloadSeqIdRef.current;
+
     const preloadAndSwap = async (pool: string[]) => {
       const seen = new Set<string>();
       const ordered = pool.filter((u) => (u ? !seen.has(u) && (seen.add(u), true) : false));
-      // Try all candidates sequentially; swap only when a candidate fully loads.
       for (const url of ordered) {
         if (preloadSeqIdRef.current !== mySeq) return;
-        // Skip if already showing this URL
         if (url === currentVerifiedBgUrlRef.current) continue;
         try {
           await new Promise<void>((resolve, reject) => {
@@ -249,39 +246,43 @@ export default function VerifyPage() {
           // try next
         }
       }
+      if (preloadSeqIdRef.current === mySeq) setVerifiedBgError(true);
     };
 
-    // Preload static candidates immediately (in case firstStatic is slow/blocked)
-    void preloadAndSwap(staticUrls);
+    // Defer so "Product Verified" text and table paint first; then load image (static first = easiest).
+    const deferMs = 180;
+    const tid = window.setTimeout(() => {
+      if (preloadSeqIdRef.current !== mySeq) return;
+      // Static list first (closest / easiest to load), then API adds more options
+      void preloadAndSwap(staticUrls);
+    }, deferMs);
 
     let cancelled = false;
-    fetch("/api/verified-bg-images")
-      .then((r) => r.json())
-      .then((data: { urls?: string[] }) => {
-        if (cancelled) return;
-        const apiList = Array.isArray(data?.urls) ? data.urls.filter((u) => u && u.startsWith("http")) : [];
-        const seen = new Set<string>();
-        const merged: string[] = [];
-        for (const u of [...apiList, ...staticUrls]) {
-          if (u && !seen.has(u)) {
-            seen.add(u);
-            merged.push(u);
+    const apiTid = window.setTimeout(() => {
+      if (cancelled) return;
+      fetch("/api/verified-bg-images")
+        .then((r) => r.json())
+        .then((data: { urls?: string[] }) => {
+          if (cancelled || preloadSeqIdRef.current !== mySeq) return;
+          const apiList = Array.isArray(data?.urls) ? data.urls.filter((u) => u && u.startsWith("http")) : [];
+          const seen = new Set<string>();
+          const merged: string[] = [];
+          for (const u of [...staticUrls, ...apiList]) {
+            if (u && !seen.has(u)) {
+              seen.add(u);
+              merged.push(u);
+            }
           }
-        }
-        if (merged.length === 0) return;
-        // Shuffle so the background varies, but we still try all.
-        const shuffled = merged
-          .map((u) => ({ u, r: Math.random() }))
-          .sort((a, b) => a.r - b.r)
-          .map((x) => x.u);
-        void preloadAndSwap(shuffled);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        // static preload already running; nothing else to do
-      });
+          if (merged.length === 0) return;
+          void preloadAndSwap(merged);
+        })
+        .catch(() => {});
+    }, deferMs + 80);
+
     return () => {
       cancelled = true;
+      window.clearTimeout(tid);
+      window.clearTimeout(apiTid);
     };
   }, [result?.verified, staticUrls]);
 
@@ -297,9 +298,24 @@ export default function VerifyPage() {
     }
   };
 
-  // ---------- ALL LOGIC BELOW IS UNCHANGED ----------
+  // ---------- Verification: reset on serial change so new QR scan gets fresh UI (no stale root key / buffering) ----------
 
   useEffect(() => {
+    // Hard reset when serial changes: show loading and clear previous result/background (no stale root key / buffering)
+    setVerifiedBgDisplayUrl(null);
+    setVerifiedBgError(false);
+    verifiedBgFallbackUrls.current = [];
+    currentVerifiedBgUrlRef.current = null;
+    preloadSeqIdRef.current += 1;
+
+    if (!serialNumber) {
+      setLoading(false);
+      setResult({ verified: false, error: "Serial number is required" });
+      return;
+    }
+    setLoading(true);
+    setResult(null);
+
     let isMounted = true;
 
     async function verifyProduct() {
