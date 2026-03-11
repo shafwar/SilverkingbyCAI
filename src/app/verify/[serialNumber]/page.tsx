@@ -198,6 +198,8 @@ export default function VerifyPage() {
   const [verifiedBgDisplayUrl, setVerifiedBgDisplayUrl] = useState<string | null>(null);
   const [verifiedBgError, setVerifiedBgError] = useState(false);
   const verifiedBgFallbackUrls = useRef<string[]>([]);
+  const preloadSeqIdRef = useRef(0);
+  const currentVerifiedBgUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!result?.verified) {
@@ -208,9 +210,49 @@ export default function VerifyPage() {
     }
     // Show first static image immediately so something appears 100% while API runs
     const firstStatic = staticUrls[0];
+    currentVerifiedBgUrlRef.current = firstStatic;
     setVerifiedBgDisplayUrl(firstStatic);
     setVerifiedBgError(false);
     verifiedBgFallbackUrls.current = staticUrls.slice(1);
+
+    const mySeq = ++preloadSeqIdRef.current;
+    const preloadAndSwap = async (pool: string[]) => {
+      const seen = new Set<string>();
+      const ordered = pool.filter((u) => (u ? !seen.has(u) && (seen.add(u), true) : false));
+      // Try all candidates sequentially; swap only when a candidate fully loads.
+      for (const url of ordered) {
+        if (preloadSeqIdRef.current !== mySeq) return;
+        // Skip if already showing this URL
+        if (url === currentVerifiedBgUrlRef.current) continue;
+        try {
+          await new Promise<void>((resolve, reject) => {
+            const img = new window.Image();
+            const t = window.setTimeout(() => reject(new Error("timeout")), 8000);
+            img.onload = () => {
+              window.clearTimeout(t);
+              resolve();
+            };
+            img.onerror = () => {
+              window.clearTimeout(t);
+              reject(new Error("error"));
+            };
+            img.decoding = "async";
+            img.src = url;
+          });
+          if (preloadSeqIdRef.current !== mySeq) return;
+          currentVerifiedBgUrlRef.current = url;
+          setVerifiedBgDisplayUrl(url);
+          setVerifiedBgError(false);
+          verifiedBgFallbackUrls.current = ordered.filter((u) => u !== url);
+          return;
+        } catch {
+          // try next
+        }
+      }
+    };
+
+    // Preload static candidates immediately (in case firstStatic is slow/blocked)
+    void preloadAndSwap(staticUrls);
 
     let cancelled = false;
     fetch("/api/verified-bg-images")
@@ -227,19 +269,16 @@ export default function VerifyPage() {
           }
         }
         if (merged.length === 0) return;
-        const idx = Math.floor(Math.random() * merged.length);
-        const primary = merged[idx];
-        const fallbacks = merged.filter((_, i) => i !== idx);
-        setVerifiedBgDisplayUrl(primary);
-        verifiedBgFallbackUrls.current = fallbacks;
-        setVerifiedBgError(false);
+        // Shuffle so the background varies, but we still try all.
+        const shuffled = merged
+          .map((u) => ({ u, r: Math.random() }))
+          .sort((a, b) => a.r - b.r)
+          .map((x) => x.u);
+        void preloadAndSwap(shuffled);
       })
       .catch(() => {
         if (cancelled) return;
-        const idx = Math.floor(Math.random() * staticUrls.length);
-        setVerifiedBgDisplayUrl(staticUrls[idx]);
-        verifiedBgFallbackUrls.current = staticUrls.filter((_, i) => i !== idx);
-        setVerifiedBgError(false);
+        // static preload already running; nothing else to do
       });
     return () => {
       cancelled = true;
@@ -462,8 +501,16 @@ export default function VerifyPage() {
 
   const showVerifiedBackground = Boolean(result?.verified && !result?.requiresRootKey);
 
+  const showRootKeyMode = Boolean(result?.requiresRootKey);
+
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
+    <div
+      className={`min-h-screen text-white ${
+        showRootKeyMode
+          ? "bg-gradient-to-b from-[#141414] via-[#101010] to-[#0a0a0a]"
+          : "bg-[#050505]"
+      }`}
+    >
       {/* Background only when product is verified (not on root-key input screen). */}
       {showVerifiedBackground && (
         <>
@@ -503,7 +550,7 @@ export default function VerifyPage() {
             className="pointer-events-none fixed inset-0 z-[2] min-h-full"
             style={{
               background:
-                "linear-gradient(180deg, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.58) 50%, rgba(0,0,0,0.65) 100%)",
+                "linear-gradient(180deg, rgba(0,0,0,0.70) 0%, rgba(0,0,0,0.64) 50%, rgba(0,0,0,0.74) 100%)",
             }}
             aria-hidden
           />
@@ -558,7 +605,7 @@ export default function VerifyPage() {
                 <h1 className="font-serif text-[1.75rem] font-semibold tracking-[0.01em] text-white">
                   Root Key Required
                 </h1>
-                <p className="mt-2 text-sm font-light leading-relaxed text-white/45 max-w-md mx-auto">
+                <p className="mt-2 text-sm font-medium leading-relaxed text-white/75 max-w-md mx-auto">
                   Please enter the root key to complete verification for this product.
                 </p>
               </motion.div>
@@ -569,7 +616,7 @@ export default function VerifyPage() {
                 initial="hidden"
                 animate="visible"
                 custom={0.1}
-                className="rounded-2xl border border-white/[0.10] bg-[#0b0b0b]/95 p-6 sm:p-7 shadow-xl shadow-black/30"
+                className="rounded-2xl border border-white/[0.14] bg-white/[0.06] p-6 sm:p-7 shadow-2xl shadow-black/40"
               >
                 <div className="flex items-center gap-2.5 mb-5">
                   <Shield className="h-[18px] w-[18px] text-luxury-gold/70" />
@@ -597,13 +644,13 @@ export default function VerifyPage() {
                 initial="hidden"
                 animate="visible"
                 custom={0.2}
-                className="rounded-2xl border border-luxury-gold/20 bg-[#0b0b0b]/95 p-6 sm:p-7 shadow-xl shadow-black/30"
+                className="rounded-2xl border border-luxury-gold/25 bg-white/[0.06] p-6 sm:p-7 shadow-2xl shadow-black/40"
               >
-                <div className="mb-5 rounded-xl border border-amber-500/15 bg-amber-500/[0.04] px-4 py-3.5">
-                  <p className="text-amber-400/90 text-[13px] font-semibold mb-1">
+                <div className="mb-5 rounded-xl border border-amber-500/20 bg-amber-500/[0.08] px-4 py-3.5">
+                  <p className="text-amber-300 text-[13px] font-bold mb-1">
                     Two-Step Verification Required
                   </p>
-                  <p className="text-white/40 text-[12px] leading-relaxed">
+                  <p className="text-white/75 text-[12px] leading-relaxed">
                     Please enter the root key (3-4 alphanumeric characters) provided by your
                     administrator to verify the specific SKP serial number.
                   </p>
@@ -622,7 +669,7 @@ export default function VerifyPage() {
                       }}
                       maxLength={4}
                       placeholder="e.g., A1H2"
-                      className="w-full rounded-xl border border-white/[0.14] bg-black/40 px-5 py-3.5 font-mono text-base tracking-[0.15em] text-white uppercase placeholder:text-white/25 outline-none transition-all duration-300 focus:border-luxury-gold/45 focus:ring-2 focus:ring-luxury-gold/20"
+                      className="w-full rounded-xl border border-white/[0.20] bg-black/35 px-5 py-3.5 font-mono text-base tracking-[0.15em] text-white uppercase placeholder:text-white/40 outline-none transition-all duration-300 focus:border-luxury-gold/55 focus:ring-2 focus:ring-luxury-gold/25"
                       disabled={verifyingRootKey}
                     />
                     {rootKeyError && (
@@ -738,7 +785,7 @@ export default function VerifyPage() {
                 initial="hidden"
                 animate="visible"
                 custom={0.25}
-                className="rounded-2xl border-2 border-white/25 bg-black/92 shadow-2xl shadow-black/50 p-6 sm:p-7"
+                className="rounded-2xl border-2 border-white/30 bg-black/98 shadow-2xl shadow-black/60 p-6 sm:p-7"
               >
                 <div className="flex items-center gap-2.5 mb-5">
                   <Shield className="h-[18px] w-[18px] text-luxury-gold" />
@@ -768,7 +815,7 @@ export default function VerifyPage() {
                   initial="hidden"
                   animate="visible"
                   custom={0.4}
-                  className="rounded-2xl border-2 border-white/25 bg-black/92 shadow-2xl shadow-black/50 p-6 sm:p-7"
+                  className="rounded-2xl border-2 border-white/30 bg-black/98 shadow-2xl shadow-black/60 p-6 sm:p-7"
                 >
                   <motion.div variants={staggerContainer} initial="hidden" animate="visible">
                     <InfoRow
