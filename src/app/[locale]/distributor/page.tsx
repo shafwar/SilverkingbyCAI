@@ -2,7 +2,6 @@ import { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { generatePageMetadata } from "@/lib/seo";
 import { prisma } from "@/lib/prisma";
-import { getR2Url } from "@/utils/r2-url";
 import DistributorPageClient from "./DistributorPageClient";
 
 /** Hero section selalu menggunakan gambar ini (public/images/DSC02998.JPG). */
@@ -63,7 +62,9 @@ export default async function DistributorPage() {
     console.error("[DistributorPage] Failed to load distributors:", e);
   }
 
-  const heroImageUrl = getR2Url(HERO_IMAGE_PATH);
+  // Use same-origin public asset for faster LCP (R2 can be slower to handshake on some devices).
+  // CMS can still override after sections load in the client.
+  const heroImageUrl = HERO_IMAGE_PATH;
 
   return (
     <DistributorPageClient
