@@ -1,10 +1,18 @@
 "use client";
 
 import { Link } from "@/i18n/routing";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import Navbar from "@/components/layout/Navbar";
 import { PageFooter } from "@/components/footer/PageFooter";
 import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
+
+const fontJournal = Plus_Jakarta_Sans({
+  weight: ["400", "500", "600", "700", "800"],
+  subsets: ["latin"],
+  variable: "--font-journal",
+  display: "swap",
+});
 
 type Article = {
   slug: string;
@@ -25,7 +33,10 @@ export default function JournalArticleClient({ article, locale, backLabel }: Pro
   const hasHtml = /<[a-z][\s\S]*>/i.test(article.content);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
+    <div
+      className={`min-h-screen bg-[#050505] text-white ${fontJournal.variable}`}
+      style={{ fontFamily: "var(--font-journal), system-ui, sans-serif" }}
+    >
       <Navbar />
 
       <article className="relative pt-24 pb-20">
@@ -77,7 +88,7 @@ export default function JournalArticleClient({ article, locale, backLabel }: Pro
               </time>
             )}
 
-            <h1 className="font-serif text-3xl font-bold tracking-tight text-white sm:text-4xl md:text-5xl">
+            <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl md:text-5xl">
               {article.title}
             </h1>
 

@@ -3,12 +3,12 @@
 import { useEffect, useState, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/routing";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import Navbar from "@/components/layout/Navbar";
 import { usePageSections } from "@/hooks/usePageSections";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import { ScrollRevealSection } from "@/components/shared/ScrollRevealSection";
-import { getR2UrlClient } from "@/utils/r2-url";
 import { motion } from "framer-motion";
 import { ArrowRight, BookOpen } from "lucide-react";
 import { PageFooter } from "@/components/footer/PageFooter";
@@ -19,6 +19,13 @@ if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
 }
 
+const fontJournal = Plus_Jakarta_Sans({
+  weight: ["400", "500", "600", "700", "800"],
+  subsets: ["latin"],
+  variable: "--font-journal",
+  display: "swap",
+});
+
 type JournalItem = {
   slug: string;
   title: string;
@@ -27,7 +34,9 @@ type JournalItem = {
   publishedAt: string | null;
 };
 
-const HERO_FALLBACK = "/images/hero-fallback.jpg";
+/** Fallback hero image when no page-section is set — direct path so it always loads */
+const JOURNAL_HERO_FALLBACK = "/images/hero-fallback.jpg";
+const LATEST_ARTICLES_LIMIT = 3;
 
 export default function JournalPageClient() {
   const t = useTranslations("journal");
@@ -42,7 +51,7 @@ export default function JournalPageClient() {
   } = usePageSections("journal");
 
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "IMAGE";
-  const heroUrl = pageSections.hero?.url ?? getR2UrlClient(HERO_FALLBACK);
+  const heroUrl = pageSections.hero?.url ?? JOURNAL_HERO_FALLBACK;
   const heroVersion = pageSections.hero?.version;
 
   useEffect(() => {
@@ -63,8 +72,13 @@ export default function JournalPageClient() {
     };
   }, [locale]);
 
+  const latestItems = items.slice(0, LATEST_ARTICLES_LIMIT);
+
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-[#050505] text-white">
+    <div
+      className={`min-h-screen w-full overflow-x-hidden bg-[#050505] text-white ${fontJournal.variable}`}
+      style={{ fontFamily: "var(--font-journal), system-ui, sans-serif" }}
+    >
       {/* Hero background */}
       <div className="fixed inset-0 z-0 h-screen w-full overflow-hidden">
         <div className="absolute inset-0 z-0 bg-[#050505]" />
@@ -167,11 +181,11 @@ export default function JournalPageClient() {
             <div className="flex items-center justify-center py-24">
               <div className="h-10 w-10 animate-spin rounded-full border-2 border-luxury-gold/30 border-t-luxury-gold" />
             </div>
-          ) : items.length === 0 ? (
+          ) : latestItems.length === 0 ? (
             <p className="py-16 text-center text-white/50">{t("noArticles")}</p>
           ) : (
             <ul className="space-y-10">
-              {items.map((post, index) => (
+              {latestItems.map((post, index) => (
                 <li key={post.slug}>
                   <ScrollRevealSection direction="up" delay={index * 0.08} as="div">
                     <Link
