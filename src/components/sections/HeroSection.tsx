@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, type Variants } from "framer-motion";
 import { gsap } from "gsap";
-import { QrCode } from "lucide-react";
+import { QrCode, BookOpen } from "lucide-react";
 import ScrollingFeatures from "./ScrollingFeatures";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useTranslations } from "next-intl";
@@ -114,6 +114,7 @@ const bubbleOrbs = [
 
 export default function HeroSection({ shouldAnimate = true, skipVideo = false }: HeroSectionProps) {
   const t = useTranslations("home.hero");
+  const tJournal = useTranslations("home.journalTeaser");
   const pathname = usePathname();
   const containerRef = useRef<HTMLDivElement>(null);
   const headlineRef = useRef<HTMLHeadingElement>(null);
@@ -678,6 +679,30 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
                 qr: (chunks) => <span className="font-medium text-white/90">{chunks}</span>,
               })}
             </p>
+
+            {/* Journal teaser — inside hero, fixed viewport, no scroll */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
+              transition={{ duration: 0.6, delay: 1, ease: "easeOut" }}
+              className="mt-4 sm:mt-5 md:mt-6"
+            >
+              <OptimizedLink
+                href="/journal"
+                className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-2 sm:px-4 sm:py-2.5 backdrop-blur-sm transition-all duration-300 hover:bg-white/10 hover:border-amber-500/30 hover:shadow-[0_0_20px_rgba(245,158,11,0.06)]"
+                aria-label={tJournal("title")}
+              >
+                <span className="flex h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 items-center justify-center rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-400/90 transition-colors group-hover:border-amber-500/35 group-hover:bg-amber-500/15">
+                  <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                </span>
+                <span className="font-sans text-[0.8125rem] sm:text-[0.875rem] font-medium text-white/90 tracking-tight">
+                  {tJournal("title")}
+                </span>
+                <span className="hidden sm:inline font-sans text-[0.75rem] text-white/55 max-w-[180px] truncate">
+                  — {tJournal("description")}
+                </span>
+              </OptimizedLink>
+            </motion.div>
           </div>
 
           {/* Desktop: Insight stack */}
