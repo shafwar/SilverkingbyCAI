@@ -66,6 +66,11 @@
         "title": "Tap to launch Silver King QR scanner",
         "description": "Capture the QR seal to view purity & provenance. \"Product authenticated\" badge appears once functionality is live."
       }
+    },
+    "journalTeaser": {
+      "title": "Journal",
+      "description": "News, insights, and stories from Silver King — industry updates and behind-the-scenes perspectives.",
+      "cta": "View Journal"
     }
   },
   "whatWeDo": {

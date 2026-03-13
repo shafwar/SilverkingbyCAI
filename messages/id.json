@@ -66,6 +66,11 @@
         "title": "Ketuk untuk meluncurkan pemindai QR Silver King",
         "description": "Tangkap segel QR untuk melihat kemurnian & asal usul. Badge \"Produk terautentikasi\" muncul setelah fungsionalitas aktif."
       }
+    },
+    "journalTeaser": {
+      "title": "Jurnal",
+      "description": "Berita, wawasan, dan cerita dari Silver King — update industri dan perspektif di balik layar.",
+      "cta": "Buka Jurnal"
     }
   },
   "whatWeDo": {
