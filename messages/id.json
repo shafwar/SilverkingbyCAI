@@ -5,6 +5,7 @@
     "products": "Produk",
     "merchandise": "Merchandise",
     "distributor": "Distributor",
+    "journal": "Jurnal",
     "aboutUs": "Tentang kami",
     "getInTouch": "Hubungi kami"
   },
@@ -508,6 +509,21 @@
       "description": "Temukan distributor resmi Silver King di berbagai kota untuk produk asli dan pelayanan terbaik."
     }
   },
+  "journal": {
+    "hero": {
+      "eyebrow": "Berita & Wawasan",
+      "title": "Jurnal",
+      "subtitle": "Update, berita, dan edukasi dari Silver King by CAI."
+    },
+    "meta": {
+      "title": "Jurnal",
+      "description": "Berita, update, dan artikel edukasi dari Silver King by CAI."
+    },
+    "listHeading": "Artikel terbaru",
+    "noArticles": "Belum ada artikel.",
+    "readMore": "Baca selengkapnya",
+    "backToJournal": "Kembali ke Jurnal"
+  },
   "contact": {
     "title": "Hubungi Kami",
     "subtitle": "Halaman ini sedang dalam pengembangan.",
@@ -544,6 +560,7 @@
     "products": "Produk",
     "distributor": "Distributor",
     "content": "Konten",
+    "journal": "Jurnal",
     "qrPreview": "Pratinjau QR",
     "logs": "Log",
     "analytics": "Analitik",
@@ -911,6 +928,26 @@
       "messageFrom": "Pesan dari",
       "reply": "Balas",
       "close": "Tutup"
+    },
+    "journal": {
+      "title": "Jurnal",
+      "newPost": "Post baru",
+      "editPost": "Edit post",
+      "noPosts": "Belum ada post jurnal.",
+      "titleLabel": "Judul",
+      "slug": "Slug",
+      "status": "Status",
+      "published": "Terbit",
+      "draft": "Draf",
+      "actions": "Aksi",
+      "titleId": "Judul (Indonesia)",
+      "titleEn": "Judul (English)",
+      "excerptId": "Ringkasan (Indonesia)",
+      "excerptEn": "Ringkasan (English)",
+      "contentId": "Konten (Indonesia)",
+      "contentEn": "Konten (English)",
+      "heroImage": "Gambar hero",
+      "sortOrder": "Urutan"
     },
     "logsDetail": {
       "product": "Produk",

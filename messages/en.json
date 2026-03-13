@@ -5,6 +5,7 @@
     "products": "Products",
     "merchandise": "Merchandise",
     "distributor": "Distributor",
+    "journal": "Journal",
     "aboutUs": "About us",
     "getInTouch": "Get in touch"
   },
@@ -508,6 +509,21 @@
       "description": "Find Silver King official distributors in various cities for authentic products and the best service."
     }
   },
+  "journal": {
+    "hero": {
+      "eyebrow": "News & Insights",
+      "title": "Journal",
+      "subtitle": "Updates, news, and education from Silver King by CAI."
+    },
+    "meta": {
+      "title": "Journal",
+      "description": "News, updates, and educational articles from Silver King by CAI."
+    },
+    "listHeading": "Latest articles",
+    "noArticles": "No articles yet.",
+    "readMore": "Read more",
+    "backToJournal": "Back to Journal"
+  },
   "contact": {
     "title": "Contact Us",
     "subtitle": "This page is under construction.",
@@ -544,6 +560,7 @@
     "products": "Products",
     "distributor": "Distributor",
     "content": "Content",
+    "journal": "Journal",
     "logout": "Logout",
     "login": "Login",
     "email": "Email",
@@ -908,6 +925,26 @@
       "messageFrom": "Message from",
       "reply": "Reply",
       "close": "Close"
+    },
+    "journal": {
+      "title": "Journal",
+      "newPost": "New post",
+      "editPost": "Edit post",
+      "noPosts": "No journal posts yet.",
+      "titleLabel": "Title",
+      "slug": "Slug",
+      "status": "Status",
+      "published": "Published",
+      "draft": "Draft",
+      "actions": "Actions",
+      "titleId": "Title (Indonesian)",
+      "titleEn": "Title (English)",
+      "excerptId": "Excerpt (Indonesian)",
+      "excerptEn": "Excerpt (English)",
+      "contentId": "Content (Indonesian)",
+      "contentEn": "Content (English)",
+      "heroImage": "Hero image",
+      "sortOrder": "Sort order"
     },
     "logsDetail": {
       "product": "Product",

@@ -1,0 +1,114 @@
+/**
+ * Admin API: update and delete journal post.
+ * PATCH: update (any of slug, titleId, titleEn, contentId, contentEn, excerptId?, excerptEn?, heroImageR2Key?, publishedAt?, sortOrder?)
+ * DELETE: delete
+ */
+
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+function slugify(s: string): string {
+  return s
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "") || "post";
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session || (session.user as { role?: string })?.role !== "ADMIN") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const id = parseInt((await params).id, 10);
+  if (Number.isNaN(id)) {
+    return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+  }
+
+  try {
+    const body = await request.json();
+    const existing = await prisma.journal.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    const updates: {
+      slug?: string;
+      titleId?: string;
+      titleEn?: string;
+      contentId?: string;
+      contentEn?: string;
+      excerptId?: string | null;
+      excerptEn?: string | null;
+      heroImageR2Key?: string | null;
+      publishedAt?: Date | null;
+      sortOrder?: number;
+    } = {};
+
+    if (body.slug !== undefined) updates.slug = slugify(String(body.slug).trim()) || existing.slug;
+    if (body.titleId !== undefined) updates.titleId = String(body.titleId).trim();
+    if (body.titleEn !== undefined) updates.titleEn = String(body.titleEn).trim();
+    if (body.contentId !== undefined) updates.contentId = String(body.contentId).trim();
+    if (body.contentEn !== undefined) updates.contentEn = String(body.contentEn).trim();
+    if (body.excerptId !== undefined) updates.excerptId = body.excerptId == null || body.excerptId === "" ? null : String(body.excerptId).trim();
+    if (body.excerptEn !== undefined) updates.excerptEn = body.excerptEn == null || body.excerptEn === "" ? null : String(body.excerptEn).trim();
+    if (body.heroImageR2Key !== undefined) updates.heroImageR2Key = body.heroImageR2Key == null || body.heroImageR2Key === "" ? null : String(body.heroImageR2Key).trim();
+    if (body.sortOrder !== undefined) updates.sortOrder = typeof body.sortOrder === "number" ? body.sortOrder : existing.sortOrder;
+    if (body.publishedAt !== undefined) {
+      if (body.publishedAt === null || body.publishedAt === false || body.publishedAt === "false" || body.publishedAt === "") {
+        updates.publishedAt = null;
+      } else {
+        updates.publishedAt = body.publishedAt === true || body.publishedAt === "true"
+          ? new Date()
+          : new Date(body.publishedAt);
+      }
+    }
+
+    if (updates.slug && updates.slug !== existing.slug) {
+      const conflict = await prisma.journal.findUnique({ where: { slug: updates.slug } });
+      if (conflict) {
+        return NextResponse.json({ error: "Slug already in use" }, { status: 400 });
+      }
+    }
+
+    const updated = await prisma.journal.update({
+      where: { id },
+      data: updates,
+    });
+
+    return NextResponse.json({ item: updated });
+  } catch (e) {
+    console.error("[ADMIN_JOURNAL_PATCH]", e);
+    return NextResponse.json({ error: "Failed to update journal" }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session || (session.user as { role?: string })?.role !== "ADMIN") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const id = parseInt((await params).id, 10);
+  if (Number.isNaN(id)) {
+    return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+  }
+
+  try {
+    await prisma.journal.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error("[ADMIN_JOURNAL_DELETE]", e);
+    return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
+  }
+}

@@ -156,6 +156,7 @@ export default function Navbar() {
       { name: t("products"), href: "/products" },
       { name: t("merchandise"), href: "/merchandise" },
       { name: t("distributor"), href: "/distributor" },
+      { name: t("journal"), href: "/journal" },
       { name: t("aboutUs"), href: "/about" },
     ],
     [t]
