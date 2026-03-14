@@ -758,7 +758,7 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
         initial={{ opacity: 0, y: 6 }}
         animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
         transition={{ duration: 0.5, delay: 1.05, ease: "easeOut" }}
-        className="md:hidden absolute left-0 right-0 bottom-[calc(132px+env(safe-area-inset-bottom))] sm:bottom-[calc(138px+env(safe-area-inset-bottom))] z-25 flex justify-center px-4 pointer-events-auto"
+        className="md:hidden absolute left-0 right-0 bottom-[calc(168px+env(safe-area-inset-bottom))] sm:bottom-[calc(174px+env(safe-area-inset-bottom))] z-25 flex justify-center px-4 pointer-events-auto"
       >
         <OptimizedLink
           href="/journal"

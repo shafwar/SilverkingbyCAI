@@ -36,7 +36,7 @@ type JournalItem = {
   publishedAt: string | null;
 };
 
-/** Fallback hero image path when no page-section is set */
+/** Fallback hero image when no page-section is set. R2 URL = NEXT_PUBLIC_R2_PUBLIC_URL/static/images/hero-fallback.jpg; ensure public/images/hero-fallback.jpg exists and is synced to R2. */
 const JOURNAL_HERO_FALLBACK_PATH = "/images/hero-fallback.jpg";
 const LATEST_ARTICLES_LIMIT = 3;
 
