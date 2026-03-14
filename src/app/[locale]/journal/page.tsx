@@ -3,6 +3,9 @@ import { getTranslations } from "next-intl/server";
 import { generatePageMetadata } from "@/lib/seo";
 import JournalPageClient from "./JournalPageClient";
 
+/** Same-origin path for hero fallback so image loads from public/ (no R2/CORS); CMS can override in client. */
+const JOURNAL_HERO_FALLBACK_PATH = "/images/hero-fallback.jpg";
+
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
@@ -23,5 +26,5 @@ export async function generateMetadata({
 }
 
 export default async function JournalPage() {
-  return <JournalPageClient />;
+  return <JournalPageClient initialHeroImageUrl={JOURNAL_HERO_FALLBACK_PATH} />;
 }

@@ -10,7 +10,6 @@ import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import { ScrollRevealSection } from "@/components/shared/ScrollRevealSection";
-import { getR2UrlClient } from "@/utils/r2-url";
 import { motion } from "framer-motion";
 import { ArrowRight, BookOpen } from "lucide-react";
 import { PageFooter } from "@/components/footer/PageFooter";
@@ -36,11 +35,14 @@ type JournalItem = {
   publishedAt: string | null;
 };
 
-/** Fallback hero image when no page-section is set. R2 URL = NEXT_PUBLIC_R2_PUBLIC_URL/static/images/hero-fallback.jpg; ensure public/images/hero-fallback.jpg exists and is synced to R2. */
-const JOURNAL_HERO_FALLBACK_PATH = "/images/hero-fallback.jpg";
 const LATEST_ARTICLES_LIMIT = 3;
 
-export default function JournalPageClient() {
+type JournalPageClientProps = {
+  /** Same-origin path for hero when no CMS section (e.g. /images/hero-fallback.jpg); ensures asset loads from public/ without R2/CORS. */
+  initialHeroImageUrl: string;
+};
+
+export default function JournalPageClient({ initialHeroImageUrl }: JournalPageClientProps) {
   const t = useTranslations("journal");
   const locale = useLocale();
   const [items, setItems] = useState<JournalItem[]>([]);
@@ -53,22 +55,21 @@ export default function JournalPageClient() {
   } = usePageSections("journal");
 
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "IMAGE";
-  const heroUrl = pageSections.hero?.url ?? getR2UrlClient(JOURNAL_HERO_FALLBACK_PATH);
+  const heroUrl = pageSections.hero?.url ?? initialHeroImageUrl;
   const heroVersion = pageSections.hero?.version;
   const isFallbackHero = !pageSections.hero?.url;
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
-  // Preload hero image (R2 or same-origin) for faster LCP when using fallback
+  // Preload hero image for faster LCP when using fallback (same-origin URL we display)
   useEffect(() => {
     if (!isFallbackHero || heroMediaType !== "IMAGE") return;
-    const url = getR2UrlClient(JOURNAL_HERO_FALLBACK_PATH);
     const link = document.createElement("link");
     link.rel = "preload";
     link.as = "image";
-    link.href = url;
+    link.href = initialHeroImageUrl;
     document.head.appendChild(link);
     return () => link.remove();
-  }, [isFallbackHero, heroMediaType]);
+  }, [isFallbackHero, heroMediaType, initialHeroImageUrl]);
 
   useEffect(() => {
     let cancelled = false;
