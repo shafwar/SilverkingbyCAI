@@ -45,7 +45,6 @@ export default function JournalPageClient() {
   const locale = useLocale();
   const [items, setItems] = useState<JournalItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [heroImageError, setHeroImageError] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const {
     sections: pageSections,
@@ -54,22 +53,23 @@ export default function JournalPageClient() {
   } = usePageSections("journal");
 
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "IMAGE";
-  const heroUrl = pageSections.hero?.url ?? getR2UrlClient(JOURNAL_HERO_FALLBACK_PATH);
+  const fallbackHeroUrl = getR2UrlClient(JOURNAL_HERO_FALLBACK_PATH);
+  const heroUrl = sectionsLoading
+    ? fallbackHeroUrl
+    : (pageSections.hero?.url ?? fallbackHeroUrl);
   const heroVersion = pageSections.hero?.version;
-  const isFallbackHero = !pageSections.hero?.url;
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
-  // Preload hero image (R2 or same-origin) for faster LCP when using fallback
+  // Preload hero image (R2 or same-origin) so asset request happens early
   useEffect(() => {
-    if (!isFallbackHero || heroMediaType !== "IMAGE") return;
-    const url = getR2UrlClient(JOURNAL_HERO_FALLBACK_PATH);
+    if (heroMediaType !== "IMAGE") return;
     const link = document.createElement("link");
     link.rel = "preload";
     link.as = "image";
-    link.href = url;
+    link.href = heroUrl;
     document.head.appendChild(link);
     return () => link.remove();
-  }, [isFallbackHero, heroMediaType]);
+  }, [heroUrl, heroMediaType]);
 
   useEffect(() => {
     let cancelled = false;
@@ -119,18 +119,6 @@ export default function JournalPageClient() {
               muted
               playsInline
               preload="auto"
-            />
-          ) : isFallbackHero && heroImageError ? null : isFallbackHero ? (
-            <img
-              src={heroUrl}
-              alt=""
-              decoding="async"
-              fetchPriority="high"
-              loading="eager"
-              onLoad={() => setHeroImageError(false)}
-              onError={() => setHeroImageError(true)}
-              className="absolute inset-0 h-full w-full object-cover"
-              style={{ objectFit: "cover" }}
             />
           ) : (
             <ImageLoadGuard
