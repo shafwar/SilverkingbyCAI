@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import { OptimizedLink } from "@/components/ui/OptimizedLink";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
+import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 
 interface HeroSectionProps {
   shouldAnimate?: boolean;
@@ -116,6 +117,7 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
   const t = useTranslations("home.hero");
   const tJournal = useTranslations("home.journalTeaser");
   const pathname = usePathname();
+  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
   const containerRef = useRef<HTMLDivElement>(null);
   const headlineRef = useRef<HTMLHeadingElement>(null);
   const subtitleRef = useRef<HTMLParagraphElement>(null);
@@ -509,7 +511,7 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
         // Don't set opacity to 0 if not transitioning to prevent flash
       }}
     >
-      {/* Video Background — skip when PersistentHomeHeroVideo in layout is used (skipVideo) */}
+      {/* Video Background — skip when PersistentHomeHeroVideo in layout is used (skipVideo); on slow connection show poster only */}
       {!skipVideo && (
         <motion.div
           style={{ opacity: isLoaded ? videoOpacity : 0, scale }}
@@ -521,31 +523,42 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
             initial="hidden"
             animate={animationState}
           >
-            <video
-              ref={videoRef}
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="metadata"
-              disablePictureInPicture
-              disableRemotePlayback
-              className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
-              style={{
-                pointerEvents: "none",
-                outline: "none",
-                WebkitTapHighlightColor: "transparent",
-                WebkitTouchCallout: "none",
-                userSelect: "none",
-              }}
-              onContextMenu={(e) => e.preventDefault()}
-              onPlay={(e) => {
-                const video = e.currentTarget;
-                if (video.paused) video.play().catch(() => {});
-              }}
-            >
-              <source src={getR2UrlClient("/videos/hero/hero-background.mp4")} type="video/mp4" />
-            </video>
+            {shouldLoadHeroVideo ? (
+              <video
+                ref={videoRef}
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="metadata"
+                disablePictureInPicture
+                disableRemotePlayback
+                className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
+                style={{
+                  pointerEvents: "none",
+                  outline: "none",
+                  WebkitTapHighlightColor: "transparent",
+                  WebkitTouchCallout: "none",
+                  userSelect: "none",
+                }}
+                onContextMenu={(e) => e.preventDefault()}
+                onPlay={(e) => {
+                  const video = e.currentTarget;
+                  if (video.paused) video.play().catch(() => {});
+                }}
+              >
+                <source src={getR2UrlClient("/videos/hero/hero-background.mp4")} type="video/mp4" />
+              </video>
+            ) : (
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "linear-gradient(180deg, #080808 0%, #050505 50%, #030303 100%), radial-gradient(ellipse 80% 60% at 50% 40%, rgba(212,175,55,0.05) 0%, transparent 55%)",
+                }}
+                aria-hidden
+              />
+            )}
             {videoError && (
               <div className="absolute inset-0 bg-black" />
             )}
@@ -680,22 +693,22 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
               })}
             </p>
 
-            {/* Journal teaser — inside hero, fixed viewport, no scroll */}
+            {/* Journal teaser — on mobile: center + smaller than Scan & Verify; desktop: left, normal size */}
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
               transition={{ duration: 0.6, delay: 1, ease: "easeOut" }}
-              className="mt-4 sm:mt-5 md:mt-6"
+              className="mt-4 sm:mt-5 md:mt-6 flex justify-center md:justify-start"
             >
               <OptimizedLink
                 href="/journal"
-                className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-2 sm:px-4 sm:py-2.5 backdrop-blur-sm transition-all duration-300 hover:bg-white/10 hover:border-amber-500/30 hover:shadow-[0_0_20px_rgba(245,158,11,0.06)]"
+                className="group inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-white/15 bg-white/5 px-2.5 py-1.5 sm:px-4 sm:py-2.5 backdrop-blur-sm transition-all duration-300 hover:bg-white/10 hover:border-amber-500/30 hover:shadow-[0_0_20px_rgba(245,158,11,0.06)]"
                 aria-label={tJournal("title")}
               >
-                <span className="flex h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 items-center justify-center rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-400/90 transition-colors group-hover:border-amber-500/35 group-hover:bg-amber-500/15">
-                  <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="flex h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0 items-center justify-center rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-400/90 transition-colors group-hover:border-amber-500/35 group-hover:bg-amber-500/15">
+                  <BookOpen className="h-3 w-3 sm:h-4 sm:w-4" />
                 </span>
-                <span className="font-sans text-[0.8125rem] sm:text-[0.875rem] font-medium text-white/90 tracking-tight">
+                <span className="font-sans text-xs sm:text-[0.875rem] font-medium text-white/90 tracking-tight">
                   {tJournal("title")}
                 </span>
                 <span className="hidden sm:inline font-sans text-[0.75rem] text-white/55 max-w-[180px] truncate">

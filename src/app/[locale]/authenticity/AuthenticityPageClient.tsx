@@ -28,6 +28,7 @@ import { APP_NAME } from "@/utils/constants";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { usePageSections } from "@/hooks/usePageSections";
+import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 
@@ -298,6 +299,7 @@ export default function AuthenticityPageClient() {
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
   const heroMediaUrl =
     pageSections.hero?.url ?? getR2UrlClient("/videos/hero/mobile scanning qr.mp4");
+  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
   // Register ScrollTrigger only on the client to avoid SSR/window issues
   useEffect(() => {
@@ -510,6 +512,7 @@ export default function AuthenticityPageClient() {
             ref={videoRef}
             url={heroMediaUrl}
             version={pageSections.hero?.version}
+            forcePoster={!shouldLoadHeroVideo}
             containerClassName="absolute inset-0 h-full w-full z-10"
             className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
             style={{

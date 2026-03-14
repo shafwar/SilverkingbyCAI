@@ -9,6 +9,7 @@ import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Plus, X } from "lucide-react";
 import { usePageSections } from "@/hooks/usePageSections";
+import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { PageFooter } from "@/components/footer/PageFooter";
 import gsap from "gsap";
@@ -66,6 +67,7 @@ export default function DistributorPageClient({
     refetch: refetchPageSections,
   } = usePageSections("distributor");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "IMAGE";
+  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
   /** Show hero immediately with server URL; only use CMS URL after sections load (better LCP, no black flash) */
   const displayHeroUrl = heroImageError
     ? HERO_FALLBACK_PATH
@@ -248,6 +250,7 @@ export default function DistributorPageClient({
             <VideoLoadGuard
               url={displayHeroUrl}
               version={pageSections.hero?.version}
+              forcePoster={!shouldLoadHeroVideo}
               containerClassName="absolute inset-0 w-full h-full"
               className="absolute inset-0 w-full h-full object-cover"
               style={{ objectFit: "cover" }}

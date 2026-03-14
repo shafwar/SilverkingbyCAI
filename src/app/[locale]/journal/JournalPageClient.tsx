@@ -6,9 +6,11 @@ import { Link } from "@/i18n/routing";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Navbar from "@/components/layout/Navbar";
 import { usePageSections } from "@/hooks/usePageSections";
+import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import { ScrollRevealSection } from "@/components/shared/ScrollRevealSection";
+import { getR2UrlClient } from "@/utils/r2-url";
 import { motion } from "framer-motion";
 import { ArrowRight, BookOpen } from "lucide-react";
 import { PageFooter } from "@/components/footer/PageFooter";
@@ -34,8 +36,8 @@ type JournalItem = {
   publishedAt: string | null;
 };
 
-/** Fallback hero image when no page-section is set — direct path so it always loads */
-const JOURNAL_HERO_FALLBACK = "/images/hero-fallback.jpg";
+/** Fallback hero image path when no page-section is set */
+const JOURNAL_HERO_FALLBACK_PATH = "/images/hero-fallback.jpg";
 const LATEST_ARTICLES_LIMIT = 3;
 
 export default function JournalPageClient() {
@@ -52,17 +54,19 @@ export default function JournalPageClient() {
   } = usePageSections("journal");
 
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "IMAGE";
-  const heroUrl = pageSections.hero?.url ?? JOURNAL_HERO_FALLBACK;
+  const heroUrl = pageSections.hero?.url ?? getR2UrlClient(JOURNAL_HERO_FALLBACK_PATH);
   const heroVersion = pageSections.hero?.version;
-  const isFallbackHero = heroUrl === JOURNAL_HERO_FALLBACK;
+  const isFallbackHero = !pageSections.hero?.url;
+  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
-  // Preload hero image for faster LCP when using fallback
+  // Preload hero image (R2 or same-origin) for faster LCP when using fallback
   useEffect(() => {
     if (!isFallbackHero || heroMediaType !== "IMAGE") return;
+    const url = getR2UrlClient(JOURNAL_HERO_FALLBACK_PATH);
     const link = document.createElement("link");
     link.rel = "preload";
     link.as = "image";
-    link.href = JOURNAL_HERO_FALLBACK;
+    link.href = url;
     document.head.appendChild(link);
     return () => link.remove();
   }, [isFallbackHero, heroMediaType]);
@@ -106,6 +110,7 @@ export default function JournalPageClient() {
             <VideoLoadGuard
               url={heroUrl}
               version={heroVersion}
+              forcePoster={!shouldLoadHeroVideo}
               containerClassName="absolute inset-0 h-full w-full"
               className="absolute inset-0 h-full w-full object-cover"
               style={{ objectFit: "cover" }}
@@ -117,7 +122,7 @@ export default function JournalPageClient() {
             />
           ) : isFallbackHero && heroImageError ? null : isFallbackHero ? (
             <img
-              src={JOURNAL_HERO_FALLBACK}
+              src={heroUrl}
               alt=""
               decoding="async"
               fetchPriority="high"
@@ -228,6 +233,8 @@ export default function JournalPageClient() {
                         <img
                           src={latestItems[0].heroImageUrl}
                           alt=""
+                          loading="lazy"
+                          decoding="async"
                           className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                       ) : (
@@ -276,6 +283,8 @@ export default function JournalPageClient() {
                           <img
                             src={latestItems[1].heroImageUrl}
                             alt=""
+                            loading="lazy"
+                            decoding="async"
                             className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                           />
                         ) : (
@@ -343,6 +352,8 @@ export default function JournalPageClient() {
                               <img
                                 src={latestItems[2].heroImageUrl}
                                 alt=""
+                                loading="lazy"
+                                decoding="async"
                                 className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                               />
                             ) : (

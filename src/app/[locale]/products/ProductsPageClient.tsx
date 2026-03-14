@@ -18,6 +18,7 @@ import ProductCard, { type ProductWithPricing } from "@/components/ui/ProductCar
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { usePageSections } from "@/hooks/usePageSections";
+import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import Image from "next/image";
@@ -285,6 +286,7 @@ export default function ProductsPageClient() {
   } = usePageSections("products");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
   const heroMediaUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/gold-stone.mp4");
+  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
   // Ensure products hero video autoplays reliably on all devices
   useReliableVideoAutoplay(videoRef);
@@ -1099,6 +1101,7 @@ export default function ProductsPageClient() {
             ref={videoRef}
             url={heroMediaUrl}
             version={pageSections.hero?.version}
+            forcePoster={!shouldLoadHeroVideo}
             containerClassName="absolute inset-0 w-screen h-screen z-10"
             className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
             style={{

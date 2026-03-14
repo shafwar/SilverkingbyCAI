@@ -9,6 +9,7 @@ import { motion, useInView, AnimatePresence, type Variants } from "framer-motion
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { usePageSections, getCacheBustedMediaUrl } from "@/hooks/usePageSections";
+import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { EditableMedia } from "@/components/editable-media";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
@@ -369,6 +370,7 @@ export default function WhatWeDoPageClient() {
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
   const heroMediaUrl =
     pageSections.hero?.url ?? getR2UrlClient("/videos/hero/metal crafting hands.mp4");
+  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
   const footerMediaType = pageSections.section_footer_video?.mediaType?.toUpperCase() ?? "VIDEO";
   const footerMediaUrl =
     pageSections.section_footer_video?.url ??
@@ -620,6 +622,7 @@ export default function WhatWeDoPageClient() {
               ref={videoRef}
               url={heroMediaUrl}
               version={pageSections.hero?.version}
+              forcePoster={!shouldLoadHeroVideo}
               containerClassName="absolute inset-0 w-screen h-screen z-10"
               className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
               style={{
@@ -834,6 +837,7 @@ export default function WhatWeDoPageClient() {
               ref={footerVideoRef}
               url={footerMediaUrl}
               version={pageSections.section_footer_video?.version}
+              forcePoster={!shouldLoadHeroVideo}
               containerClassName="absolute inset-0 w-full h-full z-10"
               className="absolute inset-0 w-full h-full object-cover"
               style={{

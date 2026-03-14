@@ -11,6 +11,7 @@ import Image from "next/image";
 import { Plus, Pencil, Trash2, X, Phone } from "lucide-react";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { VideoLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
+import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { Plus_Jakarta_Sans } from "next/font/google";
 
@@ -186,6 +187,7 @@ export default function MerchandisePageClient() {
   const addFileInputRef = useRef<HTMLInputElement>(null);
   const [isMounted, setIsMounted] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
+  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
   /** Hero images: second image first (polo close-up / “ss kedua”), then rest of flow. */
   const heroImageUrls = useMemo(() => {
@@ -995,6 +997,7 @@ export default function MerchandisePageClient() {
           <VideoLoadGuard
             ref={footerVideoRef}
             url={getR2UrlClient("/videos/hero/gold-footage.mp4")}
+            forcePoster={!shouldLoadHeroVideo}
             containerClassName="absolute inset-0 w-full h-full"
             className="absolute inset-0 w-full h-full object-cover"
             style={{

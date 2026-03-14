@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useRef, useEffect, useState } from "react";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { usePageSections } from "@/hooks/usePageSections";
+import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 
@@ -74,6 +75,7 @@ export function PersistentHomeHeroVideo() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isHome, setIsHome] = useState(false);
   const splashComplete = useSplashComplete();
+  const shouldLoadVideo = useShouldLoadHeroVideo();
   const { sections, loading: sectionsLoading, refetch } = usePageSections("home");
   const heroUrl = sections.hero?.url ?? getR2UrlClient(HERO_VIDEO_FALLBACK);
   const heroVersion = sections.hero?.version;
@@ -114,6 +116,7 @@ export function PersistentHomeHeroVideo() {
               ref={videoRef}
               url={heroUrl}
               version={heroVersion}
+              forcePoster={!shouldLoadVideo}
               containerClassName="absolute inset-0 min-w-full min-h-full w-full h-full"
               className="absolute left-1/2 top-1/2 min-w-full min-h-full w-full h-full -translate-x-1/2 -translate-y-1/2 object-cover"
               style={{ pointerEvents: "none" }}
