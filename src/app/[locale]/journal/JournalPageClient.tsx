@@ -53,23 +53,22 @@ export default function JournalPageClient() {
   } = usePageSections("journal");
 
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "IMAGE";
-  const fallbackHeroUrl = getR2UrlClient(JOURNAL_HERO_FALLBACK_PATH);
-  const heroUrl = sectionsLoading
-    ? fallbackHeroUrl
-    : (pageSections.hero?.url ?? fallbackHeroUrl);
+  const heroUrl = pageSections.hero?.url ?? getR2UrlClient(JOURNAL_HERO_FALLBACK_PATH);
   const heroVersion = pageSections.hero?.version;
+  const isFallbackHero = !pageSections.hero?.url;
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
-  // Preload hero image (R2 or same-origin) so asset request happens early
+  // Preload hero image (R2 or same-origin) for faster LCP when using fallback
   useEffect(() => {
-    if (heroMediaType !== "IMAGE") return;
+    if (!isFallbackHero || heroMediaType !== "IMAGE") return;
+    const url = getR2UrlClient(JOURNAL_HERO_FALLBACK_PATH);
     const link = document.createElement("link");
     link.rel = "preload";
     link.as = "image";
-    link.href = heroUrl;
+    link.href = url;
     document.head.appendChild(link);
     return () => link.remove();
-  }, [heroUrl, heroMediaType]);
+  }, [isFallbackHero, heroMediaType]);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,6 +107,7 @@ export default function JournalPageClient() {
         <div className="absolute inset-0 z-10 overflow-hidden">
           {heroMediaType === "VIDEO" ? (
             <VideoLoadGuard
+              key={heroUrl}
               url={heroUrl}
               version={heroVersion}
               forcePoster={!shouldLoadHeroVideo}
@@ -122,6 +122,7 @@ export default function JournalPageClient() {
             />
           ) : (
             <ImageLoadGuard
+              key={heroUrl}
               url={heroUrl}
               version={heroVersion}
               containerClassName="absolute inset-0 h-full w-full"

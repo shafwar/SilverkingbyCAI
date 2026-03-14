@@ -692,6 +692,30 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
                 qr: (chunks) => <span className="font-medium text-white/90">{chunks}</span>,
               })}
             </p>
+
+            {/* Journal teaser — desktop only: left below subtitle; mobile: moved to between features & Scan & Verify */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
+              transition={{ duration: 0.6, delay: 1, ease: "easeOut" }}
+              className="mt-4 sm:mt-5 md:mt-6 hidden md:block"
+            >
+              <OptimizedLink
+                href="/journal"
+                className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2.5 backdrop-blur-sm transition-all duration-300 hover:bg-white/10 hover:border-amber-500/30 hover:shadow-[0_0_20px_rgba(245,158,11,0.06)]"
+                aria-label={tJournal("title")}
+              >
+                <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-400/90 transition-colors group-hover:border-amber-500/35 group-hover:bg-amber-500/15">
+                  <BookOpen className="h-4 w-4" />
+                </span>
+                <span className="font-sans text-[0.875rem] font-medium text-white/90 tracking-tight">
+                  {tJournal("title")}
+                </span>
+                <span className="font-sans text-[0.75rem] text-white/55 max-w-[180px] truncate">
+                  — {tJournal("description")}
+                </span>
+              </OptimizedLink>
+            </motion.div>
           </div>
 
           {/* Desktop: Insight stack */}
@@ -729,26 +753,23 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
         <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate} />
       </div>
 
-      {/* Journal button — between features (Chain-of-Custody / Purity Lab / Global Trust) and Scan & Verify; center, smaller than QR card */}
+      {/* Mobile only: Journal button — centered between features block and Scan & Verify */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-        transition={{ duration: 0.6, delay: 1.05, ease: "easeOut" }}
-        className="absolute bottom-[calc(112px+env(safe-area-inset-bottom))] sm:bottom-[calc(118px+env(safe-area-inset-bottom))] md:bottom-24 inset-x-0 z-20 flex justify-center px-3.5 sm:px-4 pointer-events-auto"
+        initial={{ opacity: 0, y: 6 }}
+        animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
+        transition={{ duration: 0.5, delay: 1.05, ease: "easeOut" }}
+        className="md:hidden absolute left-0 right-0 bottom-[calc(132px+env(safe-area-inset-bottom))] sm:bottom-[calc(138px+env(safe-area-inset-bottom))] z-25 flex justify-center px-4 pointer-events-auto"
       >
         <OptimizedLink
           href="/journal"
-          className="group inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-white/15 bg-white/5 px-2.5 py-1.5 sm:px-3.5 sm:py-2 backdrop-blur-sm transition-all duration-300 hover:bg-white/10 hover:border-amber-500/30 hover:shadow-[0_0_20px_rgba(245,158,11,0.06)] max-w-[min(calc(100vw-28px),280px)] sm:max-w-[300px] justify-center"
+          className="group inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-1.5 backdrop-blur-sm transition-all duration-300 hover:bg-white/10 hover:border-amber-500/30 hover:shadow-[0_0_20px_rgba(245,158,11,0.06)]"
           aria-label={tJournal("title")}
         >
-          <span className="flex h-6 w-6 sm:h-7 sm:w-7 flex-shrink-0 items-center justify-center rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-400/90 transition-colors group-hover:border-amber-500/35 group-hover:bg-amber-500/15">
-            <BookOpen className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+          <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-400/90 transition-colors group-hover:border-amber-500/35 group-hover:bg-amber-500/15">
+            <BookOpen className="h-3 w-3" />
           </span>
-          <span className="font-sans text-xs sm:text-[0.8125rem] font-medium text-white/90 tracking-tight">
+          <span className="font-sans text-xs font-medium text-white/90 tracking-tight">
             {tJournal("title")}
-          </span>
-          <span className="hidden sm:inline font-sans text-[0.7rem] text-white/55 max-w-[140px] truncate">
-            — {tJournal("description")}
           </span>
         </OptimizedLink>
       </motion.div>
