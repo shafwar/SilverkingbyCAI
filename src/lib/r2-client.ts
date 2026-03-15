@@ -166,6 +166,34 @@ export function getPublicUrl(key: string): string {
 }
 
 /**
+ * Get object stream from R2 (for proxying to client, e.g. hero images).
+ * @param key - Object key (path) in the bucket, e.g. "static/images/hero-fallback.jpg"
+ * @returns Stream and contentType, or null if not found
+ */
+export async function getObjectStreamFromR2(
+  key: string
+): Promise<{ body: Readable; contentType?: string } | null> {
+  try {
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+    });
+    const response = await r2Client.send(command);
+    if (!response.Body) return null;
+    const body = response.Body as Readable;
+    const contentType = response.ContentType ?? "image/jpeg";
+    return { body, contentType };
+  } catch (error: unknown) {
+    const name = typeof error === "object" && error !== null && "name" in error ? (error as { name: string }).name : "";
+    const code = typeof error === "object" && error !== null && "$metadata" in error
+      ? (error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode
+      : undefined;
+    if (name === "NoSuchKey" || name === "NotFound" || code === 404) return null;
+    throw error;
+  }
+}
+
+/**
  * Upload file from FormData or File (streaming for video/large files — faster, no full buffer).
  * Uses stream when possible so upload starts immediately; ContentLength required for S3/R2.
  */
