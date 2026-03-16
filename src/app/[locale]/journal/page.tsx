@@ -3,8 +3,8 @@ import { getTranslations } from "next-intl/server";
 import { generatePageMetadata } from "@/lib/seo";
 import JournalPageClient from "./JournalPageClient";
 
-/** Same-origin API that streams hero from R2 (or public/ fallback); ensures hero asset appears and onLoad fires. */
-const JOURNAL_HERO_IMAGE_URL = "/api/hero-image?page=journal";
+/** Same path as Distributor (public/images/DSC02998.JPG) — konsistensi yang berhasil; hero pasti muncul, CMS can override via pageSections. */
+const JOURNAL_HERO_IMAGE_PATH = "/images/DSC02998.JPG";
 
 export const dynamic = "force-dynamic";
 
@@ -26,5 +26,5 @@ export async function generateMetadata({
 }
 
 export default async function JournalPage() {
-  return <JournalPageClient initialHeroImageUrl={JOURNAL_HERO_IMAGE_URL} />;
+  return <JournalPageClient initialHeroImageUrl={JOURNAL_HERO_IMAGE_PATH} />;
 }
