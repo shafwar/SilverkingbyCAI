@@ -81,6 +81,7 @@ export function ImageLoadGuard({
   // When load fails (e.g. R2 returns 404/HTML), hide img so parent gradient shows; avoid stuck opacity 0
   const showImage = ready && !failed;
   const showPlaceholder = failed; // keep container so overlay/gradient behind shows through
+  const { onLoad, onError, ...restImgProps } = imgProps;
 
   return (
     <div className={containerClassName} style={{ background: "#0a0a0a", position: "relative" }}>
@@ -91,15 +92,21 @@ export function ImageLoadGuard({
         decoding={priority ? "sync" : "async"}
         fetchPriority={priority ? "high" : undefined}
         loading={priority ? "eager" : "lazy"}
-        onLoad={() => setReady(true)}
-        onError={() => setFailed(true)}
+        onLoad={(e) => {
+          setReady(true);
+          onLoad?.(e);
+        }}
+        onError={(e) => {
+          setFailed(true);
+          onError?.(e);
+        }}
         style={{
           ...style,
           opacity: showImage ? 1 : 0,
           transition: "opacity 0.2s ease-out",
           pointerEvents: showPlaceholder ? "none" : undefined,
         }}
-        {...imgProps}
+        {...restImgProps}
       />
     </div>
   );

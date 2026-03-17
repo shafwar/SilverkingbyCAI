@@ -10,12 +10,12 @@ import * as path from "path";
 import { getObjectStreamFromR2 } from "@/lib/r2-client";
 
 const PAGE_TO_R2_KEY: Record<string, string> = {
-  journal: "static/images/hero-fallback.jpg",
+  journal: "static/images/silverking-gold.jpeg",
   distributor: "static/images/DSC02998.JPG",
 };
 
 const PAGE_TO_PUBLIC_PATH: Record<string, string> = {
-  journal: "images/hero-fallback.jpg",
+  journal: "images/silverking-gold.jpeg",
   distributor: "images/DSC02998.JPG",
 };
 
@@ -51,9 +51,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Hero image not found in R2 or public" }, { status: 404 });
   }
   const buffer = fs.readFileSync(publicPath);
+  const ext = path.extname(publicPath).toLowerCase();
+  const contentType =
+    ext === ".png" ? "image/png" :
+    ext === ".webp" ? "image/webp" :
+    ext === ".gif" ? "image/gif" :
+    ext === ".svg" ? "image/svg+xml" :
+    ext === ".jpeg" || ext === ".jpg" ? "image/jpeg" :
+    "application/octet-stream";
   return new NextResponse(buffer, {
     headers: {
-      "Content-Type": "image/jpeg",
+      "Content-Type": contentType,
       "Cache-Control": "public, max-age=3600",
     },
   });

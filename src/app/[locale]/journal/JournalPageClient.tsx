@@ -47,6 +47,7 @@ export default function JournalPageClient({ initialHeroImageUrl }: JournalPageCl
   const locale = useLocale();
   const [items, setItems] = useState<JournalItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [heroImageError, setHeroImageError] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const {
     sections: pageSections,
@@ -55,7 +56,7 @@ export default function JournalPageClient({ initialHeroImageUrl }: JournalPageCl
   } = usePageSections("journal");
 
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "IMAGE";
-  const heroUrl = pageSections.hero?.url ?? initialHeroImageUrl;
+  const heroUrl = heroImageError ? initialHeroImageUrl : (pageSections.hero?.url ?? initialHeroImageUrl);
   const heroVersion = pageSections.hero?.version;
   const isFallbackHero = !pageSections.hero?.url;
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
@@ -131,6 +132,7 @@ export default function JournalPageClient({ initialHeroImageUrl }: JournalPageCl
               style={{ objectFit: "cover" }}
               alt=""
               priority
+              onError={() => setHeroImageError(true)}
             />
           )}
         </div>
