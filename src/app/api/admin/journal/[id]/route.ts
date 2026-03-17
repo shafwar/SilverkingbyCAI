@@ -78,6 +78,29 @@ export async function PATCH(
       }
     }
 
+    // Enforce bilingual fields stay complete after patch (production safety)
+    const finalTitleId = (updates.titleId ?? existing.titleId).trim();
+    const finalTitleEn = (updates.titleEn ?? existing.titleEn).trim();
+    const finalContentId = (updates.contentId ?? existing.contentId).trim();
+    const finalContentEn = (updates.contentEn ?? existing.contentEn).trim();
+    if (!finalTitleId || !finalTitleEn || !finalContentId || !finalContentEn) {
+      return NextResponse.json(
+        { error: "titleId, titleEn, contentId, contentEn must not be empty" },
+        { status: 400 }
+      );
+    }
+
+    const finalExcerptId = (updates.excerptId !== undefined ? updates.excerptId : existing.excerptId) ?? null;
+    const finalExcerptEn = (updates.excerptEn !== undefined ? updates.excerptEn : existing.excerptEn) ?? null;
+    const hasExcerptId = !!(finalExcerptId && finalExcerptId.trim());
+    const hasExcerptEn = !!(finalExcerptEn && finalExcerptEn.trim());
+    if (hasExcerptId !== hasExcerptEn) {
+      return NextResponse.json(
+        { error: "excerptId and excerptEn must both be filled (or both empty)" },
+        { status: 400 }
+      );
+    }
+
     const updated = await prisma.journal.update({
       where: { id },
       data: updates,

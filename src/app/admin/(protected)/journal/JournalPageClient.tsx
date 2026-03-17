@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { useTranslations } from "next-intl";
 import { Plus, Pencil, Trash2, X, Upload } from "lucide-react";
+import { getR2UrlClient } from "@/utils/r2-url";
 
 type JournalItem = {
   id: number;
@@ -64,6 +65,15 @@ export function JournalPageClient() {
     load();
   }, [load]);
 
+  const getHeroPreview = (r2Key: string | null | undefined): string | null => {
+    if (!r2Key) return null;
+    const base = process.env.NEXT_PUBLIC_R2_PUBLIC_URL?.replace(/\/$/, "");
+    if (base) return `${base}/${r2Key}`;
+    // dev fallback: best-effort map known keys under static/ to / (public)
+    if (r2Key.startsWith("static/")) return `/${r2Key.slice("static/".length)}`;
+    return null;
+  };
+
   const openCreate = () => {
     setEditing(null);
     setForm({ ...defaultItem } as Record<string, string | number | null>);
@@ -87,7 +97,7 @@ export function JournalPageClient() {
       sortOrder: row.sortOrder,
     });
     setHeroFile(null);
-    setHeroPreviewUrl(row.heroImageR2Key ? null : null);
+    setHeroPreviewUrl(getHeroPreview(row.heroImageR2Key));
     setModalOpen(true);
   };
 
@@ -130,6 +140,12 @@ export function JournalPageClient() {
       alert("Title (ID & EN) and Content (ID & EN) are required.");
       return;
     }
+    const excerptId = String(form.excerptId ?? "").trim();
+    const excerptEn = String(form.excerptEn ?? "").trim();
+    if ((!!excerptId) !== (!!excerptEn)) {
+      alert("Excerpt must be filled in both languages (ID & EN), or left empty for both.");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -140,8 +156,8 @@ export function JournalPageClient() {
         titleEn,
         contentId,
         contentEn,
-        excerptId: form.excerptId && String(form.excerptId).trim() ? String(form.excerptId).trim() : undefined,
-        excerptEn: form.excerptEn && String(form.excerptEn).trim() ? String(form.excerptEn).trim() : undefined,
+        excerptId: excerptId ? excerptId : undefined,
+        excerptEn: excerptEn ? excerptEn : undefined,
         heroImageR2Key: heroR2Key || undefined,
         publishedAt: form.publishedAt === "true" ? true : (form.publishedAt && String(form.publishedAt).trim() ? form.publishedAt : null),
         sortOrder: typeof form.sortOrder === "number" ? form.sortOrder : parseInt(String(form.sortOrder), 10) || 0,
@@ -344,6 +360,21 @@ export function JournalPageClient() {
                   </label>
                   {uploadingHero && <span className="text-sm text-white/50">Uploading…</span>}
                 </div>
+                {(heroPreviewUrl || form.heroImageR2Key) && (
+                  <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/30">
+                    <img
+                      src={heroPreviewUrl ?? getHeroPreview(form.heroImageR2Key as string) ?? getR2UrlClient("/images/hero-fallback.jpg")}
+                      alt=""
+                      className="h-40 w-full object-cover"
+                      loading="lazy"
+                    />
+                    {form.heroImageR2Key && (
+                      <div className="px-3 py-2 text-[11px] text-white/50">
+                        R2 key: <span className="font-mono text-white/60">{String(form.heroImageR2Key)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="flex flex-wrap items-center gap-4">
                 <label className="flex items-center gap-2 text-sm text-white/80">
