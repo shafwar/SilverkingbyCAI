@@ -3,8 +3,8 @@ import { getTranslations } from "next-intl/server";
 import { generatePageMetadata } from "@/lib/seo";
 import JournalPageClient from "./JournalPageClient";
 
-/** Same path as Distributor (public/images/DSC02998.JPG) — konsistensi yang berhasil; hero pasti muncul, CMS can override via pageSections. */
-const JOURNAL_HERO_IMAGE_PATH = "/images/DSC02998.JPG";
+/** Journal hero fallback (public/images/silverking-gold.jpeg) — lebih selaras dengan tema gold/black; CMS can override via pageSections. */
+const JOURNAL_HERO_IMAGE_PATH = "/images/silverking-gold.jpeg";
 
 export const dynamic = "force-dynamic";
 
