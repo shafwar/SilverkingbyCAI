@@ -11,10 +11,11 @@ import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/Secti
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import { ScrollRevealSection } from "@/components/shared/ScrollRevealSection";
 import { motion } from "framer-motion";
-import { ArrowRight, BookOpen } from "lucide-react";
+import { ArrowRight, BookOpen, Pencil, Plus, Trash2 } from "lucide-react";
 import { PageFooter } from "@/components/footer/PageFooter";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -38,14 +39,29 @@ type JournalItem = {
 const LATEST_ARTICLES_LIMIT = 3;
 
 type JournalPageClientProps = {
-  /** Same-origin path for hero when no CMS section (e.g. /images/hero-fallback.jpg); ensures asset loads from public/ without R2/CORS. */
-  initialHeroImageUrl: string;
+  /** Fallback hero media type when no CMS section. */
+  initialHeroMediaType: "IMAGE" | "VIDEO";
+  /** Fallback hero URL when no CMS section (same-origin). */
+  initialHeroUrl: string;
 };
 
-export default function JournalPageClient({ initialHeroImageUrl }: JournalPageClientProps) {
+type AdminJournalItem = {
+  id: number;
+  slug: string;
+  titleId: string;
+  titleEn: string;
+  excerptId: string | null;
+  excerptEn: string | null;
+  heroImageR2Key: string | null;
+  publishedAt: string | null;
+};
+
+export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl }: JournalPageClientProps) {
   const t = useTranslations("journal");
   const locale = useLocale();
+  const isAdmin = useIsAdmin();
   const [items, setItems] = useState<JournalItem[]>([]);
+  const [adminItems, setAdminItems] = useState<AdminJournalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [heroImageError, setHeroImageError] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
@@ -55,8 +71,8 @@ export default function JournalPageClient({ initialHeroImageUrl }: JournalPageCl
     refetch: refetchPageSections,
   } = usePageSections("journal");
 
-  const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "IMAGE";
-  const heroUrl = heroImageError ? initialHeroImageUrl : (pageSections.hero?.url ?? initialHeroImageUrl);
+  const heroMediaType = (pageSections.hero?.mediaType?.toUpperCase() ?? initialHeroMediaType) as "IMAGE" | "VIDEO";
+  const heroUrl = heroImageError ? initialHeroUrl : (pageSections.hero?.url ?? initialHeroUrl);
   const heroVersion = pageSections.hero?.version;
   const isFallbackHero = !pageSections.hero?.url;
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
@@ -67,30 +83,92 @@ export default function JournalPageClient({ initialHeroImageUrl }: JournalPageCl
     const link = document.createElement("link");
     link.rel = "preload";
     link.as = "image";
-    link.href = initialHeroImageUrl;
+    link.href = initialHeroUrl;
     document.head.appendChild(link);
     return () => link.remove();
-  }, [isFallbackHero, heroMediaType, initialHeroImageUrl]);
+  }, [isFallbackHero, heroMediaType, initialHeroUrl]);
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/journal?locale=${locale}`)
-      .then((r) => r.json())
-      .then((data) => {
+    const loadPublic = async () => {
+      try {
+        const r = await fetch(`/api/journal?locale=${locale}`);
+        const data = await r.json();
         if (!cancelled && Array.isArray(data.items)) setItems(data.items);
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) setItems([]);
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    };
+    const loadAdmin = async () => {
+      try {
+        const r = await fetch(`/api/admin/journal`);
+        if (!r.ok) return loadPublic();
+        const data = await r.json();
+        const list: AdminJournalItem[] = Array.isArray(data.items) ? data.items : [];
+        if (!cancelled) setAdminItems(list);
+        // Still show the same 3 cards but localized like public
+        const mapped: JournalItem[] = list
+          .filter((j) => !!j.publishedAt)
+          .slice(0, LATEST_ARTICLES_LIMIT)
+          .map((j) => ({
+            slug: j.slug,
+            title: (locale === "id" ? j.titleId : j.titleEn) || j.titleEn || j.titleId,
+            excerpt: (() => {
+              const s = locale === "id" ? j.excerptId : j.excerptEn;
+              return s && s.trim() ? s : null;
+            })(),
+            heroImageUrl: null, // admin list returns r2Key; public cards should use public API for images
+            publishedAt: j.publishedAt,
+          }));
+        // Prefer public API for heroImageUrl; keep titles from admin list
+        if (!cancelled) setItems(mapped.length ? mapped : []);
+      } catch {
+        await loadPublic();
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    // Admin: we still load from public for images/SEO, but enable overlay controls via adminItems
+    if (isAdmin) {
+      loadAdmin();
+    } else {
+      loadPublic();
+    }
     return () => {
       cancelled = true;
     };
-  }, [locale]);
+  }, [locale, isAdmin]);
 
   const latestItems = items.slice(0, LATEST_ARTICLES_LIMIT);
+  const adminBySlug = new Map(adminItems.map((j) => [j.slug, j]));
+
+  const goAdminNew = () => {
+    if (typeof window === "undefined") return;
+    window.location.href = "/admin/journal?new=1";
+  };
+  const goAdminEdit = (id: number) => {
+    if (typeof window === "undefined") return;
+    window.location.href = `/admin/journal?edit=${id}`;
+  };
+  const deleteAdmin = async (id: number) => {
+    if (!confirm("Delete this journal post?")) return;
+    try {
+      const res = await fetch(`/api/admin/journal/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
+      // Soft refresh data
+      setLoading(true);
+      const r = await fetch(`/api/admin/journal`);
+      const data = await r.json();
+      const list: AdminJournalItem[] = Array.isArray(data.items) ? data.items : [];
+      setAdminItems(list);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div
@@ -195,15 +273,41 @@ export default function JournalPageClient({ initialHeroImageUrl }: JournalPageCl
       {/* Journal list — varied layout: featured + asymmetric grid */}
       <section ref={listRef} className="relative z-10 min-h-screen bg-gradient-to-b from-[#0a0a0a] to-[#050505] px-4 py-20 sm:px-6 md:px-8 lg:px-12">
         <div className="mx-auto max-w-5xl">
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="mb-14 text-3xl font-semibold tracking-tight text-white sm:text-4xl"
-          >
-            {t("listHeading")}
-          </motion.h2>
+          <div className="mb-14 flex items-end justify-between gap-4">
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className="text-3xl font-semibold tracking-tight text-white sm:text-4xl"
+            >
+              {t("listHeading")}
+            </motion.h2>
+
+            {isAdmin && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={goAdminNew}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-xs font-medium text-white/80 hover:bg-white/[0.1] hover:text-white"
+                  aria-label="Add new journal post"
+                  title="Add new journal post"
+                >
+                  <Plus className="h-4 w-4 text-luxury-gold/90" />
+                  <span className="hidden sm:inline">New</span>
+                </button>
+                <a
+                  href="/admin/journal"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-medium text-white/70 hover:bg-white/[0.08] hover:text-white"
+                  aria-label="Open Journal CMS"
+                  title="Open Journal CMS"
+                >
+                  <Pencil className="h-4 w-4" />
+                  <span className="hidden sm:inline">Manage</span>
+                </a>
+              </div>
+            )}
+          </div>
 
           {loading ? (
             <div className="flex items-center justify-center py-24">
@@ -219,7 +323,37 @@ export default function JournalPageClient({ initialHeroImageUrl }: JournalPageCl
                   href={`/journal/${latestItems[0].slug}`}
                   className="group block overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] transition-all duration-300 hover:border-luxury-gold/25 hover:bg-white/[0.06] md:border-l-4 md:border-l-luxury-gold/40"
                 >
-                  <div className="grid gap-0 md:grid-cols-5">
+                  <div className="grid gap-0 md:grid-cols-5 relative">
+                    {isAdmin && adminBySlug.get(latestItems[0].slug) && (
+                      <div className="absolute right-4 top-4 z-20 flex items-center gap-2">
+                        <button
+                          type="button"
+                          className="rounded-full border border-white/10 bg-black/40 p-2 text-white/80 hover:bg-black/55 hover:text-white"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            goAdminEdit(adminBySlug.get(latestItems[0].slug)!.id);
+                          }}
+                          aria-label="Edit"
+                          title="Edit"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-full border border-white/10 bg-black/40 p-2 text-red-300/80 hover:bg-red-500/20 hover:text-red-300"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            deleteAdmin(adminBySlug.get(latestItems[0].slug)!.id);
+                          }}
+                          aria-label="Delete"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
                     <div className="relative aspect-[2/1] md:col-span-2 md:aspect-auto md:min-h-[280px]">
                       {latestItems[0].heroImageUrl ? (
                         <img
@@ -271,6 +405,36 @@ export default function JournalPageClient({ initialHeroImageUrl }: JournalPageCl
                       className="group block overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:border-luxury-gold/25 hover:bg-white/[0.06]"
                     >
                       <div className="relative aspect-[16/10] w-full">
+                        {isAdmin && adminBySlug.get(latestItems[1].slug) && (
+                          <div className="absolute right-3 top-3 z-20 flex items-center gap-2">
+                            <button
+                              type="button"
+                              className="rounded-full border border-white/10 bg-black/40 p-2 text-white/80 hover:bg-black/55 hover:text-white"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                goAdminEdit(adminBySlug.get(latestItems[1].slug)!.id);
+                              }}
+                              aria-label="Edit"
+                              title="Edit"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded-full border border-white/10 bg-black/40 p-2 text-red-300/80 hover:bg-red-500/20 hover:text-red-300"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                deleteAdmin(adminBySlug.get(latestItems[1].slug)!.id);
+                              }}
+                              aria-label="Delete"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        )}
                         {latestItems[1].heroImageUrl ? (
                           <img
                             src={latestItems[1].heroImageUrl}
@@ -340,6 +504,36 @@ export default function JournalPageClient({ initialHeroImageUrl }: JournalPageCl
                             </span>
                           </div>
                           <div className="relative h-40 w-full flex-shrink-0 sm:h-auto sm:w-[45%] sm:min-h-[200px]">
+                            {isAdmin && adminBySlug.get(latestItems[2].slug) && (
+                              <div className="absolute right-3 top-3 z-20 flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  className="rounded-full border border-white/10 bg-black/40 p-2 text-white/80 hover:bg-black/55 hover:text-white"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    goAdminEdit(adminBySlug.get(latestItems[2].slug)!.id);
+                                  }}
+                                  aria-label="Edit"
+                                  title="Edit"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="rounded-full border border-white/10 bg-black/40 p-2 text-red-300/80 hover:bg-red-500/20 hover:text-red-300"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    deleteAdmin(adminBySlug.get(latestItems[2].slug)!.id);
+                                  }}
+                                  aria-label="Delete"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            )}
                             {latestItems[2].heroImageUrl ? (
                               <img
                                 src={latestItems[2].heroImageUrl}

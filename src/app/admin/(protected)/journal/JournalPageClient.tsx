@@ -5,6 +5,7 @@ import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { useTranslations } from "next-intl";
 import { Plus, Pencil, Trash2, X, Upload } from "lucide-react";
 import { getR2UrlClient } from "@/utils/r2-url";
+import { useSearchParams } from "next/navigation";
 
 type JournalItem = {
   id: number;
@@ -37,6 +38,7 @@ const defaultItem: Partial<JournalItem> = {
 
 export function JournalPageClient() {
   const t = useTranslations("admin.journal");
+  const searchParams = useSearchParams();
   const [items, setItems] = useState<JournalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -64,6 +66,25 @@ export function JournalPageClient() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Allow deep-link from public page: /admin/journal?new=1 or ?edit=<id>
+  useEffect(() => {
+    if (loading) return;
+    const wantsNew = searchParams.get("new");
+    const editId = searchParams.get("edit");
+    if (wantsNew === "1" && !modalOpen) {
+      openCreate();
+      return;
+    }
+    if (editId && !modalOpen) {
+      const id = parseInt(editId, 10);
+      if (!Number.isNaN(id)) {
+        const row = items.find((it) => it.id === id);
+        if (row) openEdit(row);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, items, searchParams]);
 
   const getHeroPreview = (r2Key: string | null | undefined): string | null => {
     if (!r2Key) return null;
