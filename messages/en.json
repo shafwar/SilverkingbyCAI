@@ -935,6 +935,7 @@
       "title": "Journal",
       "newPost": "New post",
       "editPost": "Edit post",
+      "deletePost": "Delete post",
       "noPosts": "No journal posts yet.",
       "titleLabel": "Title",
       "slug": "Slug",

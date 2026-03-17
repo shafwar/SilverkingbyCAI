@@ -8,6 +8,9 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+const MAX_TITLE_LEN = 500;
+const MAX_EXCERPT_LEN = 1000;
+
 function slugify(s: string): string {
   return s
     .trim()
@@ -66,6 +69,27 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    if (titleIdS.length > MAX_TITLE_LEN || titleEnS.length > MAX_TITLE_LEN) {
+      return NextResponse.json(
+        { error: `Title too long. Max ${MAX_TITLE_LEN} characters for each language.` },
+        { status: 400 }
+      );
+    }
+
+    const excerptIdS = excerptId != null ? String(excerptId).trim() : "";
+    const excerptEnS = excerptEn != null ? String(excerptEn).trim() : "";
+    if ((!!excerptIdS) !== (!!excerptEnS)) {
+      return NextResponse.json(
+        { error: "excerptId and excerptEn must both be filled (or both empty)" },
+        { status: 400 }
+      );
+    }
+    if (excerptIdS.length > MAX_EXCERPT_LEN || excerptEnS.length > MAX_EXCERPT_LEN) {
+      return NextResponse.json(
+        { error: `Excerpt too long. Max ${MAX_EXCERPT_LEN} characters for each language.` },
+        { status: 400 }
+      );
+    }
 
     const slug = rawSlug && String(rawSlug).trim() ? slugify(String(rawSlug).trim()) : slugify(titleEnS || titleIdS);
     const existing = await prisma.journal.findUnique({ where: { slug } });
@@ -88,8 +112,8 @@ export async function POST(request: Request) {
         titleEn: titleEnS,
         contentId: contentIdS,
         contentEn: contentEnS,
-        excerptId: excerptId != null && String(excerptId).trim() ? String(excerptId).trim() : null,
-        excerptEn: excerptEn != null && String(excerptEn).trim() ? String(excerptEn).trim() : null,
+        excerptId: excerptIdS ? excerptIdS : null,
+        excerptEn: excerptEnS ? excerptEnS : null,
         heroImageR2Key: heroImageR2Key && String(heroImageR2Key).trim() ? String(heroImageR2Key).trim() : null,
         publishedAt: publishedAtDate,
         sortOrder: typeof sortOrder === "number" ? sortOrder : 0,

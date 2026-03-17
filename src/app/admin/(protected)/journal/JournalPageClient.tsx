@@ -215,6 +215,8 @@ export function JournalPageClient() {
           <button
             type="button"
             onClick={openCreate}
+            aria-label={t("newPost")}
+            title={t("newPost")}
             className="inline-flex items-center gap-2 rounded-lg bg-luxury-gold/20 px-4 py-2 text-sm font-medium text-luxury-gold hover:bg-luxury-gold/30"
           >
             <Plus className="h-4 w-4" />
@@ -244,10 +246,23 @@ export function JournalPageClient() {
                     <td className="px-4 py-3 text-sm text-white/60">{row.slug}</td>
                     <td className="px-4 py-3 text-sm">{row.publishedAt ? <span className="text-emerald-400">{t("published")}</span> : <span className="text-white/40">{t("draft")}</span>}</td>
                     <td className="px-4 py-3 text-right">
-                      <button type="button" onClick={() => openEdit(row)} className="mr-2 rounded p-1.5 text-white/60 hover:bg-white/10 hover:text-white">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(row)}
+                        aria-label={t("editPost")}
+                        title={t("editPost")}
+                        className="mr-2 rounded p-1.5 text-white/60 hover:bg-white/10 hover:text-white"
+                      >
                         <Pencil className="h-4 w-4" />
                       </button>
-                      <button type="button" onClick={() => handleDelete(row.id)} disabled={deletingId === row.id} className="rounded p-1.5 text-white/60 hover:bg-red-500/20 hover:text-red-400">
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(row.id)}
+                        disabled={deletingId === row.id}
+                        aria-label={t("deletePost")}
+                        title={t("deletePost")}
+                        className="rounded p-1.5 text-white/60 hover:bg-red-500/20 hover:text-red-400 disabled:opacity-50 disabled:pointer-events-none"
+                      >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </td>

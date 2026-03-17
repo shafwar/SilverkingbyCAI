@@ -8,6 +8,9 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+const MAX_TITLE_LEN = 500;
+const MAX_EXCERPT_LEN = 1000;
+
 function slugify(s: string): string {
   return s
     .trim()
@@ -89,6 +92,12 @@ export async function PATCH(
         { status: 400 }
       );
     }
+    if (finalTitleId.length > MAX_TITLE_LEN || finalTitleEn.length > MAX_TITLE_LEN) {
+      return NextResponse.json(
+        { error: `Title too long. Max ${MAX_TITLE_LEN} characters for each language.` },
+        { status: 400 }
+      );
+    }
 
     const finalExcerptId = (updates.excerptId !== undefined ? updates.excerptId : existing.excerptId) ?? null;
     const finalExcerptEn = (updates.excerptEn !== undefined ? updates.excerptEn : existing.excerptEn) ?? null;
@@ -97,6 +106,12 @@ export async function PATCH(
     if (hasExcerptId !== hasExcerptEn) {
       return NextResponse.json(
         { error: "excerptId and excerptEn must both be filled (or both empty)" },
+        { status: 400 }
+      );
+    }
+    if ((finalExcerptId?.trim().length ?? 0) > MAX_EXCERPT_LEN || (finalExcerptEn?.trim().length ?? 0) > MAX_EXCERPT_LEN) {
+      return NextResponse.json(
+        { error: `Excerpt too long. Max ${MAX_EXCERPT_LEN} characters for each language.` },
         { status: 400 }
       );
     }

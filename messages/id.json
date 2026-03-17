@@ -938,6 +938,7 @@
       "title": "Jurnal",
       "newPost": "Post baru",
       "editPost": "Edit post",
+      "deletePost": "Hapus post",
       "noPosts": "Belum ada post jurnal.",
       "titleLabel": "Judul",
       "slug": "Slug",
