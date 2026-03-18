@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createCanvas, loadImage } from "canvas";
 import { PDFDocument } from "pdf-lib";
 import { loadSerticardTemplates } from "@/lib/load-serticard-templates";
 import { getSerticardConfig, getFontSizeMultipliers } from "@/lib/serticard-config";
@@ -26,6 +25,14 @@ export async function POST(request: NextRequest) {
     const session = await auth();
     if (!session || (session.user as any).role !== "ADMIN") {
       return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const canvasMod = await import("canvas").catch(() => null);
+    if (!canvasMod) {
+      return NextResponse.json(
+        { error: "PDF generation is unavailable in this environment (canvas native bindings missing)." },
+        { status: 501 }
+      );
     }
 
     let body: any;
@@ -122,10 +129,10 @@ export async function POST(request: NextRequest) {
       );
     }
     const qrBuffer = Buffer.from(await qrResponse.arrayBuffer());
-    const qrImage = await loadImage(qrBuffer);
+    const qrImage = await canvasMod.loadImage(qrBuffer);
 
     // --- Compose FRONT canvas (same layout as download-multiple-pdf/handleDownload) ---
-    const frontCanvas = createCanvas(frontTemplateImage.width, frontTemplateImage.height);
+    const frontCanvas = canvasMod.createCanvas(frontTemplateImage.width, frontTemplateImage.height);
     const frontCtx = frontCanvas.getContext("2d");
     frontCtx.drawImage(frontTemplateImage, 0, 0);
 
@@ -197,7 +204,7 @@ export async function POST(request: NextRequest) {
     const frontBuffer = frontCanvas.toBuffer("image/png");
 
     // --- BACK canvas (template only) ---
-    const backCanvas = createCanvas(backTemplateImage.width, backTemplateImage.height);
+    const backCanvas = canvasMod.createCanvas(backTemplateImage.width, backTemplateImage.height);
     const backCtx = backCanvas.getContext("2d");
     backCtx.drawImage(backTemplateImage, 0, 0);
     const backBuffer = backCanvas.toBuffer("image/png");

@@ -3,25 +3,18 @@
 import { useEffect, useMemo } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
-import TextAlign from "@tiptap/extension-text-align";
 import {
   Bold,
   Italic,
-  Underline as UnderlineIcon,
   Strikethrough,
   List,
   ListOrdered,
   Quote,
   Code,
-  Heading1,
   Heading2,
   Heading3,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
   Link as LinkIcon,
   Unlink,
   Undo,
@@ -73,9 +66,8 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly = false,
   const extensions = useMemo(
     () => [
       StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
+        heading: { levels: [2, 3] },
       }),
-      Underline,
       Link.configure({
         openOnClick: false,
         autolink: true,
@@ -85,9 +77,6 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly = false,
           target: "_blank",
           class: "text-luxury-gold underline underline-offset-4",
         },
-      }),
-      TextAlign.configure({
-        types: ["heading", "paragraph"],
       }),
       Placeholder.configure({
         placeholder: placeholder ?? "",
@@ -116,7 +105,7 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly = false,
     if (!editor) return;
     const current = editor.getHTML();
     const next = value || "";
-    if (current !== next) editor.commands.setContent(next, false);
+    if (current !== next) editor.commands.setContent(next, { emitUpdate: false });
   }, [editor, value]);
 
   const setLink = () => {
@@ -152,14 +141,6 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly = false,
           <Italic className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
-          title="Underline"
-          active={!!editor?.isActive("underline")}
-          disabled={!editor?.can().chain().focus().toggleUnderline().run()}
-          onClick={() => editor?.chain().focus().toggleUnderline().run()}
-        >
-          <UnderlineIcon className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
           title="Strikethrough"
           active={!!editor?.isActive("strike")}
           disabled={!editor?.can().chain().focus().toggleStrike().run()}
@@ -168,13 +149,6 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly = false,
           <Strikethrough className="h-4 w-4" />
         </ToolbarButton>
         <div className="mx-1 h-9 w-px bg-white/10" />
-        <ToolbarButton
-          title="H1"
-          active={!!editor?.isActive("heading", { level: 1 })}
-          onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
-        >
-          <Heading1 className="h-4 w-4" />
-        </ToolbarButton>
         <ToolbarButton
           title="H2"
           active={!!editor?.isActive("heading", { level: 2 })}
@@ -217,28 +191,6 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly = false,
           onClick={() => editor?.chain().focus().toggleCode().run()}
         >
           <Code className="h-4 w-4" />
-        </ToolbarButton>
-        <div className="mx-1 h-9 w-px bg-white/10" />
-        <ToolbarButton
-          title="Align left"
-          active={editor?.isActive({ textAlign: "left" }) ?? false}
-          onClick={() => editor?.chain().focus().setTextAlign("left").run()}
-        >
-          <AlignLeft className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          title="Align center"
-          active={editor?.isActive({ textAlign: "center" }) ?? false}
-          onClick={() => editor?.chain().focus().setTextAlign("center").run()}
-        >
-          <AlignCenter className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          title="Align right"
-          active={editor?.isActive({ textAlign: "right" }) ?? false}
-          onClick={() => editor?.chain().focus().setTextAlign("right").run()}
-        >
-          <AlignRight className="h-4 w-4" />
         </ToolbarButton>
         <div className="mx-1 h-9 w-px bg-white/10" />
         <ToolbarButton

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import QRCode from "qrcode";
-import { createCanvas, loadImage } from "canvas";
 import { addProductInfoToQR } from "@/lib/qr";
 import { getVerifyUrl } from "@/utils/constants";
 import { prisma } from "@/lib/prisma";
@@ -15,6 +14,14 @@ export async function GET(request: NextRequest) {
     const session = await auth();
     if (!session || (session.user as any).role !== "ADMIN") {
       return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const canvasMod = await import("canvas").catch(() => null);
+    if (!canvasMod) {
+      return NextResponse.json(
+        { error: "QR PNG export is unavailable in this environment (canvas native bindings missing)." },
+        { status: 501 }
+      );
     }
 
     // Get all products with QR records
@@ -63,7 +70,7 @@ export async function GET(request: NextRequest) {
     const totalHeight = 120 + outerPadding * 2 + rows * qrWithTextHeight + (rows - 1) * gridSpacing;
 
     // Create main canvas
-    const canvas = createCanvas(totalWidth, totalHeight);
+    const canvas = canvasMod.createCanvas(totalWidth, totalHeight);
     const ctx = canvas.getContext("2d");
 
     // Fill white background
@@ -101,7 +108,7 @@ export async function GET(request: NextRequest) {
         const pngBuffer = await addProductInfoToQR(qrBuffer, product.serialCode, product.name);
 
         // Load QR image
-        const qrImage = await loadImage(pngBuffer);
+        const qrImage = await canvasMod.loadImage(pngBuffer);
 
         // Calculate position in grid
         // x = outerPadding + col * (qrWithTextWidth + gridSpacing)

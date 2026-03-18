@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import JSZip from "jszip";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { createCanvas, loadImage } from "canvas";
 import { promises as fs } from "fs";
 import path from "path";
 import { PDFDocument } from "pdf-lib";
@@ -16,6 +15,9 @@ const ZIP_JOB_THRESHOLD = 25;
 
 /** Maksimal file per satu ZIP; jika lebih maka dipecah jadi beberapa ZIP (batch 1, 2, ...) agar cepat & aman dari timeout. */
 const ZIP_CHUNK_SIZE = 100;
+
+// Loaded dynamically at request-time to avoid build-time native bindings requirement.
+let CANVAS_MOD: any | null = null;
 
 function buildZipCacheKey(args: {
   batchId?: number | null;
@@ -49,6 +51,15 @@ export async function POST(request: NextRequest) {
     if (!session || (session.user as any).role !== "ADMIN") {
       console.error("[QR Multiple] Unauthorized access attempt");
       return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const canvasMod = await import("canvas").catch(() => null);
+    CANVAS_MOD = canvasMod;
+    if (!canvasMod) {
+      return NextResponse.json(
+        { error: "PDF generation is unavailable in this environment (canvas native bindings missing)." },
+        { status: 501 }
+      );
     }
 
     let body;
@@ -423,8 +434,10 @@ type ZipOutcome = {
 };
 
 type ZipChunkContext = {
-  frontTemplateImage: Awaited<ReturnType<typeof loadImage>>;
-  backTemplateImage: Awaited<ReturnType<typeof loadImage>>;
+  canvasMod: any;
+  // Loaded via dynamic canvas import at runtime (avoid build-time native binding requirement).
+  frontTemplateImage: any;
+  backTemplateImage: any;
   fontConfig: Awaited<ReturnType<typeof getSerticardConfig>>;
   sizeMultipliers: ReturnType<typeof getFontSizeMultipliers>;
   internalBaseUrl: string;
@@ -494,6 +507,7 @@ async function buildOneZipChunk(
   onProgress?: OnChunkProgress
 ): Promise<{ zip: JSZip; successCount: number; failCount: number; firstProduct: ZipGenProduct | null }> {
   const {
+    canvasMod,
     frontTemplateImage,
     backTemplateImage,
     fontConfig,
@@ -533,8 +547,8 @@ async function buildOneZipChunk(
         continue;
         }
         const qrBuffer = Buffer.from(await qrResponse.arrayBuffer());
-        const qrImage = await loadImage(qrBuffer);
-        const frontCanvas = createCanvas(frontTemplateImage.width, frontTemplateImage.height);
+        const qrImage = await canvasMod.loadImage(qrBuffer);
+        const frontCanvas = canvasMod.createCanvas(frontTemplateImage.width, frontTemplateImage.height);
         const frontCtx = frontCanvas.getContext("2d");
       frontCtx!.drawImage(frontTemplateImage, 0, 0);
         const qrSize = Math.min(
@@ -581,7 +595,7 @@ async function buildOneZipChunk(
         frontCtx!.fillText(productRootKey, frontTemplateImage.width / 2, rootKeyY);
       }
       const frontBuffer = frontCanvas.toBuffer("image/png");
-        const backCanvas = createCanvas(backTemplateImage.width, backTemplateImage.height);
+        const backCanvas = canvasMod.createCanvas(backTemplateImage.width, backTemplateImage.height);
         const backCtx = backCanvas.getContext("2d");
       backCtx!.drawImage(backTemplateImage, 0, 0);
         const backBuffer = backCanvas.toBuffer("image/png");
@@ -687,6 +701,7 @@ async function executeZipGeneration(
   const internalBaseUrl = baseUrl.replace(/\/$/, "");
 
   const ctx: ZipChunkContext = {
+    canvasMod: CANVAS_MOD,
     frontTemplateImage,
     backTemplateImage,
     fontConfig,

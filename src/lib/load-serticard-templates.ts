@@ -1,6 +1,5 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { loadImage } from "canvas";
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import {
   getSerticardVariant,
@@ -24,17 +23,22 @@ const r2Client = new S3Client({
 const BUCKET = process.env.R2_BUCKET || process.env.R2_BUCKET_NAME || "silverking-assets";
 
 export type LoadedTemplates = {
-  front: Awaited<ReturnType<typeof loadImage>>;
-  back: Awaited<ReturnType<typeof loadImage>>;
+  // Loaded via dynamic canvas import at runtime (avoid build-time native binding requirement).
+  front: any;
+  back: any;
 };
 
-async function loadImageFromR2(key: string): Promise<Awaited<ReturnType<typeof loadImage>>> {
+async function loadImageFromR2(key: string): Promise<any> {
+  const canvasMod = await import("canvas").catch(() => null);
+  if (!canvasMod) {
+    throw new Error("Canvas module unavailable in this environment");
+  }
   const command = new GetObjectCommand({ Bucket: BUCKET, Key: key });
   const obj = await r2Client.send(command);
   const body = obj.Body;
   if (!body) throw new Error(`Empty object: ${key}`);
   const buffer = Buffer.from(await body.transformToByteArray());
-  return loadImage(buffer);
+  return canvasMod.loadImage(buffer);
 }
 
 /**
@@ -45,6 +49,11 @@ async function loadImageFromR2(key: string): Promise<Awaited<ReturnType<typeof l
 export async function loadSerticardTemplates(
   variantId?: string
 ): Promise<LoadedTemplates> {
+  const canvasMod = await import("canvas").catch(() => null);
+  if (!canvasMod) {
+    throw new Error("Canvas module unavailable in this environment");
+  }
+
   const config = await getSerticardConfig();
   const useCustom =
     config.customFrontR2Key &&
@@ -79,14 +88,14 @@ export async function loadSerticardTemplates(
     getLocalTemplateFilename(variant.backNum, variant.ext)
   );
 
-  let frontTemplateImage: Awaited<ReturnType<typeof loadImage>>;
-  let backTemplateImage: Awaited<ReturnType<typeof loadImage>>;
+  let frontTemplateImage: any;
+  let backTemplateImage: any;
 
   if (isLocalDev) {
     await fs.access(frontLocalPath);
-    frontTemplateImage = await loadImage(frontLocalPath);
+    frontTemplateImage = await canvasMod.loadImage(frontLocalPath);
     await fs.access(backLocalPath);
-    backTemplateImage = await loadImage(backLocalPath);
+    backTemplateImage = await canvasMod.loadImage(backLocalPath);
     return { front: frontTemplateImage, back: backTemplateImage };
   }
 
@@ -98,26 +107,26 @@ export async function loadSerticardTemplates(
     const frontResponse = await fetch(frontR2Url);
     if (frontResponse.ok) {
       const frontBuffer = Buffer.from(await frontResponse.arrayBuffer());
-      frontTemplateImage = await loadImage(frontBuffer);
+      frontTemplateImage = await canvasMod.loadImage(frontBuffer);
     } else {
       throw new Error(`R2 front template not found: ${frontResponse.status}`);
     }
   } catch {
     await fs.access(frontLocalPath);
-    frontTemplateImage = await loadImage(frontLocalPath);
+    frontTemplateImage = await canvasMod.loadImage(frontLocalPath);
   }
 
   try {
     const backResponse = await fetch(backR2Url);
     if (backResponse.ok) {
       const backBuffer = Buffer.from(await backResponse.arrayBuffer());
-      backTemplateImage = await loadImage(backBuffer);
+      backTemplateImage = await canvasMod.loadImage(backBuffer);
     } else {
       throw new Error(`R2 back template not found: ${backResponse.status}`);
     }
   } catch {
     await fs.access(backLocalPath);
-    backTemplateImage = await loadImage(backLocalPath);
+    backTemplateImage = await canvasMod.loadImage(backLocalPath);
   }
 
   return { front: frontTemplateImage, back: backTemplateImage };
