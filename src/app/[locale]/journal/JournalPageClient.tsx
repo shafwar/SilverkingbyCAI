@@ -231,18 +231,6 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
           }}
         />
         <div className="absolute inset-0 z-10 overflow-hidden">
-          {/* Poster is ALWAYS rendered so hero background always shows, even on slow networks */}
-          <ImageLoadGuard
-            key={`poster:${posterUrl}`}
-            url={posterUrl}
-            containerClassName="absolute inset-0 h-full w-full"
-            className="absolute inset-0 h-full w-full object-cover"
-            style={{ objectFit: "cover" }}
-            alt=""
-            priority
-          />
-
-          {/* Video renders only when allowed by network policy; poster stays behind it */}
           {shouldRenderVideo ? (
             <div className="absolute inset-0">
               <VideoLoadGuard
@@ -257,7 +245,6 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
                 muted
                 playsInline
                 preload="auto"
-                poster={posterUrl}
                 onError={() => setHeroVideoError(true)}
               />
             </div>
