@@ -6,6 +6,7 @@ import JournalPageClient from "./JournalPageClient";
 /** Fallback hero for Journal when CMS media is not set. */
 const JOURNAL_HERO_FALLBACK = {
   type: "VIDEO" as const,
+  // Use the bundled lightweight hero video (local public asset).
   url: "/videos/hero/Jurnal%20Silverking.mp4",
 };
 

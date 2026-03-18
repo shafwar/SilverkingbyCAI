@@ -6,9 +6,6 @@ import Navbar from "@/components/layout/Navbar";
 import { PageFooter } from "@/components/footer/PageFooter";
 import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
-import { useState } from "react";
-import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
-import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 
 const fontJournal = Plus_Jakarta_Sans({
   weight: ["400", "500", "600", "700", "800"],
@@ -35,66 +32,11 @@ type Props = {
 export default function JournalArticleClient({ article, locale, backLabel }: Props) {
   const hasHtml = /<[a-z][\s\S]*>/i.test(article.content);
 
-  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
-  const [heroVideoError, setHeroVideoError] = useState(false);
-  const [, setHeroImageError] = useState(false);
-
-  const videoUrl = "/videos/hero/Jurnal%20Silverking.mp4";
-  const posterUrl = "/api/hero-image?page=journal";
-  const videoPreload = shouldLoadHeroVideo ? "auto" : "metadata";
-
   return (
     <div
       className={`min-h-screen bg-[#050505] text-white ${fontJournal.variable}`}
       style={{ fontFamily: "var(--font-journal), system-ui, sans-serif" }}
     >
-      {/* Consistent background video for all journal pages */}
-      <div className="fixed inset-0 z-0 h-screen w-full overflow-hidden">
-        <div
-          className="absolute inset-0 z-0"
-          style={{
-            background:
-              "linear-gradient(180deg, #080808 0%, #050505 50%, #030303 100%), radial-gradient(ellipse 80% 60% at 50% 40%, rgba(212,175,55,0.04) 0%, transparent 55%)",
-          }}
-        />
-        <div className="absolute inset-0 z-10 overflow-hidden">
-          <ImageLoadGuard
-            key={`journal-poster:${posterUrl}`}
-            url={posterUrl}
-            containerClassName="absolute inset-0 h-full w-full"
-            className="absolute inset-0 h-full w-full object-cover"
-            style={{ objectFit: "cover" }}
-            alt=""
-            priority
-            onError={() => setHeroImageError(true)}
-          />
-          {!heroVideoError && (
-            <div className="absolute inset-0">
-              <VideoLoadGuard
-                key={videoUrl}
-                url={videoUrl}
-                containerClassName="absolute inset-0 h-full w-full"
-                className="absolute inset-0 h-full w-full object-cover"
-                style={{ objectFit: "cover" }}
-                autoPlay
-                loop
-                muted
-                playsInline
-                preload={videoPreload}
-                onError={() => setHeroVideoError(true)}
-              />
-            </div>
-          )}
-        </div>
-        <div
-          className="absolute inset-0 z-[11] pointer-events-none"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.55) 60%, rgba(5,5,5,1) 100%)",
-          }}
-        />
-      </div>
-
       <Navbar />
 
       <article className="relative z-10 pt-24 pb-20">
@@ -104,7 +46,7 @@ export default function JournalArticleClient({ article, locale, backLabel }: Pro
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6 }}
-            className="relative h-[50vh] min-h-[280px] w-full overflow-hidden rounded-3xl border border-white/10 bg-black/20"
+            className="relative h-[50vh] min-h-[280px] w-full overflow-hidden"
           >
             <img
               src={article.heroImageUrl}
@@ -146,7 +88,7 @@ export default function JournalArticleClient({ article, locale, backLabel }: Pro
               </time>
             )}
 
-            <h1 className="text-3xl font-extrabold tracking-tight text-white drop-shadow-[0_10px_35px_rgba(0,0,0,0.65)] sm:text-4xl md:text-5xl">
+            <h1 className="text-3xl font-extrabold tracking-tight text-white drop-shadow-[0_2px_26px_rgba(0,0,0,0.75)] sm:text-4xl md:text-5xl">
               {article.title}
             </h1>
 
@@ -155,7 +97,7 @@ export default function JournalArticleClient({ article, locale, backLabel }: Pro
             )}
 
             <div
-              className="journal-content mt-10 rounded-3xl border border-white/10 bg-white/[0.03] p-6 pt-8 text-white/90 sm:p-8"
+              className="journal-content mt-10 border-t border-white/10 pt-10 text-white/90"
               style={{
                 lineHeight: 1.75,
               }}
