@@ -76,9 +76,9 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
   const heroVersion = pageSections.hero?.version;
   const isFallbackHero = !pageSections.hero?.url;
 
-  // Use same-origin proxy endpoint for hero video to avoid "poster stuck"
-  // when R2 returns an unexpected Content-Type / object not synced yet.
-  const fallbackVideoApiUrl = "/api/hero-video?page=journal";
+  // Default fallback video: bundled local mp4.
+  // This guarantees playback even if R2 isn't synced yet.
+  const fallbackLocalVideoUrl = "/videos/hero/Jurnal%20Silverking.mp4";
   const cmsHeroUrl = pageSections.hero?.url ?? initialHeroUrl;
   const cmsHeroMediaType = pageSections.hero?.mediaType?.toUpperCase();
   const shouldUseCmsVideo = cmsHeroMediaType === "VIDEO" || cmsHeroUrl.includes(".mp4");
@@ -93,12 +93,12 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
   };
 
   const cmsR2Key = shouldUseCmsVideo ? r2KeyFromUrl(cmsHeroUrl) : null;
-  const resolvedHeroVideoApiUrl = cmsR2Key
+  const resolvedHeroVideoSrc = cmsR2Key
     ? `/api/hero-video?key=${encodeURIComponent(cmsR2Key)}`
-    : fallbackVideoApiUrl;
+    : fallbackLocalVideoUrl;
 
   // If we're using the bundled fallback, always bust the cache after re-encode.
-  const effectiveHeroVideoVersion = resolvedHeroVideoApiUrl === fallbackVideoApiUrl ? 2 : heroVersion;
+  const effectiveHeroVideoVersion = resolvedHeroVideoSrc === fallbackLocalVideoUrl ? 2 : heroVersion;
 
   const shouldRenderVideo = !heroVideoError;
 
@@ -246,8 +246,8 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
           {shouldRenderVideo ? (
             <div className="absolute inset-0">
               <VideoLoadGuard
-                key={resolvedHeroVideoApiUrl}
-                url={resolvedHeroVideoApiUrl}
+                key={resolvedHeroVideoSrc}
+                url={resolvedHeroVideoSrc}
                 version={effectiveHeroVideoVersion}
                 containerClassName="absolute inset-0 h-full w-full"
                 className="absolute inset-0 h-full w-full object-cover"
