@@ -39,8 +39,15 @@ function ToolbarButton({
       className={[
         "inline-flex items-center justify-center rounded-md border px-2 py-1.5 text-xs transition-colors",
         active ? "border-luxury-gold/40 bg-luxury-gold/15 text-luxury-gold" : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white",
+        // Ensure toolbar is always clickable when not disabled.
+        "pointer-events-auto",
         disabled ? "opacity-50 pointer-events-none" : "",
       ].join(" ")}
+      // Prevent losing editor focus before tiptap runs the command chain.
+      onMouseDown={(e) => {
+        if (disabled) return;
+        e.preventDefault();
+      }}
     >
       {children}
     </button>
@@ -142,7 +149,7 @@ export function JournalRichEditor({ value, onChange, placeholder = "Write conten
 
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.03]">
-      <div className="flex flex-wrap items-center gap-2 border-b border-white/10 p-2">
+      <div className="flex flex-wrap items-center gap-2 border-b border-white/10 p-2 relative z-20">
         <ToolbarButton
           title="Heading 2"
           onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
@@ -208,7 +215,7 @@ export function JournalRichEditor({ value, onChange, placeholder = "Write conten
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onPickFile} />
       </div>
 
-      <div className="p-4">
+      <div className="p-4 relative z-0">
         <EditorContent editor={editor} />
       </div>
     </div>
