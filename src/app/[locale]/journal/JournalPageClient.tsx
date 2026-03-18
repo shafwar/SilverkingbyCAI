@@ -109,7 +109,11 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
     let cancelled = false;
     const loadPublic = async (): Promise<JournalItem[]> => {
       try {
-        const r = await fetch(`/api/journal?locale=${locale}`);
+        // Cache-busting so admin deletions/updates reflect immediately.
+        const cacheBuster = Date.now();
+        const r = await fetch(`/api/journal?locale=${locale}&_t=${cacheBuster}`, {
+          cache: "no-store",
+        });
         const data = await r.json();
         const list: JournalItem[] = Array.isArray(data.items) ? data.items : [];
         if (!cancelled) setItems(list);
@@ -163,12 +167,23 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
     try {
       const res = await fetch(`/api/admin/journal/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
-      // Soft refresh data
+
+      // Refresh both lists so UI updates 100% (cards are from /api/journal, overlays are from /api/admin/journal)
       setLoading(true);
-      const r = await fetch(`/api/admin/journal`);
-      const data = await r.json();
-      const list: AdminJournalItem[] = Array.isArray(data.items) ? data.items : [];
-      setAdminItems(list);
+      const cacheBuster = Date.now();
+      const [pubRes, adminRes] = await Promise.all([
+        fetch(`/api/journal?locale=${locale}&_t=${cacheBuster}`, { cache: "no-store" }),
+        fetch(`/api/admin/journal?_t=${cacheBuster}`),
+      ]);
+
+      const pubData = await pubRes.json().catch(() => ({}));
+      const adminData = await adminRes.json().catch(() => ({}));
+
+      const pubList: JournalItem[] = Array.isArray(pubData.items) ? pubData.items : [];
+      const adminList: AdminJournalItem[] = Array.isArray(adminData.items) ? adminData.items : [];
+
+      setItems(pubList);
+      setAdminItems(adminList);
     } catch (e) {
       alert(e instanceof Error ? e.message : "Delete failed");
     } finally {
