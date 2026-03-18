@@ -48,7 +48,36 @@ export async function GET(request: NextRequest) {
         },
       });
     }
-    // Fall back to 404 style JSON so client can decide.
+
+    // If the R2 object is not available yet, fallback to bundled local asset.
+    // This is important because the client expects a valid video response
+    // (not HTML/JSON 404), otherwise VideoLoadGuard will stay opacity=0.
+    const isJournalFallback =
+      keyParam.includes("Jurnal Silverking.mp4") || keyParam.includes("Jurnal%20Silverking.mp4");
+    const fallbackPage = pageParam === "journal" || isJournalFallback ? "journal" : null;
+    if (fallbackPage && PAGE_TO_PUBLIC_PATH[fallbackPage]) {
+      const publicRel = PAGE_TO_PUBLIC_PATH[fallbackPage];
+      const publicPath = path.join(process.cwd(), "public", publicRel);
+      if (fs.existsSync(publicPath)) {
+        const ext = path.extname(publicPath).toLowerCase();
+        const contentType =
+          ext === ".mp4"
+            ? "video/mp4"
+            : ext === ".webm"
+              ? "video/webm"
+              : ext === ".ogg"
+                ? "video/ogg"
+                : getContentTypeFromExt(publicPath);
+        const buffer = fs.readFileSync(publicPath);
+        return new NextResponse(buffer, {
+          headers: {
+            "Content-Type": contentType,
+            "Cache-Control": "public, max-age=3600",
+          },
+        });
+      }
+    }
+
     return NextResponse.json({ error: "Video not found in R2" }, { status: 404 });
   }
 
