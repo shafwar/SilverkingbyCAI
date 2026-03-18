@@ -13,27 +13,38 @@ const MAX_TITLE_LEN = 500;
 const MAX_EXCERPT_LEN = 1000;
 
 function sanitizeJournalHtml(input: string): string {
-  const raw = String(input ?? "");
-  return sanitizeHtml(raw, {
+  return sanitizeHtml(input, {
     allowedTags: [
-      "p", "br", "strong", "b", "em", "i", "u", "s",
-      "h1", "h2", "h3",
+      "p",
+      "br",
+      "strong",
+      "b",
+      "em",
+      "i",
+      "u",
       "blockquote",
-      "ul", "ol", "li",
-      "code", "pre",
+      "ul",
+      "ol",
+      "li",
+      "h2",
+      "h3",
       "a",
-      "span",
+      "img",
+      "code",
+      "pre",
     ],
     allowedAttributes: {
       a: ["href", "target", "rel"],
-      span: ["style"],
+      img: ["src", "alt", "title", "loading"],
+      "*": ["class"],
     },
-    allowedSchemes: ["http", "https", "mailto"],
+    allowedSchemes: ["http", "https", "data"],
     allowProtocolRelative: false,
     transformTags: {
       a: sanitizeHtml.simpleTransform("a", { rel: "noopener noreferrer", target: "_blank" }),
+      img: sanitizeHtml.simpleTransform("img", { loading: "lazy" }),
     },
-  }).trim();
+  });
 }
 
 function slugify(s: string): string {
@@ -83,8 +94,8 @@ export async function PATCH(
     if (body.slug !== undefined) updates.slug = slugify(String(body.slug).trim()) || existing.slug;
     if (body.titleId !== undefined) updates.titleId = String(body.titleId).trim();
     if (body.titleEn !== undefined) updates.titleEn = String(body.titleEn).trim();
-    if (body.contentId !== undefined) updates.contentId = sanitizeJournalHtml(String(body.contentId ?? ""));
-    if (body.contentEn !== undefined) updates.contentEn = sanitizeJournalHtml(String(body.contentEn ?? ""));
+    if (body.contentId !== undefined) updates.contentId = sanitizeJournalHtml(String(body.contentId)).trim();
+    if (body.contentEn !== undefined) updates.contentEn = sanitizeJournalHtml(String(body.contentEn)).trim();
     if (body.excerptId !== undefined) updates.excerptId = body.excerptId == null || body.excerptId === "" ? null : String(body.excerptId).trim();
     if (body.excerptEn !== undefined) updates.excerptEn = body.excerptEn == null || body.excerptEn === "" ? null : String(body.excerptEn).trim();
     if (body.heroImageR2Key !== undefined) updates.heroImageR2Key = body.heroImageR2Key == null || body.heroImageR2Key === "" ? null : String(body.heroImageR2Key).trim();

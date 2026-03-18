@@ -31,6 +31,7 @@ import { usePageSections } from "@/hooks/usePageSections";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
+import { ModalPortal } from "@/components/ui/ModalPortal";
 
 // workflowSteps will be created inside AuthenticityPage component using translations
 
@@ -700,28 +701,29 @@ export default function AuthenticityPageClient() {
       {/* Scanner Modal */}
       <AnimatePresence mode="wait">
         {showScanner && (
-          <motion.div
-            key="scanner-modal"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-[9999] flex items-start justify-center bg-black/80 backdrop-blur-sm p-6 pt-20 md:pt-24"
-            onClick={() => {
-              console.log("[Authenticity] Closing scanner from backdrop");
-              setShowScanner(false);
-            }}
-          >
+          <ModalPortal zIndex={9999}>
             <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              onClick={(e) => {
-                e.stopPropagation();
+              key="scanner-modal"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="absolute inset-0 flex items-start justify-center bg-black/80 backdrop-blur-sm p-6 pt-20 md:pt-24"
+              onClick={() => {
+                console.log("[Authenticity] Closing scanner from backdrop");
+                setShowScanner(false);
               }}
-              className="relative z-[10000] w-full max-w-md"
             >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+                className="relative z-[10000] w-full max-w-md"
+              >
               <Scanner
                 key="scanner-component"
                 onScanSuccess={handleScanSuccess}
@@ -730,34 +732,36 @@ export default function AuthenticityPageClient() {
                   setShowScanner(false);
                 }}
               />
+              </motion.div>
             </motion.div>
-          </motion.div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 
       {/* Manual Input Modal */}
       <AnimatePresence mode="wait">
         {showManualInput && (
-          <motion.div
-            key="manual-input-modal"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-[100] flex items-start justify-center bg-black/80 backdrop-blur-sm p-6 pt-36 md:pt-48 lg:pt-56"
-            onClick={() => {
-              setShowManualInput(false);
-              setSerialNumber("");
-            }}
-          >
+          <ModalPortal zIndex={9999}>
             <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md"
+              key="manual-input-modal"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="absolute inset-0 flex items-start justify-center bg-black/80 backdrop-blur-sm p-6 pt-36 md:pt-48 lg:pt-56"
+              onClick={() => {
+                setShowManualInput(false);
+                setSerialNumber("");
+              }}
             >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-md max-h-[calc(100dvh-32px)] overflow-y-auto"
+              >
               <div className="relative rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 via-white/[0.03] to-transparent p-8 backdrop-blur-xl shadow-[0_20px_70px_-30px_rgba(0,0,0,0.7)]">
                 <button
                   onClick={() => {
@@ -792,8 +796,9 @@ export default function AuthenticityPageClient() {
                 </div>
                 <p className="text-xs text-white/50 text-center">{t("enterSerialHint")}</p>
               </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 

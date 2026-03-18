@@ -9,6 +9,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import Image from "next/image";
 import { Plus, Pencil, Trash2, X, Phone } from "lucide-react";
+import { ModalPortal } from "@/components/ui/ModalPortal";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { VideoLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
@@ -1074,20 +1075,21 @@ export default function MerchandisePageClient() {
 
       <AnimatePresence>
         {isModalOpen && modalCategory && (
-          <motion.div
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={closeModal}
-          >
+          <ModalPortal zIndex={9999}>
             <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="w-full max-w-md rounded-2xl border border-white/15 bg-gradient-to-b from-[#111] to-black p-6 shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
+              className="absolute inset-0 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={closeModal}
             >
+              <motion.div
+                initial={{ opacity: 0, y: 20, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 20 }}
+                className="w-full max-w-md max-h-[calc(100dvh-32px)] overflow-y-auto rounded-2xl border border-white/15 bg-gradient-to-b from-[#111] to-black p-6 shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-white">
                   {editing ? t("cms.editCard") : t("cms.addCard")}
@@ -1184,8 +1186,9 @@ export default function MerchandisePageClient() {
                   </button>
                 </div>
               </form>
+              </motion.div>
             </motion.div>
-          </motion.div>
+          </ModalPortal>
         )}
       </AnimatePresence>
     </div>

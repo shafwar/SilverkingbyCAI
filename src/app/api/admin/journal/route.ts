@@ -13,28 +13,38 @@ const MAX_TITLE_LEN = 500;
 const MAX_EXCERPT_LEN = 1000;
 
 function sanitizeJournalHtml(input: string): string {
-  const raw = String(input ?? "");
-  // Allow a controlled subset suitable for articles; strip scripts/styles.
-  return sanitizeHtml(raw, {
+  return sanitizeHtml(input, {
     allowedTags: [
-      "p", "br", "strong", "b", "em", "i", "u", "s",
-      "h1", "h2", "h3",
+      "p",
+      "br",
+      "strong",
+      "b",
+      "em",
+      "i",
+      "u",
       "blockquote",
-      "ul", "ol", "li",
-      "code", "pre",
+      "ul",
+      "ol",
+      "li",
+      "h2",
+      "h3",
       "a",
-      "span",
+      "img",
+      "code",
+      "pre",
     ],
     allowedAttributes: {
       a: ["href", "target", "rel"],
-      span: ["style"],
+      img: ["src", "alt", "title", "loading"],
+      "*": ["class"],
     },
-    allowedSchemes: ["http", "https", "mailto"],
+    allowedSchemes: ["http", "https", "data"],
     allowProtocolRelative: false,
     transformTags: {
       a: sanitizeHtml.simpleTransform("a", { rel: "noopener noreferrer", target: "_blank" }),
+      img: sanitizeHtml.simpleTransform("img", { loading: "lazy" }),
     },
-  }).trim();
+  });
 }
 
 function slugify(s: string): string {
@@ -87,8 +97,8 @@ export async function POST(request: Request) {
 
     const titleIdS = String(titleId ?? "").trim();
     const titleEnS = String(titleEn ?? "").trim();
-    const contentIdS = sanitizeJournalHtml(String(contentId ?? ""));
-    const contentEnS = sanitizeJournalHtml(String(contentEn ?? ""));
+    const contentIdS = sanitizeJournalHtml(String(contentId ?? "")).trim();
+    const contentEnS = sanitizeJournalHtml(String(contentEn ?? "")).trim();
     if (!titleIdS || !titleEnS || !contentIdS || !contentEnS) {
       return NextResponse.json(
         { error: "titleId, titleEn, contentId, contentEn are required" },

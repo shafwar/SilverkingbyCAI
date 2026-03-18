@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { X, Shield, Scale, Gem } from "lucide-react";
 import Image from "next/image";
+import { ModalPortal } from "@/components/ui/ModalPortal";
 
 /**
  * ProductModal Component
@@ -161,7 +162,7 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <ModalPortal zIndex={9999}>
           {/* Backdrop */}
           <motion.div
             variants={backdropVariants}
@@ -169,7 +170,7 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
             animate="visible"
             exit="exit"
             onClick={onClose}
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-md"
+            className="absolute inset-0 bg-black/40 backdrop-blur-md"
           />
 
           {/* Modal Container - Minimalist & Elegant */}
@@ -178,13 +179,13 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+            className="absolute inset-0 flex items-center justify-center p-4 sm:p-6"
             onClick={onClose}
           >
             <motion.div
               variants={contentVariants}
               onClick={(e) => e.stopPropagation()}
-              className="group relative w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0a] p-8 md:p-10 shadow-2xl"
+              className="group relative w-full max-w-md max-h-[calc(100dvh-32px)] overflow-y-auto overflow-x-hidden rounded-2xl border border-white/10 bg-[#0a0a0a] p-8 md:p-10 shadow-2xl"
             >
               {/* Subtle gradient overlay */}
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.02] via-transparent to-transparent" />
@@ -319,7 +320,7 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
               </div>
             </motion.div>
           </motion.div>
-        </>
+        </ModalPortal>
       )}
     </AnimatePresence>
   );

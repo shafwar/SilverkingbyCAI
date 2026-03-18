@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Pencil, Trash2, Plus, X, RefreshCw } from "lucide-react";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
+import { ModalPortal } from "@/components/ui/ModalPortal";
 
 type Bilingual = { id: string; en: string };
 type Meta = {
@@ -305,14 +306,13 @@ export function ContentPageClient() {
       </div>
 
       {modalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
-          onClick={closeModal}
-        >
-          <div
-            className="w-full max-w-2xl rounded-2xl border border-white/15 bg-[#0a0a0a] p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <ModalPortal zIndex={9999}>
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={closeModal} />
+          <div className="absolute inset-0 flex items-center justify-center p-4" onClick={closeModal}>
+            <div
+              className="w-full max-w-2xl rounded-2xl border border-white/15 bg-[#0a0a0a] p-6 shadow-2xl max-h-[calc(100dvh-32px)] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-white">
                 {editing ? "Edit" : t("addEntry")}
@@ -448,8 +448,9 @@ export function ContentPageClient() {
                 </button>
               </div>
             </form>
+            </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </AdminPageLayout>
   );

@@ -6,7 +6,8 @@ import { useTranslations } from "next-intl";
 import { Plus, Pencil, Trash2, X, Upload } from "lucide-react";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useSearchParams } from "next/navigation";
-import { RichTextEditor } from "@/components/admin/RichTextEditor";
+import { ModalPortal } from "@/components/ui/ModalPortal";
+import { JournalRichEditor } from "@/components/admin/journal/JournalRichEditor";
 
 type JournalItem = {
   id: number;
@@ -50,8 +51,6 @@ export function JournalPageClient() {
   const [heroFile, setHeroFile] = useState<File | null>(null);
   const [heroPreviewUrl, setHeroPreviewUrl] = useState<string | null>(null);
   const [uploadingHero, setUploadingHero] = useState(false);
-  const [previewMode, setPreviewMode] = useState(false);
-  const [submitIntent, setSubmitIntent] = useState<"SAVE_DRAFT" | "PUBLISH">("SAVE_DRAFT");
 
   const load = useCallback(async () => {
     try {
@@ -103,8 +102,6 @@ export function JournalPageClient() {
     setForm({ ...defaultItem } as Record<string, string | number | null>);
     setHeroFile(null);
     setHeroPreviewUrl(null);
-    setPreviewMode(false);
-    setSubmitIntent("SAVE_DRAFT");
     setModalOpen(true);
   };
 
@@ -124,8 +121,6 @@ export function JournalPageClient() {
     });
     setHeroFile(null);
     setHeroPreviewUrl(getHeroPreview(row.heroImageR2Key));
-    setPreviewMode(false);
-    setSubmitIntent(row.publishedAt ? "PUBLISH" : "SAVE_DRAFT");
     setModalOpen(true);
   };
 
@@ -134,7 +129,6 @@ export function JournalPageClient() {
     setEditing(null);
     setHeroFile(null);
     setHeroPreviewUrl(null);
-    setPreviewMode(false);
   };
 
   const uploadHero = async (): Promise<string | null> => {
@@ -188,7 +182,7 @@ export function JournalPageClient() {
         excerptId: excerptId ? excerptId : undefined,
         excerptEn: excerptEn ? excerptEn : undefined,
         heroImageR2Key: heroR2Key || undefined,
-        publishedAt: submitIntent === "PUBLISH" ? true : null,
+        publishedAt: form.publishedAt === "true" ? true : (form.publishedAt && String(form.publishedAt).trim() ? form.publishedAt : null),
         sortOrder: typeof form.sortOrder === "number" ? form.sortOrder : parseInt(String(form.sortOrder), 10) || 0,
       };
 
@@ -304,38 +298,15 @@ export function JournalPageClient() {
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4">
-          <div className="relative w-full max-w-2xl rounded-2xl border border-white/10 bg-[#0c0c0c] shadow-2xl">
+        <ModalPortal zIndex={9999}>
+          <div className="absolute inset-0 bg-black/70" onClick={closeModal} />
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <div className="relative w-full max-w-2xl max-h-[calc(100dvh-32px)] overflow-y-auto rounded-2xl border border-white/10 bg-[#0c0c0c] shadow-2xl">
             <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
               <h2 className="text-lg font-semibold text-white">{editing ? t("editPost") : t("newPost")}</h2>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPreviewMode((v) => !v)}
-                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-white/10"
-                  aria-label="Preview"
-                  title="Preview"
-                >
-                  {previewMode ? "Edit" : "Preview"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!confirm("Clear draft fields?")) return;
-                    setForm({ ...defaultItem } as Record<string, string | number | null>);
-                    setHeroFile(null);
-                    setHeroPreviewUrl(null);
-                  }}
-                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/70 hover:bg-white/10"
-                  aria-label="Clear draft"
-                  title="Clear draft"
-                >
-                  Clear
-                </button>
-                <button type="button" onClick={closeModal} className="rounded p-2 text-white/60 hover:bg-white/10 hover:text-white" aria-label="Close" title="Close">
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
+              <button type="button" onClick={closeModal} className="rounded p-2 text-white/60 hover:bg-white/10 hover:text-white">
+                <X className="h-5 w-5" />
+              </button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4 p-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -390,23 +361,45 @@ export function JournalPageClient() {
                   />
                 </div>
               </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-white/60">{t("contentId")}</label>
-                <RichTextEditor
-                  value={String(form.contentId ?? "")}
-                  onChange={(html) => setForm((f) => ({ ...f, contentId: html }))}
-                  placeholder="Write Indonesian content…"
-                  readOnly={previewMode}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-white/60">{t("contentEn")}</label>
-                <RichTextEditor
-                  value={String(form.contentEn ?? "")}
-                  onChange={(html) => setForm((f) => ({ ...f, contentEn: html }))}
-                  placeholder="Write English content…"
-                  readOnly={previewMode}
-                />
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-white/60">{t("contentId")}</label>
+                  <JournalRichEditor
+                    value={String(form.contentId ?? "")}
+                    onChange={(html) => setForm((f) => ({ ...f, contentId: html }))}
+                    placeholder="Tulis konten (Indonesia)…"
+                    onUploadImage={async (file) => {
+                      const fd = new FormData();
+                      fd.set("file", file);
+                      const res = await fetch("/api/admin/journal/upload", { method: "POST", body: fd });
+                      if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        throw new Error(err.error || "Upload failed");
+                      }
+                      const data = await res.json();
+                      return data.url ?? null;
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-white/60">{t("contentEn")}</label>
+                  <JournalRichEditor
+                    value={String(form.contentEn ?? "")}
+                    onChange={(html) => setForm((f) => ({ ...f, contentEn: html }))}
+                    placeholder="Write content (English)…"
+                    onUploadImage={async (file) => {
+                      const fd = new FormData();
+                      fd.set("file", file);
+                      const res = await fetch("/api/admin/journal/upload", { method: "POST", body: fd });
+                      if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        throw new Error(err.error || "Upload failed");
+                      }
+                      const data = await res.json();
+                      return data.url ?? null;
+                    }}
+                  />
+                </div>
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-white/60">{t("heroImage")}</label>
@@ -444,14 +437,15 @@ export function JournalPageClient() {
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-4">
-                <span className="text-xs text-white/55">
-                  Status:{" "}
-                  {submitIntent === "PUBLISH" ? (
-                    <span className="text-emerald-400">{t("published")}</span>
-                  ) : (
-                    <span className="text-white/40">{t("draft")}</span>
-                  )}
-                </span>
+                <label className="flex items-center gap-2 text-sm text-white/80">
+                  <input
+                    type="checkbox"
+                    checked={form.publishedAt === "true" || (!!form.publishedAt && String(form.publishedAt).trim() !== "")}
+                    onChange={(e) => setForm((f) => ({ ...f, publishedAt: e.target.checked ? "true" : null }))}
+                    className="rounded border-white/20"
+                  />
+                  {t("published")}
+                </label>
                 <div className="flex items-center gap-2">
                   <label className="text-xs text-white/60">{t("sortOrder")}</label>
                   <input
@@ -466,26 +460,14 @@ export function JournalPageClient() {
                 <button type="button" onClick={closeModal} className="rounded-lg border border-white/10 px-4 py-2 text-sm text-white/80 hover:bg-white/10">
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  onClick={() => setSubmitIntent("SAVE_DRAFT")}
-                  className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white/85 hover:bg-white/10 disabled:opacity-50"
-                >
-                  {saving && submitIntent === "SAVE_DRAFT" ? "Saving…" : "Save draft"}
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  onClick={() => setSubmitIntent("PUBLISH")}
-                  className="rounded-lg bg-luxury-gold/90 px-4 py-2 text-sm font-medium text-black hover:bg-luxury-gold disabled:opacity-50"
-                >
-                  {saving && submitIntent === "PUBLISH" ? "Publishing…" : "Publish"}
+                <button type="submit" disabled={saving} className="rounded-lg bg-luxury-gold/90 px-4 py-2 text-sm font-medium text-black hover:bg-luxury-gold disabled:opacity-50">
+                  {saving ? "Saving…" : editing ? "Update" : "Create"}
                 </button>
               </div>
             </form>
+            </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </AdminPageLayout>
   );

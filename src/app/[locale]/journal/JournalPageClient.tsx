@@ -64,6 +64,7 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
   const [adminItems, setAdminItems] = useState<AdminJournalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [heroImageError, setHeroImageError] = useState(false);
+  const [heroVideoError, setHeroVideoError] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const {
     sections: pageSections,
@@ -71,11 +72,15 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
     refetch: refetchPageSections,
   } = usePageSections("journal");
 
-  const heroMediaType = (pageSections.hero?.url ? pageSections.hero?.mediaType?.toUpperCase() : initialHeroMediaType) as "IMAGE" | "VIDEO";
+  const heroMediaType = (pageSections.hero?.mediaType?.toUpperCase() ?? initialHeroMediaType) as "IMAGE" | "VIDEO";
   const heroUrl = heroImageError ? initialHeroUrl : (pageSections.hero?.url ?? initialHeroUrl);
   const heroVersion = pageSections.hero?.version;
   const isFallbackHero = !pageSections.hero?.url;
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
+  const shouldRenderVideo = heroMediaType === "VIDEO" && shouldLoadHeroVideo && !heroVideoError;
+
+  // Always-available poster behind the hero (same-origin endpoint; R2 or public fallback)
+  const posterUrl = "/api/hero-image?page=journal";
 
   // Preload hero image for faster LCP when using fallback (same-origin URL we display)
   useEffect(() => {
@@ -185,22 +190,36 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
           }}
         />
         <div className="absolute inset-0 z-10 overflow-hidden">
-          {heroMediaType === "VIDEO" ? (
-            <VideoLoadGuard
-              key={heroUrl}
-              url={heroUrl}
-              version={heroVersion}
-              forcePoster={!shouldLoadHeroVideo}
-              containerClassName="absolute inset-0 h-full w-full"
-              className="absolute inset-0 h-full w-full object-cover"
-              style={{ objectFit: "cover" }}
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="auto"
-            />
-          ) : (
+          {/* Poster is ALWAYS rendered so hero background always shows, even on slow networks */}
+          <ImageLoadGuard
+            key={`poster:${posterUrl}`}
+            url={posterUrl}
+            containerClassName="absolute inset-0 h-full w-full"
+            className="absolute inset-0 h-full w-full object-cover"
+            style={{ objectFit: "cover" }}
+            alt=""
+            priority
+          />
+
+          {/* Video renders only when allowed by network policy; poster stays behind it */}
+          {shouldRenderVideo ? (
+            <div className="absolute inset-0">
+              <VideoLoadGuard
+                key={heroUrl}
+                url={heroUrl}
+                version={heroVersion}
+                containerClassName="absolute inset-0 h-full w-full"
+                className="absolute inset-0 h-full w-full object-cover"
+                style={{ objectFit: "cover" }}
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="auto"
+                onError={() => setHeroVideoError(true)}
+              />
+            </div>
+          ) : heroMediaType === "IMAGE" ? (
             <ImageLoadGuard
               key={heroUrl}
               url={heroUrl}
@@ -212,7 +231,7 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
               priority
               onError={() => setHeroImageError(true)}
             />
-          )}
+          ) : null}
         </div>
         <div
           className="absolute inset-0 z-[11] pointer-events-none"
