@@ -79,8 +79,13 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
   const shouldRenderVideo = heroMediaType === "VIDEO" && shouldLoadHeroVideo && !heroVideoError;
 
-  // Always-available poster behind the hero (same-origin endpoint; R2 or public fallback)
-  const posterUrl = "/api/hero-image?page=journal";
+  // Poster behind the hero:
+  // - If CMS sets an IMAGE hero, use that exact URL so "Edit hero" reflects immediately.
+  // - If CMS sets a VIDEO hero, keep a reliable same-origin image fallback (for slow networks / blocked video).
+  const posterUrl =
+    heroMediaType === "IMAGE" && heroUrl
+      ? heroUrl
+      : `/api/hero-image?page=journal${heroVersion ? `&v=${encodeURIComponent(String(heroVersion))}` : ""}`;
 
   // Preload hero image for faster LCP when using fallback (same-origin URL we display)
   useEffect(() => {
@@ -93,15 +98,25 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
     return () => link.remove();
   }, [isFallbackHero, heroMediaType, initialHeroUrl]);
 
+  // When hero media changes (admin edit), reset error flags so new asset can show.
+  useEffect(() => {
+    setHeroImageError(false);
+    setHeroVideoError(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageSections.hero?.url, pageSections.hero?.mediaType, pageSections.hero?.version]);
+
   useEffect(() => {
     let cancelled = false;
-    const loadPublic = async () => {
+    const loadPublic = async (): Promise<JournalItem[]> => {
       try {
         const r = await fetch(`/api/journal?locale=${locale}`);
         const data = await r.json();
-        if (!cancelled && Array.isArray(data.items)) setItems(data.items);
+        const list: JournalItem[] = Array.isArray(data.items) ? data.items : [];
+        if (!cancelled) setItems(list);
+        return list;
       } catch {
         if (!cancelled) setItems([]);
+        return [];
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -109,37 +124,23 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
     const loadAdmin = async () => {
       try {
         const r = await fetch(`/api/admin/journal`);
-        if (!r.ok) return loadPublic();
+        if (!r.ok) return;
         const data = await r.json();
         const list: AdminJournalItem[] = Array.isArray(data.items) ? data.items : [];
         if (!cancelled) setAdminItems(list);
-        // Still show the same 3 cards but localized like public
-        const mapped: JournalItem[] = list
-          .filter((j) => !!j.publishedAt)
-          .slice(0, LATEST_ARTICLES_LIMIT)
-          .map((j) => ({
-            slug: j.slug,
-            title: (locale === "id" ? j.titleId : j.titleEn) || j.titleEn || j.titleId,
-            excerpt: (() => {
-              const s = locale === "id" ? j.excerptId : j.excerptEn;
-              return s && s.trim() ? s : null;
-            })(),
-            heroImageUrl: null, // admin list returns r2Key; public cards should use public API for images
-            publishedAt: j.publishedAt,
-          }));
-        // Prefer public API for heroImageUrl; keep titles from admin list
-        if (!cancelled) setItems(mapped.length ? mapped : []);
       } catch {
-        await loadPublic();
+        // ignore
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
-    // Admin: we still load from public for images/SEO, but enable overlay controls via adminItems
+    // Admin: always load public list (for heroImageUrl/SEO consistency),
+    // then load admin list separately for overlay actions (edit/delete).
     if (isAdmin) {
-      loadAdmin();
+      void loadPublic();
+      void loadAdmin();
     } else {
-      loadPublic();
+      void loadPublic();
     }
     return () => {
       cancelled = true;
@@ -267,16 +268,18 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           className="relative z-20 mx-auto max-w-4xl text-center"
         >
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-luxury-gold/30 bg-luxury-gold/10 px-4 py-1.5 text-sm text-luxury-gold">
+          <div className="mx-auto inline-flex max-w-fit items-center gap-2 rounded-full border border-luxury-gold/30 bg-black/30 px-4 py-1.5 text-sm text-luxury-gold backdrop-blur-sm">
             <BookOpen className="h-4 w-4" />
             {t("hero.eyebrow")}
           </div>
-          <h1 className="font-serif text-4xl font-bold tracking-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.6)] sm:text-5xl md:text-6xl lg:text-7xl">
+          <h1 className="mt-5 font-serif text-4xl font-bold tracking-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.6)] sm:text-5xl md:text-6xl lg:text-7xl">
             {t("hero.title")}
           </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-white/90 drop-shadow-[0_1px_10px_rgba(0,0,0,0.5)] sm:text-xl">
+          <p className="mx-auto mt-5 max-w-2xl text-base text-white/90 drop-shadow-[0_1px_10px_rgba(0,0,0,0.5)] sm:text-lg md:text-xl">
             {t("hero.subtitle")}
           </p>
+
+          <div className="mx-auto mt-8 h-px w-28 bg-gradient-to-r from-transparent via-luxury-gold/50 to-transparent" />
         </motion.div>
         <div className="absolute bottom-8 left-1/2 z-20 -translate-x-1/2">
           <motion.div
@@ -289,8 +292,11 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
         </div>
       </section>
 
-      {/* Journal list — varied layout: featured + asymmetric grid */}
-      <section ref={listRef} className="relative z-10 min-h-screen bg-gradient-to-b from-[#0a0a0a] to-[#050505] px-4 py-20 sm:px-6 md:px-8 lg:px-12">
+      {/* Journal list — featured + asymmetric grid */}
+      <section
+        ref={listRef}
+        className="relative z-10 min-h-screen bg-gradient-to-b from-[#090909] via-[#070707] to-[#050505] px-4 py-20 sm:px-6 md:px-8 lg:px-12"
+      >
         <div className="mx-auto max-w-5xl">
           <div className="mb-14 flex items-end justify-between gap-4">
             <motion.h2
@@ -387,7 +393,7 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
                           <BookOpen className="h-14 w-14 text-luxury-gold/40" />
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent md:from-transparent md:via-transparent md:to-black/30" />
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/55 to-transparent md:from-transparent md:via-transparent md:to-black/35" />
                     </div>
                     <div className="flex flex-col justify-center p-6 md:col-span-3 md:p-10">
                       {latestItems[0].publishedAt && (
