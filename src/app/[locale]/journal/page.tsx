@@ -6,7 +6,7 @@ import JournalPageClient from "./JournalPageClient";
 /** Fallback hero for Journal when CMS media is not set. */
 const JOURNAL_HERO_FALLBACK = {
   type: "VIDEO" as const,
-  url: "/videos/hero/gold-footage.mp4",
+  url: "/videos/hero/Jurnal%20Silverking.mp4",
 };
 
 export const dynamic = "force-dynamic";

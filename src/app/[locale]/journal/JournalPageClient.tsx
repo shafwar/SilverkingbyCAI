@@ -73,18 +73,22 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
   } = usePageSections("journal");
 
   const heroMediaType = (pageSections.hero?.mediaType?.toUpperCase() ?? initialHeroMediaType) as "IMAGE" | "VIDEO";
-  const heroUrl = heroImageError ? initialHeroUrl : (pageSections.hero?.url ?? initialHeroUrl);
+  const cmsHeroUrl = pageSections.hero?.url ?? initialHeroUrl;
+  // Only IMAGE load error should affect IMAGE rendering.
+  const heroImageUrl = heroImageError ? initialHeroUrl : cmsHeroUrl;
   const heroVersion = pageSections.hero?.version;
   const isFallbackHero = !pageSections.hero?.url;
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
-  const shouldRenderVideo = heroMediaType === "VIDEO" && shouldLoadHeroVideo && !heroVideoError;
+  // Always render the video element when CMS says VIDEO, but reduce preload on slow networks.
+  const shouldRenderVideo = heroMediaType === "VIDEO" && !heroVideoError;
+  const videoPreload = shouldLoadHeroVideo ? "auto" : "metadata";
 
   // Poster behind the hero:
   // - If CMS sets an IMAGE hero, use that exact URL so "Edit hero" reflects immediately.
   // - If CMS sets a VIDEO hero, keep a reliable same-origin image fallback (for slow networks / blocked video).
   const posterUrl =
-    heroMediaType === "IMAGE" && heroUrl
-      ? heroUrl
+    heroMediaType === "IMAGE" && heroImageUrl
+      ? heroImageUrl
       : `/api/hero-image?page=journal${heroVersion ? `&v=${encodeURIComponent(String(heroVersion))}` : ""}`;
 
   // Preload hero image for faster LCP when using fallback (same-origin URL we display)
@@ -221,8 +225,8 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
           {shouldRenderVideo ? (
             <div className="absolute inset-0">
               <VideoLoadGuard
-                key={heroUrl}
-                url={heroUrl}
+                key={cmsHeroUrl}
+                url={cmsHeroUrl}
                 version={heroVersion}
                 containerClassName="absolute inset-0 h-full w-full"
                 className="absolute inset-0 h-full w-full object-cover"
@@ -231,14 +235,14 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
                 loop
                 muted
                 playsInline
-                preload="auto"
+                preload={videoPreload}
                 onError={() => setHeroVideoError(true)}
               />
             </div>
           ) : heroMediaType === "IMAGE" ? (
             <ImageLoadGuard
-              key={heroUrl}
-              url={heroUrl}
+              key={heroImageUrl}
+              url={heroImageUrl}
               version={heroVersion}
               containerClassName="absolute inset-0 h-full w-full"
               className="absolute inset-0 h-full w-full object-cover"
@@ -270,7 +274,7 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
       <HeroEditPortal
         page="journal"
         section="hero"
-        type="image"
+        type="video"
         onUploadDone={refetchPageSections}
         editLabel="Edit hero"
       />
@@ -287,10 +291,10 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
             <BookOpen className="h-4 w-4" />
             {t("hero.eyebrow")}
           </div>
-          <h1 className="mt-5 font-serif text-4xl font-bold tracking-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.6)] sm:text-5xl md:text-6xl lg:text-7xl">
+          <h1 className="mt-5 inline-block rounded-3xl border border-white/10 bg-black/25 px-5 py-2 font-serif text-4xl font-extrabold tracking-tight text-white drop-shadow-[0_10px_40px_rgba(0,0,0,0.65)] sm:text-5xl md:text-6xl lg:text-7xl">
             {t("hero.title")}
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-base text-white/90 drop-shadow-[0_1px_10px_rgba(0,0,0,0.5)] sm:text-lg md:text-xl">
+          <p className="mx-auto mt-5 inline-block max-w-2xl rounded-3xl bg-black/20 px-5 py-2 text-base text-white/95 drop-shadow-[0_6px_22px_rgba(0,0,0,0.55)] sm:text-lg md:text-xl">
             {t("hero.subtitle")}
           </p>
 
