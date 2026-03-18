@@ -71,7 +71,7 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
     refetch: refetchPageSections,
   } = usePageSections("journal");
 
-  const heroMediaType = (pageSections.hero?.mediaType?.toUpperCase() ?? initialHeroMediaType) as "IMAGE" | "VIDEO";
+  const heroMediaType = (pageSections.hero?.url ? pageSections.hero?.mediaType?.toUpperCase() : initialHeroMediaType) as "IMAGE" | "VIDEO";
   const heroUrl = heroImageError ? initialHeroUrl : (pageSections.hero?.url ?? initialHeroUrl);
   const heroVersion = pageSections.hero?.version;
   const isFallbackHero = !pageSections.hero?.url;

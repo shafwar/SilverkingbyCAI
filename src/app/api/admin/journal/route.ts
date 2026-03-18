@@ -7,9 +7,35 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import sanitizeHtml from "sanitize-html";
 
 const MAX_TITLE_LEN = 500;
 const MAX_EXCERPT_LEN = 1000;
+
+function sanitizeJournalHtml(input: string): string {
+  const raw = String(input ?? "");
+  // Allow a controlled subset suitable for articles; strip scripts/styles.
+  return sanitizeHtml(raw, {
+    allowedTags: [
+      "p", "br", "strong", "b", "em", "i", "u", "s",
+      "h1", "h2", "h3",
+      "blockquote",
+      "ul", "ol", "li",
+      "code", "pre",
+      "a",
+      "span",
+    ],
+    allowedAttributes: {
+      a: ["href", "target", "rel"],
+      span: ["style"],
+    },
+    allowedSchemes: ["http", "https", "mailto"],
+    allowProtocolRelative: false,
+    transformTags: {
+      a: sanitizeHtml.simpleTransform("a", { rel: "noopener noreferrer", target: "_blank" }),
+    },
+  }).trim();
+}
 
 function slugify(s: string): string {
   return s
@@ -61,8 +87,8 @@ export async function POST(request: Request) {
 
     const titleIdS = String(titleId ?? "").trim();
     const titleEnS = String(titleEn ?? "").trim();
-    const contentIdS = String(contentId ?? "").trim();
-    const contentEnS = String(contentEn ?? "").trim();
+    const contentIdS = sanitizeJournalHtml(String(contentId ?? ""));
+    const contentEnS = sanitizeJournalHtml(String(contentEn ?? ""));
     if (!titleIdS || !titleEnS || !contentIdS || !contentEnS) {
       return NextResponse.json(
         { error: "titleId, titleEn, contentId, contentEn are required" },
