@@ -76,18 +76,29 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
   const heroVersion = pageSections.hero?.version;
   const isFallbackHero = !pageSections.hero?.url;
 
-  // Always use the video for the Journal listing hero.
-  // - If CMS has a VIDEO mp4, we use it.
-  // - Otherwise we fall back to the bundled local mp4: public/videos/hero/Jurnal Silverking.mp4
+  // Use same-origin proxy endpoint for hero video to avoid "poster stuck"
+  // when R2 returns an unexpected Content-Type / object not synced yet.
+  const fallbackVideoApiUrl = "/api/hero-video?page=journal";
   const cmsHeroUrl = pageSections.hero?.url ?? initialHeroUrl;
   const cmsHeroMediaType = pageSections.hero?.mediaType?.toUpperCase();
-  const resolvedHeroVideoUrl =
-    cmsHeroMediaType === "VIDEO" || cmsHeroUrl.includes(".mp4") ? cmsHeroUrl : initialHeroUrl;
+  const shouldUseCmsVideo = cmsHeroMediaType === "VIDEO" || cmsHeroUrl.includes(".mp4");
 
-  // If the resolved video is our bundled local asset, cache-bust it after re-encoding.
-  const JOURNAL_LOCAL_HERO_VIDEO_VERSION = 2;
-  const isLocalBundledJournalVideo = resolvedHeroVideoUrl.includes("/videos/hero/");
-  const effectiveHeroVideoVersion = isLocalBundledJournalVideo ? JOURNAL_LOCAL_HERO_VIDEO_VERSION : heroVersion;
+  const r2KeyFromUrl = (url: string): string | null => {
+    const base = process.env.NEXT_PUBLIC_R2_PUBLIC_URL?.replace(/\/$/, "");
+    if (typeof base === "string" && base && url.startsWith(base)) {
+      return url.slice(base.length + 1);
+    }
+    const idx = url.indexOf("/static/");
+    return idx >= 0 ? url.slice(idx + 1) : null; // keep "static/..." prefix
+  };
+
+  const cmsR2Key = shouldUseCmsVideo ? r2KeyFromUrl(cmsHeroUrl) : null;
+  const resolvedHeroVideoApiUrl = cmsR2Key
+    ? `/api/hero-video?key=${encodeURIComponent(cmsR2Key)}`
+    : fallbackVideoApiUrl;
+
+  // If we're using the bundled fallback, always bust the cache after re-encode.
+  const effectiveHeroVideoVersion = resolvedHeroVideoApiUrl === fallbackVideoApiUrl ? 2 : heroVersion;
 
   const shouldRenderVideo = !heroVideoError;
 
@@ -235,8 +246,8 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
           {shouldRenderVideo ? (
             <div className="absolute inset-0">
               <VideoLoadGuard
-                key={resolvedHeroVideoUrl}
-                url={resolvedHeroVideoUrl}
+                key={resolvedHeroVideoApiUrl}
+                url={resolvedHeroVideoApiUrl}
                 version={effectiveHeroVideoVersion}
                 containerClassName="absolute inset-0 h-full w-full"
                 className="absolute inset-0 h-full w-full object-cover"
