@@ -584,20 +584,49 @@ async function buildOneZipChunk(
         (product as any).rootKey != null && String((product as any).rootKey).trim() !== ""
           ? String((product as any).rootKey).trim().toUpperCase()
           : null;
-      if (productRootKey) {
-        const rootKeyFontSize = Math.max(10, Math.floor(serialFontSize * 0.65));
-        const rootKeyGap = 8;
-        const rootKeyY = serialY + serialFontSize + rootKeyGap;
-        frontCtx!.font = `${rootKeyFontSize}px ${fontConfig.fontFamily}, monospace`;
-        frontCtx!.fillStyle = textColor;
-        frontCtx!.textAlign = "center";
-        frontCtx!.textBaseline = "top";
-        frontCtx!.fillText(productRootKey, frontTemplateImage.width / 2, rootKeyY);
-      }
       const frontBuffer = frontCanvas.toBuffer("image/png");
         const backCanvas = canvasMod.createCanvas(backTemplateImage.width, backTemplateImage.height);
         const backCtx = backCanvas.getContext("2d");
       backCtx!.drawImage(backTemplateImage, 0, 0);
+
+      // Root key: render on BACK side at bottom-left (as per UI spec / marked area).
+      if (productRootKey) {
+        const padX = Math.round(backTemplateImage.width * 0.08);
+        const padY = Math.round(backTemplateImage.height * 0.08);
+        const x = padX;
+        const y = backTemplateImage.height - padY;
+        const fontSize = Math.max(14, Math.min(22, Math.floor(backTemplateImage.width * 0.04)));
+        const font = `600 ${fontSize}px ${fontConfig.fontFamily}, monospace`;
+        backCtx!.save();
+        backCtx!.font = font;
+        backCtx!.textAlign = "left";
+        backCtx!.textBaseline = "alphabetic";
+
+        // Background pill for readability on light templates
+        const label = productRootKey;
+        const metrics = backCtx!.measureText(label);
+        const boxW = Math.ceil(metrics.width + fontSize * 0.9);
+        const boxH = Math.ceil(fontSize * 1.4);
+        const boxX = x - Math.floor(fontSize * 0.45);
+        const boxY = y - boxH + Math.floor(fontSize * 0.25);
+        backCtx!.fillStyle = "rgba(0,0,0,0.45)";
+        const r = Math.ceil(fontSize * 0.4);
+        // rounded rect
+        backCtx!.beginPath();
+        backCtx!.moveTo(boxX + r, boxY);
+        backCtx!.arcTo(boxX + boxW, boxY, boxX + boxW, boxY + boxH, r);
+        backCtx!.arcTo(boxX + boxW, boxY + boxH, boxX, boxY + boxH, r);
+        backCtx!.arcTo(boxX, boxY + boxH, boxX, boxY, r);
+        backCtx!.arcTo(boxX, boxY, boxX + boxW, boxY, r);
+        backCtx!.closePath();
+        backCtx!.fill();
+
+        // Text
+        backCtx!.fillStyle = "#ffffff";
+        backCtx!.fillText(label, x, y);
+        backCtx!.restore();
+      }
+
         const backBuffer = backCanvas.toBuffer("image/png");
         const panelWidth = Math.max(frontTemplateImage.width, backTemplateImage.width);
         const panelHeight = Math.max(frontTemplateImage.height, backTemplateImage.height);
@@ -797,7 +826,8 @@ async function executeZipGeneration(
     });
       // Satu folder induk (batch-{num}-{date}), tiap batch 100 = subfolder sendiri; bisa selesai bertahap
       const batchFolder = `batch-${c + 1}-of-${totalChunks}`;
-      const r2Key = `qr-batches/batch-${batchNum}-${dateStr}/${batchFolder}/${batchFolder}.zip`;
+      const zipBaseName = `serticard-${useCustom ? "custom" : `v${templateVariant}`}-${batchFolder}`;
+      const r2Key = `qr-batches/batch-${batchNum}-${dateStr}/${batchFolder}/${zipBaseName}.zip`;
       await r2Client.send(
         new PutObjectCommand({
           Bucket: R2_BUCKET!,
@@ -861,7 +891,7 @@ async function executeZipGeneration(
     compressionOptions: { level: 9 },
   });
     const dateStr = new Date().toISOString().split("T")[0];
-    const filename = `Silver-King-QR-Codes-${validProducts.length}-${dateStr}.zip`;
+    const filename = `serticard-${useCustom ? "custom" : `v${templateVariant}`}-${validProducts.length}-${dateStr}.zip`;
 
   // Single ZIP: R2 upload below (reuses zipBuffer, dateStr, filename from chunkResult)
   const successCount = chunkResult.successCount;

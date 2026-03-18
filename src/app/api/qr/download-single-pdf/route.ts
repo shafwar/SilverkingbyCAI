@@ -179,20 +179,8 @@ export async function POST(request: NextRequest) {
     frontCtx.font = serialFont;
     frontCtx.fillText(displaySerialCode, frontTemplateImage.width / 2, serialY);
 
-    // Root key below serial: smaller font, proportional (optional)
     const productRootKey =
       rootKeyValue != null && rootKeyValue.length > 0 ? rootKeyValue.toUpperCase() : null;
-    if (productRootKey) {
-      const rootKeyFontSize = Math.max(10, Math.floor(serialFontSize * 0.65));
-      const rootKeyGap = 8;
-      const rootKeyY = serialY + serialFontSize + rootKeyGap;
-      const rootKeyFont = `${rootKeyFontSize}px ${fontConfig.fontFamily}, monospace`;
-      frontCtx.font = rootKeyFont;
-      frontCtx.fillStyle = textColor;
-      frontCtx.textAlign = "center";
-      frontCtx.textBaseline = "top";
-      frontCtx.fillText(productRootKey, frontTemplateImage.width / 2, rootKeyY);
-    }
 
     console.log("[QR Single PDF] Serial code rendered:", {
       text: displaySerialCode,
@@ -203,10 +191,45 @@ export async function POST(request: NextRequest) {
 
     const frontBuffer = frontCanvas.toBuffer("image/png");
 
-    // --- BACK canvas (template only) ---
+    // --- BACK canvas (template + root key label) ---
     const backCanvas = canvasMod.createCanvas(backTemplateImage.width, backTemplateImage.height);
     const backCtx = backCanvas.getContext("2d");
     backCtx.drawImage(backTemplateImage, 0, 0);
+
+    // Root key: render on BACK side at bottom-left (as per UI spec / marked area).
+    if (productRootKey) {
+      const padX = Math.round(backTemplateImage.width * 0.08);
+      const padY = Math.round(backTemplateImage.height * 0.08);
+      const x = padX;
+      const y = backTemplateImage.height - padY;
+      const fontSize = Math.max(14, Math.min(22, Math.floor(backTemplateImage.width * 0.04)));
+      const font = `600 ${fontSize}px ${fontConfig.fontFamily}, monospace`;
+      backCtx.save();
+      backCtx.font = font;
+      backCtx.textAlign = "left";
+      backCtx.textBaseline = "alphabetic";
+
+      const label = productRootKey;
+      const metrics = backCtx.measureText(label);
+      const boxW = Math.ceil(metrics.width + fontSize * 0.9);
+      const boxH = Math.ceil(fontSize * 1.4);
+      const boxX = x - Math.floor(fontSize * 0.45);
+      const boxY = y - boxH + Math.floor(fontSize * 0.25);
+      backCtx.fillStyle = "rgba(0,0,0,0.45)";
+      const r = Math.ceil(fontSize * 0.4);
+      backCtx.beginPath();
+      backCtx.moveTo(boxX + r, boxY);
+      backCtx.arcTo(boxX + boxW, boxY, boxX + boxW, boxY + boxH, r);
+      backCtx.arcTo(boxX + boxW, boxY + boxH, boxX, boxY + boxH, r);
+      backCtx.arcTo(boxX, boxY + boxH, boxX, boxY, r);
+      backCtx.arcTo(boxX, boxY, boxX + boxW, boxY, r);
+      backCtx.closePath();
+      backCtx.fill();
+
+      backCtx.fillStyle = "#ffffff";
+      backCtx.fillText(label, x, y);
+      backCtx.restore();
+    }
     const backBuffer = backCanvas.toBuffer("image/png");
 
     // --- Build single PDF with front+back side-by-side - UNIFIED DIMENSIONS for 100% balance ---
