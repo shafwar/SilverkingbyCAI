@@ -159,28 +159,34 @@ export function JournalPageClient() {
     const titleEn = String(form.titleEn ?? "").trim();
     const contentId = String(form.contentId ?? "").trim();
     const contentEn = String(form.contentEn ?? "").trim();
-    if (!titleId || !titleEn || !contentId || !contentEn) {
-      alert("Title (ID & EN) and Content (ID & EN) are required.");
+    if (!titleId && !titleEn) {
+      alert("Isi minimal salah satu Title (Indonesia atau English).");
       return;
     }
+    if (!contentId && !contentEn) {
+      alert("Isi minimal salah satu Content (Indonesia atau English).");
+      return;
+    }
+    const finalTitleId = titleId || titleEn;
+    const finalTitleEn = titleEn || titleId;
+    const finalContentId = contentId || contentEn;
+    const finalContentEn = contentEn || contentId;
     const excerptId = String(form.excerptId ?? "").trim();
     const excerptEn = String(form.excerptEn ?? "").trim();
-    if ((!!excerptId) !== (!!excerptEn)) {
-      alert("Excerpt must be filled in both languages (ID & EN), or left empty for both.");
-      return;
-    }
+    const finalExcerptId = excerptId || excerptEn;
+    const finalExcerptEn = excerptEn || excerptId;
 
     setSaving(true);
     try {
       const heroR2Key = await uploadHero();
       const payload = {
         slug: slug || undefined,
-        titleId,
-        titleEn,
-        contentId,
-        contentEn,
-        excerptId: excerptId ? excerptId : undefined,
-        excerptEn: excerptEn ? excerptEn : undefined,
+        titleId: finalTitleId,
+        titleEn: finalTitleEn,
+        contentId: finalContentId,
+        contentEn: finalContentEn,
+        excerptId: finalExcerptId ? finalExcerptId : undefined,
+        excerptEn: finalExcerptEn ? finalExcerptEn : undefined,
         heroImageR2Key: heroR2Key || undefined,
         publishedAt: form.publishedAt === "true" ? true : (form.publishedAt && String(form.publishedAt).trim() ? form.publishedAt : null),
         sortOrder: typeof form.sortOrder === "number" ? form.sortOrder : parseInt(String(form.sortOrder), 10) || 0,
@@ -210,7 +216,8 @@ export function JournalPageClient() {
       closeModal();
       await load();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Save failed");
+      const msg = err instanceof Error ? err.message : "Save failed";
+      alert(`Gagal menyimpan berita: ${msg}`);
     } finally {
       setSaving(false);
     }

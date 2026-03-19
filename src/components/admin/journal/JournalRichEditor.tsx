@@ -122,6 +122,17 @@ export function JournalRichEditor({ value, onChange, placeholder = "Write conten
     editor.chain().focus().setLink({ href: clean }).run();
   }, [editor]);
 
+  const runCommand = useCallback(
+    (runner: () => boolean) => {
+      if (!editor) return;
+      const ok = runner();
+      if (ok) return;
+      // Fallback when current selection is an atom node (e.g. image)
+      runner();
+    },
+    [editor]
+  );
+
   const insertImageByUpload = useCallback(async () => {
     if (!editor || !onUploadImage) return;
     fileInputRef.current?.click();
@@ -134,7 +145,13 @@ export function JournalRichEditor({ value, onChange, placeholder = "Write conten
       if (!file || !editor || !onUploadImage) return;
       const url = await onUploadImage(file);
       if (!url) return;
-      editor.chain().focus().setImage({ src: url }).run();
+      editor
+        .chain()
+        .focus("end")
+        .setImage({ src: url })
+        .insertContent("<p></p>")
+        .focus("end")
+        .run();
     },
     [editor, onUploadImage]
   );
@@ -152,14 +169,14 @@ export function JournalRichEditor({ value, onChange, placeholder = "Write conten
       <div className="flex flex-wrap items-center gap-2 border-b border-white/10 p-2 relative z-20">
         <ToolbarButton
           title="Heading 2"
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          onClick={() => runCommand(() => editor.chain().focus("end").toggleHeading({ level: 2 }).run())}
           active={editor.isActive("heading", { level: 2 })}
         >
           <Heading2 className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
           title="Heading 3"
-          onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+          onClick={() => runCommand(() => editor.chain().focus("end").toggleHeading({ level: 3 }).run())}
           active={editor.isActive("heading", { level: 3 })}
         >
           <Heading3 className="h-4 w-4" />
@@ -167,14 +184,14 @@ export function JournalRichEditor({ value, onChange, placeholder = "Write conten
         <div className="mx-1 h-6 w-px bg-white/10" />
         <ToolbarButton
           title="Bold"
-          onClick={() => editor.chain().focus().toggleBold().run()}
+          onClick={() => runCommand(() => editor.chain().focus("end").toggleBold().run())}
           active={editor.isActive("bold")}
         >
           <Bold className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
           title="Italic"
-          onClick={() => editor.chain().focus().toggleItalic().run()}
+          onClick={() => runCommand(() => editor.chain().focus("end").toggleItalic().run())}
           active={editor.isActive("italic")}
         >
           <Italic className="h-4 w-4" />
@@ -182,21 +199,21 @@ export function JournalRichEditor({ value, onChange, placeholder = "Write conten
         <div className="mx-1 h-6 w-px bg-white/10" />
         <ToolbarButton
           title="Bullet list"
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
+          onClick={() => runCommand(() => editor.chain().focus("end").toggleBulletList().run())}
           active={editor.isActive("bulletList")}
         >
           <List className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
           title="Ordered list"
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          onClick={() => runCommand(() => editor.chain().focus("end").toggleOrderedList().run())}
           active={editor.isActive("orderedList")}
         >
           <ListOrdered className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
           title="Quote"
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
+          onClick={() => runCommand(() => editor.chain().focus("end").toggleBlockquote().run())}
           active={editor.isActive("blockquote")}
         >
           <Quote className="h-4 w-4" />

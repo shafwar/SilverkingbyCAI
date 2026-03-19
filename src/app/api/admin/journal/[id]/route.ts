@@ -117,17 +117,30 @@ export async function PATCH(
       }
     }
 
-    // Enforce bilingual fields stay complete after patch (production safety)
-    const finalTitleId = (updates.titleId ?? existing.titleId).trim();
-    const finalTitleEn = (updates.titleEn ?? existing.titleEn).trim();
-    const finalContentId = (updates.contentId ?? existing.contentId).trim();
-    const finalContentEn = (updates.contentEn ?? existing.contentEn).trim();
-    if (!finalTitleId || !finalTitleEn || !finalContentId || !finalContentEn) {
-      return NextResponse.json(
-        { error: "titleId, titleEn, contentId, contentEn must not be empty" },
-        { status: 400 }
-      );
+    // Simple bilingual patch behavior:
+    // - at least one language is enough
+    // - empty language falls back to the filled language
+    const rawTitleId = (updates.titleId ?? existing.titleId).trim();
+    const rawTitleEn = (updates.titleEn ?? existing.titleEn).trim();
+    const rawContentId = (updates.contentId ?? existing.contentId).trim();
+    const rawContentEn = (updates.contentEn ?? existing.contentEn).trim();
+    if (!rawTitleId && !rawTitleEn) {
+      return NextResponse.json({ error: "At least one title is required (ID or EN)." }, { status: 400 });
     }
+    if (!rawContentId && !rawContentEn) {
+      return NextResponse.json({ error: "At least one content is required (ID or EN)." }, { status: 400 });
+    }
+
+    const finalTitleId = rawTitleId || rawTitleEn;
+    const finalTitleEn = rawTitleEn || rawTitleId;
+    const finalContentId = rawContentId || rawContentEn;
+    const finalContentEn = rawContentEn || rawContentId;
+
+    updates.titleId = finalTitleId;
+    updates.titleEn = finalTitleEn;
+    updates.contentId = finalContentId;
+    updates.contentEn = finalContentEn;
+
     if (finalTitleId.length > MAX_TITLE_LEN || finalTitleEn.length > MAX_TITLE_LEN) {
       return NextResponse.json(
         { error: `Title too long. Max ${MAX_TITLE_LEN} characters for each language.` },
@@ -135,17 +148,13 @@ export async function PATCH(
       );
     }
 
-    const finalExcerptId = (updates.excerptId !== undefined ? updates.excerptId : existing.excerptId) ?? null;
-    const finalExcerptEn = (updates.excerptEn !== undefined ? updates.excerptEn : existing.excerptEn) ?? null;
-    const hasExcerptId = !!(finalExcerptId && finalExcerptId.trim());
-    const hasExcerptEn = !!(finalExcerptEn && finalExcerptEn.trim());
-    if (hasExcerptId !== hasExcerptEn) {
-      return NextResponse.json(
-        { error: "excerptId and excerptEn must both be filled (or both empty)" },
-        { status: 400 }
-      );
-    }
-    if ((finalExcerptId?.trim().length ?? 0) > MAX_EXCERPT_LEN || (finalExcerptEn?.trim().length ?? 0) > MAX_EXCERPT_LEN) {
+    const rawExcerptId = (updates.excerptId !== undefined ? updates.excerptId : existing.excerptId) ?? null;
+    const rawExcerptEn = (updates.excerptEn !== undefined ? updates.excerptEn : existing.excerptEn) ?? null;
+    const finalExcerptId = rawExcerptId?.trim() || rawExcerptEn?.trim() || "";
+    const finalExcerptEn = rawExcerptEn?.trim() || rawExcerptId?.trim() || "";
+    updates.excerptId = finalExcerptId ? finalExcerptId : null;
+    updates.excerptEn = finalExcerptEn ? finalExcerptEn : null;
+    if ((finalExcerptId.length ?? 0) > MAX_EXCERPT_LEN || (finalExcerptEn.length ?? 0) > MAX_EXCERPT_LEN) {
       return NextResponse.json(
         { error: `Excerpt too long. Max ${MAX_EXCERPT_LEN} characters for each language.` },
         { status: 400 }

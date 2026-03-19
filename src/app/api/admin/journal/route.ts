@@ -99,13 +99,23 @@ export async function POST(request: Request) {
     const titleEnS = String(titleEn ?? "").trim();
     const contentIdS = sanitizeJournalHtml(String(contentId ?? "")).trim();
     const contentEnS = sanitizeJournalHtml(String(contentEn ?? "")).trim();
-    if (!titleIdS || !titleEnS || !contentIdS || !contentEnS) {
-      return NextResponse.json(
-        { error: "titleId, titleEn, contentId, contentEn are required" },
-        { status: 400 }
-      );
+
+    // Simple bilingual input:
+    // - admin may fill only one language
+    // - missing language falls back to the filled one
+    if (!titleIdS && !titleEnS) {
+      return NextResponse.json({ error: "At least one title is required (ID or EN)." }, { status: 400 });
     }
-    if (titleIdS.length > MAX_TITLE_LEN || titleEnS.length > MAX_TITLE_LEN) {
+    if (!contentIdS && !contentEnS) {
+      return NextResponse.json({ error: "At least one content is required (ID or EN)." }, { status: 400 });
+    }
+
+    const finalTitleId = titleIdS || titleEnS;
+    const finalTitleEn = titleEnS || titleIdS;
+    const finalContentId = contentIdS || contentEnS;
+    const finalContentEn = contentEnS || contentIdS;
+
+    if (finalTitleId.length > MAX_TITLE_LEN || finalTitleEn.length > MAX_TITLE_LEN) {
       return NextResponse.json(
         { error: `Title too long. Max ${MAX_TITLE_LEN} characters for each language.` },
         { status: 400 }
@@ -114,20 +124,16 @@ export async function POST(request: Request) {
 
     const excerptIdS = excerptId != null ? String(excerptId).trim() : "";
     const excerptEnS = excerptEn != null ? String(excerptEn).trim() : "";
-    if ((!!excerptIdS) !== (!!excerptEnS)) {
-      return NextResponse.json(
-        { error: "excerptId and excerptEn must both be filled (or both empty)" },
-        { status: 400 }
-      );
-    }
-    if (excerptIdS.length > MAX_EXCERPT_LEN || excerptEnS.length > MAX_EXCERPT_LEN) {
+    const finalExcerptId = excerptIdS || excerptEnS || "";
+    const finalExcerptEn = excerptEnS || excerptIdS || "";
+    if (finalExcerptId.length > MAX_EXCERPT_LEN || finalExcerptEn.length > MAX_EXCERPT_LEN) {
       return NextResponse.json(
         { error: `Excerpt too long. Max ${MAX_EXCERPT_LEN} characters for each language.` },
         { status: 400 }
       );
     }
 
-    const slug = rawSlug && String(rawSlug).trim() ? slugify(String(rawSlug).trim()) : slugify(titleEnS || titleIdS);
+    const slug = rawSlug && String(rawSlug).trim() ? slugify(String(rawSlug).trim()) : slugify(finalTitleEn || finalTitleId);
     const existing = await prisma.journal.findUnique({ where: { slug } });
     if (existing) {
       return NextResponse.json(
@@ -144,12 +150,12 @@ export async function POST(request: Request) {
     const created = await prisma.journal.create({
       data: {
         slug,
-        titleId: titleIdS,
-        titleEn: titleEnS,
-        contentId: contentIdS,
-        contentEn: contentEnS,
-        excerptId: excerptIdS ? excerptIdS : null,
-        excerptEn: excerptEnS ? excerptEnS : null,
+        titleId: finalTitleId,
+        titleEn: finalTitleEn,
+        contentId: finalContentId,
+        contentEn: finalContentEn,
+        excerptId: finalExcerptId ? finalExcerptId : null,
+        excerptEn: finalExcerptEn ? finalExcerptEn : null,
         heroImageR2Key: heroImageR2Key && String(heroImageR2Key).trim() ? String(heroImageR2Key).trim() : null,
         publishedAt: publishedAtDate,
         sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
