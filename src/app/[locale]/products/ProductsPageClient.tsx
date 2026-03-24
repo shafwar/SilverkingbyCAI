@@ -18,6 +18,8 @@ import ProductCard, { type ProductWithPricing } from "@/components/ui/ProductCar
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { usePageSections } from "@/hooks/usePageSections";
+import { ModalPortal } from "@/components/ui/ModalPortal";
+import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import Image from "next/image";
@@ -285,6 +287,7 @@ export default function ProductsPageClient() {
   } = usePageSections("products");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
   const heroMediaUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/gold-stone.mp4");
+  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
   // Ensure products hero video autoplays reliably on all devices
   useReliableVideoAutoplay(videoRef);
@@ -1099,6 +1102,7 @@ export default function ProductsPageClient() {
             ref={videoRef}
             url={heroMediaUrl}
             version={pageSections.hero?.version}
+            forcePoster={!shouldLoadHeroVideo}
             containerClassName="absolute inset-0 w-screen h-screen z-10"
             className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
             style={{
@@ -1489,23 +1493,24 @@ export default function ProductsPageClient() {
       {/* Inline CMS Modal for Admin (create / edit product) */}
       <AnimatePresence>
         {isAdmin && editingCms && (
-          <motion.div
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => {
-              setEditingCms(null);
-              setCmsImageFiles([]);
-            }}
-          >
+          <ModalPortal zIndex={9999}>
             <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.96 }}
-              className="w-full max-w-xl rounded-2xl border border-white/15 bg-gradient-to-b from-[#111] via-[#050505] to-black p-6 shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
+              className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setEditingCms(null);
+                setCmsImageFiles([]);
+              }}
             >
+              <motion.div
+                initial={{ opacity: 0, y: 20, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 20, scale: 0.96 }}
+                className="w-full max-w-xl max-h-[calc(100dvh-32px)] overflow-y-auto rounded-2xl border border-white/15 bg-gradient-to-b from-[#111] via-[#050505] to-black p-6 shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-white">
                   {editingCms.id ? t("cmsForm.editProduct") : t("cmsForm.addProduct")}
@@ -1734,8 +1739,9 @@ export default function ProductsPageClient() {
                   </button>
                 </div>
               </form>
+              </motion.div>
             </motion.div>
-          </motion.div>
+          </ModalPortal>
         )}
       </AnimatePresence>
 

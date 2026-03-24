@@ -4,7 +4,6 @@ import { addProductInfoToQR } from "@/lib/qr";
 import { getVerifyUrl } from "@/utils/constants";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { createCanvas, loadImage } from "canvas";
 
 /**
  * Generate single PNG image with selected QR codes in a grid layout
@@ -16,6 +15,14 @@ export async function POST(request: NextRequest) {
     const session = await auth();
     if (!session || (session.user as any).role !== "ADMIN") {
       return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const canvasMod = await import("canvas").catch(() => null);
+    if (!canvasMod) {
+      return NextResponse.json(
+        { error: "QR PNG export is unavailable in this environment (canvas native bindings missing)." },
+        { status: 501 }
+      );
     }
 
     const body = await request.json();
@@ -79,7 +86,7 @@ export async function POST(request: NextRequest) {
     const totalHeight = 120 + outerPadding * 2 + rows * qrWithTextHeight + (rows - 1) * gridSpacing;
 
     // Create main canvas
-    const canvas = createCanvas(totalWidth, totalHeight);
+    const canvas = canvasMod.createCanvas(totalWidth, totalHeight);
     const ctx = canvas.getContext("2d");
 
     // Fill white background
@@ -121,7 +128,7 @@ export async function POST(request: NextRequest) {
         );
 
         // Load QR image (already contains QR + text from addProductInfoToQR)
-        const qrImage = await loadImage(pngBuffer);
+        const qrImage = await canvasMod.loadImage(pngBuffer);
 
         // Calculate position in grid
         // x = outerPadding + col * (qrWithTextWidth + gridSpacing)

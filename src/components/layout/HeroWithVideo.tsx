@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
+import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 
 interface HeroWithVideoProps {
   videoSrc: string;
@@ -27,6 +28,7 @@ export default function HeroWithVideo({
   // Convert fallback image to R2 URL
   const r2FallbackImage = getR2UrlClient(fallbackImage);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const shouldLoadVideo = useShouldLoadHeroVideo();
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -174,16 +176,16 @@ export default function HeroWithVideo({
 
   return (
     <section className="relative h-screen w-full overflow-hidden">
-      {/* Background Video */}
+      {/* Background Video — skip on mobile or slow connection to keep page light */}
       <div className="absolute inset-0 z-0">
-        {!isMobile && ( // Only show video on desktop
+        {!isMobile && shouldLoadVideo && (
           <video
             ref={videoRef}
             autoPlay
             loop
             muted
             playsInline
-            preload="auto"
+            preload="metadata"
             disablePictureInPicture
             disableRemotePlayback
             className={`w-full h-full object-cover transition-opacity duration-1000 pointer-events-none select-none ${
@@ -218,8 +220,8 @@ export default function HeroWithVideo({
           </video>
         )}
 
-        {/* Fallback Image (shown on mobile or if video fails) */}
-        {(isMobile || !isVideoLoaded || videoError) && (
+        {/* Fallback Image (shown on mobile, slow connection, or if video fails) */}
+        {(isMobile || !shouldLoadVideo || !isVideoLoaded || videoError) && (
           <div
             className="w-full h-full bg-cover bg-center"
             style={{ backgroundImage: `url(${r2FallbackImage})` }}

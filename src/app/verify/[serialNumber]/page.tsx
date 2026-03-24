@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -185,61 +185,139 @@ export default function VerifyPage() {
   const serialNumber = params.serialNumber as string;
   const [result, setResult] = useState<VerificationResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [verifyKey, setVerifyKey] = useState(0);
   const [rootKey, setRootKey] = useState("");
   const [verifyingRootKey, setVerifyingRootKey] = useState(false);
   const [rootKeyError, setRootKeyError] = useState<string | null>(null);
 
-  /** Same R2 endpoint pattern as Merchandise, Navbar, What We Do: getR2UrlClient(path). */
-  const verifiedBgIndex = useMemo(
-    () =>
-      result?.verified
-        ? Math.floor(Math.random() * VERIFIED_BG_IMAGES.length)
-        : null,
-    [result?.verified]
+  /** Guaranteed pool: static URLs always included so we never have empty; try next on error until one loads. */
+  const staticUrls = useMemo(
+    () => VERIFIED_BG_IMAGES.map((p) => getR2UrlClient(p)),
+    []
   );
-
-  const verifiedBgUrls = useMemo(() => {
-    if (!result?.verified || verifiedBgIndex === null) return null;
-    const len = VERIFIED_BG_IMAGES.length;
-    const primaryPath = VERIFIED_BG_IMAGES[verifiedBgIndex];
-    const fallbackIndex = (verifiedBgIndex + 1) % len;
-    const fallbackPath = VERIFIED_BG_IMAGES[fallbackIndex];
-    return {
-      primary: getR2UrlClient(primaryPath),
-      fallback: getR2UrlClient(fallbackPath),
-    };
-  }, [result?.verified, verifiedBgIndex]);
 
   const [verifiedBgDisplayUrl, setVerifiedBgDisplayUrl] = useState<string | null>(null);
   const [verifiedBgError, setVerifiedBgError] = useState(false);
+  const verifiedBgFallbackUrls = useRef<string[]>([]);
+  const preloadSeqIdRef = useRef(0);
+  const currentVerifiedBgUrlRef = useRef<string | null>(null);
 
+  // Background image: load ONLY after "Product Verified" text has painted (deferred). Prefer static URLs first (easiest/closest).
   useEffect(() => {
-    if (!result?.verified || !verifiedBgUrls) {
+    if (!result?.verified) {
       setVerifiedBgDisplayUrl(null);
       setVerifiedBgError(false);
+      verifiedBgFallbackUrls.current = [];
       return;
     }
-    setVerifiedBgDisplayUrl(verifiedBgUrls.primary);
+    // Do NOT set any image here — first paint is text + SVG only (sacred for client).
+    setVerifiedBgDisplayUrl(null);
     setVerifiedBgError(false);
-  }, [result?.verified, verifiedBgUrls?.primary]);
+    verifiedBgFallbackUrls.current = [];
+    const mySeq = ++preloadSeqIdRef.current;
+
+    const preloadAndSwap = async (pool: string[]) => {
+      const seen = new Set<string>();
+      const ordered = pool.filter((u) => (u ? !seen.has(u) && (seen.add(u), true) : false));
+      for (const url of ordered) {
+        if (preloadSeqIdRef.current !== mySeq) return;
+        if (url === currentVerifiedBgUrlRef.current) continue;
+        try {
+          await new Promise<void>((resolve, reject) => {
+            const img = new window.Image();
+            const t = window.setTimeout(() => reject(new Error("timeout")), 8000);
+            img.onload = () => {
+              window.clearTimeout(t);
+              resolve();
+            };
+            img.onerror = () => {
+              window.clearTimeout(t);
+              reject(new Error("error"));
+            };
+            img.decoding = "async";
+            img.src = url;
+          });
+          if (preloadSeqIdRef.current !== mySeq) return;
+          currentVerifiedBgUrlRef.current = url;
+          setVerifiedBgDisplayUrl(url);
+          setVerifiedBgError(false);
+          verifiedBgFallbackUrls.current = ordered.filter((u) => u !== url);
+          return;
+        } catch {
+          // try next
+        }
+      }
+      if (preloadSeqIdRef.current === mySeq) setVerifiedBgError(true);
+    };
+
+    // Defer so "Product Verified" text and table paint first; then load image (static first = easiest).
+    const deferMs = 180;
+    const tid = window.setTimeout(() => {
+      if (preloadSeqIdRef.current !== mySeq) return;
+      // Static list first (closest / easiest to load), then API adds more options
+      void preloadAndSwap(staticUrls);
+    }, deferMs);
+
+    let cancelled = false;
+    const apiTid = window.setTimeout(() => {
+      if (cancelled) return;
+      fetch("/api/verified-bg-images")
+        .then((r) => r.json())
+        .then((data: { urls?: string[] }) => {
+          if (cancelled || preloadSeqIdRef.current !== mySeq) return;
+          const apiList = Array.isArray(data?.urls) ? data.urls.filter((u) => u && u.startsWith("http")) : [];
+          const seen = new Set<string>();
+          const merged: string[] = [];
+          for (const u of [...apiList, ...staticUrls]) {
+            if (u && !seen.has(u)) {
+              seen.add(u);
+              merged.push(u);
+            }
+          }
+          if (merged.length === 0) return;
+          void preloadAndSwap(merged);
+        })
+        .catch(() => {});
+    }, deferMs + 80);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(tid);
+      window.clearTimeout(apiTid);
+    };
+  }, [result?.verified, staticUrls]);
 
   const effectiveVerifiedBgUrl = verifiedBgDisplayUrl;
 
   const handleVerifiedBgError = () => {
-    if (!verifiedBgUrls) {
-      setVerifiedBgError(true);
-      return;
-    }
-    if (verifiedBgDisplayUrl === verifiedBgUrls.primary) {
-      setVerifiedBgDisplayUrl(verifiedBgUrls.fallback);
+    const fallbacks = verifiedBgFallbackUrls.current;
+    if (fallbacks.length > 0) {
+      verifiedBgFallbackUrls.current = fallbacks.slice(1);
+      setVerifiedBgDisplayUrl(fallbacks[0]);
     } else {
       setVerifiedBgError(true);
     }
   };
 
-  // ---------- ALL LOGIC BELOW IS UNCHANGED ----------
+  // ---------- Verification: reset on serial change so new QR scan gets fresh UI (no stale root key / buffering) ----------
 
   useEffect(() => {
+    // Hard reset when serial changes: show loading and clear previous result/background (no stale root key / buffering)
+    setVerifiedBgDisplayUrl(null);
+    setVerifiedBgError(false);
+    verifiedBgFallbackUrls.current = [];
+    currentVerifiedBgUrlRef.current = null;
+    preloadSeqIdRef.current += 1;
+    recoveryRetryRef.current = null;
+
+    if (!serialNumber) {
+      setLoading(false);
+      setResult({ verified: false, error: "Serial number is required" });
+      return;
+    }
+    setLoading(true);
+    setResult(null);
+
     let isMounted = true;
 
     async function verifyProduct() {
@@ -352,7 +430,17 @@ export default function VerifyPage() {
     return () => {
       isMounted = false;
     };
-  }, [serialNumber]);
+  }, [serialNumber, verifyKey]);
+
+  const recoveryRetryRef = useRef<string | null>(null);
+  // Recovery: when stuck (result null, !loading) after e.g. nav from Authenticity, re-trigger verify once per serial
+  useEffect(() => {
+    if (result !== null || loading || !serialNumber) return;
+    if (recoveryRetryRef.current === serialNumber) return;
+    recoveryRetryRef.current = serialNumber;
+    const tid = window.setTimeout(() => setVerifyKey((k) => k + 1), 400);
+    return () => window.clearTimeout(tid);
+  }, [result, loading, serialNumber]);
 
   const getWeightLabel = (weight?: number) => {
     if (!weight) return "—";
@@ -439,12 +527,18 @@ export default function VerifyPage() {
 
   // ---------- END UNCHANGED LOGIC ----------
 
-  const showVerifiedBackground = Boolean(
-    result?.verified && !result?.requiresRootKey && verifiedBgIndex !== null
-  );
+  const showVerifiedBackground = Boolean(result?.verified && !result?.requiresRootKey);
+
+  const showRootKeyMode = Boolean(result?.requiresRootKey);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
+    <div
+      className={`min-h-screen text-white ${
+        showRootKeyMode
+          ? "bg-gradient-to-b from-[#141414] via-[#101010] to-[#0a0a0a]"
+          : "bg-[#050505]"
+      }`}
+    >
       {/* Background only when product is verified (not on root-key input screen). */}
       {showVerifiedBackground && (
         <>
@@ -452,30 +546,21 @@ export default function VerifyPage() {
 
           {!verifiedBgError && effectiveVerifiedBgUrl ? (
             <div
+              key={effectiveVerifiedBgUrl}
               className="pointer-events-none fixed inset-0 z-[1] overflow-hidden bg-[#0a0a0a]"
               aria-hidden
-              style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                width: "100vw",
-                minHeight: "100vh",
-                height: "100%",
-                backgroundImage: `url(${effectiveVerifiedBgUrl})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                backgroundRepeat: "no-repeat",
-                backgroundAttachment: "fixed",
-              }}
             >
+              {/* Use a real <img> (not CSS background-image) for deterministic loading + onError across browsers */}
               <img
+                key={effectiveVerifiedBgUrl}
                 src={effectiveVerifiedBgUrl}
                 alt=""
-                className="absolute opacity-0 w-0 h-0"
+                className="absolute inset-0 h-full w-full object-cover"
+                loading="eager"
+                decoding="async"
                 onError={handleVerifiedBgError}
                 aria-hidden
+                fetchPriority="high"
               />
             </div>
           ) : !verifiedBgError ? null : (
@@ -488,12 +573,12 @@ export default function VerifyPage() {
               aria-hidden
             />
           )}
-          {/* Overlay: uniform so image visible top to bottom, not cut off */}
+          {/* Overlay: darker so Product Verified text and table stay readable on all devices */}
           <div
             className="pointer-events-none fixed inset-0 z-[2] min-h-full"
             style={{
               background:
-                "linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.42) 50%, rgba(0,0,0,0.48) 100%)",
+                "linear-gradient(180deg, rgba(0,0,0,0.70) 0%, rgba(0,0,0,0.64) 50%, rgba(0,0,0,0.74) 100%)",
             }}
             aria-hidden
           />
@@ -504,38 +589,47 @@ export default function VerifyPage() {
       <div
         className="pointer-events-none fixed inset-0 z-[3]"
         style={{
-          background: showVerifiedBackground
-            ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(34,197,94,0.04) 0%, transparent 60%), radial-gradient(ellipse 50% 35% at 50% 80%, rgba(212,175,55,0.03) 0%, transparent 50%)"
-            : result && !result.verified && !result.requiresRootKey
-              ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(239,68,68,0.04) 0%, transparent 60%)"
-              : "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(212,175,55,0.04) 0%, transparent 60%)",
+          background: result?.requiresRootKey
+            ? "none"
+            : showVerifiedBackground
+              ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(34,197,94,0.04) 0%, transparent 60%), radial-gradient(ellipse 50% 35% at 50% 80%, rgba(212,175,55,0.03) 0%, transparent 50%)"
+              : result && !result.verified && !result.requiresRootKey
+                ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(239,68,68,0.04) 0%, transparent 60%)"
+                : "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(212,175,55,0.04) 0%, transparent 60%)",
         }}
       />
 
       <Navbar />
 
-      <div className="relative z-10 pt-28 pb-20 px-4 sm:px-6">
-        <div className="mx-auto max-w-2xl">
-          {/* ---------- LOADING STATE ---------- */}
+      <div className="relative z-10 min-h-screen pt-24 pb-16 px-4 sm:pt-28 sm:pb-20 sm:px-6">
+        <div key={serialNumber || "verify"} className="mx-auto w-full max-w-2xl">
+          {/* ---------- LOADING STATE: visible immediately (no opacity 0) to avoid blank on nav from Authenticity ---------- */}
           {loading ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center py-24"
-            >
+            <div className="flex flex-col items-center justify-center py-24 opacity-100">
               <div className="relative">
                 <div className="h-14 w-14 rounded-full border-2 border-luxury-gold/20" />
                 <div className="absolute inset-0 h-14 w-14 animate-spin rounded-full border-2 border-transparent border-t-luxury-gold" />
               </div>
-              <p className="mt-5 text-sm font-light tracking-wide text-white/40">
+              <p className="mt-5 text-sm font-light tracking-wide text-white/70">
                 Verifying product...
               </p>
-            </motion.div>
+            </div>
+          ) : result === null && serialNumber ? (
+            /* ---------- RECOVERY: stuck state (e.g. after nav from Authenticity) — show message and re-verify ---------- */
+            <div className="flex flex-col items-center justify-center py-24 opacity-100">
+              <div className="relative">
+                <div className="h-14 w-14 rounded-full border-2 border-luxury-gold/20" />
+                <div className="absolute inset-0 h-14 w-14 animate-spin rounded-full border-2 border-transparent border-t-luxury-gold" />
+              </div>
+              <p className="mt-5 text-sm font-light tracking-wide text-white/70">
+                Preparing...
+              </p>
+            </div>
           ) : result?.requiresRootKey ? (
-            /* ---------- ROOT KEY REQUIRED ---------- */
+            /* ---------- ROOT KEY REQUIRED (visible immediately to avoid blank) ---------- */
             <motion.div
-              initial="hidden"
-              animate="visible"
+              initial={{ opacity: 1 }}
+              animate={{ opacity: 1 }}
               className="space-y-5"
             >
               {/* Header */}
@@ -546,7 +640,7 @@ export default function VerifyPage() {
                 <h1 className="font-serif text-[1.75rem] font-semibold tracking-[0.01em] text-white">
                   Root Key Required
                 </h1>
-                <p className="mt-2 text-sm font-light leading-relaxed text-white/45 max-w-md mx-auto">
+                <p className="mt-2 text-sm font-medium leading-relaxed text-white/75 max-w-md mx-auto">
                   Please enter the root key to complete verification for this product.
                 </p>
               </motion.div>
@@ -557,7 +651,7 @@ export default function VerifyPage() {
                 initial="hidden"
                 animate="visible"
                 custom={0.1}
-                className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 sm:p-7 backdrop-blur-sm"
+                className="rounded-2xl border border-white/[0.14] bg-white/[0.06] p-6 sm:p-7 shadow-2xl shadow-black/40"
               >
                 <div className="flex items-center gap-2.5 mb-5">
                   <Shield className="h-[18px] w-[18px] text-luxury-gold/70" />
@@ -585,13 +679,13 @@ export default function VerifyPage() {
                 initial="hidden"
                 animate="visible"
                 custom={0.2}
-                className="rounded-2xl border border-luxury-gold/10 bg-luxury-gold/[0.02] p-6 sm:p-7"
+                className="rounded-2xl border border-luxury-gold/25 bg-white/[0.06] p-6 sm:p-7 shadow-2xl shadow-black/40"
               >
-                <div className="mb-5 rounded-xl border border-amber-500/15 bg-amber-500/[0.04] px-4 py-3.5">
-                  <p className="text-amber-400/90 text-[13px] font-semibold mb-1">
+                <div className="mb-5 rounded-xl border border-amber-500/20 bg-amber-500/[0.08] px-4 py-3.5">
+                  <p className="text-amber-300 text-[13px] font-bold mb-1">
                     Two-Step Verification Required
                   </p>
-                  <p className="text-white/40 text-[12px] leading-relaxed">
+                  <p className="text-white/75 text-[12px] leading-relaxed">
                     Please enter the root key (3-4 alphanumeric characters) provided by your
                     administrator to verify the specific SKP serial number.
                   </p>
@@ -610,7 +704,7 @@ export default function VerifyPage() {
                       }}
                       maxLength={4}
                       placeholder="e.g., A1H2"
-                      className="w-full rounded-xl border border-white/[0.1] bg-white/[0.03] px-5 py-3.5 font-mono text-base tracking-[0.15em] text-white uppercase placeholder:text-white/20 outline-none transition-all duration-300 focus:border-luxury-gold/40 focus:ring-1 focus:ring-luxury-gold/15"
+                      className="w-full rounded-xl border border-white/[0.20] bg-black/35 px-5 py-3.5 font-mono text-base tracking-[0.15em] text-white uppercase placeholder:text-white/40 outline-none transition-all duration-300 focus:border-luxury-gold/55 focus:ring-2 focus:ring-luxury-gold/25"
                       disabled={verifyingRootKey}
                     />
                     {rootKeyError && (
@@ -681,8 +775,8 @@ export default function VerifyPage() {
                   </motion.div>
                 </div>
 
-                {/* Title + subtitle on dark bar so they stay readable on any background */}
-                <div className="mx-auto inline-block rounded-2xl bg-black/60 px-6 py-4 shadow-lg ring-1 ring-white/10 backdrop-blur-sm">
+                {/* Title + subtitle on dark bar — readable on any background; responsive */}
+                <div className="mx-auto inline-block max-w-[90vw] rounded-xl bg-black/60 px-4 py-3 shadow-lg ring-1 ring-white/10 backdrop-blur-sm sm:max-w-none sm:rounded-2xl sm:px-6 sm:py-4">
                   <motion.h1
                     className="font-serif text-[1.9rem] sm:text-[2.25rem] font-extrabold tracking-tight text-white"
                     style={{
@@ -726,7 +820,7 @@ export default function VerifyPage() {
                 initial="hidden"
                 animate="visible"
                 custom={0.25}
-                className="rounded-2xl border-2 border-white/20 bg-black/85 shadow-xl shadow-black/40 p-6 sm:p-7 backdrop-blur-md"
+                className="rounded-2xl border-2 border-white/30 bg-black/98 shadow-2xl shadow-black/60 p-6 sm:p-7"
               >
                 <div className="flex items-center gap-2.5 mb-5">
                   <Shield className="h-[18px] w-[18px] text-luxury-gold" />
@@ -756,7 +850,7 @@ export default function VerifyPage() {
                   initial="hidden"
                   animate="visible"
                   custom={0.4}
-                  className="rounded-2xl border-2 border-white/20 bg-black/85 shadow-xl shadow-black/40 p-6 sm:p-7 backdrop-blur-md"
+                  className="rounded-2xl border-2 border-white/30 bg-black/98 shadow-2xl shadow-black/60 p-6 sm:p-7"
                 >
                   <motion.div variants={staggerContainer} initial="hidden" animate="visible">
                     <InfoRow

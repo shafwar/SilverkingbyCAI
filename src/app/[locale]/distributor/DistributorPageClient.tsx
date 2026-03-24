@@ -9,8 +9,10 @@ import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Plus, X } from "lucide-react";
 import { usePageSections } from "@/hooks/usePageSections";
+import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { PageFooter } from "@/components/footer/PageFooter";
+import { ModalPortal } from "@/components/ui/ModalPortal";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
@@ -66,6 +68,7 @@ export default function DistributorPageClient({
     refetch: refetchPageSections,
   } = usePageSections("distributor");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "IMAGE";
+  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
   /** Show hero immediately with server URL; only use CMS URL after sections load (better LCP, no black flash) */
   const displayHeroUrl = heroImageError
     ? HERO_FALLBACK_PATH
@@ -248,6 +251,7 @@ export default function DistributorPageClient({
             <VideoLoadGuard
               url={displayHeroUrl}
               version={pageSections.hero?.version}
+              forcePoster={!shouldLoadHeroVideo}
               containerClassName="absolute inset-0 w-full h-full"
               className="absolute inset-0 w-full h-full object-cover"
               style={{ objectFit: "cover" }}
@@ -468,22 +472,23 @@ export default function DistributorPageClient({
       {/* Modal Add / Edit (admin only) – CMS unchanged */}
       <AnimatePresence>
         {modalOpen && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 pt-24 sm:pt-28"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={closeModal}
-          >
+          <ModalPortal zIndex={9999}>
             <motion.div
-              className="w-full max-w-lg rounded-2xl border border-white/15 bg-gradient-to-b from-[#111] to-[#0a0a0a] p-6 shadow-2xl"
-              initial={{ opacity: 0, y: 16, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 16 }}
-              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-              onClick={(e) => e.stopPropagation()}
+              className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 pt-24 sm:pt-28"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={closeModal}
             >
+              <motion.div
+                className="w-full max-w-lg max-h-[calc(100dvh-32px)] overflow-y-auto rounded-2xl border border-white/15 bg-gradient-to-b from-[#111] to-[#0a0a0a] p-6 shadow-2xl"
+                initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 16 }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                onClick={(e) => e.stopPropagation()}
+              >
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-white font-[family-name:var(--font-distributor)]">
                   {editing ? t("card.edit") : t("addDistributor")}
@@ -503,8 +508,9 @@ export default function DistributorPageClient({
                 onCancel={closeModal}
                 saving={saving}
               />
+              </motion.div>
             </motion.div>
-          </motion.div>
+          </ModalPortal>
         )}
       </AnimatePresence>
     </div>

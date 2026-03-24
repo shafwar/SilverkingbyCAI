@@ -7,6 +7,8 @@ type VideoGuardProps = Omit<React.ComponentPropsWithoutRef<"video">, "src"> & {
   url: string;
   version?: number;
   containerClassName?: string;
+  /** When true, do not load video (e.g. slow connection); render poster placeholder instead */
+  forcePoster?: boolean;
 };
 
 type ImageGuardProps = Omit<React.ComponentPropsWithoutRef<"img">, "src"> & {
@@ -22,9 +24,23 @@ type ImageGuardProps = Omit<React.ComponentPropsWithoutRef<"img">, "src"> & {
  * Cache-busts URL with version so browser never serves stale file (stability between old/new asset).
  */
 export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
-  function VideoLoadGuard({ url, version, containerClassName = "", style, ...videoProps }, ref) {
+  function VideoLoadGuard({ url, version, containerClassName = "", style, forcePoster = false, ...videoProps }, ref) {
     const [ready, setReady] = useState(false);
     const src = getCacheBustedMediaUrl(url, version);
+
+    if (forcePoster) {
+      return (
+        <div
+          className={containerClassName}
+          style={{
+            position: "relative",
+            background:
+              "linear-gradient(180deg, #080808 0%, #050505 50%, #030303 100%), radial-gradient(ellipse 80% 60% at 50% 40%, rgba(212,175,55,0.05) 0%, transparent 55%)",
+          }}
+          aria-hidden
+        />
+      );
+    }
 
     return (
       <div className={containerClassName} style={{ background: "#0a0a0a", position: "relative" }}>
@@ -39,6 +55,7 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
             transition: "opacity 0.2s ease-out",
           }}
           {...videoProps}
+          preload={videoProps.preload ?? "metadata"}
         />
       </div>
     );
@@ -58,7 +75,13 @@ export function ImageLoadGuard({
   ...imgProps
 }: ImageGuardProps) {
   const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
   const src = getCacheBustedMediaUrl(url, version);
+
+  // When load fails (e.g. R2 returns 404/HTML), hide img so parent gradient shows; avoid stuck opacity 0
+  const showImage = ready && !failed;
+  const showPlaceholder = failed; // keep container so overlay/gradient behind shows through
+  const { onLoad, onError, ...restImgProps } = imgProps;
 
   return (
     <div className={containerClassName} style={{ background: "#0a0a0a", position: "relative" }}>
@@ -69,13 +92,21 @@ export function ImageLoadGuard({
         decoding={priority ? "sync" : "async"}
         fetchPriority={priority ? "high" : undefined}
         loading={priority ? "eager" : "lazy"}
-        onLoad={() => setReady(true)}
+        onLoad={(e) => {
+          setReady(true);
+          onLoad?.(e);
+        }}
+        onError={(e) => {
+          setFailed(true);
+          onError?.(e);
+        }}
         style={{
           ...style,
-          opacity: ready ? 1 : 0,
+          opacity: showImage ? 1 : 0,
           transition: "opacity 0.2s ease-out",
+          pointerEvents: showPlaceholder ? "none" : undefined,
         }}
-        {...imgProps}
+        {...restImgProps}
       />
     </div>
   );

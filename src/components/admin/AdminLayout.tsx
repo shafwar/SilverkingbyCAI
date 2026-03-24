@@ -22,6 +22,7 @@ import {
   LogOut,
   Edit3,
   MessageSquare,
+  BookOpen,
 } from "lucide-react";
 import clsx from "clsx";
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
@@ -81,6 +82,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         href: "/admin/feedback",
         icon: MessageSquare,
       },
+      { label: safeT(t, "journal", "Journal"), href: "/admin/journal", icon: BookOpen },
     ],
     [t, tDashboard, safeT, locale]
   );
@@ -97,6 +99,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
       "/admin/logs",
       "/admin/analytics",
       "/admin/feedback",
+      "/admin/journal",
     ];
 
     // Prefetch all admin routes immediately

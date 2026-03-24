@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { CheckCircle2, XCircle, MapPin, Calendar, ScanLine, X, Sparkles } from "lucide-react";
+import { ModalPortal } from "@/components/ui/ModalPortal";
 
 interface VerificationData {
   weight: string;
@@ -136,24 +137,25 @@ export function VerificationModal({ isOpen, onClose, data, isVerifying }: Verifi
   if (!isOpen) return null;
 
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key="modal-backdrop"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.3 }}
-        className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-        onClick={onClose}
-      >
-        {/* Blurred Background */}
+    <ModalPortal zIndex={9999}>
+      <AnimatePresence mode="wait">
         <motion.div
-          initial={{ backdropFilter: "blur(0px)" }}
-          animate={{ backdropFilter: "blur(20px)" }}
-          exit={{ backdropFilter: "blur(0px)" }}
-          transition={{ duration: 0.4 }}
-          className="absolute inset-0 bg-black/60"
-        />
+          key="modal-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+          className="absolute inset-0 flex items-center justify-center p-4"
+          onClick={onClose}
+        >
+          {/* Blurred Background */}
+          <motion.div
+            initial={{ backdropFilter: "blur(0px)" }}
+            animate={{ backdropFilter: "blur(20px)" }}
+            exit={{ backdropFilter: "blur(0px)" }}
+            transition={{ duration: 0.4 }}
+            className="absolute inset-0 bg-black/60"
+          />
 
         {/* Loading State */}
         {isVerifying && (
@@ -450,8 +452,9 @@ export function VerificationModal({ isOpen, onClose, data, isVerifying }: Verifi
             </motion.div>
           )}
         </AnimatePresence>
-      </motion.div>
-    </AnimatePresence>
+        </motion.div>
+      </AnimatePresence>
+    </ModalPortal>
   );
 }
 

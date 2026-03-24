@@ -298,7 +298,7 @@ model PageMedia {
 /// Per-section media (inline CMS). One row per page+section. Admin edits from frontend.
 model PageSection {
   id         Int       @id @default(autoincrement())
-  pageName   String    // e.g. home, what-we-do, authenticity, products, distributor, about
+  pageName   String    // e.g. home, what-we-do, authenticity, products, distributor, about, journal
   sectionKey String    // e.g. hero, craft_card_1, craft_card_2
   mediaType  String    // IMAGE | VIDEO
   r2Key      String?   // R2 object key; null = use fallback
@@ -306,6 +306,26 @@ model PageSection {
 
   @@unique([pageName, sectionKey])
   @@index([pageName])
+}
+
+/// Journal / article posts. Bilingual (ID/EN). Admin fills both; system serves by locale.
+model Journal {
+  id              Int       @id @default(autoincrement())
+  slug            String    @unique
+  titleId         String    @db.VarChar(500)
+  titleEn         String    @db.VarChar(500)
+  contentId       String    @db.Text
+  contentEn       String    @db.Text
+  excerptId       String?   @db.VarChar(1000)
+  excerptEn       String?   @db.VarChar(1000)
+  heroImageR2Key  String?
+  publishedAt     DateTime?
+  sortOrder       Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([publishedAt])
+  @@index([sortOrder])
 }
 
 /// Background job for large ZIP downloads (avoid 524 timeout).

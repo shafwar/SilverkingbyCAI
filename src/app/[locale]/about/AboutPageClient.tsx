@@ -8,6 +8,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { usePageSections } from "@/hooks/usePageSections";
+import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import { PageLoadingSkeleton } from "@/components/ui/PageLoadingSkeleton";
@@ -123,6 +124,7 @@ export default function AboutPageClient() {
   } = usePageSections("about");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
   const heroMediaUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/gold-footage.mp4");
+  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
   // Ensure about-page hero video autoplays reliably on all devices
   useReliableVideoAutoplay(heroVideoRef);
@@ -240,6 +242,7 @@ export default function AboutPageClient() {
             ref={heroVideoRef}
             url={heroMediaUrl}
             version={pageSections.hero?.version}
+            forcePoster={!shouldLoadHeroVideo}
             containerClassName="absolute inset-0 z-10 h-full w-full"
             className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
             style={{

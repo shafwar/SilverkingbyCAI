@@ -1,7 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
 import QRCode from "qrcode";
-import { createCanvas, loadImage, registerFont } from "canvas";
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 // Use relative path for compatibility with seed script and Next.js
 import { getBaseUrl } from "../utils/constants";
@@ -57,17 +56,33 @@ const QR_FOLDER = path.join(process.cwd(), "public", "qr");
 const QR_FONT_FAMILY = "LucidaSans";
 const QR_FONT_PATH = path.join(process.cwd(), "public", "fonts", "LucidaSans.ttf");
 
-try {
-  registerFont(QR_FONT_PATH, { family: QR_FONT_FAMILY });
-  console.log("[QR Config] Registered QR font:", {
-    family: QR_FONT_FAMILY,
-    path: QR_FONT_PATH,
-  });
-} catch (error) {
-  console.warn("[QR Config] Failed to register QR font, falling back to system fonts:", {
-    error,
-    path: QR_FONT_PATH,
-  });
+let canvasModulePromise: Promise<null | typeof import("canvas")> | null = null;
+let didAttemptFontRegistration = false;
+
+async function getCanvasModule(): Promise<null | typeof import("canvas")> {
+  if (!canvasModulePromise) {
+    canvasModulePromise = import("canvas").catch(() => null);
+  }
+  const mod = await canvasModulePromise;
+
+  // Register font once, only if canvas is available in this runtime.
+  if (mod && !didAttemptFontRegistration) {
+    didAttemptFontRegistration = true;
+    try {
+      mod.registerFont(QR_FONT_PATH, { family: QR_FONT_FAMILY });
+      console.log("[QR Config] Registered QR font:", {
+        family: QR_FONT_FAMILY,
+        path: QR_FONT_PATH,
+      });
+    } catch (error) {
+      console.warn("[QR Config] Failed to register QR font, falling back to system fonts:", {
+        error,
+        path: QR_FONT_PATH,
+      });
+    }
+  }
+
+  return mod;
 }
 
 export type QRStorageResult = {
@@ -80,8 +95,11 @@ export type QRStorageResult = {
  */
 export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string): Promise<Buffer> {
   try {
+    const canvasMod = await getCanvasModule();
+    if (!canvasMod) return qrBuffer;
+
     // Load QR code image
-    const qrImage = await loadImage(qrBuffer);
+    const qrImage = await canvasMod.loadImage(qrBuffer);
 
     // Calculate dimensions
     const qrWidth = qrImage.width;
@@ -93,7 +111,7 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
     const totalHeight = qrHeight + textHeight + padding * 2;
 
     // Create canvas
-    const canvas = createCanvas(totalWidth, totalHeight);
+    const canvas = canvasMod.createCanvas(totalWidth, totalHeight);
     const ctx = canvas.getContext("2d");
 
     // Fill white background
@@ -170,7 +188,7 @@ export async function addSerialNumberToQR(qrBuffer: Buffer, serialCode: string):
       textY: textY,
       environment: process.env.NODE_ENV,
       railwayEnv: process.env.RAILWAY_ENVIRONMENT,
-      canvasAvailable: typeof createCanvas !== "undefined",
+      canvasAvailable: true,
     });
 
     // Convert canvas to buffer
@@ -192,8 +210,11 @@ export async function addProductInfoToQR(
   productName: string
 ): Promise<Buffer> {
   try {
+    const canvasMod = await getCanvasModule();
+    if (!canvasMod) return qrBuffer;
+
     // Load QR code image
-    const qrImage = await loadImage(qrBuffer);
+    const qrImage = await canvasMod.loadImage(qrBuffer);
 
     // Calculate dimensions
     const qrWidth = qrImage.width;
@@ -207,7 +228,7 @@ export async function addProductInfoToQR(
     const totalHeight = qrHeight + titleHeight + serialHeight + padding * 2 + spacing;
 
     // Create canvas
-    const canvas = createCanvas(totalWidth, totalHeight);
+    const canvas = canvasMod.createCanvas(totalWidth, totalHeight);
     const ctx = canvas.getContext("2d");
 
     // Fill white background
@@ -313,7 +334,7 @@ export async function addProductInfoToQR(
       textY: currentY,
       environment: process.env.NODE_ENV,
       railwayEnv: process.env.RAILWAY_ENVIRONMENT,
-      canvasAvailable: typeof createCanvas !== "undefined",
+      canvasAvailable: true,
     });
 
     // Convert canvas to buffer
@@ -576,6 +597,11 @@ export async function generateQRWithSerticard(
   productWeight?: number
 ): Promise<Buffer> {
   try {
+    const canvasMod = await getCanvasModule();
+    if (!canvasMod) {
+      throw new Error("Canvas module unavailable in this environment");
+    }
+
     // Load template image
     const templatePath = path.join(process.cwd(), "public", "images", "serticard", "Serticard-01.png");
     
@@ -595,7 +621,7 @@ export async function generateQRWithSerticard(
     // Try to load template image
     let templateImage;
     try {
-      templateImage = await loadImage(templatePath);
+      templateImage = await canvasMod.loadImage(templatePath);
       console.log(`[QR Serticard] Template loaded successfully, dimensions: ${templateImage.width}x${templateImage.height}`);
     } catch (loadError: any) {
       const errorMsg = `Failed to load template image from ${templatePath}. Error: ${loadError?.message || loadError}`;
@@ -621,7 +647,7 @@ export async function generateQRWithSerticard(
 
     let qrImage;
     try {
-      qrImage = await loadImage(qrBuffer);
+      qrImage = await canvasMod.loadImage(qrBuffer);
       console.log(`[QR Serticard] QR image loaded, dimensions: ${qrImage.width}x${qrImage.height}`);
     } catch (loadError: any) {
       const errorMsg = `Failed to load QR image for ${serialCode}. Error: ${loadError?.message || loadError}`;
@@ -630,7 +656,7 @@ export async function generateQRWithSerticard(
     }
 
     // Create canvas with template dimensions
-    const canvas = createCanvas(templateImage.width, templateImage.height);
+    const canvas = canvasMod.createCanvas(templateImage.width, templateImage.height);
     const ctx = canvas.getContext("2d");
 
     // Draw template as background
