@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, type Variants } from "framer-motion";
 import { gsap } from "gsap";
 import { QrCode, BookOpen, ChevronDown } from "lucide-react";
-import ScrollingFeatures from "./ScrollingFeatures";
+// Mobile collapsible uses vertical rendering (no horizontal scrolling)
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
@@ -749,47 +749,50 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
         </div>
       </div>
 
-      {/* Mobile: Collapsible insights to avoid overlap with Journal button */}
+      {/* Mobile: simple arrow-only toggle for Chain-of-Custody details */}
       <div className="md:hidden absolute left-0 right-0 bottom-[calc(200px+env(safe-area-inset-bottom))] sm:bottom-[calc(208px+env(safe-area-inset-bottom))] z-20 px-4 sm:px-6 pointer-events-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
-          transition={{ duration: 0.45, delay: 0.95, ease: "easeOut" }}
-          className="rounded-2xl border border-white/10 bg-black/35 backdrop-blur-md"
-        >
+        <div className="mx-auto w-full max-w-[430px] flex flex-col items-center">
+          <motion.div
+            initial={false}
+            animate={{ height: mobileInsightsOpen ? "auto" : 0, opacity: mobileInsightsOpen ? 1 : 0 }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden w-full"
+          >
+            <div className="rounded-2xl border border-white/10 bg-black/35 backdrop-blur-md px-4 py-3">
+              <div className="space-y-3">
+                {featuresData.map((item) => (
+                  <div key={item.label} className="space-y-1">
+                    <p className="font-sans text-[0.6rem] uppercase tracking-[0.32em] text-white/55">
+                      {item.label}
+                    </p>
+                    <p className="font-sans text-[0.92rem] font-semibold text-white/95 tracking-tight leading-snug">
+                      {item.title}
+                    </p>
+                    <p className="font-sans text-[0.72rem] text-white/60 leading-relaxed">
+                      {item.body}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+
           <button
             type="button"
             onClick={() => setMobileInsightsOpen((prev) => !prev)}
-            className="flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left"
+            className="mt-2 h-9 w-9 rounded-full border border-white/15 bg-white/5 backdrop-blur-sm flex items-center justify-center text-white/80 transition-colors hover:bg-white/10"
             aria-expanded={mobileInsightsOpen}
-            aria-label="Toggle feature insights"
+            aria-label="Toggle Chain-of-Custody details"
           >
-            <span className="text-[0.62rem] uppercase tracking-[0.32em] text-white/65">
-              Chain-of-Custody Insights
-            </span>
             <motion.span
               animate={{ rotate: mobileInsightsOpen ? 180 : 0 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
-              className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white/80"
+              className="inline-flex"
             >
-              <ChevronDown className="h-3.5 w-3.5" />
+              <ChevronDown className="h-4 w-4" />
             </motion.span>
           </button>
-
-          <motion.div
-            initial={false}
-            animate={{
-              height: mobileInsightsOpen ? "auto" : 0,
-              opacity: mobileInsightsOpen ? 1 : 0,
-            }}
-            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-            className="overflow-hidden"
-          >
-            <div className="px-2.5 pb-2.5">
-              <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate} />
-            </div>
-          </motion.div>
-        </motion.div>
+        </div>
       </div>
 
       {/* Mobile only: Journal button — centered between features block and Scan & Verify */}
