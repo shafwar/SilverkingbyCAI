@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useRef, useEffect, useState } from "react";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { usePageSections } from "@/hooks/usePageSections";
-import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
+import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { VideoLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 
@@ -75,10 +75,12 @@ export function PersistentHomeHeroVideo() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isHome, setIsHome] = useState(false);
   const splashComplete = useSplashComplete();
-  const shouldLoadVideo = useShouldLoadHeroVideo();
   const { sections, loading: sectionsLoading, refetch } = usePageSections("home");
   const heroUrl = sections.hero?.url ?? getR2UrlClient(HERO_VIDEO_FALLBACK);
   const heroVersion = sections.hero?.version;
+
+  // Maximize autoplay reliability on mobile/desktop.
+  useReliableVideoAutoplay(videoRef);
 
   useEffect(() => {
     setIsHome(isHomePath(pathname));
@@ -109,14 +111,14 @@ export function PersistentHomeHeroVideo() {
       ) : isHome ? (
         <div className="absolute inset-0 overflow-hidden">
           <div
-            className="absolute left-1/2 top-1/2 h-[112%] w-[112%] min-h-[112%] min-w-[112%] -translate-x-1/2 -translate-y-1/2 origin-center scale-90 md:left-0 md:top-0 md:h-full md:w-full md:min-h-0 md:min-w-0 md:translate-x-0 md:translate-y-0 md:scale-100"
+            className="absolute left-1/2 top-1/2 h-[104%] w-[104%] min-h-[104%] min-w-[104%] -translate-x-1/2 -translate-y-1/2 origin-center scale-100 md:left-0 md:top-0 md:h-full md:w-full md:min-h-0 md:min-w-0 md:translate-x-0 md:translate-y-0 md:scale-100"
             aria-hidden
           >
             <VideoLoadGuard
               ref={videoRef}
               url={heroUrl}
               version={heroVersion}
-              forcePoster={!shouldLoadVideo}
+              forcePoster={false}
               containerClassName="absolute inset-0 min-w-full min-h-full w-full h-full"
               className="absolute left-1/2 top-1/2 min-w-full min-h-full w-full h-full -translate-x-1/2 -translate-y-1/2 object-cover"
               style={{ pointerEvents: "none" }}
@@ -135,8 +137,8 @@ export function PersistentHomeHeroVideo() {
         <div className="absolute inset-0 bg-luxury-black" aria-hidden />
       )}
       {/* Vignette / dark motif - Home only */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/60 pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-transparent to-black/40 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/38 via-black/12 to-black/45 md:from-black/55 md:via-black/25 md:to-black/60 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/45 via-transparent to-black/28 md:from-black/65 md:to-black/40 pointer-events-none" />
       {/* Edit video: only after splash + fade-in are fully complete */}
       {isHome && splashComplete && (
         <HeroEditPortal

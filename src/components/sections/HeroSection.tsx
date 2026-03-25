@@ -4,7 +4,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, type Variants } from "framer-motion";
 import { gsap } from "gsap";
 import { QrCode, BookOpen, ChevronDown } from "lucide-react";
-import ScrollingFeatures from "./ScrollingFeatures";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
@@ -597,13 +596,13 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
       {skipVideo && (
         <>
           <motion.div
-            className="absolute inset-0 z-0 bg-gradient-to-b from-black/55 via-black/25 to-black/60"
+            className="absolute inset-0 z-0 bg-gradient-to-b from-black/38 via-black/12 to-black/45 md:from-black/55 md:via-black/25 md:to-black/60"
             variants={gradientIntroVariants}
             initial="hidden"
             animate={animationState}
           />
           <motion.div
-            className="absolute inset-0 z-0 bg-gradient-to-r from-black/65 via-transparent to-black/40"
+            className="absolute inset-0 z-0 bg-gradient-to-r from-black/45 via-transparent to-black/28 md:from-black/65 md:to-black/40"
             variants={secondaryGradientVariants}
             initial="hidden"
             animate={animationState}
@@ -749,8 +748,8 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
         </div>
       </div>
 
-      {/* Mobile: Minimal arrow toggle + collapsible insights (cleaner spacing above Journal) */}
-      <div className="md:hidden absolute left-0 right-0 bottom-[calc(208px+env(safe-area-inset-bottom))] sm:bottom-[calc(216px+env(safe-area-inset-bottom))] z-20 px-4 sm:px-6 pointer-events-auto">
+      {/* Mobile: Minimal arrow toggle + compact insights panel */}
+      <div className="md:hidden absolute left-0 right-0 bottom-[calc(188px+env(safe-area-inset-bottom))] sm:bottom-[calc(196px+env(safe-area-inset-bottom))] z-20 px-4 sm:px-6 pointer-events-auto">
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
@@ -767,15 +766,25 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             className="w-full overflow-hidden"
           >
-            <div className="rounded-2xl border border-white/10 bg-black/35 px-2.5 py-2 backdrop-blur-md">
-              <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate} />
+            <div className="rounded-2xl border border-white/10 bg-black/30 px-3 py-2.5 backdrop-blur-md">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                {featuresData.map((item) => (
+                  <div key={item.label} className="min-w-0">
+                    <p className="text-[0.48rem] uppercase tracking-[0.28em] text-white/45">{item.label}</p>
+                    <p className="mt-0.5 text-[0.95rem] font-semibold leading-tight text-white/92">
+                      {item.title}
+                    </p>
+                    <p className="mt-0.5 text-[0.68rem] leading-snug text-white/58 line-clamp-2">{item.body}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </motion.div>
 
           <button
             type="button"
             onClick={() => setMobileInsightsOpen((prev) => !prev)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white/85 backdrop-blur-md transition-colors hover:bg-white/10"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/25 bg-black/55 text-white/90 shadow-[0_8px_24px_rgba(0,0,0,0.35)] backdrop-blur-md transition-all hover:bg-white/10"
             aria-expanded={mobileInsightsOpen}
             aria-label="Toggle feature insights"
           >
@@ -795,7 +804,7 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
         initial={{ opacity: 0, y: 6 }}
         animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
         transition={{ duration: 0.5, delay: 1.05, ease: "easeOut" }}
-        className="md:hidden absolute left-0 right-0 bottom-[calc(152px+env(safe-area-inset-bottom))] sm:bottom-[calc(158px+env(safe-area-inset-bottom))] z-25 flex justify-center px-4 pointer-events-auto"
+        className="md:hidden absolute left-0 right-0 bottom-[calc(138px+env(safe-area-inset-bottom))] sm:bottom-[calc(145px+env(safe-area-inset-bottom))] z-25 flex justify-center px-4 pointer-events-auto"
       >
         <OptimizedLink
           href="/journal"
