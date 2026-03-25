@@ -595,14 +595,28 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
       {/* When skipVideo: overlays only (video from PersistentHomeHeroVideo) + vignette dark motif */}
       {skipVideo && (
         <>
+          {/* Desktop/tablet: keep original gradient exactly as before */}
           <motion.div
-            className="absolute inset-0 z-0 bg-gradient-to-b from-black/38 via-black/12 to-black/45 md:from-black/55 md:via-black/25 md:to-black/60"
+            className="absolute inset-0 z-0 hidden md:block bg-gradient-to-b from-black/55 via-black/25 to-black/60"
             variants={gradientIntroVariants}
             initial="hidden"
             animate={animationState}
           />
           <motion.div
-            className="absolute inset-0 z-0 bg-gradient-to-r from-black/45 via-transparent to-black/28 md:from-black/65 md:to-black/40"
+            className="absolute inset-0 z-0 hidden md:block bg-gradient-to-r from-black/65 via-transparent to-black/40"
+            variants={secondaryGradientVariants}
+            initial="hidden"
+            animate={animationState}
+          />
+          {/* Mobile only: lighter gradient for better video visibility */}
+          <motion.div
+            className="absolute inset-0 z-0 md:hidden bg-gradient-to-b from-black/38 via-black/12 to-black/45"
+            variants={gradientIntroVariants}
+            initial="hidden"
+            animate={animationState}
+          />
+          <motion.div
+            className="absolute inset-0 z-0 md:hidden bg-gradient-to-r from-black/45 via-transparent to-black/28"
             variants={secondaryGradientVariants}
             initial="hidden"
             animate={animationState}

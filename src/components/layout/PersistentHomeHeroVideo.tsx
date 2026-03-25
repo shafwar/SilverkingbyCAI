@@ -137,8 +137,12 @@ export function PersistentHomeHeroVideo() {
         <div className="absolute inset-0 bg-luxury-black" aria-hidden />
       )}
       {/* Vignette / dark motif - Home only */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/38 via-black/12 to-black/45 md:from-black/55 md:via-black/25 md:to-black/60 pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/45 via-transparent to-black/28 md:from-black/65 md:to-black/40 pointer-events-none" />
+      {/* Desktop/tablet: keep original gradient exactly as before */}
+      <div className="absolute inset-0 hidden md:block bg-gradient-to-b from-black/55 via-black/25 to-black/60 pointer-events-none" />
+      <div className="absolute inset-0 hidden md:block bg-gradient-to-r from-black/65 via-transparent to-black/40 pointer-events-none" />
+      {/* Mobile only: lighter gradient so video aura is more visible */}
+      <div className="absolute inset-0 md:hidden bg-gradient-to-b from-black/38 via-black/12 to-black/45 pointer-events-none" />
+      <div className="absolute inset-0 md:hidden bg-gradient-to-r from-black/45 via-transparent to-black/28 pointer-events-none" />
       {/* Edit video: only after splash + fade-in are fully complete */}
       {isHome && splashComplete && (
         <HeroEditPortal
