@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, type Variants } from "framer-motion";
 import { gsap } from "gsap";
 import { QrCode, BookOpen, ChevronDown } from "lucide-react";
+import ScrollingFeatures from "./ScrollingFeatures";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
@@ -762,8 +763,8 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
         </div>
       </div>
 
-      {/* Mobile: Minimal arrow toggle + compact insights panel */}
-      <div className="md:hidden absolute left-0 right-0 bottom-[calc(188px+env(safe-area-inset-bottom))] sm:bottom-[calc(196px+env(safe-area-inset-bottom))] z-20 px-4 sm:px-6 pointer-events-auto">
+      {/* Mobile: arrow toggle + slide insights (compact, no overlap to hero text) */}
+      <div className="md:hidden absolute left-0 right-0 bottom-[calc(170px+env(safe-area-inset-bottom))] sm:bottom-[calc(178px+env(safe-area-inset-bottom))] z-20 px-4 sm:px-6 pointer-events-auto">
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
@@ -780,17 +781,9 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             className="w-full overflow-hidden"
           >
-            <div className="rounded-2xl border border-white/10 bg-black/30 px-3 py-2.5 backdrop-blur-md">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                {featuresData.map((item) => (
-                  <div key={item.label} className="min-w-0">
-                    <p className="text-[0.48rem] uppercase tracking-[0.28em] text-white/45">{item.label}</p>
-                    <p className="mt-0.5 text-[0.95rem] font-semibold leading-tight text-white/92">
-                      {item.title}
-                    </p>
-                    <p className="mt-0.5 text-[0.68rem] leading-snug text-white/58 line-clamp-2">{item.body}</p>
-                  </div>
-                ))}
+            <div className="rounded-2xl border border-white/10 bg-black/28 px-2 py-1 backdrop-blur-md">
+              <div className="max-h-[122px] overflow-hidden">
+                <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate && mobileInsightsOpen} />
               </div>
             </div>
           </motion.div>
@@ -818,7 +811,7 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
         initial={{ opacity: 0, y: 6 }}
         animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
         transition={{ duration: 0.5, delay: 1.05, ease: "easeOut" }}
-        className="md:hidden absolute left-0 right-0 bottom-[calc(138px+env(safe-area-inset-bottom))] sm:bottom-[calc(145px+env(safe-area-inset-bottom))] z-25 flex justify-center px-4 pointer-events-auto"
+        className="md:hidden absolute left-0 right-0 bottom-[calc(126px+env(safe-area-inset-bottom))] sm:bottom-[calc(132px+env(safe-area-inset-bottom))] z-25 flex justify-center px-4 pointer-events-auto"
       >
         <OptimizedLink
           href="/journal"
