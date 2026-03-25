@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, type Variants } from "framer-motion";
 import { gsap } from "gsap";
-import { QrCode, BookOpen } from "lucide-react";
+import { QrCode, BookOpen, ChevronDown } from "lucide-react";
 import ScrollingFeatures from "./ScrollingFeatures";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useTranslations } from "next-intl";
@@ -126,6 +126,7 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
   const [isLoaded, setIsLoaded] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [isPageTransitioning, setIsPageTransitioning] = useState(false);
+  const [mobileInsightsOpen, setMobileInsightsOpen] = useState(false);
   const prevPathnameRef = useRef<string | null>(null);
   const fadeInTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -748,9 +749,47 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
         </div>
       </div>
 
-      {/* Mobile: Scrolling Features - dinaikkan agar tidak mepet dengan Scan & Verify */}
+      {/* Mobile: Collapsible insights to avoid overlap with Journal button */}
       <div className="md:hidden absolute left-0 right-0 bottom-[calc(200px+env(safe-area-inset-bottom))] sm:bottom-[calc(208px+env(safe-area-inset-bottom))] z-20 px-4 sm:px-6 pointer-events-auto">
-        <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate} />
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
+          transition={{ duration: 0.45, delay: 0.95, ease: "easeOut" }}
+          className="rounded-2xl border border-white/10 bg-black/35 backdrop-blur-md"
+        >
+          <button
+            type="button"
+            onClick={() => setMobileInsightsOpen((prev) => !prev)}
+            className="flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left"
+            aria-expanded={mobileInsightsOpen}
+            aria-label="Toggle feature insights"
+          >
+            <span className="text-[0.62rem] uppercase tracking-[0.32em] text-white/65">
+              Chain-of-Custody Insights
+            </span>
+            <motion.span
+              animate={{ rotate: mobileInsightsOpen ? 180 : 0 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white/80"
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+            </motion.span>
+          </button>
+
+          <motion.div
+            initial={false}
+            animate={{
+              height: mobileInsightsOpen ? "auto" : 0,
+              opacity: mobileInsightsOpen ? 1 : 0,
+            }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="px-2.5 pb-2.5">
+              <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate} />
+            </div>
+          </motion.div>
+        </motion.div>
       </div>
 
       {/* Mobile only: Journal button — centered between features block and Scan & Verify */}
