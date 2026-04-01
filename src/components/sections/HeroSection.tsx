@@ -130,6 +130,30 @@ const lightHomeOrbs = [
   },
 ] as const;
 
+function HeroQrScanCardLink({ t }: { t: (key: string) => string }) {
+  return (
+    <OptimizedLink
+      href="/authenticity"
+      className="group inline-flex items-center gap-2.5 sm:gap-3 text-left w-full max-w-[min(calc(100vw-28px),358px)] sm:max-w-[368px] backdrop-blur-sm bg-black/50 border border-white/10 rounded-2xl p-3 sm:p-3.5 transition-all duration-300 hover:bg-black/60 hover:border-white/20 pointer-events-auto"
+    >
+      <div className="flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border border-white/20 bg-black/40">
+        <QrCode className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[0.45rem] sm:text-[0.5rem] uppercase tracking-[0.4em] sm:tracking-[0.45em] text-white/55">
+          {t("qrCard.label")}
+        </p>
+        <p className="mt-0.5 text-[0.75rem] sm:text-[0.8125rem] md:text-[0.95rem] font-sans font-semibold text-white tracking-tight leading-tight">
+          {t("qrCard.title")}
+        </p>
+        <p className="mt-0.5 text-[0.6rem] sm:text-[0.625rem] font-sans text-white/60 leading-relaxed line-clamp-2">
+          {t("qrCard.description")}
+        </p>
+      </div>
+    </OptimizedLink>
+  );
+}
+
 export default function HeroSection({
   shouldAnimate = true,
   skipVideo = false,
@@ -745,20 +769,23 @@ export default function HeroSection({
         </div>
       </div>
 
-      {/* Mobile: arrow toggle + slide insights (compact, no overlap to hero text) */}
-      <div className="md:hidden absolute left-0 right-0 bottom-[calc(170px+env(safe-area-inset-bottom))] sm:bottom-[calc(178px+env(safe-area-inset-bottom))] z-20 px-4 sm:px-6 pointer-events-auto">
+      {/* Mobile: single bottom stack — flex gap keeps chevron / Journal / QR proportionally spaced */}
+      <div
+        className="md:hidden absolute left-0 right-0 z-30 flex flex-col items-center gap-5 sm:gap-6 px-4 sm:px-6 pointer-events-none"
+        style={{ bottom: "calc(52px + env(safe-area-inset-bottom, 0px))" }}
+      >
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
           transition={{ duration: 0.45, delay: 0.95, ease: "easeOut" }}
-          className="flex flex-col items-center"
+          className="pointer-events-auto flex w-full flex-col items-center gap-3"
         >
           <motion.div
             initial={false}
             animate={{
               height: mobileInsightsOpen ? "auto" : 0,
               opacity: mobileInsightsOpen ? 1 : 0,
-              marginBottom: mobileInsightsOpen ? 10 : 0,
+              marginBottom: mobileInsightsOpen ? 12 : 0,
             }}
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             className="w-full overflow-hidden"
@@ -773,7 +800,7 @@ export default function HeroSection({
           <button
             type="button"
             onClick={() => setMobileInsightsOpen((prev) => !prev)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/25 bg-black/55 text-white/90 shadow-[0_8px_24px_rgba(0,0,0,0.35)] backdrop-blur-md transition-all hover:bg-white/10"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/25 bg-black/55 text-white/90 shadow-[0_8px_24px_rgba(0,0,0,0.35)] backdrop-blur-md transition-all hover:bg-white/10"
             aria-expanded={mobileInsightsOpen}
             aria-label="Toggle feature insights"
           >
@@ -786,30 +813,41 @@ export default function HeroSection({
             </motion.span>
           </button>
         </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
+          transition={{ duration: 0.5, delay: 1.02, ease: "easeOut" }}
+          className="pointer-events-auto flex w-full justify-center"
+        >
+          <OptimizedLink
+            href="/journal"
+            className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 backdrop-blur-sm transition-all duration-300 hover:bg-white/10 hover:border-amber-500/30 hover:shadow-[0_0_20px_rgba(245,158,11,0.06)]"
+            aria-label={tJournal("title")}
+          >
+            <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-400/90 transition-colors group-hover:border-amber-500/35 group-hover:bg-amber-500/15">
+              <BookOpen className="h-3.5 w-3.5" />
+            </span>
+            <span className="font-sans text-[0.8125rem] font-medium text-white/90 tracking-tight">
+              {tJournal("title")}
+            </span>
+          </OptimizedLink>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{
+            opacity: shouldAnimate ? 1 : 0,
+            y: shouldAnimate ? 0 : 16,
+          }}
+          transition={{ duration: 0.55, delay: 1.08, ease: "easeOut" }}
+          className="pointer-events-auto flex w-full justify-center px-0.5"
+        >
+          <HeroQrScanCardLink t={t} />
+        </motion.div>
       </div>
 
-      {/* Mobile only: Journal button — centered between features block and Scan & Verify */}
-      <motion.div
-        initial={{ opacity: 0, y: 6 }}
-        animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
-        transition={{ duration: 0.5, delay: 1.05, ease: "easeOut" }}
-        className="md:hidden absolute left-0 right-0 bottom-[calc(126px+env(safe-area-inset-bottom))] sm:bottom-[calc(132px+env(safe-area-inset-bottom))] z-25 flex justify-center px-4 pointer-events-auto"
-      >
-        <OptimizedLink
-          href="/journal"
-          className="group inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-1.5 backdrop-blur-sm transition-all duration-300 hover:bg-white/10 hover:border-amber-500/30 hover:shadow-[0_0_20px_rgba(245,158,11,0.06)]"
-          aria-label={tJournal("title")}
-        >
-          <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-400/90 transition-colors group-hover:border-amber-500/35 group-hover:bg-amber-500/15">
-            <BookOpen className="h-3 w-3" />
-          </span>
-          <span className="font-sans text-xs font-medium text-white/90 tracking-tight">
-            {tJournal("title")}
-          </span>
-        </OptimizedLink>
-      </motion.div>
-
-      {/* QR Card - SUPER SAFE POSITION untuk SEMUA device dan browser */}
+      {/* Desktop: QR card */}
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.97 }}
         animate={{
@@ -818,33 +856,9 @@ export default function HeroSection({
           scale: shouldAnimate ? 1 : 0.97,
         }}
         transition={{ duration: 1, delay: 1.1, ease: "easeOut" }}
-        className="absolute bottom-[calc(50px+env(safe-area-inset-bottom))] sm:bottom-[calc(55px+env(safe-area-inset-bottom))] md:bottom-8 inset-x-0 z-30 flex justify-center px-3.5 sm:px-4 pointer-events-auto"
+        className="hidden md:flex absolute bottom-8 inset-x-0 z-30 justify-center px-4 pointer-events-auto"
       >
-        <OptimizedLink
-          href="/authenticity"
-          className="group inline-flex items-center gap-2.5 sm:gap-3 text-left w-full max-w-[min(calc(100vw-28px),358px)] sm:max-w-[368px] backdrop-blur-sm bg-black/50 border border-white/10 rounded-2xl p-3 sm:p-3.5 transition-all duration-300 hover:bg-black/60 hover:border-white/20 pointer-events-auto"
-        >
-          <div className="flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border border-white/20 bg-black/40">
-            <QrCode className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p
-              className="text-[0.45rem] sm:text-[0.5rem] uppercase tracking-[0.4em] sm:tracking-[0.45em] text-white/55"
-            >
-              {t("qrCard.label")}
-            </p>
-            <p
-              className="mt-0.5 text-[0.75rem] sm:text-[0.8125rem] md:text-[0.95rem] font-sans font-semibold text-white tracking-tight leading-tight"
-            >
-              {t("qrCard.title")}
-            </p>
-            <p
-              className="mt-0.5 text-[0.6rem] sm:text-[0.625rem] font-sans text-white/60 leading-relaxed line-clamp-2"
-            >
-              {t("qrCard.description")}
-            </p>
-          </div>
-        </OptimizedLink>
+        <HeroQrScanCardLink t={t} />
       </motion.div>
 
       {/* Bottom fade - dark vignette (Home only); translateZ + solid cap to prevent flickering line */}
