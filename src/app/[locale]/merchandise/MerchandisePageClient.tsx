@@ -65,6 +65,10 @@ const cardVariants: Variants = {
 
 const CATEGORY_ORDER: MerchandiseCategory[] = ["polo", "tshirt_cap", "knitware"];
 
+/** Footer “Hubungi admin”: satu sumber untuk tampilan, tel:, dan wa.me */
+const MERCH_ADMIN_MSISDN = "6285285726980";
+const MERCH_ADMIN_DISPLAY = "+62 852-8572-6980";
+
 /** Fallback R2 paths when API returns no items (e.g. production not seeded) — matches compress-and-upload keys */
 const FALLBACK_IMAGE_PATHS: Record<MerchandiseCategory, string[]> = {
   polo: [
@@ -1050,14 +1054,14 @@ export default function MerchandisePageClient() {
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3">
               <a
-                href="tel:+6285695785199"
+                href={`tel:+${MERCH_ADMIN_MSISDN}`}
                 className="inline-flex items-center gap-3 rounded-2xl border border-white/20 bg-white/[0.08] px-5 py-3.5 text-white/95 hover:bg-white/[0.12] hover:border-luxury-gold/40 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-luxury-gold/50"
               >
                 <Phone className="h-5 w-5 text-luxury-gold shrink-0" />
-                <span className="font-medium tracking-wide">+62 856-9578-5199</span>
+                <span className="font-medium tracking-wide">{MERCH_ADMIN_DISPLAY}</span>
               </a>
               <a
-                href="https://wa.me/6285695785199"
+                href={`https://wa.me/${MERCH_ADMIN_MSISDN}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/[0.06] px-4 py-3 text-white/80 hover:bg-white/[0.1] hover:text-white transition-all duration-300"
