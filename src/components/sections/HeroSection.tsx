@@ -770,7 +770,8 @@ export default function HeroSection({
       </div>
 
       {/* Mobile: single bottom stack — flex gap keeps chevron / Journal / QR proportionally spaced */}
-      <div
+      <motion.div
+        layoutRoot
         className="md:hidden absolute left-0 right-0 z-30 flex flex-col items-center gap-5 sm:gap-6 px-4 sm:px-6 pointer-events-none"
         style={{ bottom: "calc(52px + env(safe-area-inset-bottom, 0px))" }}
       >
@@ -780,23 +781,7 @@ export default function HeroSection({
           transition={{ duration: 0.45, delay: 0.95, ease: "easeOut" }}
           className="pointer-events-auto flex w-full flex-col items-center gap-3"
         >
-          <motion.div
-            initial={false}
-            animate={{
-              height: mobileInsightsOpen ? "auto" : 0,
-              opacity: mobileInsightsOpen ? 1 : 0,
-              marginBottom: mobileInsightsOpen ? 12 : 0,
-            }}
-            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full overflow-hidden"
-          >
-            <div className="rounded-2xl border border-white/10 bg-black/28 px-2 py-1 backdrop-blur-md">
-              <div className="max-h-[122px] overflow-hidden">
-                <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate && mobileInsightsOpen} />
-              </div>
-            </div>
-          </motion.div>
-
+          {/* Chevron first: panel opens *below* so insights never grow upward into hero copy */}
           <button
             type="button"
             onClick={() => setMobileInsightsOpen((prev) => !prev)}
@@ -812,12 +797,34 @@ export default function HeroSection({
               <ChevronDown className="h-4 w-4" />
             </motion.span>
           </button>
+
+          <motion.div
+            initial={false}
+            animate={{
+              height: mobileInsightsOpen ? "auto" : 0,
+              opacity: mobileInsightsOpen ? 1 : 0,
+            }}
+            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full overflow-hidden"
+          >
+            <div className="rounded-2xl border border-white/10 bg-black/28 px-2 py-1 backdrop-blur-md">
+              <div className="max-h-[122px] overflow-hidden">
+                <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate && mobileInsightsOpen} />
+              </div>
+            </div>
+          </motion.div>
         </motion.div>
 
         <motion.div
+          layout="position"
           initial={{ opacity: 0, y: 6 }}
           animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
-          transition={{ duration: 0.5, delay: 1.02, ease: "easeOut" }}
+          transition={{
+            duration: 0.5,
+            delay: 1.02,
+            ease: "easeOut",
+            layout: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
+          }}
           className="pointer-events-auto flex w-full justify-center"
         >
           <OptimizedLink
@@ -835,17 +842,23 @@ export default function HeroSection({
         </motion.div>
 
         <motion.div
+          layout="position"
           initial={{ opacity: 0, y: 16 }}
           animate={{
             opacity: shouldAnimate ? 1 : 0,
             y: shouldAnimate ? 0 : 16,
           }}
-          transition={{ duration: 0.55, delay: 1.08, ease: "easeOut" }}
+          transition={{
+            duration: 0.55,
+            delay: 1.08,
+            ease: "easeOut",
+            layout: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
+          }}
           className="pointer-events-auto flex w-full justify-center px-0.5"
         >
           <HeroQrScanCardLink t={t} />
         </motion.div>
-      </div>
+      </motion.div>
 
       {/* Desktop: QR card */}
       <motion.div
