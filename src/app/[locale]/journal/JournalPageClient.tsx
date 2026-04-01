@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { Plus_Jakarta_Sans } from "next/font/google";
@@ -16,6 +16,9 @@ import { PageFooter } from "@/components/footer/PageFooter";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { usePageMedia } from "@/hooks/usePageMedia";
+import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
+import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -68,50 +71,39 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
   const listRef = useRef<HTMLDivElement>(null);
   const journalHeroVideoRef = useRef<HTMLVideoElement>(null);
   useReliableVideoAutoplay(journalHeroVideoRef, { mode: "background" });
-  const {
-    sections: pageSections,
-    loading: sectionsLoading,
-    refetch: refetchPageSections,
-  } = usePageSections("journal");
+  const { sections: pageSections, refetch: refetchPageSections } = usePageSections("journal");
+  const { data: pageMediaJournal } = usePageMedia("journal");
+  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
   const heroMediaType = (pageSections.hero?.mediaType?.toUpperCase() ?? initialHeroMediaType) as "IMAGE" | "VIDEO";
   const heroUrl = heroImageError ? initialHeroUrl : (pageSections.hero?.url ?? initialHeroUrl);
   const heroVersion = pageSections.hero?.version;
   const isFallbackHero = !pageSections.hero?.url;
 
-  // Default fallback video: bundled local mp4.
-  // This guarantees playback even if R2 isn't synced yet.
   const fallbackLocalVideoUrl = "/videos/hero/Jurnal%20Silverking.mp4";
   const cmsHeroUrl = pageSections.hero?.url ?? initialHeroUrl;
-  const cmsHeroMediaType = pageSections.hero?.mediaType?.toUpperCase();
-  const shouldUseCmsVideo = cmsHeroMediaType === "VIDEO" || cmsHeroUrl.includes(".mp4");
 
-  const r2KeyFromUrl = (url: string): string | null => {
-    const base = process.env.NEXT_PUBLIC_R2_PUBLIC_URL?.replace(/\/$/, "");
-    if (typeof base === "string" && base && url.startsWith(base)) {
-      return url.slice(base.length + 1);
-    }
-    const idx = url.indexOf("/static/");
-    return idx >= 0 ? url.slice(idx + 1) : null; // keep "static/..." prefix
-  };
+  /** VIDEO from CMS or obvious file extension (handles stale type rows). */
+  const isVideoHero = useMemo(() => {
+    const t = pageSections.hero?.mediaType?.toUpperCase() ?? initialHeroMediaType;
+    if (t === "VIDEO") return true;
+    return /\.(mp4|webm)(\?|#|$)/i.test(cmsHeroUrl);
+  }, [pageSections.hero?.mediaType, initialHeroMediaType, cmsHeroUrl]);
 
-  const cmsR2Key = shouldUseCmsVideo ? r2KeyFromUrl(cmsHeroUrl) : null;
-  const resolvedHeroVideoSrc = cmsR2Key
-    ? `/api/hero-video?key=${encodeURIComponent(cmsR2Key)}`
-    : fallbackLocalVideoUrl;
+  const resolvedHeroVideoSrc = useMemo(() => {
+    if (!isVideoHero) return fallbackLocalVideoUrl;
+    return proxiedHeroVideoSrc(cmsHeroUrl);
+  }, [isVideoHero, cmsHeroUrl]);
 
-  // If we're using the bundled fallback, always bust the cache after re-encode.
-  const effectiveHeroVideoVersion = resolvedHeroVideoSrc === fallbackLocalVideoUrl ? 2 : heroVersion;
+  const effectiveHeroVideoVersion =
+    resolvedHeroVideoSrc === fallbackLocalVideoUrl || /Jurnal(%20|\s)Silverking\.mp4/i.test(resolvedHeroVideoSrc)
+      ? 2
+      : heroVersion;
 
-  const shouldRenderVideo = !heroVideoError;
+  // IMAGE hero: CMS URL. VIDEO hero: optional PageMedia poster only (no default silver jpeg — that looked like a "stuck" image).
+  const posterUrlForVideo = pageMediaJournal?.heroImageUrl?.trim() || null;
 
-  // Poster behind the hero:
-  // - If CMS sets an IMAGE hero, use that exact URL so "Edit hero" reflects immediately.
-  // - If CMS sets a VIDEO hero, keep a reliable same-origin image fallback (for slow networks / blocked video).
-  const posterUrl =
-    heroMediaType === "IMAGE" && heroUrl
-      ? heroUrl
-      : `/api/hero-image?page=journal${heroVersion ? `&v=${encodeURIComponent(String(heroVersion))}` : ""}`;
+  const imageHeroUrl = heroMediaType === "IMAGE" && heroUrl ? heroUrl : null;
 
   // Note: effectiveHeroVideoVersion is computed above from resolvedHeroVideoUrl.
 
@@ -234,42 +226,60 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
           }}
         />
         <div className="absolute inset-0 z-10 overflow-hidden">
-          {shouldRenderVideo ? (
-            <div className="absolute inset-0">
-              <VideoLoadGuard
-                ref={journalHeroVideoRef}
-                key={resolvedHeroVideoSrc}
-                url={resolvedHeroVideoSrc}
-                version={effectiveHeroVideoVersion}
-                posterUrl={posterUrl}
-                posterPriority
-                lazyAttach
-                deferAttachUntilIdle
-                idleAttachTimeoutMs={520}
+          {isVideoHero && !heroVideoError ? (
+              <div className="absolute inset-0">
+                <VideoLoadGuard
+                  ref={journalHeroVideoRef}
+                  key={`${resolvedHeroVideoSrc}|v${effectiveHeroVideoVersion ?? 0}`}
+                  url={resolvedHeroVideoSrc}
+                  version={effectiveHeroVideoVersion}
+                  posterUrl={posterUrlForVideo}
+                  forcePoster={!shouldLoadHeroVideo}
+                  posterPriority={Boolean(posterUrlForVideo)}
+                  lazyAttach
+                  deferAttachUntilIdle
+                  idleAttachTimeoutMs={520}
+                  optimizeGpu
+                  containerClassName="absolute inset-0 h-full w-full"
+                  className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
+                  style={{
+                    objectFit: "cover",
+                    objectPosition: "center center",
+                    WebkitTapHighlightColor: "transparent",
+                  }}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  preload="none"
+                  disablePictureInPicture
+                  disableRemotePlayback
+                  onError={() => setHeroVideoError(true)}
+                />
+              </div>
+            ) : imageHeroUrl ? (
+              <ImageLoadGuard
+                key={imageHeroUrl}
+                url={imageHeroUrl}
+                version={heroVersion}
                 containerClassName="absolute inset-0 h-full w-full"
-                className="absolute inset-0 h-full w-full object-cover"
-                style={{ objectFit: "cover" }}
-                autoPlay
-                loop
-                muted
-                playsInline
-                preload="none"
-                onError={() => setHeroVideoError(true)}
+                className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
+                style={{ objectFit: "cover", objectPosition: "center center" }}
+                alt=""
+                priority
+                onError={() => setHeroImageError(true)}
               />
-            </div>
-          ) : heroMediaType === "IMAGE" ? (
-            <ImageLoadGuard
-              key={heroUrl}
-              url={heroUrl}
-              version={heroVersion}
-              containerClassName="absolute inset-0 h-full w-full"
-              className="absolute inset-0 h-full w-full object-cover"
-              style={{ objectFit: "cover" }}
-              alt=""
-              priority
-              onError={() => setHeroImageError(true)}
-            />
-          ) : null}
+            ) : isVideoHero && heroVideoError && posterUrlForVideo ? (
+              <ImageLoadGuard
+                key={posterUrlForVideo}
+                url={posterUrlForVideo}
+                containerClassName="absolute inset-0 h-full w-full"
+                className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
+                style={{ objectFit: "cover", objectPosition: "center center" }}
+                alt=""
+                priority
+              />
+            ) : null}
         </div>
         <div
           className="absolute inset-0 z-[11] pointer-events-none"
@@ -289,13 +299,15 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
 
       <Navbar />
 
-      <HeroEditPortal
-        page="journal"
-        section="hero"
-        type="video"
-        onUploadDone={refetchPageSections}
-        editLabel="Edit hero"
-      />
+      {isAdmin && (
+        <HeroEditPortal
+          page="journal"
+          section="hero"
+          type={heroMediaType === "IMAGE" ? "image" : "video"}
+          onUploadDone={refetchPageSections}
+          editLabel={heroMediaType === "IMAGE" ? "Edit hero image" : "Edit hero video"}
+        />
+      )}
 
       {/* Hero section */}
       <section className="relative flex min-h-screen flex-col justify-center px-4 pt-24 pb-16 sm:px-6 md:px-8">
@@ -318,11 +330,11 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
 
           <div className="mx-auto mt-8 h-px w-28 bg-gradient-to-r from-transparent via-luxury-gold/50 to-transparent" />
         </motion.div>
-        <div className="absolute bottom-8 left-1/2 z-20 -translate-x-1/2">
+        <div className="absolute bottom-8 left-1/2 z-20 hidden -translate-x-1/2 md:block">
           <motion.div
             animate={{ y: [0, 8, 0] }}
             transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-            className="h-8 w-5 rounded-full border border-white/40 flex items-start justify-center pt-2"
+            className="flex h-8 w-5 items-start justify-center rounded-full border border-white/40 pt-2"
           >
             <div className="h-1.5 w-1 rounded-full bg-white/70" />
           </motion.div>
