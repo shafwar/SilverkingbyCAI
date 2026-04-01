@@ -10,8 +10,9 @@ export type ReliableVideoAutoplayMode = "default" | "background";
  * Ensures background videos try to autoplay without native controls UI.
  *
  * - default: stronger retries + periodic checks (modals, secondary heroes).
- * - background: lighter touch — no video.load(), no preload override, longer watchdog interval,
- *   and styles are applied without replacing the entire style attribute (preserves opacity fades).
+ * - background: no video.load(), no preload override, longer watchdog interval, no scroll/click
+ *   listeners (they caused jank), skip play() when already playing or when video has no src,
+ *   styles applied without replacing the entire style attribute (preserves opacity fades).
  */
 export function useReliableVideoAutoplay(
   videoRef: React.RefObject<HTMLVideoElement | null>,
@@ -58,8 +59,18 @@ export function useReliableVideoAutoplay(
     const tryPlay = async (force = false) => {
       if (cancelled || !video) return;
 
+      const srcAttr = video.getAttribute("src");
+      if (!(srcAttr && srcAttr.trim()) && !video.currentSrc) {
+        return;
+      }
+
       try {
         enforceMobileAutoplayAttributes();
+
+        // Avoid redundant play() — especially when scroll/touch fires constantly (non-background only uses those less critically)
+        if (!video.paused && !video.ended && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+          return;
+        }
 
         if (force || video.paused) {
           retryCountRef.current = 0;
@@ -142,7 +153,7 @@ export function useReliableVideoAutoplay(
 
     void tryPlay(true);
 
-    const intervalMs = isBackground ? 12000 : 2000;
+    const intervalMs = isBackground ? 20000 : 2000;
     playCheckIntervalRef.current = setInterval(() => {
       if (cancelled || !video) return;
 
@@ -160,10 +171,13 @@ export function useReliableVideoAutoplay(
     video.addEventListener("waiting", handleWaiting);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    window.addEventListener("touchstart", handleUserInteraction, { passive: true });
-    window.addEventListener("touchend", handleUserInteraction, { passive: true });
-    window.addEventListener("click", handleUserInteraction);
-    window.addEventListener("scroll", handleUserInteraction, { passive: true });
+    // Background heroes: scroll/click listeners caused massive main-thread work and video jank.
+    if (!isBackground) {
+      window.addEventListener("touchstart", handleUserInteraction, { passive: true });
+      window.addEventListener("touchend", handleUserInteraction, { passive: true });
+      window.addEventListener("click", handleUserInteraction);
+      window.addEventListener("scroll", handleUserInteraction, { passive: true });
+    }
 
     if (!isBackground) {
       video.load();
@@ -185,10 +199,12 @@ export function useReliableVideoAutoplay(
       video.removeEventListener("ended", handleEnded);
       video.removeEventListener("waiting", handleWaiting);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("touchstart", handleUserInteraction);
-      window.removeEventListener("touchend", handleUserInteraction);
-      window.removeEventListener("click", handleUserInteraction);
-      window.removeEventListener("scroll", handleUserInteraction);
+      if (!isBackground) {
+        window.removeEventListener("touchstart", handleUserInteraction);
+        window.removeEventListener("touchend", handleUserInteraction);
+        window.removeEventListener("click", handleUserInteraction);
+        window.removeEventListener("scroll", handleUserInteraction);
+      }
     };
   }, [videoRef, isBackground]);
 }

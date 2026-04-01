@@ -10,6 +10,8 @@ type VideoGuardProps = Omit<React.ComponentPropsWithoutRef<"video">, "src"> & {
   containerClassName?: string;
   /** When true, do not load video (e.g. slow connection); render poster placeholder instead */
   forcePoster?: boolean;
+  /** When true, never attach video src (poster / gradient only) — e.g. prefers-reduced-motion */
+  suspendSrc?: boolean;
   /** Optional CMS/static poster URL (PageMedia hero image, etc.) */
   posterUrl?: string | null;
   posterVersion?: number;
@@ -21,6 +23,11 @@ type VideoGuardProps = Omit<React.ComponentPropsWithoutRef<"video">, "src"> & {
   idleAttachTimeoutMs?: number;
   /** High priority fetch for above-the-fold poster (home hero) */
   posterPriority?: boolean;
+  /**
+   * When true, do not render a separate next/image poster layer — use only the native
+   * <video poster> so a full-bleed image does not steal LCP from headline text.
+   */
+  lcpFriendlyPoster?: boolean;
   /** Promote stable GPU layer + drop will-change after fade (smoother video decode on laptops) */
   optimizeGpu?: boolean;
 };
@@ -47,12 +54,14 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
       containerClassName = "",
       style,
       forcePoster = false,
+      suspendSrc = false,
       posterUrl,
       posterVersion,
       lazyAttach = false,
       deferAttachUntilIdle = false,
       idleAttachTimeoutMs = 480,
       posterPriority = false,
+      lcpFriendlyPoster = false,
       optimizeGpu = false,
       ...restVideoProps
     },
@@ -128,7 +137,7 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
       };
     }, []);
 
-    const effectiveAttach = inView && idleReady;
+    const effectiveAttach = inView && idleReady && !suspendSrc;
 
     useEffect(() => {
       setReady(false);
@@ -184,7 +193,7 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
           style={{ background: FALLBACK_POSTER_BG }}
           aria-hidden
         />
-        {bustedPoster ? (
+        {bustedPoster && !lcpFriendlyPoster ? (
           <div className="absolute inset-0 z-[1] overflow-hidden">
             <Image
               src={bustedPoster}

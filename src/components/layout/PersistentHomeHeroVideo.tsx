@@ -61,11 +61,27 @@ function useSplashComplete(): boolean {
  * Persistent hero video for Home. URL from page-sections (CMS) or fallback.
  * Poster from PageMedia hero image when present — no CMS workflow change.
  */
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => setReduced(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
+  return reduced;
+}
+
 export function PersistentHomeHeroVideo() {
   const pathname = usePathname();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isHome, setIsHome] = useState(false);
   const splashComplete = useSplashComplete();
+  const prefersReducedMotion = usePrefersReducedMotion();
   const { sections, refetch } = usePageSections("home");
   const { data: pageMedia } = usePageMedia("home");
 
@@ -113,10 +129,11 @@ export function PersistentHomeHeroVideo() {
               posterVersion={undefined}
               lazyAttach
               deferAttachUntilIdle
-              idleAttachTimeoutMs={560}
-              posterPriority
+              idleAttachTimeoutMs={720}
+              lcpFriendlyPoster
               optimizeGpu
               forcePoster={false}
+              suspendSrc={prefersReducedMotion}
               containerClassName="absolute inset-0 min-w-full min-h-full w-full h-full"
               className="absolute left-1/2 top-1/2 min-w-full min-h-full w-full h-full -translate-x-1/2 -translate-y-1/2 object-cover"
               style={{ pointerEvents: "none" }}
