@@ -21,6 +21,8 @@ type VideoGuardProps = Omit<React.ComponentPropsWithoutRef<"video">, "src"> & {
   idleAttachTimeoutMs?: number;
   /** High priority fetch for above-the-fold poster (home hero) */
   posterPriority?: boolean;
+  /** Promote stable GPU layer + drop will-change after fade (smoother video decode on laptops) */
+  optimizeGpu?: boolean;
 };
 
 type ImageGuardProps = Omit<React.ComponentPropsWithoutRef<"img">, "src"> & {
@@ -51,6 +53,7 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
       deferAttachUntilIdle = false,
       idleAttachTimeoutMs = 480,
       posterPriority = false,
+      optimizeGpu = false,
       ...restVideoProps
     },
     ref
@@ -58,6 +61,8 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
     const rawVideo = restVideoProps as React.ComponentPropsWithoutRef<"video">;
     const { style: videoStyleProp, ...videoProps } = rawVideo;
     const [ready, setReady] = useState(false);
+    const [fadeComplete, setFadeComplete] = useState(false);
+    const fadeTimerRef = useRef<number | null>(null);
     const [inView, setInView] = useState(!lazyAttach);
     const [idleReady, setIdleReady] = useState(!deferAttachUntilIdle);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -114,7 +119,36 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
       };
     }, [deferAttachUntilIdle, lazyAttach, inView, idleAttachTimeoutMs]);
 
+    useEffect(() => {
+      return () => {
+        if (fadeTimerRef.current !== null) {
+          clearTimeout(fadeTimerRef.current);
+          fadeTimerRef.current = null;
+        }
+      };
+    }, []);
+
     const effectiveAttach = inView && idleReady;
+
+    useEffect(() => {
+      setReady(false);
+      setFadeComplete(false);
+      if (fadeTimerRef.current !== null) {
+        clearTimeout(fadeTimerRef.current);
+        fadeTimerRef.current = null;
+      }
+    }, [src, effectiveAttach]);
+
+    const markReady = () => {
+      setReady(true);
+      if (!optimizeGpu) return;
+      if (fadeTimerRef.current !== null) return;
+      const w = globalThis as Window & typeof globalThis;
+      fadeTimerRef.current = w.setTimeout(() => {
+        setFadeComplete(true);
+        fadeTimerRef.current = null;
+      }, 480);
+    };
 
     if (forcePoster) {
       return (
@@ -133,7 +167,16 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
       <div
         ref={containerRef}
         className={containerClassName}
-        style={{ background: "#0a0a0a", position: "relative" }}
+        style={{
+          background: "#0a0a0a",
+          position: "relative",
+          ...(optimizeGpu
+            ? {
+                transform: "translateZ(0)",
+                isolation: "isolate" as const,
+              }
+            : {}),
+        }}
       >
         {/* Always show something behind the video — no blank frame */}
         <div
@@ -160,15 +203,21 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
           key={effectiveAttach ? src : "pending"}
           src={effectiveAttach ? src : undefined}
           poster={bustedPoster ?? undefined}
-          onLoadedData={() => setReady(true)}
-          onCanPlay={() => setReady(true)}
+          onLoadedData={markReady}
+          onCanPlay={markReady}
           {...videoProps}
           style={{
             ...style,
             ...videoStyleProp,
             opacity: ready ? 1 : 0,
             transition: "opacity 0.45s ease-out",
-            willChange: "opacity",
+            willChange: optimizeGpu && fadeComplete ? "auto" : "opacity",
+            ...(optimizeGpu
+              ? {
+                  backfaceVisibility: "hidden",
+                  WebkitBackfaceVisibility: "hidden",
+                }
+              : {}),
           }}
           preload={
             effectiveAttach ? (videoProps.preload ?? "metadata") : "none"

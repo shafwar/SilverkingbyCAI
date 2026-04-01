@@ -56,6 +56,40 @@
 }
 
 
+/* Home hero: subtle orbs without mix-blend over video (saves GPU vs Framer + screen blend) */
+@keyframes sk-home-orb-pulse {
+  0%,
+  100% {
+    opacity: 0.18;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    opacity: 0.3;
+    transform: translate3d(0, -6px, 0) scale(1.02);
+  }
+}
+
+.sk-home-orb {
+  animation: sk-home-orb-pulse 18s ease-in-out infinite;
+}
+
+.sk-home-orb-d1 {
+  animation-delay: -5s;
+}
+
+.sk-home-orb-d2 {
+  animation-delay: -11s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-home-orb,
+  .sk-home-orb-d1,
+  .sk-home-orb-d2 {
+    animation: none;
+    opacity: 0.24;
+  }
+}
+
 @layer base {
   * {
     -webkit-font-smoothing: antialiased;

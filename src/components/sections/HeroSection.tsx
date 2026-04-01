@@ -31,22 +31,6 @@ const videoIntroVariants: Variants = {
   },
 };
 
-const gradientIntroVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { duration: 1.2, delay: 0.4, ease: "easeOut" },
-  },
-};
-
-const secondaryGradientVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { duration: 1.4, delay: 0.6, ease: "easeOut" },
-  },
-};
-
 const bubbleLayerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
@@ -114,6 +98,37 @@ const bubbleOrbs = [
     gradient: "radial-gradient(circle at 50% 50%, rgba(255,215,0,0.25), rgba(255,215,0,0.04) 70%)",
   },
 ];
+
+/** Persistent home video: CSS orbs only — avoids mix-blend + Framer infinite loops over decoded video */
+const lightHomeOrbs = [
+  {
+    id: "light-1",
+    size: 176,
+    top: "5%",
+    left: "10%",
+    orbClass: "sk-home-orb",
+    gradient:
+      "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.38), rgba(255,255,255,0.04) 68%)",
+  },
+  {
+    id: "light-2",
+    size: 148,
+    top: "26%",
+    left: "6%",
+    orbClass: "sk-home-orb sk-home-orb-d1",
+    gradient:
+      "radial-gradient(circle at 60% 40%, rgba(255,215,0,0.28), rgba(255,215,0,0.04) 70%)",
+  },
+  {
+    id: "light-3",
+    size: 200,
+    top: "38%",
+    left: "34%",
+    orbClass: "sk-home-orb sk-home-orb-d2",
+    gradient:
+      "radial-gradient(circle at 40% 40%, rgba(255,255,255,0.28), rgba(255,255,255,0.04) 70%)",
+  },
+] as const;
 
 export default function HeroSection({
   shouldAnimate = true,
@@ -562,57 +577,37 @@ export default function HeroSection({
       {/* When skipVideo: overlays only (video from PersistentHomeHeroVideo) + vignette dark motif */}
       {skipVideo && (
         <>
-          {/* Desktop/tablet: keep original gradient exactly as before */}
-          <motion.div
-            className="absolute inset-0 z-0 hidden md:block bg-gradient-to-b from-black/55 via-black/25 to-black/60"
-            variants={gradientIntroVariants}
-            initial="hidden"
-            animate={animationState}
+          <div
+            className="absolute inset-0 z-0 pointer-events-none hidden md:block"
+            style={{
+              backgroundImage:
+                "linear-gradient(to bottom, rgba(0,0,0,0.55), rgba(0,0,0,0.25) 50%, rgba(0,0,0,0.6)), linear-gradient(to right, rgba(0,0,0,0.65), transparent 50%, rgba(0,0,0,0.4))",
+            }}
+            aria-hidden
           />
-          <motion.div
-            className="absolute inset-0 z-0 hidden md:block bg-gradient-to-r from-black/65 via-transparent to-black/40"
-            variants={secondaryGradientVariants}
-            initial="hidden"
-            animate={animationState}
+          <div
+            className="absolute inset-0 z-0 pointer-events-none md:hidden"
+            style={{
+              backgroundImage:
+                "linear-gradient(to bottom, rgba(0,0,0,0.38), rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.45)), linear-gradient(to right, rgba(0,0,0,0.45), transparent 50%, rgba(0,0,0,0.28))",
+            }}
+            aria-hidden
           />
-          {/* Mobile only: lighter gradient for better video visibility */}
-          <motion.div
-            className="absolute inset-0 z-0 md:hidden bg-gradient-to-b from-black/38 via-black/12 to-black/45"
-            variants={gradientIntroVariants}
-            initial="hidden"
-            animate={animationState}
-          />
-          <motion.div
-            className="absolute inset-0 z-0 md:hidden bg-gradient-to-r from-black/45 via-transparent to-black/28"
-            variants={secondaryGradientVariants}
-            initial="hidden"
-            animate={animationState}
-          />
-          <motion.div
-            className="absolute inset-0 pointer-events-none z-[1]"
-            variants={bubbleLayerVariants}
-            initial="hidden"
-            animate={animationState}
-          >
-            {bubbleOrbs.map((orb) => (
-              <motion.span
+          <div className="absolute inset-0 pointer-events-none z-[1] overflow-hidden" aria-hidden>
+            {lightHomeOrbs.map((orb) => (
+              <div
                 key={orb.id}
-                className="absolute rounded-full blur-3xl opacity-70"
+                className={`absolute rounded-full blur-2xl opacity-60 ${orb.orbClass}`}
                 style={{
                   width: orb.size,
                   height: orb.size,
                   top: orb.top,
                   left: orb.left,
                   background: orb.gradient,
-                  mixBlendMode: "screen",
                 }}
-                variants={bubbleVariants}
-                custom={{ delay: orb.delay, duration: orb.duration }}
-                initial="hidden"
-                animate={animationState}
               />
             ))}
-          </motion.div>
+          </div>
         </>
       )}
 

@@ -86,11 +86,7 @@ export function PersistentHomeHeroVideo() {
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    if (isHome) {
-      video.play().catch(() => {});
-    } else {
-      video.pause();
-    }
+    if (!isHome) video.pause();
   }, [isHome]);
 
   return (
@@ -119,6 +115,7 @@ export function PersistentHomeHeroVideo() {
               deferAttachUntilIdle
               idleAttachTimeoutMs={560}
               posterPriority
+              optimizeGpu
               forcePoster={false}
               containerClassName="absolute inset-0 min-w-full min-h-full w-full h-full"
               className="absolute left-1/2 top-1/2 min-w-full min-h-full w-full h-full -translate-x-1/2 -translate-y-1/2 object-cover"
@@ -137,10 +134,22 @@ export function PersistentHomeHeroVideo() {
       ) : (
         <div className="absolute inset-0 bg-luxury-black" aria-hidden />
       )}
-      <div className="absolute inset-0 hidden md:block bg-gradient-to-b from-black/55 via-black/25 to-black/60 pointer-events-none" />
-      <div className="absolute inset-0 hidden md:block bg-gradient-to-r from-black/65 via-transparent to-black/40 pointer-events-none" />
-      <div className="absolute inset-0 md:hidden bg-gradient-to-b from-black/38 via-black/12 to-black/45 pointer-events-none" />
-      <div className="absolute inset-0 md:hidden bg-gradient-to-r from-black/45 via-transparent to-black/28 pointer-events-none" />
+      <div
+        className="absolute inset-0 hidden md:block pointer-events-none"
+        style={{
+          backgroundImage:
+            "linear-gradient(to bottom, rgba(0,0,0,0.55), rgba(0,0,0,0.25) 50%, rgba(0,0,0,0.6)), linear-gradient(to right, rgba(0,0,0,0.65), transparent 50%, rgba(0,0,0,0.4))",
+        }}
+        aria-hidden
+      />
+      <div
+        className="absolute inset-0 md:hidden pointer-events-none"
+        style={{
+          backgroundImage:
+            "linear-gradient(to bottom, rgba(0,0,0,0.38), rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.45)), linear-gradient(to right, rgba(0,0,0,0.45), transparent 50%, rgba(0,0,0,0.28))",
+        }}
+        aria-hidden
+      />
       {isHome && splashComplete && (
         <HeroEditPortal
           page="home"
