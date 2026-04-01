@@ -125,6 +125,8 @@ export function PersistentHomeHeroVideo() {
   const pathname = usePathname();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isHome, setIsHome] = useState(false);
+  const [homeVideoCycle, setHomeVideoCycle] = useState(0);
+  const wasHomeRef = useRef(false);
   const splashComplete = useSplashComplete();
   const prefersReducedMotion = usePrefersReducedMotion();
   const videoReveal = useHomeHeroVideoReveal();
@@ -139,10 +141,22 @@ export function PersistentHomeHeroVideo() {
       ? pageMedia.heroImageUrl
       : null;
 
-  useReliableVideoAutoplay(videoRef, { mode: "background" });
+  useReliableVideoAutoplay(videoRef, {
+    mode: "background",
+    reattachKey: homeVideoCycle,
+  });
 
   useEffect(() => {
-    setIsHome(isHomePath(pathname));
+    const home = isHomePath(pathname);
+    if (home) {
+      if (!wasHomeRef.current) {
+        setHomeVideoCycle((n) => n + 1);
+      }
+      wasHomeRef.current = true;
+    } else {
+      wasHomeRef.current = false;
+    }
+    setIsHome(home);
   }, [pathname]);
 
   useEffect(() => {
@@ -150,6 +164,34 @@ export function PersistentHomeHeroVideo() {
     if (!video) return;
     if (!isHome) video.pause();
   }, [isHome]);
+
+  /** bfcache / iOS: resume after back-forward */
+  useEffect(() => {
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (!e.persisted || !isHome) return;
+      const v = videoRef.current;
+      if (v) void v.play().catch(() => {});
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, [isHome, homeVideoCycle]);
+
+  /** Logo → home SPA: new <video> node; kick play after layout (pairs with reattachKey) */
+  useLayoutEffect(() => {
+    if (!isHome) return;
+    const v = videoRef.current;
+    if (!v) return;
+    const kick = () => void v.play().catch(() => {});
+    kick();
+    const r = requestAnimationFrame(kick);
+    const t = window.setTimeout(kick, 160);
+    return () => {
+      cancelAnimationFrame(r);
+      window.clearTimeout(t);
+    };
+  }, [isHome, homeVideoCycle]);
+
+  const videoMountKey = `home-hero-${homeVideoCycle}`;
 
   return (
     <div
@@ -169,12 +211,13 @@ export function PersistentHomeHeroVideo() {
               aria-hidden
             >
               <VideoLoadGuard
+                key={videoMountKey}
                 ref={videoRef}
                 url={heroUrl}
                 version={heroVersion}
                 posterUrl={posterUrl}
                 posterVersion={undefined}
-                lazyAttach
+                lazyAttach={false}
                 deferAttachUntilIdle
                 idleAttachTimeoutMs={560}
                 optimizeGpu
@@ -202,12 +245,13 @@ export function PersistentHomeHeroVideo() {
               aria-hidden
             >
               <VideoLoadGuard
+                key={videoMountKey}
                 ref={videoRef}
                 url={heroUrl}
                 version={heroVersion}
                 posterUrl={posterUrl}
                 posterVersion={undefined}
-                lazyAttach
+                lazyAttach={false}
                 deferAttachUntilIdle
                 idleAttachTimeoutMs={560}
                 optimizeGpu
