@@ -32,6 +32,8 @@ type VideoGuardProps = Omit<React.ComponentPropsWithoutRef<"video">, "src"> & {
   optimizeGpu?: boolean;
   /** Shorter opacity fade on the video element (less overlap with layout transitions / decode) */
   lightVideoFade?: boolean;
+  /** No CSS transition on video opacity — use when a parent already fades (avoids double animation + jank) */
+  snapVideoOpacity?: boolean;
 };
 
 type ImageGuardProps = Omit<React.ComponentPropsWithoutRef<"img">, "src"> & {
@@ -66,6 +68,7 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
       lcpFriendlyPoster = false,
       optimizeGpu = false,
       lightVideoFade = false,
+      snapVideoOpacity = false,
       ...restVideoProps
     },
     ref
@@ -222,7 +225,11 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
             ...style,
             ...videoStyleProp,
             opacity: ready ? 1 : 0,
-            transition: lightVideoFade ? "opacity 0.22s ease-out" : "opacity 0.45s ease-out",
+            transition: snapVideoOpacity
+              ? "none"
+              : lightVideoFade
+                ? "opacity 0.22s ease-out"
+                : "opacity 0.45s ease-out",
             willChange: optimizeGpu && fadeComplete ? "auto" : "opacity",
             ...(optimizeGpu
               ? {

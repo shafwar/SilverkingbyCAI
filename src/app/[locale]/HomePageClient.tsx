@@ -72,7 +72,7 @@ export default function HomePageClient() {
       <div
         style={{
           opacity: isClient && !showSplash ? 1 : 0,
-          transition: "opacity 0.3s ease-in",
+          transition: "opacity 0.22s ease-out",
           pointerEvents: isClient && !showSplash ? "auto" : "none",
           position: "relative",
           zIndex: 1,

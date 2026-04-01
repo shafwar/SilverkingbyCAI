@@ -31,22 +31,6 @@ const videoIntroVariants: Variants = {
   },
 };
 
-const gradientIntroVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { duration: 1.2, delay: 0.4, ease: "easeOut" },
-  },
-};
-
-const secondaryGradientVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { duration: 1.4, delay: 0.6, ease: "easeOut" },
-  },
-};
-
 const bubbleLayerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
@@ -599,35 +583,36 @@ export default function HeroSection({
       {/* When skipVideo: overlays only (video from PersistentHomeHeroVideo) + vignette dark motif */}
       {skipVideo && (
         <>
-          <motion.div
-            className="absolute inset-0 z-0 hidden md:block bg-gradient-to-b from-black/55 via-black/25 to-black/60 pointer-events-none"
-            variants={gradientIntroVariants}
-            initial="hidden"
-            animate={skipVideoOverlayState}
+          {/* CSS-only fades: Framer on full-viewport layers + video caused main-thread jank */}
+          <div
+            className={`absolute inset-0 z-0 pointer-events-none hidden md:block transition-opacity duration-[440ms] ease-out motion-reduce:transition-none motion-reduce:opacity-100 ${
+              skipVideoOverlayState === "visible" ? "opacity-100" : "opacity-0"
+            }`}
+            style={{
+              transitionDelay: skipVideoOverlayState === "visible" ? "40ms" : "0ms",
+              backgroundImage:
+                "linear-gradient(to bottom, rgba(0,0,0,0.55), rgba(0,0,0,0.25) 50%, rgba(0,0,0,0.6)), linear-gradient(to right, rgba(0,0,0,0.65), transparent 50%, rgba(0,0,0,0.4))",
+            }}
+            aria-hidden
           />
-          <motion.div
-            className="absolute inset-0 z-0 hidden md:block bg-gradient-to-r from-black/65 via-transparent to-black/40 pointer-events-none"
-            variants={secondaryGradientVariants}
-            initial="hidden"
-            animate={skipVideoOverlayState}
+          <div
+            className={`absolute inset-0 z-0 pointer-events-none md:hidden transition-opacity duration-[440ms] ease-out motion-reduce:transition-none motion-reduce:opacity-100 ${
+              skipVideoOverlayState === "visible" ? "opacity-100" : "opacity-0"
+            }`}
+            style={{
+              transitionDelay: skipVideoOverlayState === "visible" ? "40ms" : "0ms",
+              backgroundImage:
+                "linear-gradient(to bottom, rgba(0,0,0,0.38), rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.45)), linear-gradient(to right, rgba(0,0,0,0.45), transparent 50%, rgba(0,0,0,0.28))",
+            }}
+            aria-hidden
           />
-          <motion.div
-            className="absolute inset-0 z-0 md:hidden bg-gradient-to-b from-black/38 via-black/12 to-black/45 pointer-events-none"
-            variants={gradientIntroVariants}
-            initial="hidden"
-            animate={skipVideoOverlayState}
-          />
-          <motion.div
-            className="absolute inset-0 z-0 md:hidden bg-gradient-to-r from-black/45 via-transparent to-black/28 pointer-events-none"
-            variants={secondaryGradientVariants}
-            initial="hidden"
-            animate={skipVideoOverlayState}
-          />
-          <motion.div
-            className="absolute inset-0 pointer-events-none z-[1] overflow-hidden"
-            variants={bubbleLayerVariants}
-            initial="hidden"
-            animate={skipVideoOverlayState}
+          <div
+            className={`absolute inset-0 pointer-events-none z-[1] overflow-hidden transition-opacity duration-[480ms] ease-out motion-reduce:transition-none motion-reduce:opacity-100 ${
+              skipVideoOverlayState === "visible" ? "opacity-100" : "opacity-0"
+            }`}
+            style={{
+              transitionDelay: skipVideoOverlayState === "visible" ? "100ms" : "0ms",
+            }}
             aria-hidden
           >
             {lightHomeOrbs.map((orb) => (
@@ -643,7 +628,7 @@ export default function HeroSection({
                 }}
               />
             ))}
-          </motion.div>
+          </div>
         </>
       )}
 

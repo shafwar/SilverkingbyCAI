@@ -2,7 +2,6 @@
 
 import { usePathname } from "next/navigation";
 import { useRef, useEffect, useLayoutEffect, useState } from "react";
-import { motion, type Variants } from "framer-motion";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { usePageSections } from "@/hooks/usePageSections";
 import { usePageMedia } from "@/hooks/usePageMedia";
@@ -11,15 +10,6 @@ import { VideoLoadGuard } from "@/components/section-media/SectionMediaLoadGuard
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 
 const HERO_VIDEO_FALLBACK = "/videos/hero/hero-background.mp4";
-
-/** Opacity only — scaling full-screen video during transition fights the decoder (jank / dropped frames) */
-const persistentVideoIntroVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { duration: 0.75, ease: [0.22, 1, 0.36, 1] },
-  },
-};
 
 const POST_SPLASH_BUFFER_MS = 3500;
 const SUBSEQUENT_VISIT_BUFFER_MS = 3200;
@@ -181,7 +171,7 @@ export function PersistentHomeHeroVideo() {
       optimizeGpu
       forcePoster={false}
       suspendSrc={prefersReducedMotion}
-      lightVideoFade
+      snapVideoOpacity
       containerClassName="absolute inset-0 min-w-full min-h-full w-full h-full"
       className="absolute left-1/2 top-1/2 min-w-full min-h-full w-full h-full -translate-x-1/2 -translate-y-1/2 object-cover"
       style={{ pointerEvents: "none" }}
@@ -199,33 +189,31 @@ export function PersistentHomeHeroVideo() {
   const videoShellClass =
     "absolute left-1/2 top-1/2 h-[104%] w-[104%] min-h-[104%] min-w-[104%] -translate-x-1/2 -translate-y-1/2 origin-center scale-100 md:left-0 md:top-0 md:h-full md:w-full md:min-h-0 md:min-w-0 md:translate-x-0 md:translate-y-0 md:scale-100";
 
+  const skipShellFade = prefersReducedMotion || videoReveal === "instant";
+  const shellVisible = skipShellFade || videoReveal === "revealed";
+  const shellClassName = [
+    videoShellClass,
+    skipShellFade ? "opacity-100" : shellVisible ? "opacity-100" : "opacity-0",
+    skipShellFade ? "" : "transition-opacity duration-500 ease-out motion-reduce:transition-none motion-reduce:opacity-100",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <div
       aria-hidden="true"
-      className="fixed inset-0 z-0 min-h-dvh pointer-events-none overflow-hidden"
+      className="fixed inset-0 z-0 min-h-dvh pointer-events-none overflow-hidden motion-reduce:transition-none"
       style={{
         visibility: isHome ? "visible" : "hidden",
         opacity: isHome ? 1 : 0,
-        transition: "opacity 0.2s ease-out",
+        transition: isHome ? "opacity 0.12s ease-out" : "opacity 0.1s ease-out",
       }}
     >
       {everHome ? (
         <div className="absolute inset-0 overflow-hidden">
-          {videoReveal === "instant" || prefersReducedMotion ? (
-            <div className={videoShellClass} aria-hidden>
-              {videoInner}
-            </div>
-          ) : (
-            <motion.div
-              className={videoShellClass}
-              variants={persistentVideoIntroVariants}
-              initial="hidden"
-              animate={videoReveal === "revealed" ? "visible" : "hidden"}
-              aria-hidden
-            >
-              {videoInner}
-            </motion.div>
-          )}
+          <div className={shellClassName} aria-hidden>
+            {videoInner}
+          </div>
         </div>
       ) : !isHome ? (
         <div className="absolute inset-0 bg-luxury-black" aria-hidden />
