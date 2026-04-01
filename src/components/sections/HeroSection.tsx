@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { motion, useScroll, useTransform, type Variants } from "framer-motion";
+import { LayoutGroup, motion, useScroll, useTransform, type Variants } from "framer-motion";
 import { gsap } from "gsap";
 import { QrCode, BookOpen, ChevronDown } from "lucide-react";
 import ScrollingFeatures from "./ScrollingFeatures";
@@ -769,96 +769,109 @@ export default function HeroSection({
         </div>
       </div>
 
-      {/* Mobile: single bottom stack — flex gap keeps chevron / Journal / QR proportionally spaced */}
-      <motion.div
-        layoutRoot
-        className="md:hidden absolute left-0 right-0 z-30 flex flex-col items-center gap-5 sm:gap-6 px-4 sm:px-6 pointer-events-none"
-        style={{ bottom: "calc(52px + env(safe-area-inset-bottom, 0px))" }}
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
-          transition={{ duration: 0.45, delay: 0.95, ease: "easeOut" }}
-          className="pointer-events-auto flex w-full flex-col items-center gap-3"
+      {/* Mobile: bottom stack — chevron → panel opens downward → Journal & QR reflow with layout animation (no overlap) */}
+      <LayoutGroup>
+        <div
+          className="md:hidden absolute left-0 right-0 z-30 flex flex-col items-center px-4 sm:px-6 pointer-events-none"
+          style={{ bottom: "calc(52px + env(safe-area-inset-bottom, 0px))" }}
         >
-          {/* Chevron first: panel opens *below* so insights never grow upward into hero copy */}
-          <button
-            type="button"
-            onClick={() => setMobileInsightsOpen((prev) => !prev)}
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/25 bg-black/55 text-white/90 shadow-[0_8px_24px_rgba(0,0,0,0.35)] backdrop-blur-md transition-all hover:bg-white/10"
-            aria-expanded={mobileInsightsOpen}
-            aria-label="Toggle feature insights"
-          >
-            <motion.span
-              animate={{ rotate: mobileInsightsOpen ? 180 : 0 }}
-              transition={{ duration: 0.22, ease: "easeOut" }}
-              className="inline-flex items-center justify-center"
-            >
-              <ChevronDown className="h-4 w-4" />
-            </motion.span>
-          </button>
-
           <motion.div
-            initial={false}
-            animate={{
-              height: mobileInsightsOpen ? "auto" : 0,
-              opacity: mobileInsightsOpen ? 1 : 0,
+            initial={{ opacity: 0, y: 8 }}
+            animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
+            transition={{
+              duration: 0.45,
+              delay: 0.95,
+              ease: "easeOut",
             }}
-            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full overflow-hidden"
+            className="pointer-events-auto flex w-full max-w-[min(calc(100vw-32px),380px)] flex-col items-center gap-4 sm:gap-5"
           >
-            <div className="rounded-2xl border border-white/10 bg-black/28 px-2 py-1 backdrop-blur-md">
-              <div className="max-h-[122px] overflow-hidden">
-                <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate && mobileInsightsOpen} />
+            {/* Toggle: chevron points down = “buka ke bawah”; open = rotate up to tutup */}
+            <button
+              type="button"
+              onClick={() => setMobileInsightsOpen((prev) => !prev)}
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/25 bg-black/55 text-white/90 shadow-[0_8px_24px_rgba(0,0,0,0.35)] backdrop-blur-md transition-all hover:bg-white/10"
+              aria-expanded={mobileInsightsOpen}
+              aria-label="Toggle feature insights"
+            >
+              <motion.span
+                animate={{ rotate: mobileInsightsOpen ? 180 : 0 }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
+                className="inline-flex items-center justify-center"
+              >
+                <ChevronDown className="h-4 w-4" />
+              </motion.span>
+            </button>
+
+            <motion.div
+              layout
+              initial={false}
+              animate={{
+                height: mobileInsightsOpen ? "auto" : 0,
+                opacity: mobileInsightsOpen ? 1 : 0,
+                marginBottom: mobileInsightsOpen ? 4 : 0,
+              }}
+              transition={{
+                height: { duration: 0.38, ease: [0.22, 1, 0.36, 1] },
+                opacity: { duration: 0.28, ease: "easeOut" },
+                marginBottom: { duration: 0.38, ease: [0.22, 1, 0.36, 1] },
+                layout: { duration: 0.38, ease: [0.22, 1, 0.36, 1] },
+              }}
+              className="w-full min-h-0 overflow-hidden"
+              style={{ pointerEvents: mobileInsightsOpen ? "auto" : "none" }}
+            >
+              <div className="rounded-2xl border border-white/10 bg-black/28 px-2 py-2 backdrop-blur-md">
+                <div className="max-h-[132px] overflow-hidden">
+                  <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate && mobileInsightsOpen} />
+                </div>
               </div>
-            </div>
+            </motion.div>
+
+            <motion.div
+              layout
+              initial={{ opacity: 0, y: 6 }}
+              animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
+              transition={{
+                duration: 0.5,
+                delay: 1.02,
+                ease: "easeOut",
+                layout: { duration: 0.38, ease: [0.22, 1, 0.36, 1] },
+              }}
+              className="flex w-full justify-center"
+            >
+              <OptimizedLink
+                href="/journal"
+                className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 backdrop-blur-sm transition-all duration-300 hover:bg-white/10 hover:border-amber-500/30 hover:shadow-[0_0_20px_rgba(245,158,11,0.06)]"
+                aria-label={tJournal("title")}
+              >
+                <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-400/90 transition-colors group-hover:border-amber-500/35 group-hover:bg-amber-500/15">
+                  <BookOpen className="h-3.5 w-3.5" />
+                </span>
+                <span className="font-sans text-[0.8125rem] font-medium text-white/90 tracking-tight">
+                  {tJournal("title")}
+                </span>
+              </OptimizedLink>
+            </motion.div>
+
+            <motion.div
+              layout
+              initial={{ opacity: 0, y: 16 }}
+              animate={{
+                opacity: shouldAnimate ? 1 : 0,
+                y: shouldAnimate ? 0 : 16,
+              }}
+              transition={{
+                duration: 0.55,
+                delay: 1.08,
+                ease: "easeOut",
+                layout: { duration: 0.38, ease: [0.22, 1, 0.36, 1] },
+              }}
+              className="flex w-full justify-center px-0.5"
+            >
+              <HeroQrScanCardLink t={t} />
+            </motion.div>
           </motion.div>
-        </motion.div>
-
-        <motion.div
-          layout="position"
-          initial={{ opacity: 0, y: 6 }}
-          animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
-          transition={{
-            duration: 0.5,
-            delay: 1.02,
-            ease: "easeOut",
-            layout: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
-          }}
-          className="pointer-events-auto flex w-full justify-center"
-        >
-          <OptimizedLink
-            href="/journal"
-            className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 backdrop-blur-sm transition-all duration-300 hover:bg-white/10 hover:border-amber-500/30 hover:shadow-[0_0_20px_rgba(245,158,11,0.06)]"
-            aria-label={tJournal("title")}
-          >
-            <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-400/90 transition-colors group-hover:border-amber-500/35 group-hover:bg-amber-500/15">
-              <BookOpen className="h-3.5 w-3.5" />
-            </span>
-            <span className="font-sans text-[0.8125rem] font-medium text-white/90 tracking-tight">
-              {tJournal("title")}
-            </span>
-          </OptimizedLink>
-        </motion.div>
-
-        <motion.div
-          layout="position"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{
-            opacity: shouldAnimate ? 1 : 0,
-            y: shouldAnimate ? 0 : 16,
-          }}
-          transition={{
-            duration: 0.55,
-            delay: 1.08,
-            ease: "easeOut",
-            layout: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
-          }}
-          className="pointer-events-auto flex w-full justify-center px-0.5"
-        >
-          <HeroQrScanCardLink t={t} />
-        </motion.div>
-      </motion.div>
+        </div>
+      </LayoutGroup>
 
       {/* Desktop: QR card */}
       <motion.div
