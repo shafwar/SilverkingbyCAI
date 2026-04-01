@@ -298,6 +298,20 @@
     box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
   }
 
+  /**
+   * Admin login: Chrome/Safari autofill forces light backgrounds on inputs.
+   * Match our dark glass fields so the panel stays on-brand.
+   */
+  .admin-login-field:-webkit-autofill,
+  .admin-login-field:-webkit-autofill:hover,
+  .admin-login-field:-webkit-autofill:focus,
+  .admin-login-field:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #0c0c0e inset !important;
+    box-shadow: 0 0 0 1000px #0c0c0e inset !important;
+    -webkit-text-fill-color: #f4f4f5 !important;
+    caret-color: #fff;
+  }
+
   .luxury-heading {
     font-size: 3.75rem;
     font-weight: 700;

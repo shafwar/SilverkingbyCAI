@@ -65,9 +65,22 @@ const cardVariants: Variants = {
 
 const CATEGORY_ORDER: MerchandiseCategory[] = ["polo", "tshirt_cap", "knitware"];
 
-/** Footer “Hubungi admin”: satu sumber untuk tampilan, tel:, dan wa.me */
-const MERCH_ADMIN_MSISDN = "6285285726980";
-const MERCH_ADMIN_DISPLAY = "+62 852-8572-6980";
+/**
+ * Footer “Hubungi admin”: satu sumber untuk tampilan, tel:, dan wa.me.
+ * Override via NEXT_PUBLIC_MERCH_ADMIN_MSISDN (digits, e.g. 6285…) dan
+ * NEXT_PUBLIC_MERCH_ADMIN_DISPLAY (human label); fallback = commit merchandise baseline.
+ */
+const MERCH_ADMIN_MSISDN =
+  typeof process.env.NEXT_PUBLIC_MERCH_ADMIN_MSISDN === "string" &&
+  process.env.NEXT_PUBLIC_MERCH_ADMIN_MSISDN.trim() !== ""
+    ? process.env.NEXT_PUBLIC_MERCH_ADMIN_MSISDN.replace(/\D/g, "")
+    : "6285285726980";
+
+const MERCH_ADMIN_DISPLAY =
+  typeof process.env.NEXT_PUBLIC_MERCH_ADMIN_DISPLAY === "string" &&
+  process.env.NEXT_PUBLIC_MERCH_ADMIN_DISPLAY.trim() !== ""
+    ? process.env.NEXT_PUBLIC_MERCH_ADMIN_DISPLAY.trim()
+    : "+62 852-8572-6980";
 
 /** Fallback R2 paths when API returns no items (e.g. production not seeded) — matches compress-and-upload keys */
 const FALLBACK_IMAGE_PATHS: Record<MerchandiseCategory, string[]> = {

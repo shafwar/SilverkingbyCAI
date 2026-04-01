@@ -5,7 +5,10 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Eye, EyeOff, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, Mail, Lock } from "lucide-react";
+
+const fieldBase =
+  "admin-login-field w-full rounded-xl border bg-[#0c0c0e]/95 px-4 py-3.5 pl-11 text-[15px] text-zinc-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-[border-color,box-shadow] duration-200 placeholder:text-zinc-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-luxury-gold/20";
 
 export function AdminLoginForm() {
   const t = useTranslations("admin.login");
@@ -41,9 +44,9 @@ export function AdminLoginForm() {
         duration: 2000,
       });
       router.push("/admin");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error(t("loginFailed"), {
-        description: error.message || tCommon("tryAgain"),
+        description: error instanceof Error ? error.message : tCommon("tryAgain"),
         duration: 4000,
       });
     } finally {
@@ -51,137 +54,108 @@ export function AdminLoginForm() {
     }
   }
 
+  const emailBorder =
+    focused === "email"
+      ? "border-luxury-gold/45 ring-1 ring-luxury-gold/25"
+      : "border-white/[0.1] hover:border-white/[0.14]";
+  const passwordBorder =
+    focused === "password"
+      ? "border-luxury-gold/45 ring-1 ring-luxury-gold/25"
+      : "border-white/[0.1] hover:border-white/[0.14]";
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-7">
-      {/* Email */}
+    <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <label className="block text-[10px] font-semibold uppercase tracking-[0.3em] text-white/30 mb-3">
+        <label
+          htmlFor="admin-login-email"
+          className="mb-2.5 block text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500"
+        >
           {t("email")}
         </label>
         <div className="relative">
+          <Mail
+            className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-zinc-600"
+            aria-hidden
+          />
           <input
+            id="admin-login-email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onFocus={() => setFocused("email")}
             onBlur={() => setFocused(null)}
-            className="w-full border-0 border-b bg-transparent pb-3 text-[15px] text-white placeholder:text-white/20 outline-none transition-all duration-300"
-            style={{
-              borderBottomWidth: "1px",
-              borderBottomColor:
-                focused === "email"
-                  ? "rgba(212,175,55,0.6)"
-                  : "rgba(255,255,255,0.1)",
-            }}
+            className={`${fieldBase} ${emailBorder} pr-4`}
             type="email"
             placeholder="admin@silverking.id"
             autoComplete="email"
             required
           />
-          {/* Focus glow line */}
-          <div
-            className="absolute bottom-0 left-0 right-0 h-px transition-all duration-500"
-            style={{
-              background:
-                focused === "email"
-                  ? "linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.6) 50%, transparent 100%)"
-                  : "transparent",
-              boxShadow:
-                focused === "email"
-                  ? "0 1px 12px -2px rgba(212,175,55,0.25)"
-                  : "none",
-            }}
-          />
         </div>
       </div>
 
-      {/* Password */}
       <div>
-        <label className="block text-[10px] font-semibold uppercase tracking-[0.3em] text-white/30 mb-3">
+        <label
+          htmlFor="admin-login-password"
+          className="mb-2.5 block text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500"
+        >
           {t("password")}
         </label>
         <div className="relative">
+          <Lock
+            className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-zinc-600"
+            aria-hidden
+          />
           <input
+            id="admin-login-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onFocus={() => setFocused("password")}
             onBlur={() => setFocused(null)}
-            className="w-full border-0 border-b bg-transparent pb-3 pr-11 text-[15px] text-white placeholder:text-white/20 outline-none transition-all duration-300"
-            style={{
-              borderBottomWidth: "1px",
-              borderBottomColor:
-                focused === "password"
-                  ? "rgba(212,175,55,0.6)"
-                  : "rgba(255,255,255,0.1)",
-            }}
+            className={`${fieldBase} ${passwordBorder} pr-12`}
             type={showPassword ? "text" : "password"}
-            placeholder="Enter your password"
+            placeholder="••••••••"
             autoComplete="current-password"
             required
-          />
-          {/* Focus glow line */}
-          <div
-            className="absolute bottom-0 left-0 right-0 h-px transition-all duration-500"
-            style={{
-              background:
-                focused === "password"
-                  ? "linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.6) 50%, transparent 100%)"
-                  : "transparent",
-              boxShadow:
-                focused === "password"
-                  ? "0 1px 12px -2px rgba(212,175,55,0.25)"
-                  : "none",
-            }}
           />
           <button
             type="button"
             onClick={() => setShowPassword((p) => !p)}
-            className="absolute right-0 bottom-2.5 rounded-md p-1 text-white/20 hover:text-luxury-gold/70 transition-colors duration-200"
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-zinc-500 transition-colors hover:bg-white/[0.06] hover:text-luxury-gold/90"
             aria-label={showPassword ? "Hide password" : "Show password"}
             tabIndex={-1}
           >
-            {showPassword ? (
-              <EyeOff className="h-4 w-4" />
-            ) : (
-              <Eye className="h-4 w-4" />
-            )}
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
       </div>
 
-      {/* Error */}
       {error && (
-        <div className="rounded-lg border border-red-500/15 bg-red-500/[0.05] px-4 py-3 text-[13px] text-red-400/80">
+        <div
+          role="alert"
+          className="rounded-xl border border-red-500/20 bg-red-950/30 px-4 py-3 text-[13px] leading-relaxed text-red-300/90 backdrop-blur-sm"
+        >
           {error}
         </div>
       )}
 
-      {/* Submit */}
-      <div className="pt-2">
+      <div className="pt-1">
         <button
           type="submit"
           disabled={loading}
-          className="group relative w-full overflow-hidden rounded-xl py-4 text-[13px] font-bold tracking-[0.06em] uppercase text-black transition-all duration-400 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
-          style={{
-            background:
-              "linear-gradient(135deg, #B8960E 0%, #D4AF37 25%, #FFD700 55%, #E8C84A 80%, #D4AF37 100%)",
-            boxShadow: "0 8px 32px -8px rgba(212,175,55,0.3)",
-          }}
+          className="group relative w-full overflow-hidden rounded-xl border border-luxury-gold/25 bg-gradient-to-b from-[#e8c547] via-[#d4af37] to-[#b8960e] py-3.5 text-[12px] font-extrabold uppercase tracking-[0.12em] text-[#0a0a0a] shadow-[0_8px_28px_-6px_rgba(212,175,55,0.45)] transition-[transform,box-shadow,opacity] duration-200 hover:shadow-[0_12px_36px_-8px_rgba(212,175,55,0.5)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
         >
-          {/* Shine sweep */}
-          <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-[200%] group-hover:translate-x-[200%] transition-transform duration-[800ms] ease-out pointer-events-none" />
+          <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+          <span className="absolute inset-0 translate-x-[-120%] bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-[120%]" />
 
-          <span className="relative z-10 inline-flex items-center justify-center gap-2.5">
+          <span className="relative z-10 inline-flex w-full items-center justify-center gap-2.5">
             {loading ? (
               <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-black/15 border-t-black/60" />
-                <span className="normal-case tracking-normal font-semibold">
-                  {t("signingIn")}
-                </span>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black/70" />
+                <span className="normal-case tracking-normal font-bold">{t("signingIn")}</span>
               </>
             ) : (
               <>
                 <span>{t("signIn")}</span>
-                <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
               </>
             )}
           </span>
