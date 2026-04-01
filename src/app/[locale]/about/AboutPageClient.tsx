@@ -8,6 +8,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { usePageSections } from "@/hooks/usePageSections";
+import { usePageMedia } from "@/hooks/usePageMedia";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
@@ -117,17 +118,14 @@ export default function AboutPageClient() {
   const noiseOverlay = useRef<HTMLDivElement | null>(null);
   const gradientOverlay = useRef<HTMLDivElement | null>(null);
   const heroVideoRef = useRef<HTMLVideoElement | null>(null);
-  const {
-    sections: pageSections,
-    loading: sectionsLoading,
-    refetch: refetchPageSections,
-  } = usePageSections("about");
+  const { sections: pageSections, refetch: refetchPageSections } = usePageSections("about");
+  const { data: pageMediaAbout } = usePageMedia("about");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
   const heroMediaUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/gold-footage.mp4");
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
   // Ensure about-page hero video autoplays reliably on all devices
-  useReliableVideoAutoplay(heroVideoRef);
+  useReliableVideoAutoplay(heroVideoRef, { mode: "background" });
 
   const featureItems = useMemo<FeatureItem[]>(
     () => [
@@ -235,14 +233,17 @@ export default function AboutPageClient() {
       {/* Hero: no media until section data loaded (prevents flash of wrong asset) */}
       <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
         <div className="absolute inset-0 bg-luxury-black z-0" />
-        {sectionsLoading ? (
-          <div className="absolute inset-0 z-10 bg-luxury-black" aria-hidden />
-        ) : heroMediaType === "VIDEO" ? (
+        {heroMediaType === "VIDEO" ? (
           <VideoLoadGuard
             ref={heroVideoRef}
             url={heroMediaUrl}
             version={pageSections.hero?.version}
+            posterUrl={pageMediaAbout?.heroImageUrl ?? null}
             forcePoster={!shouldLoadHeroVideo}
+            lazyAttach
+            deferAttachUntilIdle
+            idleAttachTimeoutMs={520}
+            posterPriority
             containerClassName="absolute inset-0 z-10 h-full w-full"
             className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
             style={{
@@ -255,7 +256,7 @@ export default function AboutPageClient() {
             loop
             muted
             playsInline
-            preload="auto"
+            preload="none"
             disablePictureInPicture
             disableRemotePlayback
             onContextMenu={(e) => e.preventDefault()}

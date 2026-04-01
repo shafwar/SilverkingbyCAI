@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
+import { VideoLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 
 interface HeroWithVideoProps {
   videoSrc: string;
@@ -29,7 +30,6 @@ export default function HeroWithVideo({
   const r2FallbackImage = getR2UrlClient(fallbackImage);
   const videoRef = useRef<HTMLVideoElement>(null);
   const shouldLoadVideo = useShouldLoadHeroVideo();
-  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -62,107 +62,7 @@ export default function HeroWithVideo({
   }, []);
 
   // Ensure video autoplays reliably - hook handles autoplay, we only track loaded state
-  useReliableVideoAutoplay(videoRef);
-
-  // Video loaded state tracking with proper error handling
-  useEffect(() => {
-    if (isMobile) return; // Skip video handling on mobile
-
-    const video = videoRef.current;
-    if (!video) return;
-
-    const handleCanPlay = () => {
-      try {
-        setIsVideoLoaded(true);
-        setVideoError(false);
-      } catch (error) {
-        console.error("[HeroWithVideo] Error in handleCanPlay:", error);
-      }
-    };
-
-    const handleLoadedData = () => {
-      try {
-        setIsVideoLoaded(true);
-        setVideoError(false);
-      } catch (error) {
-        console.error("[HeroWithVideo] Error in handleLoadedData:", error);
-      }
-    };
-
-    const handleError = (event: Event) => {
-      try {
-        setIsVideoLoaded(false);
-        setVideoError(true);
-
-        // Get detailed error information
-        const videoElement = event.target as HTMLVideoElement;
-        const error = videoElement.error;
-
-        if (error) {
-          let errorMessage = "[HeroWithVideo] Video error occurred";
-          switch (error.code) {
-            case error.MEDIA_ERR_ABORTED:
-              errorMessage += ": Media loading aborted";
-              break;
-            case error.MEDIA_ERR_NETWORK:
-              errorMessage += ": Network error while loading media";
-              break;
-            case error.MEDIA_ERR_DECODE:
-              errorMessage += ": Media decoding error";
-              break;
-            case error.MEDIA_ERR_SRC_NOT_SUPPORTED:
-              errorMessage += ": Media source not supported";
-              break;
-            default:
-              errorMessage += `: Unknown error (code ${error.code})`;
-          }
-          console.warn(errorMessage, {
-            code: error.code,
-            message: error.message,
-            videoSrc: currentVideoSrc,
-          });
-        } else {
-          console.warn("[HeroWithVideo] Video error occurred (no error details available)", {
-            videoSrc: currentVideoSrc,
-          });
-        }
-      } catch (error) {
-        console.error("[HeroWithVideo] Error in handleError:", error);
-        // Ensure error state is set even if logging fails
-        setVideoError(true);
-        setIsVideoLoaded(false);
-      }
-    };
-
-    // Check if video is already loaded
-    try {
-      if (video.readyState >= 2) {
-        setIsVideoLoaded(true);
-        setVideoError(false);
-      }
-    } catch (error) {
-      console.error("[HeroWithVideo] Error checking video readyState:", error);
-    }
-
-    try {
-      video.addEventListener("canplay", handleCanPlay);
-      video.addEventListener("loadeddata", handleLoadedData);
-      video.addEventListener("error", handleError);
-    } catch (error) {
-      console.error("[HeroWithVideo] Error adding event listeners:", error);
-    }
-
-    return () => {
-      try {
-        video.removeEventListener("canplay", handleCanPlay);
-        video.removeEventListener("loadeddata", handleLoadedData);
-        video.removeEventListener("error", handleError);
-      } catch (error) {
-        console.error("[HeroWithVideo] Error removing event listeners:", error);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMobile]); // currentVideoSrc is computed from isMobile, videoSrc, mobileSrc
+  useReliableVideoAutoplay(videoRef, { mode: "background" });
 
   // Determine which video source to use with error handling
   const currentVideoSrc = (() => {
@@ -178,19 +78,17 @@ export default function HeroWithVideo({
     <section className="relative h-screen w-full overflow-hidden">
       {/* Background Video — skip on mobile or slow connection to keep page light */}
       <div className="absolute inset-0 z-0">
-        {!isMobile && shouldLoadVideo && (
-          <video
+        {!isMobile && shouldLoadVideo && !videoError ? (
+          <VideoLoadGuard
             ref={videoRef}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="metadata"
-            disablePictureInPicture
-            disableRemotePlayback
-            className={`w-full h-full object-cover transition-opacity duration-1000 pointer-events-none select-none ${
-              isVideoLoaded ? "opacity-100" : "opacity-0"
-            }`}
+            url={currentVideoSrc}
+            posterUrl={r2FallbackImage}
+            lazyAttach
+            deferAttachUntilIdle
+            idleAttachTimeoutMs={520}
+            posterPriority
+            containerClassName="absolute inset-0 h-full w-full"
+            className="h-full w-full object-cover pointer-events-none select-none"
             style={{
               pointerEvents: "none",
               outline: "none",
@@ -198,30 +96,30 @@ export default function HeroWithVideo({
               WebkitTouchCallout: "none",
               userSelect: "none",
             }}
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="none"
+            disablePictureInPicture
+            disableRemotePlayback
             onContextMenu={(e) => e.preventDefault()}
+            onError={() => setVideoError(true)}
             onPlay={(e) => {
               try {
                 const video = e.currentTarget;
                 if (video.paused) {
-                  video.play().catch((error) => {
-                    console.warn("[HeroWithVideo] Error playing video:", error);
-                    setVideoError(true);
-                    setIsVideoLoaded(false);
-                  });
+                  video.play().catch(() => setVideoError(true));
                 }
-              } catch (error) {
-                console.error("[HeroWithVideo] Error in onPlay handler:", error);
+              } catch {
                 setVideoError(true);
               }
             }}
-          >
-            <source src={currentVideoSrc} type="video/mp4" />
-            Your browser does not support video.
-          </video>
-        )}
+          />
+        ) : null}
 
         {/* Fallback Image (shown on mobile, slow connection, or if video fails) */}
-        {(isMobile || !shouldLoadVideo || !isVideoLoaded || videoError) && (
+        {(isMobile || !shouldLoadVideo || videoError) && (
           <div
             className="w-full h-full bg-cover bg-center"
             style={{ backgroundImage: `url(${r2FallbackImage})` }}

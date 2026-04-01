@@ -1,7 +1,5 @@
 "use client";
 
-"use client";
-
 import Navbar from "@/components/layout/Navbar";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import Link from "next/link";
@@ -18,6 +16,7 @@ import ProductCard, { type ProductWithPricing } from "@/components/ui/ProductCar
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { usePageSections } from "@/hooks/usePageSections";
+import { usePageMedia } from "@/hooks/usePageMedia";
 import { ModalPortal } from "@/components/ui/ModalPortal";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
@@ -25,6 +24,9 @@ import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import Image from "next/image";
 
 gsap.registerPlugin(ScrollTrigger);
+
+const INITIAL_PRODUCT_GRID = 8;
+const PRODUCT_PAGE_SIZE = 8;
 
 const revealVariants: Variants = {
   initial: { opacity: 0, y: 40 },
@@ -280,22 +282,22 @@ export default function ProductsPageClient() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
   const [isMounted, setIsMounted] = useState(false);
-  const {
-    sections: pageSections,
-    loading: sectionsLoading,
-    refetch: refetchPageSections,
-  } = usePageSections("products");
+  const [visibleProductCount, setVisibleProductCount] = useState(INITIAL_PRODUCT_GRID);
+  const { sections: pageSections, refetch: refetchPageSections } = usePageSections("products");
+  const { data: pageMediaProducts } = usePageMedia("products");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
   const heroMediaUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/gold-stone.mp4");
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
-  // Ensure products hero video autoplays reliably on all devices
-  useReliableVideoAutoplay(videoRef);
+  useReliableVideoAutoplay(videoRef, { mode: "background" });
 
-  // CRITICAL: Delay heavy animations until after initial render
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    setVisibleProductCount(INITIAL_PRODUCT_GRID);
+  }, [selectedFilter, selectedCategory]);
 
   // Enable smooth scroll behavior for fluid scrolling
   useEffect(() => {
@@ -1095,14 +1097,17 @@ export default function ProductsPageClient() {
         <div className="absolute inset-0 bg-luxury-black z-0" />
         <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
 
-        {sectionsLoading ? (
-          <div className="absolute inset-0 z-10 bg-luxury-black" aria-hidden />
-        ) : heroMediaType === "VIDEO" ? (
+        {heroMediaType === "VIDEO" ? (
           <VideoLoadGuard
             ref={videoRef}
             url={heroMediaUrl}
             version={pageSections.hero?.version}
+            posterUrl={pageMediaProducts?.heroImageUrl ?? null}
             forcePoster={!shouldLoadHeroVideo}
+            lazyAttach
+            deferAttachUntilIdle
+            idleAttachTimeoutMs={520}
+            posterPriority
             containerClassName="absolute inset-0 w-screen h-screen z-10"
             className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
             style={{
@@ -1122,7 +1127,7 @@ export default function ProductsPageClient() {
             loop
             muted
             playsInline
-            preload="auto"
+            preload="none"
             disablePictureInPicture
             disableRemotePlayback
             onContextMenu={(e) => e.preventDefault()}
@@ -1176,29 +1181,23 @@ export default function ProductsPageClient() {
       >
         {/* Hero Content - Full left alignment, flush to left edge - Matching What We Do */}
         <div className="relative z-20 w-full text-left pl-4 sm:pl-6 md:pl-8 lg:pl-12 xl:pl-16 2xl:pl-20 pr-4 sm:pr-6 md:pr-8 lg:pr-12">
-          <motion.div
-            ref={heroRef}
-            variants={revealVariants}
-            initial="initial"
-            animate="animate"
-            className="space-y-6 sm:space-y-8 max-w-4xl"
-          >
-            <motion.h1
+          <div ref={heroRef} className="space-y-6 sm:space-y-8 max-w-4xl">
+            <h1
               className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-semibold md:font-bold leading-[1.1] tracking-tight text-white drop-shadow-sm"
               data-hero
             >
               {t("hero.title")}
               <br />
               <span className="font-sans font-semibold md:font-bold">{t("hero.titleBold")}</span>
-            </motion.h1>
-            <motion.p
+            </h1>
+            <p
               data-hero
               className="text-base sm:text-lg md:text-xl font-sans font-light leading-relaxed text-luxury-silver/90 max-w-2xl"
             >
               {t("hero.subtitle") ||
                 "Discover our premium collection of certified precious metals, each bar crafted with precision and verified authenticity."}
-            </motion.p>
-          </motion.div>
+            </p>
+          </div>
         </div>
 
         {/* Scroll indicator – same as Distributor */}
@@ -1393,6 +1392,9 @@ export default function ProductsPageClient() {
                 );
               }
 
+              const displayedProducts = filteredProducts.slice(0, visibleProductCount);
+              const showLoadMore = filteredProducts.length > visibleProductCount;
+
               return (
                 <AnimatePresence mode="wait">
                   <motion.div
@@ -1417,8 +1419,9 @@ export default function ProductsPageClient() {
                         },
                       },
                     }}
-                    className="flex flex-wrap justify-center gap-8 md:gap-10 lg:gap-12"
+                    className="flex flex-col items-center gap-10"
                   >
+                    <div className="flex flex-wrap justify-center gap-8 md:gap-10 lg:gap-12 w-full">
                     {isAdmin && (
                       <motion.div
                         key="cms-plus-card"
@@ -1444,7 +1447,7 @@ export default function ProductsPageClient() {
                       </motion.div>
                     )}
 
-                    {filteredProducts.map((product, index) => (
+                    {displayedProducts.map((product, index) => (
                       <motion.div
                         key={product.id}
                         variants={cardVariants}
@@ -1482,6 +1485,18 @@ export default function ProductsPageClient() {
                         />
                       </motion.div>
                     ))}
+                    </div>
+                    {showLoadMore ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setVisibleProductCount((c) => c + PRODUCT_PAGE_SIZE)
+                        }
+                        className="rounded-full border border-white/20 bg-white/5 px-8 py-3 text-sm font-medium tracking-wide text-white/90 transition hover:border-luxury-gold/40 hover:bg-white/10"
+                      >
+                        {t("loadMoreProducts")}
+                      </button>
+                    ) : null}
                   </motion.div>
                 </AnimatePresence>
               );

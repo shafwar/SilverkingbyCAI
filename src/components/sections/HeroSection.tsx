@@ -16,6 +16,8 @@ interface HeroSectionProps {
   shouldAnimate?: boolean;
   /** When true, video is rendered by layout (PersistentHomeHeroVideo) — no duplicate video, avoids re-mount on navigation */
   skipVideo?: boolean;
+  /** Home LCP: no GSAP hiding headline on first paint; overlays animate without delaying text */
+  priorityLcp?: boolean;
 }
 
 const videoIntroVariants: Variants = {
@@ -113,7 +115,11 @@ const bubbleOrbs = [
   },
 ];
 
-export default function HeroSection({ shouldAnimate = true, skipVideo = false }: HeroSectionProps) {
+export default function HeroSection({
+  shouldAnimate = true,
+  skipVideo = false,
+  priorityLcp = false,
+}: HeroSectionProps) {
   const t = useTranslations("home.hero");
   const tJournal = useTranslations("home.journalTeaser");
   const pathname = usePathname();
@@ -131,7 +137,7 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
   const fadeInTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Ensure hero background video always autoplays on both mobile & desktop
-  useReliableVideoAutoplay(videoRef);
+  useReliableVideoAutoplay(videoRef, { mode: "background" });
 
   // ENHANCED: Detect page transition untuk smooth fade-in/out
   // Works for BOTH navigating TO home AND FROM home to other pages
@@ -291,7 +297,7 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
     };
   }, []);
 
-  const animationState = shouldAnimate ? "visible" : "hidden";
+  const animationState = priorityLcp || shouldAnimate ? "visible" : "hidden";
   const [animationsReady, setAnimationsReady] = useState(false);
 
   // Defer heavy animations until after initial page load
@@ -331,11 +337,9 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
     }
   }, []);
 
-  // SET INITIAL STATES IMMEDIATELY - NO FLICKER (useLayoutEffect runs BEFORE browser paint)
+  // First paint: keep hero copy visible for LCP; GSAP timeline uses fromTo for entrance when not priorityLcp.
   useLayoutEffect(() => {
-    // Only run heavy GSAP animations if animations are ready and should animate
-    if (!animationsReady || !shouldAnimate) {
-      // Set initial states without animations
+    const setTextVisible = () => {
       if (headlineRef.current) {
         const words = headlineRef.current.querySelectorAll(".word");
         gsap.set(words, { opacity: 1, y: 0, rotationX: 0, scale: 1, filter: "blur(0px)" });
@@ -353,52 +357,14 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
         const statItems = statsRef.current.querySelectorAll(".stat-item");
         gsap.set(statItems, { opacity: 1, x: 0, y: 0, filter: "blur(0px)" });
       }
-      return;
-    }
+    };
 
-    const ctx = gsap.context(() => {
-      // Headline words - hidden initially
-      if (headlineRef.current) {
-        const words = headlineRef.current.querySelectorAll(".word");
-        gsap.set(words, {
-          opacity: 0,
-          y: 100,
-          rotationX: -25,
-          scale: 0.8,
-          filter: "blur(10px)",
-        });
-      }
-
-      // Subtitle - hidden initially
-      if (subtitleRef.current) {
-        gsap.set(subtitleRef.current, {
-          opacity: 0,
-          y: 50,
-          clipPath: "polygon(0 0, 100% 0, 100% 0, 0 0)",
-          filter: "blur(8px)",
-        });
-      }
-
-      // Insight stack - hidden initially
-      if (statsRef.current) {
-        gsap.set(statsRef.current, { opacity: 0, x: 40 });
-
-        const statItems = statsRef.current.querySelectorAll(".stat-item");
-        gsap.set(statItems, {
-          opacity: 0,
-          x: 20,
-          y: 10,
-          filter: "blur(4px)",
-        });
-      }
-    });
-
-    return () => ctx.revert();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run once on mount - animationsReady and shouldAnimate handled in separate effect
+    setTextVisible();
+  }, [priorityLcp]);
 
   // ANIMATE WHEN shouldAnimate becomes true
   useEffect(() => {
+    if (priorityLcp) return;
     if (!shouldAnimate) return;
 
     const ctx = gsap.context(() => {
@@ -498,7 +464,7 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
     });
 
     return () => ctx.revert();
-  }, [shouldAnimate, animationsReady]); // Dependencies included for proper effect updates
+  }, [shouldAnimate, animationsReady, priorityLcp]);
 
   return (
     <section

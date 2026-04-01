@@ -4,18 +4,14 @@ import { usePathname } from "next/navigation";
 import { useRef, useEffect, useState } from "react";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { usePageSections } from "@/hooks/usePageSections";
+import { usePageMedia } from "@/hooks/usePageMedia";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { VideoLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 
 const HERO_VIDEO_FALLBACK = "/videos/hero/hero-background.mp4";
 
-/** Delay (ms) after splash finishes before allowing edit button.
- *  Must exceed the hero entrance GSAP animation (~2.7s) + content fade (0.3s). */
 const POST_SPLASH_BUFFER_MS = 3500;
-
-/** Delay (ms) on subsequent visits (splash already shown) before allowing edit button.
- *  Hero entrance animation still plays (~2.7s), so we wait for it. */
 const SUBSEQUENT_VISIT_BUFFER_MS = 3200;
 
 function isHomePath(pathname: string | null): boolean {
@@ -23,10 +19,6 @@ function isHomePath(pathname: string | null): boolean {
   return path === "/" || path === "/en" || path === "/id";
 }
 
-/**
- * Detects whether the splash screen has completed AND all entrance animations
- * have settled, so the edit button can appear without overlapping with content transitions.
- */
 function useSplashComplete(): boolean {
   const [done, setDone] = useState(false);
 
@@ -66,21 +58,26 @@ function useSplashComplete(): boolean {
 }
 
 /**
- * Persistent hero video for Home. Rendered in layout so it does NOT unmount
- * when navigating away. Video URL from page-sections (CMS) or fallback.
- * Admin sees edit icon only after splash + fade-in are fully complete.
+ * Persistent hero video for Home. URL from page-sections (CMS) or fallback.
+ * Poster from PageMedia hero image when present — no CMS workflow change.
  */
 export function PersistentHomeHeroVideo() {
   const pathname = usePathname();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isHome, setIsHome] = useState(false);
   const splashComplete = useSplashComplete();
-  const { sections, loading: sectionsLoading, refetch } = usePageSections("home");
+  const { sections, refetch } = usePageSections("home");
+  const { data: pageMedia } = usePageMedia("home");
+
   const heroUrl = sections.hero?.url ?? getR2UrlClient(HERO_VIDEO_FALLBACK);
   const heroVersion = sections.hero?.version;
 
-  // Maximize autoplay reliability on mobile/desktop.
-  useReliableVideoAutoplay(videoRef);
+  const posterUrl =
+    pageMedia?.heroImageUrl && pageMedia.heroImageUrl.length > 0
+      ? pageMedia.heroImageUrl
+      : null;
+
+  useReliableVideoAutoplay(videoRef, { mode: "background" });
 
   useEffect(() => {
     setIsHome(isHomePath(pathname));
@@ -106,9 +103,7 @@ export function PersistentHomeHeroVideo() {
         transition: "opacity 0.25s ease",
       }}
     >
-      {sectionsLoading ? (
-        <div className="absolute inset-0 bg-luxury-black" aria-hidden />
-      ) : isHome ? (
+      {isHome ? (
         <div className="absolute inset-0 overflow-hidden">
           <div
             className="absolute left-1/2 top-1/2 h-[104%] w-[104%] min-h-[104%] min-w-[104%] -translate-x-1/2 -translate-y-1/2 origin-center scale-100 md:left-0 md:top-0 md:h-full md:w-full md:min-h-0 md:min-w-0 md:translate-x-0 md:translate-y-0 md:scale-100"
@@ -118,6 +113,12 @@ export function PersistentHomeHeroVideo() {
               ref={videoRef}
               url={heroUrl}
               version={heroVersion}
+              posterUrl={posterUrl}
+              posterVersion={undefined}
+              lazyAttach
+              deferAttachUntilIdle
+              idleAttachTimeoutMs={560}
+              posterPriority
               forcePoster={false}
               containerClassName="absolute inset-0 min-w-full min-h-full w-full h-full"
               className="absolute left-1/2 top-1/2 min-w-full min-h-full w-full h-full -translate-x-1/2 -translate-y-1/2 object-cover"
@@ -126,7 +127,7 @@ export function PersistentHomeHeroVideo() {
               loop
               muted
               playsInline
-              preload="auto"
+              preload="none"
               disablePictureInPicture
               disableRemotePlayback
               onContextMenu={(e) => e.preventDefault()}
@@ -136,14 +137,10 @@ export function PersistentHomeHeroVideo() {
       ) : (
         <div className="absolute inset-0 bg-luxury-black" aria-hidden />
       )}
-      {/* Vignette / dark motif - Home only */}
-      {/* Desktop/tablet: keep original gradient exactly as before */}
       <div className="absolute inset-0 hidden md:block bg-gradient-to-b from-black/55 via-black/25 to-black/60 pointer-events-none" />
       <div className="absolute inset-0 hidden md:block bg-gradient-to-r from-black/65 via-transparent to-black/40 pointer-events-none" />
-      {/* Mobile only: lighter gradient so video aura is more visible */}
       <div className="absolute inset-0 md:hidden bg-gradient-to-b from-black/38 via-black/12 to-black/45 pointer-events-none" />
       <div className="absolute inset-0 md:hidden bg-gradient-to-r from-black/45 via-transparent to-black/28 pointer-events-none" />
-      {/* Edit video: only after splash + fade-in are fully complete */}
       {isHome && splashComplete && (
         <HeroEditPortal
           page="home"

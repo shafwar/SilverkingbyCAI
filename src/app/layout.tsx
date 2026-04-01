@@ -60,10 +60,7 @@ export const metadata: Metadata = {
   },
 };
 
-// Root layout - handles root page (/) and admin/API routes
-// [locale] routes are handled by [locale]/layout.tsx
-// Font: GeistSans.variable sets --font-geist-sans on html; body uses GeistSans.className.
-// Splash and all content use font-sans (var(--font-geist-sans)) for consistency; next/font local preloads the font.
+// Geist (next/font via geist package) + Playfair; Tailwind uses --font-geist-sans / --font-playfair.
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${GeistSans.variable} ${playfair.variable}`}>

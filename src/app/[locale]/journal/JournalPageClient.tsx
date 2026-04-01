@@ -6,6 +6,7 @@ import { Link } from "@/i18n/routing";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Navbar from "@/components/layout/Navbar";
 import { usePageSections } from "@/hooks/usePageSections";
+import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import { ScrollRevealSection } from "@/components/shared/ScrollRevealSection";
@@ -65,6 +66,8 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
   const [heroImageError, setHeroImageError] = useState(false);
   const [heroVideoError, setHeroVideoError] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const journalHeroVideoRef = useRef<HTMLVideoElement>(null);
+  useReliableVideoAutoplay(journalHeroVideoRef, { mode: "background" });
   const {
     sections: pageSections,
     loading: sectionsLoading,
@@ -234,9 +237,15 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
           {shouldRenderVideo ? (
             <div className="absolute inset-0">
               <VideoLoadGuard
+                ref={journalHeroVideoRef}
                 key={resolvedHeroVideoSrc}
                 url={resolvedHeroVideoSrc}
                 version={effectiveHeroVideoVersion}
+                posterUrl={posterUrl}
+                posterPriority
+                lazyAttach
+                deferAttachUntilIdle
+                idleAttachTimeoutMs={520}
                 containerClassName="absolute inset-0 h-full w-full"
                 className="absolute inset-0 h-full w-full object-cover"
                 style={{ objectFit: "cover" }}
@@ -244,7 +253,7 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
                 loop
                 muted
                 playsInline
-                preload="auto"
+                preload="none"
                 onError={() => setHeroVideoError(true)}
               />
             </div>

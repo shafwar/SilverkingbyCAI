@@ -301,7 +301,7 @@ export default function MerchandisePageClient() {
     return () => ctx.revert();
   }, [isMounted, byCategory]);
 
-  useReliableVideoAutoplay(footerVideoRef);
+  useReliableVideoAutoplay(footerVideoRef, { mode: "background" });
 
   const openAdd = (category: MerchandiseCategory) => {
     setEditing(null);
@@ -999,6 +999,9 @@ export default function MerchandisePageClient() {
             ref={footerVideoRef}
             url={getR2UrlClient("/videos/hero/gold-footage.mp4")}
             forcePoster={!shouldLoadHeroVideo}
+            lazyAttach
+            deferAttachUntilIdle
+            idleAttachTimeoutMs={720}
             containerClassName="absolute inset-0 w-full h-full"
             className="absolute inset-0 w-full h-full object-cover"
             style={{
@@ -1011,7 +1014,7 @@ export default function MerchandisePageClient() {
             loop
             muted
             playsInline
-            preload="metadata"
+            preload="none"
             disablePictureInPicture
             disableRemotePlayback
             onContextMenu={(e) => e.preventDefault()}

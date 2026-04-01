@@ -9,6 +9,8 @@ import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Plus, X } from "lucide-react";
 import { usePageSections } from "@/hooks/usePageSections";
+import { usePageMedia } from "@/hooks/usePageMedia";
+import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { PageFooter } from "@/components/footer/PageFooter";
@@ -67,6 +69,9 @@ export default function DistributorPageClient({
     loading: sectionsLoading,
     refetch: refetchPageSections,
   } = usePageSections("distributor");
+  const { data: pageMediaDistributor } = usePageMedia("distributor");
+  const distributorHeroVideoRef = useRef<HTMLVideoElement | null>(null);
+  useReliableVideoAutoplay(distributorHeroVideoRef, { mode: "background" });
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "IMAGE";
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
   /** Show hero immediately with server URL; only use CMS URL after sections load (better LCP, no black flash) */
@@ -249,9 +254,15 @@ export default function DistributorPageClient({
         <div className="absolute inset-[-6%] z-10 scale-90 md:scale-100 md:inset-0 origin-center overflow-hidden">
           {displayHeroMediaType === "VIDEO" ? (
             <VideoLoadGuard
+              ref={distributorHeroVideoRef}
               url={displayHeroUrl}
               version={pageSections.hero?.version}
+              posterUrl={pageMediaDistributor?.heroImageUrl ?? null}
               forcePoster={!shouldLoadHeroVideo}
+              lazyAttach
+              deferAttachUntilIdle
+              idleAttachTimeoutMs={520}
+              posterPriority
               containerClassName="absolute inset-0 w-full h-full"
               className="absolute inset-0 w-full h-full object-cover"
               style={{ objectFit: "cover" }}
@@ -259,7 +270,7 @@ export default function DistributorPageClient({
               loop
               muted
               playsInline
-              preload="auto"
+              preload="none"
             />
           ) : (
             <ImageLoadGuard
