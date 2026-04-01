@@ -32,5 +32,10 @@ export async function generateMetadata({
 }
 
 export default function HomePage() {
-  return <HomePageClient />;
+  return (
+    <>
+      <link rel="preload" href="/images/hero-fallback.jpg" as="image" fetchPriority="high" />
+      <HomePageClient />
+    </>
+  );
 }

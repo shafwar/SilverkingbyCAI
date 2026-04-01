@@ -4,9 +4,11 @@ import { useLayoutEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { gsap } from "gsap";
 import { useTranslations } from "next-intl";
+import { getNetworkTier } from "@/utils/network-profile";
 
 /** Max ms to wait for font before starting splash (avoid blocking on very slow networks) */
 const FONT_READY_TIMEOUT_MS = 2000;
+const FONT_READY_TIMEOUT_MEDIUM_MS = 1000;
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -20,10 +22,28 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
 
   // Wait for font to load before animating, so splash never shows fallback font
   useLayoutEffect(() => {
+    const tier = getNetworkTier();
     const letters = textRef.current?.querySelectorAll(".letter");
     const textContainer = textRef.current;
+    const container = containerRef.current;
 
-    if (!letters?.length || !textContainer || !containerRef.current) return;
+    const finish = () => {
+      if (typeof document !== "undefined") {
+        document.body.classList.add("splash-complete");
+      }
+      onComplete();
+    };
+
+    /** Save-Data / 2G: do not block first paint on fonts + long GSAP — hero poster is ready underneath */
+    if (tier === "slow") {
+      const t = window.setTimeout(finish, 280);
+      return () => window.clearTimeout(t);
+    }
+
+    if (!letters?.length || !textContainer || !container) {
+      finish();
+      return;
+    }
 
     // CRITICAL: Hide letters immediately so no flash of wrong font
     gsap.set(letters, {
@@ -33,10 +53,15 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
       scale: 0.9,
     });
 
+    const fontTimeout = tier === "medium" ? FONT_READY_TIMEOUT_MEDIUM_MS : FONT_READY_TIMEOUT_MS;
+    const staggerAmount = tier === "medium" ? 0.85 : 1.6;
+    const holdBeforeFade = tier === "medium" ? 0.12 : 0.3;
+    const fadeOutDuration = tier === "medium" ? 0.45 : 0.6;
+
     const runTimeline = () => {
-      const container = containerRef.current;
+      const c = containerRef.current;
       const textEl = textRef.current;
-      if (!container || !textEl) return;
+      if (!c || !textEl) return;
 
       gsapCtxRef.current = gsap.context(() => {
         const tl = gsap.timeline();
@@ -48,49 +73,35 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
             y: 0,
             filter: "blur(0px)",
             scale: 1,
-            duration: 0.7,
+            duration: tier === "medium" ? 0.55 : 0.7,
             stagger: {
-              amount: 1.6,
+              amount: staggerAmount,
               ease: "power2.inOut",
             },
             ease: "expo.out",
           },
-          0.1
+          0.08
         );
 
         tl.to(
           textEl,
-          { scale: 1.015, duration: 0.3, ease: "power2.out" },
-          "-=0.4"
+          { scale: 1.015, duration: 0.25, ease: "power2.out" },
+          "-=0.35"
         );
-        tl.to(
-          textEl,
-          { scale: 1, duration: 0.3, ease: "power2.inOut" },
-          "-=0.15"
-        );
-        tl.to({}, { duration: 0.3 });
-        tl.to(
-          container,
-          {
-            opacity: 0,
-            duration: 0.6,
-            ease: "power3.inOut",
-            onComplete: () => {
-              if (typeof document !== "undefined") {
-                document.body.classList.add("splash-complete");
-              }
-              onComplete();
-            },
-          },
-          "+=0.2"
-        );
-      }, container);
+        tl.to(textEl, { scale: 1, duration: 0.22, ease: "power2.inOut" }, "-=0.12");
+        tl.to({}, { duration: holdBeforeFade });
+        tl.to(c, {
+          opacity: 0,
+          duration: fadeOutDuration,
+          ease: "power3.inOut",
+          onComplete: finish,
+        });
+      }, c);
     };
 
-    // Start animation only after fonts are ready (Geist loaded), or after timeout
     Promise.race([
       document.fonts.ready,
-      new Promise<void>((r) => setTimeout(r, FONT_READY_TIMEOUT_MS)),
+      new Promise<void>((r) => setTimeout(r, fontTimeout)),
     ]).then(runTimeline);
 
     return () => {

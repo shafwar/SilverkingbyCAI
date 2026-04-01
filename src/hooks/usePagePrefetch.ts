@@ -4,16 +4,21 @@ import { useEffect } from "react";
 import { useRouter } from "@/i18n/routing";
 import { useLocale } from "next-intl";
 import { routing } from "@/i18n/routing";
+import { getNetworkTier } from "@/utils/network-profile";
 
 /**
- * Global hook for aggressive page prefetching
- * Prefetches all main navigation routes when component mounts
+ * Global hook for page prefetching — toned down on slow / Save-Data so first load stays responsive.
  */
 export function usePagePrefetch() {
   const router = useRouter();
   const locale = useLocale();
 
   useEffect(() => {
+    const tier = getNetworkTier();
+    if (tier === "slow") {
+      return;
+    }
+
     // All main navigation routes - prioritize most visited
     const routes = ["/", "/about", "/products", "/what-we-do", "/authenticity", "/contact"];
 
@@ -77,32 +82,66 @@ export function usePagePrefetch() {
       }
     };
 
-    // Prefetch critical routes immediately
-    prefetchRoute("/");
-    prefetchRoute("/about");
+    let cancelled = false;
 
-    // Prefetch other routes with staggered timing (non-blocking)
-    routes.slice(2).forEach((route, index) => {
-      schedulePrefetch(route, (index + 1) * 200); // Stagger by 200ms
-    });
+    if (tier === "medium") {
+      const start = () => {
+        if (cancelled) return;
+        try {
+          router.prefetch("/");
+        } catch {
+          /* ignore */
+        }
+        setTimeout(() => {
+          if (cancelled) return;
+          try {
+            router.prefetch("/about");
+          } catch {
+            /* ignore */
+          }
+        }, 600);
+      };
+      const delayed = window.setTimeout(start, 4500);
+      return () => {
+        cancelled = true;
+        clearTimeout(delayed);
+      };
+    }
 
-    // Also prefetch again after page is fully loaded (idle time)
+    const runInitialPrefetch = () => {
+      if (cancelled) return;
+      prefetchRoute("/");
+      prefetchRoute("/about");
+      routes.slice(2).forEach((route, index) => {
+        schedulePrefetch(route, (index + 1) * 350);
+      });
+    };
+
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      requestIdleCallback(runInitialPrefetch, { timeout: 1400 });
+    } else {
+      setTimeout(runInitialPrefetch, 450);
+    }
+
     const handleLoad = () => {
+      if (cancelled) return;
       if (typeof window !== "undefined" && "requestIdleCallback" in window) {
         requestIdleCallback(
           () => {
+            if (cancelled) return;
             routes.forEach((route) => {
               prefetchRoute(route);
             });
           },
-          { timeout: 3000 }
+          { timeout: 4000 }
         );
       } else {
         setTimeout(() => {
+          if (cancelled) return;
           routes.forEach((route) => {
             prefetchRoute(route);
           });
-        }, 1000);
+        }, 1500);
       }
     };
 
@@ -111,8 +150,12 @@ export function usePagePrefetch() {
         handleLoad();
       } else {
         window.addEventListener("load", handleLoad, { once: true });
-        return () => window.removeEventListener("load", handleLoad);
       }
     }
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("load", handleLoad);
+    };
   }, [router, locale]);
 }

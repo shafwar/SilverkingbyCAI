@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useRef, useEffect, useLayoutEffect, useState } from "react";
+import { useRef, useEffect, useState } from "react";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { usePageSections } from "@/hooks/usePageSections";
 import { usePageMedia } from "@/hooks/usePageMedia";
@@ -11,8 +11,9 @@ import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 
 const HERO_VIDEO_FALLBACK = "/videos/hero/hero-background.mp4";
 
-const POST_SPLASH_BUFFER_MS = 3500;
-const SUBSEQUENT_VISIT_BUFFER_MS = 3200;
+/** Delay before showing hero edit affordance only — keep minimal so UI is not blocked */
+const POST_SPLASH_BUFFER_MS = 400;
+const SUBSEQUENT_VISIT_BUFFER_MS = 0;
 
 function isHomePath(pathname: string | null): boolean {
   const path = (pathname ?? "").replace(/\/$/, "").trim() || "/";
@@ -76,40 +77,6 @@ function usePrefersReducedMotion(): boolean {
   return reduced;
 }
 
-/**
- * After first splash, `splash-complete` is set on body; repeat visits skip splash via sessionStorage.
- */
-function useHomeHeroVideoReveal(): "instant" | "animating" | "revealed" {
-  const [state, setState] = useState<"instant" | "animating" | "revealed">("animating");
-
-  useLayoutEffect(() => {
-    try {
-      if (sessionStorage.getItem("splashShown") === "true") {
-        setState("instant");
-        return;
-      }
-    } catch {
-      /* ignore */
-    }
-
-    if (typeof document !== "undefined" && document.body.classList.contains("splash-complete")) {
-      setState("revealed");
-      return;
-    }
-
-    const obs = new MutationObserver(() => {
-      if (document.body.classList.contains("splash-complete")) {
-        setState("revealed");
-        obs.disconnect();
-      }
-    });
-    obs.observe(document.body, { attributes: true, attributeFilter: ["class"] });
-    return () => obs.disconnect();
-  }, []);
-
-  return state;
-}
-
 export function PersistentHomeHeroVideo() {
   const pathname = usePathname();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -118,17 +85,17 @@ export function PersistentHomeHeroVideo() {
   const [everHome, setEverHome] = useState(() => isHomePath(pathname));
   const splashComplete = useSplashComplete();
   const prefersReducedMotion = usePrefersReducedMotion();
-  const videoReveal = useHomeHeroVideoReveal();
   const { sections, refetch } = usePageSections("home");
   const { data: pageMedia } = usePageMedia("home");
 
   const heroUrl = sections.hero?.url ?? getR2UrlClient(HERO_VIDEO_FALLBACK);
   const heroVersion = sections.hero?.version;
 
+  /** Static fallback so poster + gradient never sit on an invisible layer (fixes “black hero” on slow JS / splash) */
   const posterUrl =
     pageMedia?.heroImageUrl && pageMedia.heroImageUrl.length > 0
       ? pageMedia.heroImageUrl
-      : null;
+      : "/images/hero-fallback.jpg";
 
   useReliableVideoAutoplay(videoRef, { mode: "background" });
 
@@ -166,8 +133,10 @@ export function PersistentHomeHeroVideo() {
       version={heroVersion}
       posterUrl={posterUrl}
       posterVersion={undefined}
-      lazyAttach={false}
-      deferAttachUntilIdle={false}
+      lazyAttach
+      deferAttachUntilIdle
+      idleAttachTimeoutMs={900}
+      posterPriority
       optimizeGpu
       forcePoster={false}
       suspendSrc={prefersReducedMotion}
@@ -189,15 +158,8 @@ export function PersistentHomeHeroVideo() {
   const videoShellClass =
     "absolute left-1/2 top-1/2 h-[104%] w-[104%] min-h-[104%] min-w-[104%] -translate-x-1/2 -translate-y-1/2 origin-center scale-100 md:left-0 md:top-0 md:h-full md:w-full md:min-h-0 md:min-w-0 md:translate-x-0 md:translate-y-0 md:scale-100";
 
-  const skipShellFade = prefersReducedMotion || videoReveal === "instant";
-  const shellVisible = skipShellFade || videoReveal === "revealed";
-  const shellClassName = [
-    videoShellClass,
-    skipShellFade ? "opacity-100" : shellVisible ? "opacity-100" : "opacity-0",
-    skipShellFade ? "" : "transition-opacity duration-500 ease-out motion-reduce:transition-none motion-reduce:opacity-100",
-  ]
-    .filter(Boolean)
-    .join(" ");
+  /** Always show poster/placeholder at full opacity — splash overlay (z-9999) covers brand moment; fading the whole shell left semi-transparent gradients over nothing = black screen on mobile */
+  const shellClassName = [videoShellClass, "opacity-100"].join(" ");
 
   return (
     <div
