@@ -87,6 +87,8 @@ export default function HeroWithVideo({
             deferAttachUntilIdle
             idleAttachTimeoutMs={520}
             posterPriority
+            optimizeGpu
+            lightVideoFade
             containerClassName="absolute inset-0 h-full w-full"
             className="h-full w-full object-cover pointer-events-none select-none"
             style={{

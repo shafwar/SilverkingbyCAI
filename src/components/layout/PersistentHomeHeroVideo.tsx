@@ -12,13 +12,12 @@ import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 
 const HERO_VIDEO_FALLBACK = "/videos/hero/hero-background.mp4";
 
-/** Scale/opacity only — avoid filter blur over full-screen decode (keeps playback smooth) */
+/** Opacity only — scaling full-screen video during transition fights the decoder (jank / dropped frames) */
 const persistentVideoIntroVariants: Variants = {
-  hidden: { opacity: 0, scale: 1.08 },
+  hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    scale: 1,
-    transition: { duration: 1.35, ease: [0.16, 1, 0.3, 1] },
+    transition: { duration: 0.75, ease: [0.22, 1, 0.36, 1] },
   },
 };
 
@@ -124,9 +123,9 @@ function useHomeHeroVideoReveal(): "instant" | "animating" | "revealed" {
 export function PersistentHomeHeroVideo() {
   const pathname = usePathname();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [isHome, setIsHome] = useState(false);
-  const [homeVideoCycle, setHomeVideoCycle] = useState(0);
-  const wasHomeRef = useRef(false);
+  const [isHome, setIsHome] = useState(() => isHomePath(pathname));
+  /** Once user has opened home, keep <video> mounted (pause when away) — avoids re-decode, blank, and transition jank on SPA return */
+  const [everHome, setEverHome] = useState(() => isHomePath(pathname));
   const splashComplete = useSplashComplete();
   const prefersReducedMotion = usePrefersReducedMotion();
   const videoReveal = useHomeHeroVideoReveal();
@@ -141,28 +140,22 @@ export function PersistentHomeHeroVideo() {
       ? pageMedia.heroImageUrl
       : null;
 
-  useReliableVideoAutoplay(videoRef, {
-    mode: "background",
-    reattachKey: homeVideoCycle,
-  });
+  useReliableVideoAutoplay(videoRef, { mode: "background" });
 
   useEffect(() => {
     const home = isHomePath(pathname);
-    if (home) {
-      if (!wasHomeRef.current) {
-        setHomeVideoCycle((n) => n + 1);
-      }
-      wasHomeRef.current = true;
-    } else {
-      wasHomeRef.current = false;
-    }
     setIsHome(home);
+    if (home) setEverHome(true);
   }, [pathname]);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    if (!isHome) video.pause();
+    if (!isHome) {
+      video.pause();
+      return;
+    }
+    void video.play().catch(() => {});
   }, [isHome]);
 
   /** bfcache / iOS: resume after back-forward */
@@ -174,24 +167,37 @@ export function PersistentHomeHeroVideo() {
     };
     window.addEventListener("pageshow", onPageShow);
     return () => window.removeEventListener("pageshow", onPageShow);
-  }, [isHome, homeVideoCycle]);
+  }, [isHome]);
 
-  /** Logo → home SPA: new <video> node; kick play after layout (pairs with reattachKey) */
-  useLayoutEffect(() => {
-    if (!isHome) return;
-    const v = videoRef.current;
-    if (!v) return;
-    const kick = () => void v.play().catch(() => {});
-    kick();
-    const r = requestAnimationFrame(kick);
-    const t = window.setTimeout(kick, 160);
-    return () => {
-      cancelAnimationFrame(r);
-      window.clearTimeout(t);
-    };
-  }, [isHome, homeVideoCycle]);
+  const videoInner = (
+    <VideoLoadGuard
+      ref={videoRef}
+      url={heroUrl}
+      version={heroVersion}
+      posterUrl={posterUrl}
+      posterVersion={undefined}
+      lazyAttach={false}
+      deferAttachUntilIdle={false}
+      optimizeGpu
+      forcePoster={false}
+      suspendSrc={prefersReducedMotion}
+      lightVideoFade
+      containerClassName="absolute inset-0 min-w-full min-h-full w-full h-full"
+      className="absolute left-1/2 top-1/2 min-w-full min-h-full w-full h-full -translate-x-1/2 -translate-y-1/2 object-cover"
+      style={{ pointerEvents: "none" }}
+      autoPlay
+      loop
+      muted
+      playsInline
+      preload="none"
+      disablePictureInPicture
+      disableRemotePlayback
+      onContextMenu={(e) => e.preventDefault()}
+    />
+  );
 
-  const videoMountKey = `home-hero-${homeVideoCycle}`;
+  const videoShellClass =
+    "absolute left-1/2 top-1/2 h-[104%] w-[104%] min-h-[104%] min-w-[104%] -translate-x-1/2 -translate-y-1/2 origin-center scale-100 md:left-0 md:top-0 md:h-full md:w-full md:min-h-0 md:min-w-0 md:translate-x-0 md:translate-y-0 md:scale-100";
 
   return (
     <div
@@ -200,81 +206,30 @@ export function PersistentHomeHeroVideo() {
       style={{
         visibility: isHome ? "visible" : "hidden",
         opacity: isHome ? 1 : 0,
-        transition: "opacity 0.25s ease",
+        transition: "opacity 0.2s ease-out",
       }}
     >
-      {isHome ? (
+      {everHome ? (
         <div className="absolute inset-0 overflow-hidden">
           {videoReveal === "instant" || prefersReducedMotion ? (
-            <div
-              className="absolute left-1/2 top-1/2 h-[104%] w-[104%] min-h-[104%] min-w-[104%] -translate-x-1/2 -translate-y-1/2 origin-center scale-100 md:left-0 md:top-0 md:h-full md:w-full md:min-h-0 md:min-w-0 md:translate-x-0 md:translate-y-0 md:scale-100"
-              aria-hidden
-            >
-              <VideoLoadGuard
-                key={videoMountKey}
-                ref={videoRef}
-                url={heroUrl}
-                version={heroVersion}
-                posterUrl={posterUrl}
-                posterVersion={undefined}
-                lazyAttach={false}
-                deferAttachUntilIdle
-                idleAttachTimeoutMs={560}
-                optimizeGpu
-                forcePoster={false}
-                suspendSrc={prefersReducedMotion}
-                containerClassName="absolute inset-0 min-w-full min-h-full w-full h-full"
-                className="absolute left-1/2 top-1/2 min-w-full min-h-full w-full h-full -translate-x-1/2 -translate-y-1/2 object-cover"
-                style={{ pointerEvents: "none" }}
-                autoPlay
-                loop
-                muted
-                playsInline
-                preload="none"
-                disablePictureInPicture
-                disableRemotePlayback
-                onContextMenu={(e) => e.preventDefault()}
-              />
+            <div className={videoShellClass} aria-hidden>
+              {videoInner}
             </div>
           ) : (
             <motion.div
-              className="absolute left-1/2 top-1/2 h-[104%] w-[104%] min-h-[104%] min-w-[104%] -translate-x-1/2 -translate-y-1/2 origin-center scale-100 md:left-0 md:top-0 md:h-full md:w-full md:min-h-0 md:min-w-0 md:translate-x-0 md:translate-y-0 md:scale-100"
+              className={videoShellClass}
               variants={persistentVideoIntroVariants}
               initial="hidden"
               animate={videoReveal === "revealed" ? "visible" : "hidden"}
               aria-hidden
             >
-              <VideoLoadGuard
-                key={videoMountKey}
-                ref={videoRef}
-                url={heroUrl}
-                version={heroVersion}
-                posterUrl={posterUrl}
-                posterVersion={undefined}
-                lazyAttach={false}
-                deferAttachUntilIdle
-                idleAttachTimeoutMs={560}
-                optimizeGpu
-                forcePoster={false}
-                suspendSrc={prefersReducedMotion}
-                containerClassName="absolute inset-0 min-w-full min-h-full w-full h-full"
-                className="absolute left-1/2 top-1/2 min-w-full min-h-full w-full h-full -translate-x-1/2 -translate-y-1/2 object-cover"
-                style={{ pointerEvents: "none" }}
-                autoPlay
-                loop
-                muted
-                playsInline
-                preload="none"
-                disablePictureInPicture
-                disableRemotePlayback
-                onContextMenu={(e) => e.preventDefault()}
-              />
+              {videoInner}
             </motion.div>
           )}
         </div>
-      ) : (
+      ) : !isHome ? (
         <div className="absolute inset-0 bg-luxury-black" aria-hidden />
-      )}
+      ) : null}
       <div
         className="absolute inset-0 hidden md:block pointer-events-none"
         style={{

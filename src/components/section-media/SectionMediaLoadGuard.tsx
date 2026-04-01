@@ -30,6 +30,8 @@ type VideoGuardProps = Omit<React.ComponentPropsWithoutRef<"video">, "src"> & {
   lcpFriendlyPoster?: boolean;
   /** Promote stable GPU layer + drop will-change after fade (smoother video decode on laptops) */
   optimizeGpu?: boolean;
+  /** Shorter opacity fade on the video element (less overlap with layout transitions / decode) */
+  lightVideoFade?: boolean;
 };
 
 type ImageGuardProps = Omit<React.ComponentPropsWithoutRef<"img">, "src"> & {
@@ -63,6 +65,7 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
       posterPriority = false,
       lcpFriendlyPoster = false,
       optimizeGpu = false,
+      lightVideoFade = false,
       ...restVideoProps
     },
     ref
@@ -219,7 +222,7 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
             ...style,
             ...videoStyleProp,
             opacity: ready ? 1 : 0,
-            transition: "opacity 0.45s ease-out",
+            transition: lightVideoFade ? "opacity 0.22s ease-out" : "opacity 0.45s ease-out",
             willChange: optimizeGpu && fadeComplete ? "auto" : "opacity",
             ...(optimizeGpu
               ? {
