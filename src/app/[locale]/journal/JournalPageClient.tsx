@@ -24,6 +24,15 @@ if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
 }
 
+function formatJournalListDate(iso: string, locale: string) {
+  const d = new Date(iso);
+  const loc = locale === "id" ? "id-ID" : "en-GB";
+  const day = d.toLocaleDateString(loc, { day: "numeric" });
+  const month = d.toLocaleDateString(loc, { month: "long" }).toUpperCase();
+  const year = d.getFullYear();
+  return { primary: `${day} ${month}`, year: String(year) };
+}
+
 const fontJournal = Plus_Jakarta_Sans({
   weight: ["400", "500", "600", "700", "800"],
   subsets: ["latin"],
@@ -339,7 +348,7 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.3 }}
               transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-              className="text-3xl font-semibold tracking-tight text-white sm:text-4xl"
+              className="text-3xl font-black tracking-tight text-white sm:text-4xl"
             >
               {t("listHeading")}
             </motion.h2>
@@ -432,19 +441,26 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
                     </div>
                     <div className="flex flex-col justify-center p-6 md:col-span-3 md:p-10">
                       {latestItems[0].publishedAt && (
-                        <time className="mb-2 text-xs font-medium uppercase tracking-wider text-luxury-gold/80">
-                          {new Date(latestItems[0].publishedAt).toLocaleDateString(locale === "id" ? "id-ID" : "en-GB", {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })}
+                        <time
+                          dateTime={latestItems[0].publishedAt}
+                          className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.65rem] font-bold uppercase tracking-[0.2em] text-luxury-gold sm:text-[0.6875rem]"
+                        >
+                          <span>{formatJournalListDate(latestItems[0].publishedAt, locale).primary}</span>
+                          <span className="text-luxury-gold/35" aria-hidden>
+                            ·
+                          </span>
+                          <span className="font-semibold tabular-nums text-white/45">
+                            {formatJournalListDate(latestItems[0].publishedAt, locale).year}
+                          </span>
                         </time>
                       )}
-                      <h3 className="mb-3 text-xl font-semibold text-white transition-colors group-hover:text-luxury-gold sm:text-2xl md:text-3xl">
+                      <h3 className="mb-3 text-xl font-extrabold tracking-tight text-white transition-colors group-hover:text-luxury-gold sm:text-2xl md:text-3xl">
                         {latestItems[0].title}
                       </h3>
                       {latestItems[0].excerpt && (
-                        <p className="mb-5 line-clamp-3 text-sm text-white/70 md:text-base">{latestItems[0].excerpt}</p>
+                        <p className="mb-5 line-clamp-3 text-sm leading-relaxed text-white/70 md:text-base">
+                          {latestItems[0].excerpt}
+                        </p>
                       )}
                       <span className="inline-flex items-center gap-2 text-sm font-medium text-luxury-gold">
                         {t("readMore")}
@@ -512,15 +528,18 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
                       </div>
                       <div className="p-5 sm:p-6">
                         {latestItems[1].publishedAt && (
-                          <time className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-luxury-gold/80">
-                            {new Date(latestItems[1].publishedAt).toLocaleDateString(locale === "id" ? "id-ID" : "en-GB", {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            })}
+                          <time
+                            dateTime={latestItems[1].publishedAt}
+                            className="mb-2 flex flex-wrap items-center gap-x-1.5 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-luxury-gold"
+                          >
+                            <span>{formatJournalListDate(latestItems[1].publishedAt, locale).primary}</span>
+                            <span className="text-luxury-gold/35">·</span>
+                            <span className="font-semibold tabular-nums text-white/45">
+                              {formatJournalListDate(latestItems[1].publishedAt, locale).year}
+                            </span>
                           </time>
                         )}
-                        <h3 className="mb-2 text-lg font-semibold text-white transition-colors group-hover:text-luxury-gold sm:text-xl">
+                        <h3 className="mb-2 text-lg font-extrabold tracking-tight text-white transition-colors group-hover:text-luxury-gold sm:text-xl">
                           {latestItems[1].title}
                         </h3>
                         {latestItems[1].excerpt && (
@@ -544,15 +563,18 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
                         <div className="flex flex-col sm:flex-row sm:min-h-[200px]">
                           <div className="flex-1 p-5 sm:p-6 sm:order-1 sm:min-w-0">
                             {latestItems[2].publishedAt && (
-                              <time className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-luxury-gold/80">
-                                {new Date(latestItems[2].publishedAt).toLocaleDateString(locale === "id" ? "id-ID" : "en-GB", {
-                                  year: "numeric",
-                                  month: "long",
-                                  day: "numeric",
-                                })}
+                              <time
+                                dateTime={latestItems[2].publishedAt}
+                                className="mb-2 flex flex-wrap items-center gap-x-1.5 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-luxury-gold"
+                              >
+                                <span>{formatJournalListDate(latestItems[2].publishedAt, locale).primary}</span>
+                                <span className="text-luxury-gold/35">·</span>
+                                <span className="font-semibold tabular-nums text-white/45">
+                                  {formatJournalListDate(latestItems[2].publishedAt, locale).year}
+                                </span>
                               </time>
                             )}
-                            <h3 className="mb-2 text-lg font-semibold text-white transition-colors group-hover:text-luxury-gold sm:text-xl">
+                            <h3 className="mb-2 text-lg font-extrabold tracking-tight text-white transition-colors group-hover:text-luxury-gold sm:text-xl">
                               {latestItems[2].title}
                             </h3>
                             {latestItems[2].excerpt && (

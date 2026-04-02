@@ -9,6 +9,10 @@
     "aboutUs": "About us",
     "getInTouch": "Get in touch"
   },
+  "footer": {
+    "instagramAria": "Silver King on Instagram",
+    "whatsappAria": "Contact Silver King on WhatsApp"
+  },
   "common": {
     "loading": "Loading...",
     "error": "Error",
@@ -43,14 +47,7 @@
       "headline4": "value.",
       "headline5": "Pure",
       "headline6": "precision.",
-      "subtitle": "Expert manufacturing of gold, silver, and palladium products. Custom bar fabrication, uncompromising purity, and QR-verified authenticity, redefining trust in precious metals.",
-      "subtitleP1": "Expert manufacturing of ",
-      "subtitleP2": "gold, silver, and palladium",
-      "subtitleP3": " products. ",
-      "subtitleP4": "Custom bar fabrication",
-      "subtitleP5": ", uncompromising purity, and ",
-      "subtitleP6": "QR-verified authenticity",
-      "subtitleP7": ", redefining trust in precious metals.",
+      "subtitle": "Expert manufacturing of <gold>gold, silver, and palladium</gold> products. <custom>Custom bar fabrication</custom>, uncompromising purity, and <qr>QR-verified authenticity</qr>, redefining trust in precious metals.",
       "features": {
         "chainOfCustody": {
           "label": "Chain-of-Custody",
