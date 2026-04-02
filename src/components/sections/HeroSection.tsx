@@ -767,6 +767,48 @@ export default function HeroSection({
         </div>
       </div>
 
+      {/* Mobile only: Journal + Scan & Verify (no chevron, no chain-of-custody / ScrollingFeatures) */}
+      <div
+        className="md:hidden absolute left-0 right-0 z-30 flex flex-col items-center px-4 sm:px-6 pointer-events-none"
+        style={{ bottom: "calc(52px + env(safe-area-inset-bottom, 0px))" }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
+          transition={{ duration: 0.5, delay: 0.95, ease: "easeOut" }}
+          className="pointer-events-auto flex w-full max-w-[min(calc(100vw-32px),380px)] flex-col items-center gap-4 sm:gap-5"
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
+            transition={{ duration: 0.5, delay: 1.02, ease: "easeOut" }}
+            className="flex w-full justify-center"
+          >
+            <OptimizedLink
+              href="/journal"
+              className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 backdrop-blur-sm transition-all duration-300 hover:bg-white/10 hover:border-amber-500/30 hover:shadow-[0_0_20px_rgba(245,158,11,0.06)]"
+              aria-label={tJournal("title")}
+            >
+              <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-400/90 transition-colors group-hover:border-amber-500/35 group-hover:bg-amber-500/15">
+                <BookOpen className="h-3.5 w-3.5" />
+              </span>
+              <span className="font-sans text-[0.8125rem] font-medium text-white/90 tracking-tight">
+                {tJournal("title")}
+              </span>
+            </OptimizedLink>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
+            transition={{ duration: 0.55, delay: 1.08, ease: "easeOut" }}
+            className="flex w-full justify-center px-0.5"
+          >
+            <HeroQrScanCardLink t={t} />
+          </motion.div>
+        </motion.div>
+      </div>
+
       {/* Desktop: QR card */}
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.97 }}
