@@ -733,17 +733,14 @@ export default function HeroSection({
               ref={subtitleRef}
               className="hero-home-subtitle max-w-[92%] sm:max-w-[88%] md:max-w-[85%] text-[0.875rem] sm:text-[0.9375rem] md:text-[1rem] lg:text-[1.0625rem] leading-[1.65] sm:leading-[1.65] md:leading-[1.7] font-light text-white/75 antialiased mt-3.5 sm:mt-5 md:mt-0 md:font-sans"
             >
-              {t.rich("subtitle", {
-                gold: (chunks) => (
-                  <span className="font-medium text-white/90 [font-synthesis:none]">{chunks}</span>
-                ),
-                custom: (chunks) => (
-                  <span className="font-medium text-white/90 [font-synthesis:none]">{chunks}</span>
-                ),
-                qr: (chunks) => (
-                  <span className="font-medium text-white/90 [font-synthesis:none]">{chunks}</span>
-                ),
-              })}
+              {/* Plain segments (no next-intl rich tags) — avoids iOS Safari “” / blue ? box between inline runs */}
+              {t("subtitleP1")}
+              <span className="font-medium text-white/90">{t("subtitleP2")}</span>
+              {t("subtitleP3")}
+              <span className="font-medium text-white/90">{t("subtitleP4")}</span>
+              {t("subtitleP5")}
+              <span className="font-medium text-white/90">{t("subtitleP6")}</span>
+              {t("subtitleP7")}
             </p>
 
             {/* Journal teaser — desktop only: left below subtitle; mobile: moved to between features & Scan & Verify */}
@@ -820,18 +817,16 @@ export default function HeroSection({
           >
             <OptimizedLink
               href="/journal"
-              className="group relative inline-flex items-center gap-3 overflow-hidden rounded-full border border-amber-400/40 bg-gradient-to-b from-white/[0.14] to-white/[0.06] px-4 py-2.5 shadow-[0_6px_28px_-8px_rgba(0,0,0,0.65)] backdrop-blur-md transition-all duration-300 active:scale-[0.98] hover:border-amber-400/55 hover:shadow-[0_8px_32px_-8px_rgba(212,175,55,0.22)]"
+              title={tJournal("title")}
+              className="group relative inline-flex items-center justify-center overflow-hidden rounded-full border border-amber-400/40 bg-gradient-to-b from-white/[0.14] to-white/[0.06] p-3 shadow-[0_6px_28px_-8px_rgba(0,0,0,0.65)] backdrop-blur-md transition-all duration-300 active:scale-[0.98] hover:border-amber-400/55 hover:shadow-[0_8px_32px_-8px_rgba(212,175,55,0.22)]"
               aria-label={tJournal("title")}
             >
               <span
                 aria-hidden
                 className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-amber-400/10 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
               />
-              <span className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500/35 via-amber-500/15 to-amber-600/10 shadow-inner shadow-black/20 ring-2 ring-amber-300/25 ring-offset-2 ring-offset-black/50">
-                <BookOpen className="h-[18px] w-[18px] text-amber-50" strokeWidth={2.25} />
-              </span>
-              <span className="relative font-sans text-[0.9375rem] font-semibold tracking-tight text-white">
-                {tJournal("title")}
+              <span className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500/35 via-amber-500/15 to-amber-600/10 shadow-inner shadow-black/20 ring-2 ring-amber-300/30 ring-offset-2 ring-offset-black/50">
+                <BookOpen className="h-5 w-5 text-amber-50" strokeWidth={2.35} />
               </span>
             </OptimizedLink>
           </motion.div>
