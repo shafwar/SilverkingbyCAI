@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getPublicUrl } from "@/lib/r2-client";
+import { stripJournalAuthorBylines } from "@/utils/journal-html";
 import JournalArticleClient from "./JournalArticleClient";
 
 export const dynamic = "force-dynamic";
@@ -41,10 +42,12 @@ export default async function JournalArticlePage({ params }: Props) {
 
   if (!row) notFound();
 
+  const rawContent = lang === "id" ? row.contentId : row.contentEn;
+
   const article = {
     slug: row.slug,
     title: lang === "id" ? row.titleId : row.titleEn,
-    content: lang === "id" ? row.contentId : row.contentEn,
+    content: stripJournalAuthorBylines(rawContent ?? ""),
     excerpt: (lang === "id" ? row.excerptId : row.excerptEn)?.trim() || null,
     heroImageUrl: row.heroImageR2Key ? getPublicUrl(row.heroImageR2Key) : null,
     publishedAt: row.publishedAt?.toISOString() ?? null,

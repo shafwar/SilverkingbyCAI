@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getPublicUrl } from "@/lib/r2-client";
+import { stripJournalAuthorBylines } from "@/utils/journal-html";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export async function GET(
     }
 
     const title = lang === "id" ? j.titleId : j.titleEn;
-    const content = lang === "id" ? j.contentId : j.contentEn;
+    const content = stripJournalAuthorBylines((lang === "id" ? j.contentId : j.contentEn) ?? "");
     const excerpt = lang === "id" ? j.excerptId : j.excerptEn;
 
     return NextResponse.json({

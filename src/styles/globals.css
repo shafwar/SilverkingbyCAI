@@ -739,12 +739,15 @@ body.modal-active .site-navbar {
 /* Journal article body: admin-uploaded images & embeds */
 .journal-content img,
 .journal-content video {
+  display: block;
   border-radius: 0.875rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   max-width: 100%;
   height: auto;
   margin-top: 1.75rem;
   margin-bottom: 1.75rem;
+  margin-left: auto;
+  margin-right: auto;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
 }
 
@@ -756,6 +759,10 @@ body.modal-active .site-navbar {
 .journal-content figure {
   margin-top: 2rem;
   margin-bottom: 2rem;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 100%;
+  text-align: center;
 }
 
 .journal-content figcaption {

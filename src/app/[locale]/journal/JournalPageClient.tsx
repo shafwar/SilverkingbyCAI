@@ -304,26 +304,28 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
         editLabel="Edit hero"
       />
 
-      {/* Hero section */}
-      <section className="relative flex min-h-screen flex-col justify-center px-4 pt-24 pb-16 sm:px-6 md:px-8">
+      {/* Hero section — editorial left column (not centered band) */}
+      <section className="relative flex min-h-screen flex-col justify-center px-4 pt-24 pb-16 sm:px-6 md:px-8 lg:pl-12 lg:pr-8 xl:pl-16 2xl:pl-24 2xl:pr-14">
         <motion.div
           initial={{ opacity: 0, y: 32 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          className="relative z-20 mx-auto max-w-4xl text-center"
+          className="relative z-20 mx-auto w-full max-w-[min(100%,1440px)] text-left"
         >
-          <div className="mx-auto inline-flex max-w-fit items-center gap-2 rounded-full border border-luxury-gold/30 bg-black/30 px-4 py-1.5 text-sm text-luxury-gold backdrop-blur-sm">
-            <BookOpen className="h-4 w-4" />
-            {t("hero.eyebrow")}
-          </div>
-          <h1 className="mt-5 font-serif text-4xl font-extrabold tracking-tight text-white drop-shadow-[0_2px_26px_rgba(0,0,0,0.75)] sm:text-5xl md:text-6xl lg:text-7xl">
-            {t("hero.title")}
-          </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-base text-white/90 drop-shadow-[0_1px_14px_rgba(0,0,0,0.6)] sm:text-lg md:text-xl">
-            {t("hero.subtitle")}
-          </p>
+          <div className="max-w-3xl">
+            <div className="inline-flex max-w-fit items-center gap-2 rounded-full border border-luxury-gold/30 bg-black/30 px-4 py-1.5 text-sm text-luxury-gold backdrop-blur-sm">
+              <BookOpen className="h-4 w-4" />
+              {t("hero.eyebrow")}
+            </div>
+            <h1 className="mt-5 text-left font-serif text-4xl font-extrabold tracking-tight text-white drop-shadow-[0_2px_26px_rgba(0,0,0,0.75)] sm:text-5xl md:text-6xl lg:text-7xl">
+              {t("hero.title")}
+            </h1>
+            <p className="mt-5 max-w-2xl text-left text-base text-white/90 drop-shadow-[0_1px_14px_rgba(0,0,0,0.6)] sm:text-lg md:text-xl">
+              {t("hero.subtitle")}
+            </p>
 
-          <div className="mx-auto mt-8 h-px w-28 bg-gradient-to-r from-transparent via-luxury-gold/50 to-transparent" />
+            <div className="mt-8 h-px w-28 bg-gradient-to-r from-luxury-gold/55 via-luxury-gold/35 to-transparent" />
+          </div>
         </motion.div>
         <div className="absolute bottom-8 left-1/2 z-20 -translate-x-1/2">
           <motion.div
@@ -339,9 +341,9 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
       {/* Journal list — featured + asymmetric grid */}
       <section
         ref={listRef}
-        className="relative z-10 min-h-screen bg-gradient-to-b from-[#090909] via-[#070707] to-[#050505] px-4 py-20 sm:px-6 md:px-8 lg:px-12"
+        className="relative z-10 min-h-screen bg-gradient-to-b from-[#090909] via-[#070707] to-[#050505] px-4 py-20 sm:px-6 md:px-8 lg:pl-12 lg:pr-8 xl:pl-16 2xl:pl-24 2xl:pr-14"
       >
-        <div className="mx-auto max-w-5xl">
+        <div className="mx-auto w-full max-w-[min(100%,1440px)]">
           <div className="mb-14 flex items-end justify-between gap-4">
             <motion.h2
               initial={{ opacity: 0, y: 20 }}
@@ -475,7 +477,12 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
               {latestItems.length > 1 && (
                 <div className={`grid gap-8 md:gap-10 ${latestItems.length === 2 ? "md:grid-cols-1" : "md:grid-cols-2"}`}>
                   {/* Card 2: image on top, content below */}
-                  <ScrollRevealSection direction="up" delay={0.08} as="div" className={latestItems.length === 2 ? "max-w-xl" : ""}>
+                  <ScrollRevealSection
+                    direction="up"
+                    delay={0.08}
+                    as="div"
+                    className={latestItems.length === 2 ? "max-w-xl mr-auto" : ""}
+                  >
                     <Link
                       href={`/journal/${latestItems[1].slug}`}
                       className="group block overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:border-luxury-gold/25 hover:bg-white/[0.06]"
