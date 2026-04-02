@@ -115,8 +115,7 @@ const lightHomeOrbs = [
     top: "26%",
     left: "6%",
     orbClass: "sk-home-orb sk-home-orb-d1",
-    gradient:
-      "radial-gradient(circle at 60% 40%, rgba(255,215,0,0.28), rgba(255,215,0,0.04) 70%)",
+    gradient: "radial-gradient(circle at 60% 40%, rgba(255,215,0,0.28), rgba(255,215,0,0.04) 70%)",
   },
   {
     id: "light-3",
@@ -133,19 +132,19 @@ function HeroQrScanCardLink({ t }: { t: (key: string) => string }) {
   return (
     <OptimizedLink
       href="/authenticity"
-      className="group inline-flex items-center gap-2.5 sm:gap-3 text-left w-full max-w-[min(calc(100vw-28px),358px)] sm:max-w-[368px] backdrop-blur-sm bg-black/50 border border-white/10 rounded-2xl p-3 sm:p-3.5 transition-all duration-300 hover:bg-black/60 hover:border-white/20 pointer-events-auto"
+      className="group inline-flex items-center gap-3 text-left w-full max-w-[min(calc(100vw-32px),360px)] sm:max-w-[368px] rounded-2xl border border-white/[0.12] bg-black/45 p-3.5 shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur-md transition-all duration-300 hover:border-white/20 hover:bg-black/55 pointer-events-auto"
     >
-      <div className="flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border border-white/20 bg-black/40">
-        <QrCode className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+      <div className="flex h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 items-center justify-center rounded-xl border border-white/25 bg-black/50">
+        <QrCode className="h-[1.15rem] w-[1.15rem] sm:h-5 sm:w-5 text-white" strokeWidth={2} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[0.45rem] sm:text-[0.5rem] uppercase tracking-[0.4em] sm:tracking-[0.45em] text-white/55">
+        <p className="text-[0.5rem] sm:text-[0.5rem] font-medium uppercase tracking-[0.32em] text-luxury-gold">
           {t("qrCard.label")}
         </p>
-        <p className="mt-0.5 text-[0.75rem] sm:text-[0.8125rem] md:text-[0.95rem] font-sans font-semibold text-white tracking-tight leading-tight">
+        <p className="mt-1 text-[0.8125rem] sm:text-[0.875rem] md:text-[0.95rem] font-sans font-semibold text-white tracking-tight leading-snug">
           {t("qrCard.title")}
         </p>
-        <p className="mt-0.5 text-[0.6rem] sm:text-[0.625rem] font-sans text-white/60 leading-relaxed line-clamp-2">
+        <p className="mt-1 text-[0.625rem] sm:text-[0.65rem] font-sans text-white/65 leading-relaxed line-clamp-3 sm:line-clamp-2">
           {t("qrCard.description")}
         </p>
       </div>
@@ -336,11 +335,7 @@ export default function HeroSection({
 
   const animationState = priorityLcp || shouldAnimate ? "visible" : "hidden";
   /** Home + persistent video: vignette/orbs must wait for splash — do not tie to priorityLcp or they never animate */
-  const skipVideoOverlayState = skipVideo
-    ? shouldAnimate
-      ? "visible"
-      : "hidden"
-    : animationState;
+  const skipVideoOverlayState = skipVideo ? (shouldAnimate ? "visible" : "hidden") : animationState;
   const [animationsReady, setAnimationsReady] = useState(false);
 
   // Defer heavy animations until after initial page load
@@ -388,20 +383,12 @@ export default function HeroSection({
         gsap.set(words, { opacity: 1, y: 0, rotationX: 0, scale: 1, filter: "blur(0px)" });
       }
       if (subtitleRef.current) {
-        const narrow =
-          typeof window !== "undefined" &&
-          window.matchMedia("(max-width: 767px)").matches;
-        gsap.set(
-          subtitleRef.current,
-          narrow
-            ? { opacity: 1, y: 0, clearProps: "clipPath,filter" }
-            : {
-                opacity: 1,
-                y: 0,
-                clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%)",
-                filter: "blur(0px)",
-              }
-        );
+        gsap.set(subtitleRef.current, {
+          opacity: 1,
+          y: 0,
+          clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%)",
+          filter: "blur(0px)",
+        });
       }
       if (statsRef.current) {
         gsap.set(statsRef.current, { opacity: 1, x: 0 });
@@ -452,45 +439,25 @@ export default function HeroSection({
         );
       }
 
-      // Subtitle — on narrow viewports skip clipPath + blur (iOS Safari can show replacement glyphs / boxes).
-      const narrowHero =
-        typeof window !== "undefined" &&
-        window.matchMedia("(max-width: 767px)").matches;
-      if (subtitleRef.current) {
-        if (narrowHero) {
-          masterTL.fromTo(
-            subtitleRef.current,
-            { opacity: 0, y: 18 },
-            {
-              opacity: 1,
-              y: 0,
-              duration: 0.85,
-              ease: "power2.out",
-              clearProps: "clipPath,filter",
-            },
-            1.0
-          );
-        } else {
-          masterTL.fromTo(
-            subtitleRef.current,
-            {
-              opacity: 0,
-              y: 50,
-              clipPath: "polygon(0 0, 100% 0, 100% 0, 0 0)",
-              filter: "blur(8px)",
-            },
-            {
-              opacity: 1,
-              y: 0,
-              clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%)",
-              filter: "blur(0px)",
-              duration: 1.4,
-              ease: "expo.out",
-            },
-            1.0
-          );
-        }
-      }
+      // Subtitle - FASTER
+      masterTL.fromTo(
+        subtitleRef.current,
+        {
+          opacity: 0,
+          y: 50,
+          clipPath: "polygon(0 0, 100% 0, 100% 0, 0 0)",
+          filter: "blur(8px)",
+        },
+        {
+          opacity: 1,
+          y: 0,
+          clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%)",
+          filter: "blur(0px)",
+          duration: 1.4,
+          ease: "expo.out",
+        },
+        1.0
+      );
 
       // Insight container entrance
       masterTL.fromTo(
@@ -597,9 +564,7 @@ export default function HeroSection({
                 aria-hidden
               />
             )}
-            {videoError && (
-              <div className="absolute inset-0 bg-black" />
-            )}
+            {videoError && <div className="absolute inset-0 bg-black" />}
           </motion.div>
 
           <motion.div
@@ -731,16 +696,13 @@ export default function HeroSection({
             {/* Subtitle - Universal responsive */}
             <p
               ref={subtitleRef}
-              className="hero-home-subtitle max-w-[92%] sm:max-w-[88%] md:max-w-[85%] text-[0.875rem] sm:text-[0.9375rem] md:text-[1rem] lg:text-[1.0625rem] leading-[1.65] sm:leading-[1.65] md:leading-[1.7] font-light text-white/75 antialiased mt-3.5 sm:mt-5 md:mt-0 md:font-sans"
+              className="max-w-[92%] sm:max-w-[88%] md:max-w-[85%] font-sans text-[0.875rem] sm:text-[0.9375rem] md:text-[1rem] lg:text-[1.0625rem] leading-[1.65] sm:leading-[1.65] md:leading-[1.7] font-light text-white/75 mt-3.5 sm:mt-5 md:mt-0"
             >
-              {/* Plain segments (no next-intl rich tags) — avoids iOS Safari “” / blue ? box between inline runs */}
-              {t("subtitleP1")}
-              <span className="font-medium text-white/90">{t("subtitleP2")}</span>
-              {t("subtitleP3")}
-              <span className="font-medium text-white/90">{t("subtitleP4")}</span>
-              {t("subtitleP5")}
-              <span className="font-medium text-white/90">{t("subtitleP6")}</span>
-              {t("subtitleP7")}
+              {t.rich("subtitle", {
+                gold: (chunks) => <span className="font-medium text-white/90">{chunks}</span>,
+                custom: (chunks) => <span className="font-medium text-white/90">{chunks}</span>,
+                qr: (chunks) => <span className="font-medium text-white/90">{chunks}</span>,
+              })}
             </p>
 
             {/* Journal teaser — desktop only: left below subtitle; mobile: moved to between features & Scan & Verify */}
@@ -776,19 +738,13 @@ export default function HeroSection({
                   <div className="absolute left-0 top-0 bottom-0 w-[1.5px] bg-gradient-to-b from-transparent via-white/25 to-transparent">
                     <div className="absolute -left-[2.5px] top-1.5 h-1.5 w-1.5 rounded-full bg-gradient-to-r from-white/60 to-white/20" />
                   </div>
-                  <p
-                    className="font-sans text-[0.52rem] uppercase tracking-[0.45em] text-white/45"
-                  >
+                  <p className="font-sans text-[0.52rem] uppercase tracking-[0.45em] text-white/45">
                     {item.label}
                   </p>
-                  <p
-                    className="mt-1 font-sans text-[1.05rem] font-semibold bg-gradient-to-r from-white via-white/80 to-white/60 bg-clip-text text-transparent tracking-tight leading-snug"
-                  >
+                  <p className="mt-1 font-sans text-[1.05rem] font-semibold bg-gradient-to-r from-white via-white/80 to-white/60 bg-clip-text text-transparent tracking-tight leading-snug">
                     {item.title}
                   </p>
-                  <p
-                    className="mt-1 font-sans text-[0.75rem] text-white/55 leading-relaxed"
-                  >
+                  <p className="mt-1 font-sans text-[0.75rem] text-white/55 leading-relaxed">
                     {item.body}
                   </p>
                 </div>
@@ -798,47 +754,32 @@ export default function HeroSection({
         </div>
       </div>
 
-      {/* Mobile only: Journal + Scan & Verify (no chevron, no chain-of-custody / ScrollingFeatures) */}
+      {/* Mobile: circular Journal + Scan & Verify (fixed bottom stack, proportional spacing) */}
       <div
-        className="md:hidden absolute left-0 right-0 z-30 flex flex-col items-center px-4 sm:px-6 pointer-events-none"
-        style={{ bottom: "calc(76px + env(safe-area-inset-bottom, 0px))" }}
+        className="md:hidden absolute left-0 right-0 z-30 flex flex-col items-center gap-5 px-5 pointer-events-none"
+        style={{ bottom: "calc(52px + env(safe-area-inset-bottom, 0px))" }}
       >
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
-          transition={{ duration: 0.5, delay: 0.95, ease: "easeOut" }}
-          className="pointer-events-auto flex w-full max-w-[min(calc(100vw-32px),380px)] flex-col items-center gap-3.5 sm:gap-4"
+          initial={{ opacity: 0, y: 10 }}
+          animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+          transition={{ duration: 0.55, delay: 0.95, ease: "easeOut" }}
+          className="pointer-events-auto"
         >
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
-            transition={{ duration: 0.5, delay: 1.02, ease: "easeOut" }}
-            className="flex w-full -translate-y-1 justify-center sm:-translate-y-0.5"
+          <OptimizedLink
+            href="/journal"
+            aria-label={tJournal("title")}
+            className="flex h-[3.5rem] w-[3.5rem] items-center justify-center rounded-full border-2 border-luxury-gold bg-black/35 text-white shadow-[0_0_28px_rgba(212,175,55,0.4),inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-md transition-transform active:scale-[0.96] hover:border-luxury-lightGold hover:shadow-[0_0_32px_rgba(255,215,0,0.45)]"
           >
-            <OptimizedLink
-              href="/journal"
-              title={tJournal("title")}
-              className="group relative inline-flex items-center justify-center overflow-hidden rounded-full border border-amber-400/40 bg-gradient-to-b from-white/[0.14] to-white/[0.06] p-3 shadow-[0_6px_28px_-8px_rgba(0,0,0,0.65)] backdrop-blur-md transition-all duration-300 active:scale-[0.98] hover:border-amber-400/55 hover:shadow-[0_8px_32px_-8px_rgba(212,175,55,0.22)]"
-              aria-label={tJournal("title")}
-            >
-              <span
-                aria-hidden
-                className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-amber-400/10 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-              />
-              <span className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500/35 via-amber-500/15 to-amber-600/10 shadow-inner shadow-black/20 ring-2 ring-amber-300/30 ring-offset-2 ring-offset-black/50">
-                <BookOpen className="h-5 w-5 text-amber-50" strokeWidth={2.35} />
-              </span>
-            </OptimizedLink>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
-            transition={{ duration: 0.55, delay: 1.08, ease: "easeOut" }}
-            className="flex w-full justify-center px-0.5"
-          >
-            <HeroQrScanCardLink t={t} />
-          </motion.div>
+            <BookOpen className="h-[1.4rem] w-[1.4rem]" strokeWidth={2.25} />
+          </OptimizedLink>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
+          transition={{ duration: 0.6, delay: 1.05, ease: "easeOut" }}
+          className="pointer-events-auto flex w-full justify-center"
+        >
+          <HeroQrScanCardLink t={t} />
         </motion.div>
       </div>
 

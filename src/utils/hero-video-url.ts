@@ -1,5 +1,6 @@
 /**
- * Stream CMS hero video via /api/hero-video for consistent Range / Content-Type (e.g. R2).
+ * Hero video from R2: same-origin proxy for Range requests / consistent playback.
+ * Used by Journal (and can be reused by other pages that stream via /api/hero-video).
  */
 
 export function r2KeyFromPublicUrl(url: string): string | null {
@@ -8,8 +9,7 @@ export function r2KeyFromPublicUrl(url: string): string | null {
     return url.slice(base.length + 1);
   }
   const idx = url.indexOf("/static/");
-  if (idx >= 0) return url.slice(idx + 1);
-  return null;
+  return idx >= 0 ? url.slice(idx + 1) : null;
 }
 
 /** If URL is on R2/static, return proxied path; otherwise return url as-is (e.g. local /videos/...). */
