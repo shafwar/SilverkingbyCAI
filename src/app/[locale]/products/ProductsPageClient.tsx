@@ -14,6 +14,7 @@ import { useGSAP } from "@gsap/react";
 import ProductModal, { type Product } from "@/components/ui/ProductModal";
 import ProductCard, { type ProductWithPricing } from "@/components/ui/ProductCard";
 import { getR2UrlClient } from "@/utils/r2-url";
+import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { usePageSections } from "@/hooks/usePageSections";
 import { usePageMedia } from "@/hooks/usePageMedia";
@@ -287,6 +288,7 @@ export default function ProductsPageClient() {
   const { data: pageMediaProducts } = usePageMedia("products");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
   const heroMediaUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/gold-stone.mp4");
+  const heroVideoPlayUrl = useMemo(() => proxiedHeroVideoSrc(heroMediaUrl), [heroMediaUrl]);
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
   useReliableVideoAutoplay(videoRef, { mode: "background" });
@@ -1099,8 +1101,9 @@ export default function ProductsPageClient() {
 
         {heroMediaType === "VIDEO" ? (
           <VideoLoadGuard
+            key={`products-hero-${heroVideoPlayUrl}-${pageSections.hero?.version ?? 0}`}
             ref={videoRef}
-            url={heroMediaUrl}
+            url={heroVideoPlayUrl}
             version={pageSections.hero?.version}
             posterUrl={pageMediaProducts?.heroImageUrl ?? null}
             forcePoster={!shouldLoadHeroVideo}
@@ -1108,6 +1111,7 @@ export default function ProductsPageClient() {
             deferAttachUntilIdle
             idleAttachTimeoutMs={520}
             posterPriority
+            optimizeGpu
             containerClassName="absolute inset-0 w-screen h-screen z-10"
             className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
             style={{

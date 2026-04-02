@@ -7,6 +7,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { motion, useInView, AnimatePresence, type Variants } from "framer-motion";
 import { getR2UrlClient } from "@/utils/r2-url";
+import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { usePageSections, getCacheBustedMediaUrl } from "@/hooks/usePageSections";
 import { usePageMedia } from "@/hooks/usePageMedia";
@@ -380,6 +381,9 @@ export default function WhatWeDoPageClient() {
     pageSections.section_footer_video?.url ??
     getR2UrlClient("/videos/hero/molten metal slow motion.mp4");
 
+  const heroVideoPlayUrl = useMemo(() => proxiedHeroVideoSrc(heroMediaUrl), [heroMediaUrl]);
+  const footerVideoPlayUrl = useMemo(() => proxiedHeroVideoSrc(footerMediaUrl), [footerMediaUrl]);
+
   // Preload first craft card image when it's an image (flexible replace)
   const firstCraftIsImage =
     (pageSections.craft_card_1?.mediaType?.toUpperCase() ?? "IMAGE") === "IMAGE";
@@ -578,8 +582,9 @@ export default function WhatWeDoPageClient() {
 
           {heroMediaType === "VIDEO" ? (
             <VideoLoadGuard
+              key={`wwd-hero-${heroVideoPlayUrl}-${pageSections.hero?.version ?? 0}`}
               ref={videoRef}
-              url={heroMediaUrl}
+              url={heroVideoPlayUrl}
               version={pageSections.hero?.version}
               posterUrl={pageMediaWhatWeDo?.heroImageUrl ?? null}
               forcePoster={!shouldLoadHeroVideo}
@@ -587,6 +592,7 @@ export default function WhatWeDoPageClient() {
               deferAttachUntilIdle
               idleAttachTimeoutMs={520}
               posterPriority
+              optimizeGpu
               containerClassName="absolute inset-0 w-screen h-screen z-10"
               className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
               style={{
@@ -796,14 +802,16 @@ export default function WhatWeDoPageClient() {
         <div className="absolute inset-0 z-0 overflow-hidden">
           {footerMediaType === "VIDEO" ? (
             <VideoLoadGuard
+              key={`wwd-footer-${footerVideoPlayUrl}-${pageSections.section_footer_video?.version ?? 0}`}
               ref={footerVideoRef}
-              url={footerMediaUrl}
+              url={footerVideoPlayUrl}
               version={pageSections.section_footer_video?.version}
               posterUrl={pageMediaWhatWeDo?.heroImageUrl ?? null}
               forcePoster={!shouldLoadHeroVideo}
               lazyAttach
               deferAttachUntilIdle
               idleAttachTimeoutMs={640}
+              optimizeGpu
               containerClassName="absolute inset-0 w-full h-full z-10"
               className="absolute inset-0 w-full h-full object-cover"
               style={{

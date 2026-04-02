@@ -1013,12 +1013,14 @@ export default function MerchandisePageClient() {
         {/* Video layer: covers section, stays fixed in place while section scrolls */}
         <div className="absolute inset-0 z-0">
           <VideoLoadGuard
+            key="merch-footer-gold-footage"
             ref={footerVideoRef}
             url={getR2UrlClient("/videos/hero/gold-footage.mp4")}
             forcePoster={!shouldLoadHeroVideo}
             lazyAttach
             deferAttachUntilIdle
             idleAttachTimeoutMs={720}
+            optimizeGpu
             containerClassName="absolute inset-0 w-full h-full"
             className="absolute inset-0 w-full h-full object-cover"
             style={{

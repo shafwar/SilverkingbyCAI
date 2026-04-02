@@ -6,6 +6,7 @@ import Navbar from "@/components/layout/Navbar";
 import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
 import { getR2UrlClient } from "@/utils/r2-url";
+import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { usePageSections } from "@/hooks/usePageSections";
 import { usePageMedia } from "@/hooks/usePageMedia";
@@ -122,6 +123,7 @@ export default function AboutPageClient() {
   const { data: pageMediaAbout } = usePageMedia("about");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
   const heroMediaUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/gold-footage.mp4");
+  const heroVideoPlayUrl = useMemo(() => proxiedHeroVideoSrc(heroMediaUrl), [heroMediaUrl]);
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
   // Ensure about-page hero video autoplays reliably on all devices
@@ -235,8 +237,9 @@ export default function AboutPageClient() {
         <div className="absolute inset-0 bg-luxury-black z-0" />
         {heroMediaType === "VIDEO" ? (
           <VideoLoadGuard
+            key={`about-hero-${heroVideoPlayUrl}-${pageSections.hero?.version ?? 0}`}
             ref={heroVideoRef}
-            url={heroMediaUrl}
+            url={heroVideoPlayUrl}
             version={pageSections.hero?.version}
             posterUrl={pageMediaAbout?.heroImageUrl ?? null}
             forcePoster={!shouldLoadHeroVideo}
@@ -244,6 +247,7 @@ export default function AboutPageClient() {
             deferAttachUntilIdle
             idleAttachTimeoutMs={520}
             posterPriority
+            optimizeGpu
             containerClassName="absolute inset-0 z-10 h-full w-full"
             className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
             style={{

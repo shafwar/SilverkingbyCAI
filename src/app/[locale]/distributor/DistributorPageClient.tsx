@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useEffect, useState } from "react";
+import { useRef, useCallback, useEffect, useState, useMemo } from "react";
 import Navbar from "@/components/layout/Navbar";
 import { DistributorCard, type DistributorItem } from "@/components/distributor/DistributorCard";
 import { DistributorForm } from "@/components/admin/DistributorForm";
@@ -14,6 +14,7 @@ import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { PageFooter } from "@/components/footer/PageFooter";
+import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { ModalPortal } from "@/components/ui/ModalPortal";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -79,6 +80,10 @@ export default function DistributorPageClient({
     ? HERO_FALLBACK_PATH
     : (sectionsLoading ? initialHeroImageUrl : (pageSections.hero?.url ?? initialHeroImageUrl));
   const displayHeroMediaType = sectionsLoading ? "IMAGE" : heroMediaType;
+  const displayHeroVideoUrl = useMemo(
+    () => proxiedHeroVideoSrc(displayHeroUrl),
+    [displayHeroUrl]
+  );
   const [editing, setEditing] = useState<DistributorItem | null>(null);
   const [saving, setSaving] = useState(false);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -254,8 +259,9 @@ export default function DistributorPageClient({
         <div className="absolute inset-[-6%] z-10 scale-90 md:scale-100 md:inset-0 origin-center overflow-hidden">
           {displayHeroMediaType === "VIDEO" ? (
             <VideoLoadGuard
+              key={`dist-hero-${displayHeroVideoUrl}-${pageSections.hero?.version ?? 0}-${sectionsLoading ? "s" : "r"}`}
               ref={distributorHeroVideoRef}
-              url={displayHeroUrl}
+              url={displayHeroVideoUrl}
               version={pageSections.hero?.version}
               posterUrl={pageMediaDistributor?.heroImageUrl ?? null}
               forcePoster={!shouldLoadHeroVideo}
@@ -263,6 +269,7 @@ export default function DistributorPageClient({
               deferAttachUntilIdle
               idleAttachTimeoutMs={520}
               posterPriority
+              optimizeGpu
               containerClassName="absolute inset-0 w-full h-full"
               className="absolute inset-0 w-full h-full object-cover"
               style={{ objectFit: "cover" }}

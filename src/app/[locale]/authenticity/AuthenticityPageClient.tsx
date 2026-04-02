@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
@@ -26,6 +26,7 @@ import { Scanner } from "@/components/shared/Scanner";
 import { useRouter } from "next/navigation";
 import { APP_NAME } from "@/utils/constants";
 import { getR2UrlClient } from "@/utils/r2-url";
+import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { usePageSections } from "@/hooks/usePageSections";
 import { usePageMedia } from "@/hooks/usePageMedia";
@@ -298,6 +299,7 @@ export default function AuthenticityPageClient() {
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
   const heroMediaUrl =
     pageSections.hero?.url ?? getR2UrlClient("/videos/hero/mobile scanning qr.mp4");
+  const heroVideoPlayUrl = useMemo(() => proxiedHeroVideoSrc(heroMediaUrl), [heroMediaUrl]);
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
   // Register ScrollTrigger only on the client to avoid SSR/window issues
@@ -506,8 +508,9 @@ export default function AuthenticityPageClient() {
         <div className="absolute inset-0 bg-luxury-black z-0" />
         {heroMediaType === "VIDEO" ? (
           <VideoLoadGuard
+            key={`auth-hero-${heroVideoPlayUrl}-${pageSections.hero?.version ?? 0}`}
             ref={videoRef}
-            url={heroMediaUrl}
+            url={heroVideoPlayUrl}
             version={pageSections.hero?.version}
             posterUrl={pageMediaAuthenticity?.heroImageUrl ?? null}
             forcePoster={!shouldLoadHeroVideo}
@@ -515,6 +518,7 @@ export default function AuthenticityPageClient() {
             deferAttachUntilIdle
             idleAttachTimeoutMs={520}
             posterPriority
+            optimizeGpu
             containerClassName="absolute inset-0 h-full w-full z-10"
             className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
             style={{

@@ -213,9 +213,10 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
           </div>
         ) : null}
 
+        {/* Include version in key so CMS replace at same R2 path forces a fresh decoder (no 1-frame old video). */}
         <video
           ref={ref}
-          key={effectiveAttach ? src : "pending"}
+          key={effectiveAttach ? `${src}::v${version ?? "na"}` : "pending"}
           src={effectiveAttach ? src : undefined}
           poster={bustedPoster ?? undefined}
           onLoadedData={markReady}
