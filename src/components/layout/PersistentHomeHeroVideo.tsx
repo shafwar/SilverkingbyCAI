@@ -207,17 +207,17 @@ export function PersistentHomeHeroVideo() {
           }}
           aria-hidden
         />
-        {isHome && splashComplete && (
-          <HeroEditPortal
-            page="home"
-            section="hero"
-            type="video"
-            onUploadDone={refetch}
-            editLabel="Edit video"
-            performanceMode="home"
-          />
-        )}
       </div>
+      {isHome && splashComplete && (
+        <HeroEditPortal
+          page="home"
+          section="hero"
+          type="video"
+          onUploadDone={refetch}
+          editLabel="Edit video"
+          performanceMode="home"
+        />
+      )}
     </HomeHeroSectionsContext.Provider>
   );
 }

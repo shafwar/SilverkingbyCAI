@@ -5,9 +5,9 @@ import { createPortal } from "react-dom";
 import { EditableMedia } from "@/components/editable-media";
 
 const EDIT_BUTTON_DELAY_MS = 800;
-/** Home: defer admin chrome until main thread idle + shorter motion (less jank on fullscreen video). */
-const HOME_EDIT_DEFER_IDLE_MS = 2200;
-const HOME_EDIT_IDLE_TIMEOUT_MS = 4000;
+/** Home: earliest of idle callback or this delay (first wins); idle timeout caps wait on busy threads. */
+const HOME_EDIT_MAX_WAIT_MS = 1200;
+const HOME_EDIT_IDLE_CALLBACK_TIMEOUT_MS = 2200;
 
 export type HeroEditPortalProps = {
   page: string;
@@ -48,36 +48,26 @@ export function HeroEditPortal({
       return () => clearTimeout(t);
     }
     let cancelled = false;
-    let minElapsed = false;
-    let idleElapsed = false;
-    const tryReveal = () => {
-      if (cancelled || !minElapsed || !idleElapsed) return;
+    let done = false;
+    const reveal = () => {
+      if (cancelled || done) return;
+      done = true;
       setShowEditButton(true);
     };
-    const tMin = setTimeout(() => {
-      minElapsed = true;
-      tryReveal();
-    }, EDIT_BUTTON_DELAY_MS);
+    const tMax = setTimeout(reveal, HOME_EDIT_MAX_WAIT_MS);
     const w = globalThis as Window & typeof globalThis;
     let idleId: number | null = null;
-    const markIdle = () => {
-      if (cancelled) return;
-      idleElapsed = true;
-      tryReveal();
-    };
-    let idleFallbackTimer: ReturnType<typeof setTimeout> | null = null;
     if ("requestIdleCallback" in w && typeof w.requestIdleCallback === "function") {
-      idleId = w.requestIdleCallback(markIdle, { timeout: HOME_EDIT_IDLE_TIMEOUT_MS });
-    } else {
-      idleFallbackTimer = setTimeout(markIdle, HOME_EDIT_DEFER_IDLE_MS);
+      idleId = w.requestIdleCallback(() => reveal(), {
+        timeout: HOME_EDIT_IDLE_CALLBACK_TIMEOUT_MS,
+      });
     }
     return () => {
       cancelled = true;
-      clearTimeout(tMin);
+      clearTimeout(tMax);
       if (idleId != null && "cancelIdleCallback" in w) {
         w.cancelIdleCallback(idleId);
       }
-      if (idleFallbackTimer != null) clearTimeout(idleFallbackTimer);
     };
   }, [mounted, performanceMode]);
 
@@ -89,7 +79,7 @@ export function HeroEditPortal({
 
   return createPortal(
     <div
-      className="fixed top-20 right-4 sm:right-6 z-[10002] pointer-events-auto"
+      className="fixed top-20 right-4 z-[10002] flex flex-col items-end gap-2 pointer-events-auto sm:right-6"
       data-hero-edit-portal
       style={{
         opacity: showEditButton ? 1 : 0,
@@ -102,8 +92,7 @@ export function HeroEditPortal({
           ? "opacity 0.2s ease-out"
           : "opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1), transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)",
         pointerEvents: showEditButton ? "auto" : "none",
-        contain: isHomePerf ? ("layout style paint" as const) : undefined,
-        isolation: isHomePerf ? ("isolate" as const) : undefined,
+        maxWidth: "calc(100vw - 2rem)",
       }}
     >
       <EditableMedia

@@ -373,8 +373,11 @@ export function EditableMedia({
             "flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-black/50 text-white/80 backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 disabled:opacity-50",
         };
     const btnClass = editLabel ? chrome.editLabeled : chrome.editIcon;
+    const buttonRowClass = reduceOverlayChromeCost
+      ? "relative z-[10002] flex shrink-0 flex-wrap items-center justify-end gap-2"
+      : "absolute top-3 right-3 z-[10002] flex items-center gap-2";
     const buttons = isAdmin ? (
-      <div className="absolute top-3 right-3 z-[10002] flex items-center gap-2">
+      <div className={buttonRowClass}>
         {/* Restore: shown only when admin has replaced media; reverts to current/default website assets */}
         {hasCustomMedia && (
           <button
