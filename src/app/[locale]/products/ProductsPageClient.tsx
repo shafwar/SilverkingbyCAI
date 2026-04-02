@@ -1097,7 +1097,11 @@ export default function ProductsPageClient() {
         }}
       >
         <div className="absolute inset-0 bg-luxury-black z-0" />
-        <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
+        <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/35 via-black/10 to-black/55 pointer-events-none" />
+        <div
+          className="absolute inset-0 z-[11] bg-gradient-to-r from-black/50 via-black/20 to-transparent pointer-events-none md:from-black/40 md:via-black/12"
+          aria-hidden
+        />
 
         {heroMediaType === "VIDEO" ? (
           <VideoLoadGuard
@@ -1185,18 +1189,18 @@ export default function ProductsPageClient() {
       >
         {/* Hero Content - Full left alignment, flush to left edge - Matching What We Do */}
         <div className="relative z-20 w-full text-left pl-4 sm:pl-6 md:pl-8 lg:pl-12 xl:pl-16 2xl:pl-20 pr-4 sm:pr-6 md:pr-8 lg:pr-12">
-          <div ref={heroRef} className="space-y-6 sm:space-y-8 max-w-4xl">
+          <div ref={heroRef} className="relative space-y-6 sm:space-y-8 max-w-4xl">
             <h1
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-semibold md:font-bold leading-[1.1] tracking-tight text-white drop-shadow-sm"
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-bold md:font-extrabold leading-[1.1] tracking-tight text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.95),0_4px_28px_rgba(0,0,0,0.7),0_0_1px_rgba(0,0,0,1)]"
               data-hero
             >
               {t("hero.title")}
               <br />
-              <span className="font-sans font-semibold md:font-bold">{t("hero.titleBold")}</span>
+              <span className="font-sans font-bold md:font-extrabold">{t("hero.titleBold")}</span>
             </h1>
             <p
               data-hero
-              className="text-base sm:text-lg md:text-xl font-sans font-light leading-relaxed text-luxury-silver/90 max-w-2xl"
+              className="text-base sm:text-lg md:text-xl font-sans font-semibold md:font-bold leading-relaxed text-white max-w-2xl [text-shadow:0_1px_3px_rgba(0,0,0,0.9),0_2px_16px_rgba(0,0,0,0.55)]"
             >
               {t("hero.subtitle") ||
                 "Discover our premium collection of certified precious metals, each bar crafted with precision and verified authenticity."}
