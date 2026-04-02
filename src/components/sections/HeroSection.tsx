@@ -388,12 +388,20 @@ export default function HeroSection({
         gsap.set(words, { opacity: 1, y: 0, rotationX: 0, scale: 1, filter: "blur(0px)" });
       }
       if (subtitleRef.current) {
-        gsap.set(subtitleRef.current, {
-          opacity: 1,
-          y: 0,
-          clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%)",
-          filter: "blur(0px)",
-        });
+        const narrow =
+          typeof window !== "undefined" &&
+          window.matchMedia("(max-width: 767px)").matches;
+        gsap.set(
+          subtitleRef.current,
+          narrow
+            ? { opacity: 1, y: 0, clearProps: "clipPath,filter" }
+            : {
+                opacity: 1,
+                y: 0,
+                clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%)",
+                filter: "blur(0px)",
+              }
+        );
       }
       if (statsRef.current) {
         gsap.set(statsRef.current, { opacity: 1, x: 0 });
@@ -444,25 +452,45 @@ export default function HeroSection({
         );
       }
 
-      // Subtitle - FASTER
-      masterTL.fromTo(
-        subtitleRef.current,
-        {
-          opacity: 0,
-          y: 50,
-          clipPath: "polygon(0 0, 100% 0, 100% 0, 0 0)",
-          filter: "blur(8px)",
-        },
-        {
-          opacity: 1,
-          y: 0,
-          clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%)",
-          filter: "blur(0px)",
-          duration: 1.4,
-          ease: "expo.out",
-        },
-        1.0
-      );
+      // Subtitle — on narrow viewports skip clipPath + blur (iOS Safari can show replacement glyphs / boxes).
+      const narrowHero =
+        typeof window !== "undefined" &&
+        window.matchMedia("(max-width: 767px)").matches;
+      if (subtitleRef.current) {
+        if (narrowHero) {
+          masterTL.fromTo(
+            subtitleRef.current,
+            { opacity: 0, y: 18 },
+            {
+              opacity: 1,
+              y: 0,
+              duration: 0.85,
+              ease: "power2.out",
+              clearProps: "clipPath,filter",
+            },
+            1.0
+          );
+        } else {
+          masterTL.fromTo(
+            subtitleRef.current,
+            {
+              opacity: 0,
+              y: 50,
+              clipPath: "polygon(0 0, 100% 0, 100% 0, 0 0)",
+              filter: "blur(8px)",
+            },
+            {
+              opacity: 1,
+              y: 0,
+              clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%)",
+              filter: "blur(0px)",
+              duration: 1.4,
+              ease: "expo.out",
+            },
+            1.0
+          );
+        }
+      }
 
       // Insight container entrance
       masterTL.fromTo(
@@ -703,12 +731,18 @@ export default function HeroSection({
             {/* Subtitle - Universal responsive */}
             <p
               ref={subtitleRef}
-              className="max-w-[92%] sm:max-w-[88%] md:max-w-[85%] font-sans text-[0.875rem] sm:text-[0.9375rem] md:text-[1rem] lg:text-[1.0625rem] leading-[1.65] sm:leading-[1.65] md:leading-[1.7] font-light text-white/75 mt-3.5 sm:mt-5 md:mt-0"
+              className="hero-home-subtitle max-w-[92%] sm:max-w-[88%] md:max-w-[85%] text-[0.875rem] sm:text-[0.9375rem] md:text-[1rem] lg:text-[1.0625rem] leading-[1.65] sm:leading-[1.65] md:leading-[1.7] font-light text-white/75 antialiased mt-3.5 sm:mt-5 md:mt-0 md:font-sans"
             >
               {t.rich("subtitle", {
-                gold: (chunks) => <span className="font-medium text-white/90">{chunks}</span>,
-                custom: (chunks) => <span className="font-medium text-white/90">{chunks}</span>,
-                qr: (chunks) => <span className="font-medium text-white/90">{chunks}</span>,
+                gold: (chunks) => (
+                  <span className="font-medium text-white/90 [font-synthesis:none]">{chunks}</span>
+                ),
+                custom: (chunks) => (
+                  <span className="font-medium text-white/90 [font-synthesis:none]">{chunks}</span>
+                ),
+                qr: (chunks) => (
+                  <span className="font-medium text-white/90 [font-synthesis:none]">{chunks}</span>
+                ),
               })}
             </p>
 
@@ -770,29 +804,33 @@ export default function HeroSection({
       {/* Mobile only: Journal + Scan & Verify (no chevron, no chain-of-custody / ScrollingFeatures) */}
       <div
         className="md:hidden absolute left-0 right-0 z-30 flex flex-col items-center px-4 sm:px-6 pointer-events-none"
-        style={{ bottom: "calc(52px + env(safe-area-inset-bottom, 0px))" }}
+        style={{ bottom: "calc(76px + env(safe-area-inset-bottom, 0px))" }}
       >
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
           transition={{ duration: 0.5, delay: 0.95, ease: "easeOut" }}
-          className="pointer-events-auto flex w-full max-w-[min(calc(100vw-32px),380px)] flex-col items-center gap-4 sm:gap-5"
+          className="pointer-events-auto flex w-full max-w-[min(calc(100vw-32px),380px)] flex-col items-center gap-3.5 sm:gap-4"
         >
           <motion.div
             initial={{ opacity: 0, y: 6 }}
             animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
             transition={{ duration: 0.5, delay: 1.02, ease: "easeOut" }}
-            className="flex w-full justify-center"
+            className="flex w-full -translate-y-1 justify-center sm:-translate-y-0.5"
           >
             <OptimizedLink
               href="/journal"
-              className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 backdrop-blur-sm transition-all duration-300 hover:bg-white/10 hover:border-amber-500/30 hover:shadow-[0_0_20px_rgba(245,158,11,0.06)]"
+              className="group relative inline-flex items-center gap-3 overflow-hidden rounded-full border border-amber-400/40 bg-gradient-to-b from-white/[0.14] to-white/[0.06] px-4 py-2.5 shadow-[0_6px_28px_-8px_rgba(0,0,0,0.65)] backdrop-blur-md transition-all duration-300 active:scale-[0.98] hover:border-amber-400/55 hover:shadow-[0_8px_32px_-8px_rgba(212,175,55,0.22)]"
               aria-label={tJournal("title")}
             >
-              <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-400/90 transition-colors group-hover:border-amber-500/35 group-hover:bg-amber-500/15">
-                <BookOpen className="h-3.5 w-3.5" />
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-amber-400/10 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+              />
+              <span className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500/35 via-amber-500/15 to-amber-600/10 shadow-inner shadow-black/20 ring-2 ring-amber-300/25 ring-offset-2 ring-offset-black/50">
+                <BookOpen className="h-[18px] w-[18px] text-amber-50" strokeWidth={2.25} />
               </span>
-              <span className="font-sans text-[0.8125rem] font-medium text-white/90 tracking-tight">
+              <span className="relative font-sans text-[0.9375rem] font-semibold tracking-tight text-white">
                 {tJournal("title")}
               </span>
             </OptimizedLink>

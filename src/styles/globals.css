@@ -5,6 +5,16 @@
 @import "./logo-adaptive.css";
 @import "./nprogress.css";
 
+/* Home hero subtitle on phones: system stack + legibility (avoids iOS “” boxes with custom fonts + GSAP clip/blur). */
+@media (max-width: 767px) {
+  .hero-home-subtitle {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+      sans-serif;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
 /* Anti-banding: Multi-stop gradients for smooth transitions (no visible banding) */
 .admin-card-gradient-gold {
   background: linear-gradient(
