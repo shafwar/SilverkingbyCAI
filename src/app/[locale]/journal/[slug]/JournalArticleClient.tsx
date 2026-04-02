@@ -50,14 +50,12 @@ export default function JournalArticleClient({ article, locale, backLabel }: Pro
     >
       <Navbar />
 
-      <article className="relative z-10 overflow-x-hidden pb-16 pt-[calc(5.5rem+env(safe-area-inset-top))] md:pb-24 md:pt-24">
-        {/* Editorial shell: left-anchored column (not a narrow strip centered on ultra-wide viewports) */}
-        <div className="mx-auto w-full max-w-[min(100%,1440px)] px-4 sm:px-6 md:px-8 lg:pl-12 lg:pr-10 xl:pl-16 xl:pr-12 2xl:pl-24 2xl:pr-16">
+      <article className="relative z-10 pb-16 pt-[calc(5.5rem+env(safe-area-inset-top))] md:pb-24 md:pt-24">
+        <div className="mx-auto max-w-[680px] px-4 sm:px-6 lg:max-w-[720px] lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-            className="max-w-[720px] text-left"
           >
             <Link
               href="/journal"
@@ -94,17 +92,14 @@ export default function JournalArticleClient({ article, locale, backLabel }: Pro
                 {article.excerpt}
               </p>
             )}
-          </motion.div>
 
-          {/* Hero image: centered in the viewport, wider than the text measure */}
-          {article.heroImageUrl && (
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-              className="mt-10 flex w-full justify-center px-0 sm:px-2"
-            >
-              <figure className="w-full max-w-[min(920px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0a0a] shadow-[0_20px_50px_rgba(0,0,0,0.5)] ring-1 ring-white/[0.04]">
+            {article.heroImageUrl && (
+              <motion.figure
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+                className="mt-10 overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0a0a] shadow-[0_20px_50px_rgba(0,0,0,0.5)] ring-1 ring-white/[0.04]"
+              >
                 <img
                   src={article.heroImageUrl}
                   alt=""
@@ -112,16 +107,9 @@ export default function JournalArticleClient({ article, locale, backLabel }: Pro
                   loading="eager"
                   decoding="async"
                 />
-              </figure>
-            </motion.div>
-          )}
+              </motion.figure>
+            )}
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
-            className="max-w-[720px] text-left"
-          >
             <div
               className={`journal-content mt-12 border-t border-white/[0.08] pt-12 text-[0.9375rem] leading-[1.8] text-white/85 sm:text-base ${
                 hasHtml

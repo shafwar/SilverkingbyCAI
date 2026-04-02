@@ -32,7 +32,7 @@ export default function ContactPageClient() {
     try {
       const response = await fetch("/api/feedback", {
         method: "POST",
-        headers: {
+        headers: { 
           "Content-Type": "application/json",
         },
         body: JSON.stringify({

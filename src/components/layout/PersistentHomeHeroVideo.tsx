@@ -10,6 +10,7 @@ import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { VideoLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
+import { HomeHeroSectionsContext } from "@/components/layout/HomeHeroSectionsContext";
 
 const HERO_VIDEO_FALLBACK = "/videos/hero/hero-background.mp4";
 
@@ -90,6 +91,7 @@ export function PersistentHomeHeroVideo() {
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
   const { sections, refetch } = usePageSections("home");
   const { data: pageMedia } = usePageMedia("home");
+  const homeSectionsBridge = useMemo(() => ({ sections, refetch }), [sections, refetch]);
 
   const heroUrl = sections.hero?.url ?? getR2UrlClient(HERO_VIDEO_FALLBACK);
   const heroVersion = sections.hero?.version;
@@ -170,49 +172,52 @@ export function PersistentHomeHeroVideo() {
   const shellClassName = [videoShellClass, "opacity-100"].join(" ");
 
   return (
-    <div
-      aria-hidden="true"
-      className="fixed inset-0 z-0 min-h-dvh pointer-events-none overflow-hidden motion-reduce:transition-none"
-      style={{
-        visibility: isHome ? "visible" : "hidden",
-        opacity: isHome ? 1 : 0,
-        transition: isHome ? "opacity 0.12s ease-out" : "opacity 0.1s ease-out",
-      }}
-    >
-      {everHome ? (
-        <div className="absolute inset-0 overflow-hidden">
-          <div className={shellClassName} aria-hidden>
-            {videoInner}
+    <HomeHeroSectionsContext.Provider value={homeSectionsBridge}>
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 z-0 min-h-dvh pointer-events-none overflow-hidden motion-reduce:transition-none"
+        style={{
+          visibility: isHome ? "visible" : "hidden",
+          opacity: isHome ? 1 : 0,
+          transition: isHome ? "opacity 0.12s ease-out" : "opacity 0.1s ease-out",
+        }}
+      >
+        {everHome ? (
+          <div className="absolute inset-0 overflow-hidden">
+            <div className={shellClassName} aria-hidden>
+              {videoInner}
+            </div>
           </div>
-        </div>
-      ) : !isHome ? (
-        <div className="absolute inset-0 bg-luxury-black" aria-hidden />
-      ) : null}
-      <div
-        className="absolute inset-0 hidden md:block pointer-events-none"
-        style={{
-          backgroundImage:
-            "linear-gradient(to bottom, rgba(0,0,0,0.55), rgba(0,0,0,0.25) 50%, rgba(0,0,0,0.6)), linear-gradient(to right, rgba(0,0,0,0.65), transparent 50%, rgba(0,0,0,0.4))",
-        }}
-        aria-hidden
-      />
-      <div
-        className="absolute inset-0 md:hidden pointer-events-none"
-        style={{
-          backgroundImage:
-            "linear-gradient(to bottom, rgba(0,0,0,0.38), rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.45)), linear-gradient(to right, rgba(0,0,0,0.45), transparent 50%, rgba(0,0,0,0.28))",
-        }}
-        aria-hidden
-      />
-      {isHome && splashComplete && (
-        <HeroEditPortal
-          page="home"
-          section="hero"
-          type="video"
-          onUploadDone={refetch}
-          editLabel="Edit video"
+        ) : !isHome ? (
+          <div className="absolute inset-0 bg-luxury-black" aria-hidden />
+        ) : null}
+        <div
+          className="absolute inset-0 hidden md:block pointer-events-none"
+          style={{
+            backgroundImage:
+              "linear-gradient(to bottom, rgba(0,0,0,0.55), rgba(0,0,0,0.25) 50%, rgba(0,0,0,0.6)), linear-gradient(to right, rgba(0,0,0,0.65), transparent 50%, rgba(0,0,0,0.4))",
+          }}
+          aria-hidden
         />
-      )}
-    </div>
+        <div
+          className="absolute inset-0 md:hidden pointer-events-none"
+          style={{
+            backgroundImage:
+              "linear-gradient(to bottom, rgba(0,0,0,0.38), rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.45)), linear-gradient(to right, rgba(0,0,0,0.45), transparent 50%, rgba(0,0,0,0.28))",
+          }}
+          aria-hidden
+        />
+        {isHome && splashComplete && (
+          <HeroEditPortal
+            page="home"
+            section="hero"
+            type="video"
+            onUploadDone={refetch}
+            editLabel="Edit video"
+            performanceMode="home"
+          />
+        )}
+      </div>
+    </HomeHeroSectionsContext.Provider>
   );
 }

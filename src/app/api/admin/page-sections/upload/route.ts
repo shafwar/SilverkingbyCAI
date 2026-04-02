@@ -1,7 +1,8 @@
 /**
  * Admin API: upload section media. File stored in R2, key saved in PageSection.
  * Images: compressed with sharp (quality preserved, max 1920px) then uploaded to R2.
- * Video: uploaded as-is to R2 (max 50 MB).
+ * Video: max 20 MB. Hero video on what-we-do & products is re-encoded (ffmpeg H.264 CRF 22,
+ * max 1080p, faststart, no audio) when ffmpeg is available; otherwise uploaded as-is.
  * POST formData: page, section, type (image|video), file
  */
 
@@ -9,12 +10,16 @@ import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { uploadToR2, uploadFileToR2 } from "@/lib/r2-client";
+import { uploadToR2 } from "@/lib/r2-client";
+import { transcodePageHeroVideoForWeb } from "@/lib/transcode-page-hero-video";
+
+/** Allow hero ffmpeg pass on slow hosts (Railway, etc.) */
+export const maxDuration = 120;
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm"];
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024; // 3 MB
-const MAX_VIDEO_BYTES = 10 * 1024 * 1024; // 10 MB
+const MAX_VIDEO_BYTES = 20 * 1024 * 1024; // 20 MB
 const IMAGE_MAX_WIDTH = 1920;
 const IMAGE_QUALITY = 88; // high quality, minimal visible loss
 const IMAGE_MAX_PIXELS = 1920 * 1920 * 4; // limit decode for speed on huge uploads
@@ -58,7 +63,7 @@ export async function POST(request: NextRequest) {
           error:
             type === "image"
               ? "Image too large. Max 3 MB."
-              : "Video too large. Max 10 MB.",
+              : "Video too large. Max 20 MB.",
         },
         { status: 400 }
       );
@@ -116,9 +121,31 @@ export async function POST(request: NextRequest) {
         uploadedAt: new Date().toISOString(),
       });
     } else {
-      const ext = file.name.endsWith(".webm") ? "webm" : "mp4";
+      const originalBuf = Buffer.from(await file.arrayBuffer());
+      let uploadBuf = originalBuf;
+      let ext = file.name.toLowerCase().endsWith(".webm") ? "webm" : "mp4";
+      let contentType: string = ext === "webm" ? "video/webm" : "video/mp4";
+
+      const pageKey = page.toLowerCase();
+      const sectionKey = section.toLowerCase();
+      if (sectionKey === "hero" && (pageKey === "what-we-do" || pageKey === "products")) {
+        const transcoded = await transcodePageHeroVideoForWeb(originalBuf, file.name);
+        if (transcoded && transcoded.length > 0 && transcoded.length <= MAX_VIDEO_BYTES) {
+          uploadBuf = Buffer.from(transcoded);
+          ext = "mp4";
+          contentType = "video/mp4";
+        } else if (transcoded && transcoded.length > MAX_VIDEO_BYTES) {
+          console.warn(
+            "[ADMIN_PAGE_SECTIONS_UPLOAD] Transcoded hero exceeds max size; using original file"
+          );
+        }
+      }
+
       key = `static/page-media/${page}/${safeSection}_${ts}.${ext}`;
-      url = await uploadFileToR2(file, key);
+      url = await uploadToR2(key, uploadBuf, contentType, {
+        originalName: file.name,
+        uploadedAt: new Date().toISOString(),
+      });
     }
 
     const mediaType = type === "image" ? "IMAGE" : "VIDEO";

@@ -70,8 +70,9 @@ export function usePageSections(page: string) {
 
   // When page is restored from bfcache (back/forward), refetch so we never show stale asset
   useEffect(() => {
+    if (!page) return;
     const handlePageShow = (e: PageTransitionEvent) => {
-      if (e.persisted && page) refetchRef.current();
+      if (e.persisted) refetchRef.current();
     };
     window.addEventListener("pageshow", handlePageShow);
     return () => window.removeEventListener("pageshow", handlePageShow);
