@@ -1,10 +1,12 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useMemo } from "react";
 import { getR2UrlClient } from "@/utils/r2-url";
+import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { usePageSections } from "@/hooks/usePageSections";
 import { usePageMedia } from "@/hooks/usePageMedia";
+import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { VideoLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
@@ -85,11 +87,16 @@ export function PersistentHomeHeroVideo() {
   const [everHome, setEverHome] = useState(() => isHomePath(pathname));
   const splashComplete = useSplashComplete();
   const prefersReducedMotion = usePrefersReducedMotion();
+  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
   const { sections, refetch } = usePageSections("home");
   const { data: pageMedia } = usePageMedia("home");
 
   const heroUrl = sections.hero?.url ?? getR2UrlClient(HERO_VIDEO_FALLBACK);
   const heroVersion = sections.hero?.version;
+  /** Same-origin /api/hero-video for R2 — avoids decoder showing a flash of cached frames when the object is replaced. */
+  const heroVideoPlayUrl = useMemo(() => proxiedHeroVideoSrc(heroUrl), [heroUrl]);
+  /** Non-CMS fallback has no section version; stable numeric version keeps cache-bust predictable if default asset changes. */
+  const effectiveHeroVideoVersion = sections.hero?.url != null ? heroVersion : 1;
 
   /** Static fallback so poster + gradient never sit on an invisible layer (fixes “black hero” on slow JS / splash) */
   const posterUrl =
@@ -129,8 +136,9 @@ export function PersistentHomeHeroVideo() {
   const videoInner = (
     <VideoLoadGuard
       ref={videoRef}
-      url={heroUrl}
-      version={heroVersion}
+      key={`home-hero-${heroVideoPlayUrl}-${effectiveHeroVideoVersion ?? 0}`}
+      url={heroVideoPlayUrl}
+      version={effectiveHeroVideoVersion}
       posterUrl={posterUrl}
       posterVersion={undefined}
       lazyAttach
@@ -138,7 +146,7 @@ export function PersistentHomeHeroVideo() {
       idleAttachTimeoutMs={900}
       posterPriority
       optimizeGpu
-      forcePoster={false}
+      forcePoster={!shouldLoadHeroVideo}
       suspendSrc={prefersReducedMotion}
       snapVideoOpacity
       containerClassName="absolute inset-0 min-w-full min-h-full w-full h-full"
