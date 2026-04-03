@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { getCacheBustedMediaUrl } from "@/hooks/usePageSections";
 
@@ -87,6 +87,24 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
         ? getCacheBustedMediaUrl(posterUrl, posterVersion)
         : null;
 
+    /** iOS/WebKit: IntersectionObserver occasionally misses fixed full-bleed heroes; prime from layout. */
+    useLayoutEffect(() => {
+      if (!lazyAttach) return;
+      const el = containerRef.current;
+      if (!el || typeof window === "undefined") return;
+      const rect = el.getBoundingClientRect();
+      const vh = window.innerHeight;
+      const vw = window.innerWidth;
+      const visible =
+        rect.width > 0 &&
+        rect.height > 0 &&
+        rect.bottom > -vh * 0.25 &&
+        rect.top < vh * 1.25 &&
+        rect.right > -vw * 0.1 &&
+        rect.left < vw * 1.1;
+      if (visible) setInView(true);
+    }, [lazyAttach]);
+
     useEffect(() => {
       if (!lazyAttach) return;
       const root = containerRef.current;
@@ -171,7 +189,7 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
           className={containerClassName}
           style={{
             position: "relative",
-            background: FALLBACK_POSTER_BG,
+            background: "#0a0a0a",
           }}
           aria-hidden
         >
@@ -180,7 +198,7 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
             style={{ background: FALLBACK_POSTER_BG }}
             aria-hidden
           />
-          {bustedPoster ? (
+          {bustedPoster && !lcpFriendlyPoster ? (
             <div className="absolute inset-0 z-[1] overflow-hidden">
               <Image
                 src={bustedPoster}
@@ -190,9 +208,14 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
                 className="object-cover"
                 priority={posterPriority}
                 fetchPriority={posterPriority ? "high" : "low"}
-                unoptimized={bustedPoster.startsWith("http")}
               />
             </div>
+          ) : bustedPoster && lcpFriendlyPoster ? (
+            <div
+              className="absolute inset-0 z-[1] bg-cover bg-center bg-no-repeat"
+              style={{ backgroundImage: `url(${bustedPoster})` }}
+              aria-hidden
+            />
           ) : null}
         </div>
       );
