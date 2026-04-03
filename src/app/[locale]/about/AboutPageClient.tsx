@@ -126,8 +126,11 @@ export default function AboutPageClient() {
   const heroVideoPlayUrl = useMemo(() => proxiedHeroVideoSrc(heroMediaUrl), [heroMediaUrl]);
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
-  // Ensure about-page hero video autoplays reliably on all devices
-  useReliableVideoAutoplay(heroVideoRef, { mode: "background" });
+  const heroVideoReattachKey = `${heroVideoPlayUrl}-${pageSections.hero?.version ?? 0}`;
+  useReliableVideoAutoplay(heroVideoRef, {
+    mode: "background",
+    reattachKey: heroVideoReattachKey,
+  });
 
   const featureItems = useMemo<FeatureItem[]>(
     () => [
@@ -243,11 +246,9 @@ export default function AboutPageClient() {
             version={pageSections.hero?.version}
             posterUrl={pageMediaAbout?.heroImageUrl ?? null}
             forcePoster={!shouldLoadHeroVideo}
-            lazyAttach
-            deferAttachUntilIdle
-            idleAttachTimeoutMs={520}
             posterPriority
             optimizeGpu
+            lightVideoFade
             containerClassName="absolute inset-0 z-10 h-full w-full"
             className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
             style={{
@@ -260,13 +261,21 @@ export default function AboutPageClient() {
             loop
             muted
             playsInline
-            preload="none"
+            preload="auto"
             disablePictureInPicture
             disableRemotePlayback
             onContextMenu={(e) => e.preventDefault()}
             onPlay={(e) => {
               const video = e.currentTarget;
               if (video.paused) video.play().catch(() => {});
+            }}
+            onWaiting={(e) => {
+              const video = e.currentTarget;
+              void video.play().catch(() => {});
+            }}
+            onStalled={(e) => {
+              const video = e.currentTarget;
+              void video.play().catch(() => {});
             }}
           />
         ) : (
@@ -280,7 +289,11 @@ export default function AboutPageClient() {
             priority
           />
         )}
-        <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
+        <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/38 via-black/12 to-black/55 pointer-events-none" />
+        <div
+          className="absolute inset-0 z-[11] bg-gradient-to-r from-black/50 via-black/22 to-transparent pointer-events-none md:from-black/42 md:via-black/14"
+          aria-hidden
+        />
       </div>
 
       {/* Hero edit: same pattern as Home (portal + delay, same Replace video pop-up) */}
@@ -295,16 +308,25 @@ export default function AboutPageClient() {
       {/* Hero Section – same size & layout as Distributor (min-h-screen, left-aligned, scroll button) */}
       <section className="relative flex min-h-screen items-center justify-start overflow-hidden">
         <div className="relative z-20 w-full text-left pl-4 sm:pl-6 md:pl-8 lg:pl-12 xl:pl-16 2xl:pl-20 pr-4 sm:pr-6 md:pr-8 lg:pr-12">
-          <ScrollRevealSection as="div" direction="up" delay={0.15} amount={0.4} className="space-y-6 sm:space-y-8 max-w-4xl">
-            <div ref={heroRef} className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-6 py-2 text-[12px] uppercase tracking-[0.45em] text-luxury-silver/60 backdrop-blur w-fit">
+          <ScrollRevealSection
+            as="div"
+            direction="up"
+            delay={0.15}
+            amount={0.4}
+            className="relative space-y-6 sm:space-y-8 max-w-4xl"
+          >
+            <div
+              ref={heroRef}
+              className="inline-flex items-center gap-3 rounded-full border border-white/20 bg-black/45 px-6 py-2 text-[12px] uppercase tracking-[0.45em] text-white/85 shadow-md w-fit [text-shadow:0_1px_2px_rgba(0,0,0,0.85)]"
+            >
               <span className="h-1 w-1 rounded-full bg-luxury-gold" />
               {t("hero.badge")}
               <span className="h-1 w-1 rounded-full bg-luxury-gold" />
             </div>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-semibold md:font-bold leading-[1.1] tracking-tight text-white drop-shadow-sm">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-bold md:font-extrabold leading-[1.1] tracking-tight text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.95),0_4px_28px_rgba(0,0,0,0.7),0_0_1px_rgba(0,0,0,1)]">
               {t("hero.title")}
             </h1>
-            <p className="text-base sm:text-lg md:text-xl font-sans font-light leading-relaxed text-luxury-silver/90 max-w-2xl">
+            <p className="text-base sm:text-lg md:text-xl font-sans font-semibold md:font-bold leading-relaxed text-white max-w-2xl [text-shadow:0_1px_3px_rgba(0,0,0,0.9),0_2px_16px_rgba(0,0,0,0.55)]">
               {t("hero.subtitle")}
             </p>
           </ScrollRevealSection>
