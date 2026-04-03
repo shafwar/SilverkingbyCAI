@@ -16,8 +16,13 @@ declare global {
 }
 
 /**
- * Returns true when it's OK to load hero video (fast connection, no data saver).
- * When false, hero should show poster/image only to keep page light on slow networks.
+ * Returns true when it's OK to load hero video (no data saver, not extremely slow).
+ * When false, hero should show poster/image only.
+ *
+ * Important: Do NOT treat `effectiveType === "3g"` as "no video". Safari on iOS (and
+ * some Android builds) often report Wi‑Fi or LTE as "3g", which would hide every hero
+ * video on mobile while desktop still loads — looks like a site bug.
+ * Only skip video for save-data and true 2G-class labels.
  */
 export function useShouldLoadHeroVideo(): boolean {
   const [shouldLoad, setShouldLoad] = useState(true);
@@ -37,7 +42,7 @@ export function useShouldLoadHeroVideo(): boolean {
       return;
     }
 
-    if (effectiveType === "slow-2g" || effectiveType === "2g" || effectiveType === "3g") {
+    if (effectiveType === "slow-2g" || effectiveType === "2g") {
       setShouldLoad(false);
       return;
     }

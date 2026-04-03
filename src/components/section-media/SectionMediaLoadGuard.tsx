@@ -174,7 +174,27 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
             background: FALLBACK_POSTER_BG,
           }}
           aria-hidden
-        />
+        >
+          <div
+            className="absolute inset-0 z-0"
+            style={{ background: FALLBACK_POSTER_BG }}
+            aria-hidden
+          />
+          {bustedPoster ? (
+            <div className="absolute inset-0 z-[1] overflow-hidden">
+              <Image
+                src={bustedPoster}
+                alt=""
+                fill
+                sizes="100vw"
+                className="object-cover"
+                priority={posterPriority}
+                fetchPriority={posterPriority ? "high" : "low"}
+                unoptimized={bustedPoster.startsWith("http")}
+              />
+            </div>
+          ) : null}
+        </div>
       );
     }
 
