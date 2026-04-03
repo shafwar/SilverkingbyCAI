@@ -78,7 +78,19 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
     const [ready, setReady] = useState(false);
     const [fadeComplete, setFadeComplete] = useState(false);
     const fadeTimerRef = useRef<number | null>(null);
-    const [inView, setInView] = useState(!lazyAttach);
+    /** Phones/tablets: assume hero is above the fold (fixes IO + 0×0 layout missing intersection on iOS). */
+    const [inView, setInView] = useState(() => {
+      if (typeof window === "undefined") return !lazyAttach;
+      if (!lazyAttach) return true;
+      try {
+        return (
+          window.matchMedia("(pointer: coarse)").matches ||
+          window.matchMedia("(hover: none)").matches
+        );
+      } catch {
+        return true;
+      }
+    });
     const [idleReady, setIdleReady] = useState(!deferAttachUntilIdle);
     const containerRef = useRef<HTMLDivElement>(null);
     const src = getCacheBustedMediaUrl(url, version);
@@ -87,22 +99,29 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
         ? getCacheBustedMediaUrl(posterUrl, posterVersion)
         : null;
 
-    /** iOS/WebKit: IntersectionObserver occasionally misses fixed full-bleed heroes; prime from layout. */
+    /** Prime inView when container gets size (fixed heroes on iOS). */
     useLayoutEffect(() => {
       if (!lazyAttach) return;
       const el = containerRef.current;
       if (!el || typeof window === "undefined") return;
-      const rect = el.getBoundingClientRect();
-      const vh = window.innerHeight;
-      const vw = window.innerWidth;
-      const visible =
-        rect.width > 0 &&
-        rect.height > 0 &&
-        rect.bottom > -vh * 0.25 &&
-        rect.top < vh * 1.25 &&
-        rect.right > -vw * 0.1 &&
-        rect.left < vw * 1.1;
-      if (visible) setInView(true);
+      const bump = () => {
+        const rect = el.getBoundingClientRect();
+        const vh = window.innerHeight;
+        const vw = window.innerWidth;
+        const visible =
+          rect.width > 0 &&
+          rect.height > 0 &&
+          rect.bottom > -vh * 0.25 &&
+          rect.top < vh * 1.25 &&
+          rect.right > -vw * 0.1 &&
+          rect.left < vw * 1.1;
+        if (visible) setInView(true);
+      };
+      bump();
+      if (typeof ResizeObserver === "undefined") return;
+      const ro = new ResizeObserver(() => bump());
+      ro.observe(el);
+      return () => ro.disconnect();
     }, [lazyAttach]);
 
     useEffect(() => {
@@ -182,6 +201,16 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
         fadeTimerRef.current = null;
       }, 480);
     };
+
+    /** Safari/iOS: if decode events never fire, avoid permanent opacity 0. */
+    useEffect(() => {
+      if (!effectiveAttach) return;
+      const w = globalThis as Window & typeof globalThis;
+      const t = w.setTimeout(() => {
+        setReady((prev) => (prev ? prev : true));
+      }, 3200);
+      return () => w.clearTimeout(t);
+    }, [effectiveAttach, src]);
 
     if (forcePoster) {
       return (
@@ -263,7 +292,9 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
           src={effectiveAttach ? src : undefined}
           poster={bustedPoster ?? undefined}
           onLoadedData={markReady}
+          onLoadedMetadata={markReady}
           onCanPlay={markReady}
+          onPlaying={markReady}
           {...videoProps}
           style={{
             ...style,

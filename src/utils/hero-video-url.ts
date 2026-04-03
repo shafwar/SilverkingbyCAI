@@ -1,6 +1,5 @@
 /**
- * Hero video from R2: same-origin proxy for Range requests / consistent playback.
- * Used by Journal (and can be reused by other pages that stream via /api/hero-video).
+ * Hero video from R2: same-origin proxy via /api/hero-video (supports HTTP Range — required for Safari/iOS MP4).
  */
 
 export function r2KeyFromPublicUrl(url: string): string | null {

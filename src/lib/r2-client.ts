@@ -193,6 +193,53 @@ export async function getObjectStreamFromR2(
   }
 }
 
+/** Size + type for Range requests (Safari/iOS video requires 206 + Content-Range). */
+export async function headObjectFromR2(
+  key: string
+): Promise<{ contentLength: number; contentType?: string } | null> {
+  try {
+    const command = new HeadObjectCommand({ Bucket: BUCKET_NAME, Key: key });
+    const r = await r2Client.send(command);
+    if (r.ContentLength == null) return null;
+    return {
+      contentLength: Number(r.ContentLength),
+      contentType: r.ContentType ?? undefined,
+    };
+  } catch (error: unknown) {
+    const name = typeof error === "object" && error !== null && "name" in error ? (error as { name: string }).name : "";
+    const code = typeof error === "object" && error !== null && "$metadata" in error
+      ? (error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode
+      : undefined;
+    if (name === "NoSuchKey" || name === "NotFound" || code === 404) return null;
+    throw error;
+  }
+}
+
+/** Inclusive byte range [start, end]. */
+export async function getObjectByteRangeFromR2(
+  key: string,
+  start: number,
+  end: number
+): Promise<{ body: Readable; contentType?: string } | null> {
+  try {
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+      Range: `bytes=${start}-${end}`,
+    });
+    const response = await r2Client.send(command);
+    if (!response.Body) return null;
+    return { body: response.Body as Readable, contentType: response.ContentType ?? undefined };
+  } catch (error: unknown) {
+    const name = typeof error === "object" && error !== null && "name" in error ? (error as { name: string }).name : "";
+    const code = typeof error === "object" && error !== null && "$metadata" in error
+      ? (error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode
+      : undefined;
+    if (name === "NoSuchKey" || name === "NotFound" || code === 404) return null;
+    throw error;
+  }
+}
+
 /**
  * Upload file from FormData or File (streaming for video/large files — faster, no full buffer).
  * Uses stream when possible so upload starts immediately; ContentLength required for S3/R2.
