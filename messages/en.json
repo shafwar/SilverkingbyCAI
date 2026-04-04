@@ -578,7 +578,7 @@
     "signIn": "Sign In",
     "signOut": "Sign Out",
     "welcome": "Welcome",
-    "adminConsole": "Admin Console",
+    "adminConsole": "Admin login",
     "silverKing": "Silver King",
     "silverKingAdmin": "Silver King Admin",
     "command": {
@@ -999,7 +999,7 @@
       "noReports": "No archived reports yet. Use \"Export & Purge Last Month\" to create one."
     },
     "login": {
-      "title": "Admin Console",
+      "title": "Admin login",
       "signingIn": "Signing in…",
       "signIn": "Sign in",
       "loginFailed": "Login failed",

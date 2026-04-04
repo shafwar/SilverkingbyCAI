@@ -581,7 +581,7 @@
     "signIn": "Masuk",
     "signOut": "Keluar",
     "welcome": "Selamat Datang",
-    "adminConsole": "Konsol Admin",
+    "adminConsole": "Login admin",
     "silverKing": "Silver King",
     "silverKingAdmin": "Silver King Admin",
     "command": {
@@ -1004,7 +1004,7 @@
       "noReports": "Belum ada laporan arsip. Gunakan \"Ekspor & Hapus Bulan Lalu\" untuk membuat."
     },
     "login": {
-      "title": "Konsol Admin",
+      "title": "Login admin",
       "signingIn": "Masuk…",
       "signIn": "Masuk",
       "loginFailed": "Login gagal",
