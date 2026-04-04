@@ -299,12 +299,15 @@ model Journal {
   excerptId       String?   @db.VarChar(1000)
   excerptEn       String?   @db.VarChar(1000)
   heroImageR2Key  String?
+  /// Editorial / display date (shown on public article; optional)
+  articleDate     DateTime?
   publishedAt     DateTime?
   sortOrder       Int       @default(0)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@index([publishedAt])
+  @@index([articleDate])
   @@index([sortOrder])
 }
 

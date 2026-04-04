@@ -100,6 +100,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
       "/admin/analytics",
       "/admin/feedback",
       "/admin/journal",
+      "/admin/journal/new",
     ];
 
     // Prefetch all admin routes immediately

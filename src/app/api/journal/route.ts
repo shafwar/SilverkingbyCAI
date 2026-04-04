@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 
     const list = await prisma.journal.findMany({
       where: { publishedAt: { not: null } },
-      orderBy: [{ sortOrder: "asc" }, { publishedAt: "desc" }],
+      orderBy: [{ sortOrder: "asc" }, { articleDate: "desc" }, { publishedAt: "desc" }],
       select: {
         slug: true,
         titleId: true,
@@ -36,16 +36,21 @@ export async function GET(request: Request) {
         excerptEn: true,
         heroImageR2Key: true,
         publishedAt: true,
+        articleDate: true,
       },
     });
 
-    const items = list.map((j) => ({
-      slug: j.slug,
-      title: pickTitle(j, lang),
-      excerpt: pickExcerpt(j, lang),
-      heroImageUrl: j.heroImageR2Key ? getPublicUrl(j.heroImageR2Key) : null,
-      publishedAt: j.publishedAt?.toISOString() ?? null,
-    }));
+    const items = list.map((j) => {
+      const displayDate = (j.articleDate ?? j.publishedAt)?.toISOString() ?? null;
+      return {
+        slug: j.slug,
+        title: pickTitle(j, lang),
+        excerpt: pickExcerpt(j, lang),
+        heroImageUrl: j.heroImageR2Key ? getPublicUrl(j.heroImageR2Key) : null,
+        publishedAt: j.publishedAt?.toISOString() ?? null,
+        displayDate,
+      };
+    });
 
     return NextResponse.json({ items }, {
       headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },

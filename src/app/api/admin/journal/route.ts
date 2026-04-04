@@ -29,20 +29,17 @@ function sanitizeJournalHtml(input: string): string {
       "h2",
       "h3",
       "a",
-      "img",
       "code",
       "pre",
     ],
     allowedAttributes: {
       a: ["href", "target", "rel"],
-      img: ["src", "alt", "title", "loading"],
       "*": ["class"],
     },
     allowedSchemes: ["http", "https", "data"],
     allowProtocolRelative: false,
     transformTags: {
       a: sanitizeHtml.simpleTransform("a", { rel: "noopener noreferrer", target: "_blank" }),
-      img: sanitizeHtml.simpleTransform("img", { loading: "lazy" }),
     },
   });
 }
@@ -93,6 +90,7 @@ export async function POST(request: Request) {
       heroImageR2Key,
       publishedAt,
       sortOrder,
+      articleDate: rawArticleDate,
     } = body ?? {};
 
     const titleIdS = String(titleId ?? "").trim();
@@ -147,6 +145,12 @@ export async function POST(request: Request) {
         ? new Date(publishedAt === true || publishedAt === "true" ? Date.now() : publishedAt)
         : null;
 
+    let articleDate: Date | null = null;
+    if (rawArticleDate != null && rawArticleDate !== "") {
+      const d = new Date(String(rawArticleDate));
+      if (!Number.isNaN(d.getTime())) articleDate = d;
+    }
+
     const created = await prisma.journal.create({
       data: {
         slug,
@@ -157,6 +161,7 @@ export async function POST(request: Request) {
         excerptId: finalExcerptId ? finalExcerptId : null,
         excerptEn: finalExcerptEn ? finalExcerptEn : null,
         heroImageR2Key: heroImageR2Key && String(heroImageR2Key).trim() ? String(heroImageR2Key).trim() : null,
+        articleDate,
         publishedAt: publishedAtDate,
         sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
       },

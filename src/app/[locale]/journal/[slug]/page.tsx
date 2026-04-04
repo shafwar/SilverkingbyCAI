@@ -41,6 +41,8 @@ export default async function JournalArticlePage({ params }: Props) {
 
   if (!row) notFound();
 
+  const displayDate = (row.articleDate ?? row.publishedAt)?.toISOString() ?? null;
+
   const article = {
     slug: row.slug,
     title: lang === "id" ? row.titleId : row.titleEn,
@@ -48,6 +50,7 @@ export default async function JournalArticlePage({ params }: Props) {
     excerpt: (lang === "id" ? row.excerptId : row.excerptEn)?.trim() || null,
     heroImageUrl: row.heroImageR2Key ? getPublicUrl(row.heroImageR2Key) : null,
     publishedAt: row.publishedAt?.toISOString() ?? null,
+    displayDate,
   };
 
   return (

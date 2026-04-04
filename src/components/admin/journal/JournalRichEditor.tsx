@@ -222,14 +222,14 @@ export function JournalRichEditor({ value, onChange, placeholder = "Write conten
         <ToolbarButton title="Link" onClick={promptLink} active={editor.isActive("link")}>
           <Link2 className="h-4 w-4" />
         </ToolbarButton>
-        <ToolbarButton
-          title={onUploadImage ? "Insert image" : "Image upload not available"}
-          onClick={insertImageByUpload}
-          disabled={!onUploadImage}
-        >
-          <ImageIcon className="h-4 w-4" />
-        </ToolbarButton>
-        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onPickFile} />
+        {onUploadImage ? (
+          <>
+            <ToolbarButton title="Insert image" onClick={insertImageByUpload}>
+              <ImageIcon className="h-4 w-4" />
+            </ToolbarButton>
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onPickFile} />
+          </>
+        ) : null}
       </div>
 
       <div className="p-4 relative z-0">

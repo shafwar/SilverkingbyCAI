@@ -33,6 +33,10 @@ function formatJournalListDate(iso: string, locale: string) {
   return { primary: `${day} ${month}`, year: String(year) };
 }
 
+function journalCardDateIso(item: Pick<JournalItem, "displayDate" | "publishedAt">) {
+  return item.displayDate ?? item.publishedAt;
+}
+
 const fontJournal = Plus_Jakarta_Sans({
   weight: ["400", "500", "600", "700", "800"],
   subsets: ["latin"],
@@ -46,6 +50,8 @@ type JournalItem = {
   excerpt: string | null;
   heroImageUrl: string | null;
   publishedAt: string | null;
+  /** Preferred date for cards (editorial or publish) */
+  displayDate?: string | null;
 };
 
 const LATEST_ARTICLES_LIMIT = 3;
@@ -189,11 +195,11 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
 
   const goAdminNew = () => {
     if (typeof window === "undefined") return;
-    window.location.href = "/admin/journal?new=1";
+    window.location.href = "/admin/journal/new";
   };
   const goAdminEdit = (id: number) => {
     if (typeof window === "undefined") return;
-    window.location.href = `/admin/journal?edit=${id}`;
+    window.location.href = `/admin/journal/${id}/edit`;
   };
   const deleteAdmin = async (id: number) => {
     if (!confirm("Delete this journal post?")) return;
@@ -440,17 +446,17 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
                       <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/55 to-transparent md:from-transparent md:via-transparent md:to-black/35" />
                     </div>
                     <div className="flex flex-col justify-center p-6 md:col-span-3 md:p-10">
-                      {latestItems[0].publishedAt && (
+                      {journalCardDateIso(latestItems[0]) && (
                         <time
-                          dateTime={latestItems[0].publishedAt}
+                          dateTime={journalCardDateIso(latestItems[0])!}
                           className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.65rem] font-bold uppercase tracking-[0.2em] text-luxury-gold sm:text-[0.6875rem]"
                         >
-                          <span>{formatJournalListDate(latestItems[0].publishedAt, locale).primary}</span>
+                          <span>{formatJournalListDate(journalCardDateIso(latestItems[0])!, locale).primary}</span>
                           <span className="text-luxury-gold/35" aria-hidden>
                             ·
                           </span>
                           <span className="font-semibold tabular-nums text-white/45">
-                            {formatJournalListDate(latestItems[0].publishedAt, locale).year}
+                            {formatJournalListDate(journalCardDateIso(latestItems[0])!, locale).year}
                           </span>
                         </time>
                       )}
@@ -527,15 +533,15 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                       </div>
                       <div className="p-5 sm:p-6">
-                        {latestItems[1].publishedAt && (
+                        {journalCardDateIso(latestItems[1]) && (
                           <time
-                            dateTime={latestItems[1].publishedAt}
+                            dateTime={journalCardDateIso(latestItems[1])!}
                             className="mb-2 flex flex-wrap items-center gap-x-1.5 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-luxury-gold"
                           >
-                            <span>{formatJournalListDate(latestItems[1].publishedAt, locale).primary}</span>
+                            <span>{formatJournalListDate(journalCardDateIso(latestItems[1])!, locale).primary}</span>
                             <span className="text-luxury-gold/35">·</span>
                             <span className="font-semibold tabular-nums text-white/45">
-                              {formatJournalListDate(latestItems[1].publishedAt, locale).year}
+                              {formatJournalListDate(journalCardDateIso(latestItems[1])!, locale).year}
                             </span>
                           </time>
                         )}
@@ -562,15 +568,15 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
                       >
                         <div className="flex flex-col sm:flex-row sm:min-h-[200px]">
                           <div className="flex-1 p-5 sm:p-6 sm:order-1 sm:min-w-0">
-                            {latestItems[2].publishedAt && (
+                            {journalCardDateIso(latestItems[2]) && (
                               <time
-                                dateTime={latestItems[2].publishedAt}
+                                dateTime={journalCardDateIso(latestItems[2])!}
                                 className="mb-2 flex flex-wrap items-center gap-x-1.5 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-luxury-gold"
                               >
-                                <span>{formatJournalListDate(latestItems[2].publishedAt, locale).primary}</span>
+                                <span>{formatJournalListDate(journalCardDateIso(latestItems[2])!, locale).primary}</span>
                                 <span className="text-luxury-gold/35">·</span>
                                 <span className="font-semibold tabular-nums text-white/45">
-                                  {formatJournalListDate(latestItems[2].publishedAt, locale).year}
+                                  {formatJournalListDate(journalCardDateIso(latestItems[2])!, locale).year}
                                 </span>
                               </time>
                             )}

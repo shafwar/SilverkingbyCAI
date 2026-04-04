@@ -29,13 +29,11 @@ function sanitizeJournalHtml(input: string): string {
       "h2",
       "h3",
       "a",
-      "img",
       "code",
       "pre",
     ],
     allowedAttributes: {
       a: ["href", "target", "rel"],
-      img: ["src", "alt", "title", "loading"],
       "*": ["class"],
     },
     allowedSchemes: ["http", "https", "data"],
@@ -89,6 +87,7 @@ export async function PATCH(
       heroImageR2Key?: string | null;
       publishedAt?: Date | null;
       sortOrder?: number;
+      articleDate?: Date | null;
     } = {};
 
     if (body.slug !== undefined) updates.slug = slugify(String(body.slug).trim()) || existing.slug;
@@ -103,10 +102,19 @@ export async function PATCH(
     if (body.publishedAt !== undefined) {
       if (body.publishedAt === null || body.publishedAt === false || body.publishedAt === "false" || body.publishedAt === "") {
         updates.publishedAt = null;
+      } else if (body.publishedAt === true || body.publishedAt === "true") {
+        updates.publishedAt = existing.publishedAt ?? new Date();
       } else {
-        updates.publishedAt = body.publishedAt === true || body.publishedAt === "true"
-          ? new Date()
-          : new Date(body.publishedAt);
+        updates.publishedAt = new Date(body.publishedAt);
+      }
+    }
+
+    if (body.articleDate !== undefined) {
+      if (body.articleDate === null || body.articleDate === "") {
+        updates.articleDate = null;
+      } else {
+        const d = new Date(String(body.articleDate));
+        updates.articleDate = Number.isNaN(d.getTime()) ? existing.articleDate : d;
       }
     }
 

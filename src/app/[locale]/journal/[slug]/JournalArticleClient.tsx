@@ -22,6 +22,8 @@ type Article = {
   excerpt: string | null;
   heroImageUrl: string | null;
   publishedAt: string | null;
+  /** Shown in header: editorial date, else publish date */
+  displayDate: string | null;
 };
 
 type Props = {
@@ -34,14 +36,15 @@ export default function JournalArticleClient({ article, locale, backLabel }: Pro
   const hasHtml = /<[a-z][\s\S]*>/i.test(article.content);
 
   const formattedDate = useMemo(() => {
-    if (!article.publishedAt) return null;
-    const d = new Date(article.publishedAt);
+    const iso = article.displayDate ?? article.publishedAt;
+    if (!iso) return null;
+    const d = new Date(iso);
     const loc = locale === "id" ? "id-ID" : "en-GB";
     const day = d.toLocaleDateString(loc, { day: "numeric" });
     const month = d.toLocaleDateString(loc, { month: "long" });
     const year = d.toLocaleDateString(loc, { year: "numeric" });
-    return { line1: `${day} ${month}`.toUpperCase(), year };
-  }, [article.publishedAt, locale]);
+    return { line1: `${day} ${month}`.toUpperCase(), year, iso };
+  }, [article.displayDate, article.publishedAt, locale]);
 
   return (
     <div
@@ -68,14 +71,14 @@ export default function JournalArticleClient({ article, locale, backLabel }: Pro
             {formattedDate && (
               <div className="mb-5 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-white/[0.07] pb-5">
                 <time
-                  dateTime={article.publishedAt!}
+                  dateTime={formattedDate.iso}
                   className="text-[0.6875rem] font-bold uppercase tracking-[0.22em] text-luxury-gold tabular-nums sm:text-[0.7rem]"
                 >
                   {formattedDate.line1}
                 </time>
                 <span className="hidden h-1 w-1 rounded-full bg-luxury-gold/40 sm:inline" aria-hidden />
                 <time
-                  dateTime={article.publishedAt!}
+                  dateTime={formattedDate.iso}
                   className="text-[0.6875rem] font-semibold uppercase tracking-[0.28em] text-white/45 tabular-nums"
                 >
                   {formattedDate.year}
