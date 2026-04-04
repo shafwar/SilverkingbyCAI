@@ -10,6 +10,8 @@ export type AdminPageLayoutProps = {
   title: string;
   /** Optional short description below title */
   description?: string;
+  /** Optional block on the left of the title row (e.g. back navigation) */
+  leading?: ReactNode;
   /** Optional actions (buttons, tabs) on the right side of the header */
   actions?: ReactNode;
   /** Page content */
@@ -26,6 +28,7 @@ export function AdminPageLayout({
   eyebrow = "Admin",
   title,
   description,
+  leading,
   actions,
   children,
   noContentPadding = false,
@@ -38,21 +41,26 @@ export function AdminPageLayout({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
-            className="flex flex-col gap-4 py-5 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-4 py-5 sm:flex-row sm:items-start sm:justify-between sm:gap-6"
           >
-            <div className="space-y-0.5 min-w-0">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/40">
-                {eyebrow}
-              </p>
-              <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl truncate">
-                {title}
-              </h1>
-              {description && (
-                <p className="text-xs text-white/50 max-w-2xl">{description}</p>
-              )}
+            <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
+              {leading ? (
+                <div className="flex shrink-0 sm:pt-1">{leading}</div>
+              ) : null}
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/40">
+                  {eyebrow}
+                </p>
+                <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl sm:pr-4">
+                  {title}
+                </h1>
+                {description && (
+                  <p className="text-xs text-white/50 max-w-2xl leading-relaxed">{description}</p>
+                )}
+              </div>
             </div>
             {actions && (
-              <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 sm:pt-1">
                 {actions}
               </div>
             )}

@@ -982,7 +982,9 @@
       "zoomReset": "Reset zoom",
       "cancel": "Cancel",
       "savePost": "Save changes",
-      "createPost": "Create post"
+      "createPost": "Create post",
+      "formDescriptionEdit": "Update titles, hero image, schedule, and both language versions. Changes apply to the live site when published.",
+      "formDescriptionNew": "Draft a bilingual article, set the display date, add one hero image, then publish when ready."
     },
     "logsDetail": {
       "product": "Product",

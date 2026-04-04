@@ -985,7 +985,9 @@
       "zoomReset": "Reset zoom",
       "cancel": "Batal",
       "savePost": "Simpan perubahan",
-      "createPost": "Buat post"
+      "createPost": "Buat post",
+      "formDescriptionEdit": "Perbarui judul, gambar hero, jadwal, dan kedua bahasa. Perubahan terlihat di situs saat status terbit.",
+      "formDescriptionNew": "Buat artikel dua bahasa, atur tanggal tampil, satu gambar hero, lalu terbitkan saat siap."
     },
     "logsDetail": {
       "product": "Produk",
