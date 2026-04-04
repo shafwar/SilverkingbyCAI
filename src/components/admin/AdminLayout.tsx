@@ -82,7 +82,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         href: "/admin/feedback",
         icon: MessageSquare,
       },
-      { label: safeT(t, "journal", "Journal"), href: "/admin/journal", icon: BookOpen },
+      { label: safeT(t, "journalNav", "Journal"), href: "/admin/journal", icon: BookOpen },
     ],
     [t, tDashboard, safeT, locale]
   );
