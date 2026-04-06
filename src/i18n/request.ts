@@ -17,7 +17,21 @@ export default getRequestConfig(async ({ requestLocale }) => {
   if (messageCache.has(locale)) {
     return {
       locale,
-      messages: messageCache.get(locale)
+      messages: messageCache.get(locale),
+      // Return empty string for missing keys instead of throwing — prevents 5xx
+      // errors and retry traffic caused by MISSING_MESSAGE log entries.
+      onError(error) {
+        if (error.code === 'MISSING_MESSAGE') {
+          console.warn(`[i18n] ${error.message}`);
+        } else {
+          console.error(`[i18n]`, error);
+        }
+      },
+      getMessageFallback({ key }) {
+        // Return the last segment of the key as a human-readable fallback
+        const segments = key.split('.');
+        return segments[segments.length - 1] ?? key;
+      },
     };
   }
 
@@ -39,7 +53,21 @@ export default getRequestConfig(async ({ requestLocale }) => {
 
   return {
     locale,
-    messages
+    messages,
+    // Return empty string for missing keys instead of throwing — prevents 5xx
+    // errors and retry traffic caused by MISSING_MESSAGE log entries.
+    onError(error) {
+      if (error.code === 'MISSING_MESSAGE') {
+        console.warn(`[i18n] ${error.message}`);
+      } else {
+        console.error(`[i18n]`, error);
+      }
+    },
+    getMessageFallback({ key }) {
+      // Return the last segment of the key as a human-readable fallback
+      const segments = key.split('.');
+      return segments[segments.length - 1] ?? key;
+    },
   };
 });
 

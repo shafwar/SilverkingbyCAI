@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { logEmailEvent } from "@/utils/monitoring";
 
 // Initialize Resend client
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -178,10 +179,24 @@ Lihat di Admin Panel: ${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:300
 
     if (error) {
       console.error("Resend email error:", error);
+      logEmailEvent({
+        emailType: "feedback-notification",
+        recipientCount: 1,
+        success: false,
+        error: typeof error === "object" && error !== null && "message" in error
+          ? String((error as { message: unknown }).message)
+          : String(error),
+      });
       throw error;
     }
 
     console.log("Feedback notification email sent successfully:", data?.id);
+    logEmailEvent({
+      emailType: "feedback-notification",
+      recipientCount: 1,
+      success: true,
+      messageId: data?.id,
+    });
     return { success: true, emailId: data?.id };
   } catch (error: any) {
     console.error("Failed to send feedback notification email:", error);
@@ -289,10 +304,24 @@ Tim Silver King by CAI
 
     if (error) {
       console.error("Resend auto-reply email error:", error);
+      logEmailEvent({
+        emailType: "feedback-auto-reply",
+        recipientCount: 1,
+        success: false,
+        error: typeof error === "object" && error !== null && "message" in error
+          ? String((error as { message: unknown }).message)
+          : String(error),
+      });
       throw error;
     }
 
     console.log("Feedback auto-reply email sent successfully:", data?.id);
+    logEmailEvent({
+      emailType: "feedback-auto-reply",
+      recipientCount: 1,
+      success: true,
+      messageId: data?.id,
+    });
     return { success: true, emailId: data?.id };
   } catch (error: any) {
     console.error("Failed to send feedback auto-reply email:", error);
