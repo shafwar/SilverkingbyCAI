@@ -162,14 +162,26 @@ export function AdminPageLayout({
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/50">
                       {eyebrow}
                     </p>
-                    <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl sm:pr-4">
-                      {title}
-                    </h1>
-                    {description ? (
-                      <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-white/58 sm:text-[15px] sm:leading-relaxed">
-                        {description}
-                      </p>
-                    ) : null}
+                    <div className="flex items-start gap-3 sm:items-center sm:gap-4">
+                      {titleIcon ? (
+                        <div
+                          className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.1] bg-white/[0.04] text-luxury-gold/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] sm:mt-0 sm:h-10 sm:w-10 sm:rounded-xl"
+                          aria-hidden
+                        >
+                          {titleIcon}
+                        </div>
+                      ) : null}
+                      <div className="min-w-0 flex-1">
+                        <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl sm:pr-4">
+                          {title}
+                        </h1>
+                        {description ? (
+                          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-white/58 sm:text-[15px] sm:leading-relaxed">
+                            {description}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

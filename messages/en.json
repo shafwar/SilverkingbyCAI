@@ -571,6 +571,7 @@
     "distributor": "Distributor",
     "content": "Content",
     "journalNav": "News & journal",
+    "serticardNav": "Serticard",
     "logout": "Logout",
     "login": "Login",
     "email": "Email",
@@ -867,6 +868,11 @@
       "translationUnavailable": "Auto-translation is disabled. Fill both Title (ID) and Title (EN) manually."
     },
     "products": "Products",
+    "serticard": {
+      "eyebrow": "Print & verification",
+      "title": "Serticard templates",
+      "description": "Upload templates to Cloudflare R2 and set fonts. CMS spreads (one image, left = QR side / right = back) and optional separate front & back custom files appear in the template dropdown on QR Preview when you download PDFs."
+    },
     "qrPreviewDetail": {
       "eyebrow": "QR Vault",
       "title": "Every serialized artifact",

@@ -571,6 +571,7 @@
     "distributor": "Distributor",
     "content": "Konten",
     "journalNav": "Berita & jurnal",
+    "serticardNav": "Serticard",
     "qrPreview": "Pratinjau QR",
     "logs": "Log",
     "analytics": "Analitik",
@@ -870,6 +871,11 @@
       "translationUnavailable": "Auto-translate dinonaktifkan. Isi Judul (ID) dan Judul (EN) secara manual."
     },
     "products": "Produk",
+    "serticard": {
+      "eyebrow": "Cetak & verifikasi",
+      "title": "Template serticard",
+      "description": "Unggah template ke Cloudflare R2 dan atur font. Spread CMS (satu gambar, kiri = sisi QR / kanan = belakang) serta unggahan depan & belakang terpisah muncul di dropdown template di Pratinjau QR saat mengunduh PDF."
+    },
     "qrPreviewDetail": {
       "eyebrow": "Vault QR",
       "title": "Setiap artefak terserialisasi",
