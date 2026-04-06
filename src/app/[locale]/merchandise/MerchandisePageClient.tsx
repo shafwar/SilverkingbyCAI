@@ -205,6 +205,7 @@ export default function MerchandisePageClient() {
   const addFileInputRef = useRef<HTMLInputElement>(null);
   const [isMounted, setIsMounted] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
+  const [heroImgErrors, setHeroImgErrors] = useState<Record<number, boolean>>({});
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
   /** Hero images: second image first (polo close-up / “ss kedua”), then rest of flow. */
@@ -515,13 +516,16 @@ export default function MerchandisePageClient() {
                   transition={{ duration: 6, ease: "linear" }}
                 >
                   <Image
-                    src={heroImageUrls[heroIndex]}
+                    src={heroImgErrors[heroIndex] ? "/images/hero-fallback.jpg" : heroImageUrls[heroIndex]}
                     alt=""
                     fill
                     className="object-cover"
                     sizes="100vw"
                     priority
-                    unoptimized={heroImageUrls[heroIndex]?.startsWith("http")}
+                    unoptimized={!heroImgErrors[heroIndex] && heroImageUrls[heroIndex]?.startsWith("http")}
+                    onError={() =>
+                      setHeroImgErrors((prev) => ({ ...prev, [heroIndex]: true }))
+                    }
                   />
                 </motion.div>
                 <div className="absolute inset-0 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-luxury-black/40" />
