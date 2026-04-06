@@ -358,6 +358,7 @@ export function JournalPostFormClient({ mode, postId }: Props) {
         leading={backLink}
         titleIcon={headerTitleIcon}
         fluid
+        detachedFromNav
       >
         <div className="w-full min-w-0 space-y-4 py-4">
           <div className="h-20 animate-pulse rounded-2xl bg-white/[0.05]" />
@@ -377,6 +378,7 @@ export function JournalPostFormClient({ mode, postId }: Props) {
       titleIcon={headerTitleIcon}
       noContentPadding
       fluid
+      detachedFromNav
     >
       <div className="w-full min-w-0 pb-10 pt-4 sm:pb-12 sm:pt-5 md:pt-6">
         <form

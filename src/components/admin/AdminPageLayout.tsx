@@ -26,6 +26,11 @@ export type AdminPageLayoutProps = {
    * Default keeps a centered max-w-7xl column for list-style admin pages.
    */
   fluid?: boolean;
+  /**
+   * Adds space below the fixed admin navbar and slightly frames the page header so it
+   * does not visually fuse with the nav (e.g. journal new/edit).
+   */
+  detachedFromNav?: boolean;
 };
 
 function AdminHeaderStatusBadge({ children }: { children: React.ReactNode }) {
@@ -98,6 +103,7 @@ export function AdminPageLayout({
   children,
   noContentPadding = false,
   fluid = false,
+  detachedFromNav = false,
 }: AdminPageLayoutProps) {
   const shellX =
     fluid === true
@@ -106,13 +112,25 @@ export function AdminPageLayout({
 
   const detailHeader = Boolean(leading);
 
+  const heightShell = detachedFromNav
+    ? "h-[calc(100vh-3.25rem-env(safe-area-inset-top,0px)-0.75rem)] supports-[height:100svh]:h-[calc(100svh-3.25rem-env(safe-area-inset-top,0px)-0.75rem)] supports-[height:100dvh]:h-[calc(100dvh-3.25rem-env(safe-area-inset-top,0px)-0.75rem)] sm:h-[calc(100vh-3.5rem-env(safe-area-inset-top,0px)-1rem)] sm:supports-[height:100svh]:h-[calc(100svh-3.5rem-env(safe-area-inset-top,0px)-1rem)] sm:supports-[height:100dvh]:h-[calc(100dvh-3.5rem-env(safe-area-inset-top,0px)-1rem)]"
+    : "h-[calc(100vh-3.25rem-env(safe-area-inset-top,0px))] supports-[height:100svh]:h-[calc(100svh-3.25rem-env(safe-area-inset-top,0px))] supports-[height:100dvh]:h-[calc(100dvh-3.25rem-env(safe-area-inset-top,0px))] sm:h-[calc(100vh-3.5rem-env(safe-area-inset-top,0px))] sm:supports-[height:100svh]:h-[calc(100svh-3.5rem-env(safe-area-inset-top,0px))] sm:supports-[height:100dvh]:h-[calc(100dvh-3.5rem-env(safe-area-inset-top,0px))]";
+
   return (
-    <div className="flex h-[calc(100vh-3.25rem-env(safe-area-inset-top,0px))] min-h-0 flex-col overflow-hidden bg-gradient-to-b from-white/[0.02] to-transparent supports-[height:100svh]:h-[calc(100svh-3.25rem-env(safe-area-inset-top,0px))] supports-[height:100dvh]:h-[calc(100dvh-3.25rem-env(safe-area-inset-top,0px))] sm:h-[calc(100vh-3.5rem-env(safe-area-inset-top,0px))] sm:supports-[height:100svh]:h-[calc(100svh-3.5rem-env(safe-area-inset-top,0px))] sm:supports-[height:100dvh]:h-[calc(100dvh-3.5rem-env(safe-area-inset-top,0px))]">
+    <div
+      className={clsx(
+        "flex min-h-0 flex-col overflow-hidden bg-gradient-to-b from-white/[0.02] to-transparent",
+        heightShell,
+        detachedFromNav && "pt-3 sm:pt-4"
+      )}
+    >
       <header
         className={clsx(
           "flex-shrink-0 border-b border-white/[0.08] backdrop-blur-md",
           "bg-gradient-to-b from-white/[0.05] via-black/35 to-black/45",
-          "shadow-[0_1px_0_rgba(255,255,255,0.04),inset_0_-1px_0_rgba(0,0,0,0.2)]"
+          detachedFromNav
+            ? "rounded-t-xl border-t border-white/[0.1] shadow-[0_-6px_22px_-10px_rgba(0,0,0,0.5),0_1px_0_rgba(255,255,255,0.05),inset_0_-1px_0_rgba(0,0,0,0.2)] sm:rounded-t-2xl"
+            : "shadow-[0_1px_0_rgba(255,255,255,0.04),inset_0_-1px_0_rgba(0,0,0,0.2)]"
         )}
       >
         <div className={shellX}>
