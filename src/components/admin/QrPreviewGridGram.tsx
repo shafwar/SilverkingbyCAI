@@ -20,7 +20,8 @@ import {
   CheckCircle2,
   ChevronDown,
 } from "lucide-react";
-import { SERTICARD_VARIANTS, type SerticardVariantId } from "@/utils/serticard-templates";
+import { SERTICARD_VARIANTS } from "@/utils/serticard-templates";
+import { templateSelectToApiBody } from "@/utils/serticard-template-select";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 
@@ -107,7 +108,7 @@ export function QrPreviewGridGram({ batches }: Props) {
   const downloadModalRef = useRef<HTMLDivElement>(null);
   const [isDownloadingBatchZip, setIsDownloadingBatchZip] = useState(false);
   const [downloadingZipBatchId, setDownloadingZipBatchId] = useState<number | null>(null);
-  const [selectedZipTemplateId, setSelectedZipTemplateId] = useState<SerticardVariantId>("01");
+  const [selectedZipTemplateId, setSelectedZipTemplateId] = useState<string>("01");
   const [zipProgress, setZipProgress] = useState<{ percent: number; label: string } | null>(null);
   const [zipDownloadResult, setZipDownloadResult] = useState<{
     batchId: number;
@@ -137,9 +138,7 @@ export function QrPreviewGridGram({ batches }: Props) {
     >
   >({});
   const [zipR2StatusLoading, setZipR2StatusLoading] = useState(false);
-  const [selectedSingleTemplateId, setSelectedSingleTemplateId] = useState<
-    SerticardVariantId | "custom"
-  >("01");
+  const [selectedSingleTemplateId, setSelectedSingleTemplateId] = useState<string>("01");
 
   // Fetch serticard config to check for custom template
   const { data: fontConfig, mutate: mutateFontConfig } = useSWR<{
@@ -150,6 +149,11 @@ export function QrPreviewGridGram({ batches }: Props) {
   });
   const hasCustomTemplate = fontConfig?.customFrontR2Key && fontConfig?.customBackR2Key;
 
+  const { data: cmsTemplatesData, mutate: mutateCmsTemplates } = useSWR<{
+    templates: Array<{ id: number; name: string }>;
+  }>("/api/admin/serticard/cms-templates", fetcher, { revalidateOnFocus: false });
+  const cmsTemplates = cmsTemplatesData?.templates ?? [];
+
   // Listen for config updates from SerticardPanel
   useEffect(() => {
     const handleConfigUpdate = () => {
@@ -158,6 +162,12 @@ export function QrPreviewGridGram({ batches }: Props) {
     window.addEventListener("serticard-config-updated", handleConfigUpdate);
     return () => window.removeEventListener("serticard-config-updated", handleConfigUpdate);
   }, [mutateFontConfig]);
+
+  useEffect(() => {
+    const onCms = () => mutateCmsTemplates();
+    window.addEventListener("serticard-cms-templates-updated", onCms);
+    return () => window.removeEventListener("serticard-cms-templates-updated", onCms);
+  }, [mutateCmsTemplates]);
 
   // Real-time status dari R2 + audit "pernah diunduh" (global, server-side)
   useEffect(() => {
@@ -215,8 +225,11 @@ export function QrPreviewGridGram({ batches }: Props) {
     let cancelled = false;
     (async () => {
       try {
+        const tpl = templateSelectToApiBody(selectedZipTemplateId);
+        const cmsQ =
+          tpl.cmsTemplateId != null ? `&cmsTemplateId=${encodeURIComponent(String(tpl.cmsTemplateId))}` : "";
         const res = await fetch(
-          `/api/qr/zip-ready?batchId=${batch.batchId}&templateVariant=${encodeURIComponent(selectedZipTemplateId)}&useCustom=0`
+          `/api/qr/zip-ready?batchId=${batch.batchId}&templateVariant=${encodeURIComponent(String(tpl.templateVariant))}&useCustom=${tpl.useCustomTemplate ? "1" : "0"}${cmsQ}`
         );
         if (!res.ok) return;
         const json = await res.json();
@@ -355,7 +368,7 @@ export function QrPreviewGridGram({ batches }: Props) {
       hasRootKey?: boolean;
       rootKey?: string | null;
     },
-    variantId: SerticardVariantId | "custom",
+    templateValue: string,
     options?: { includeRootKey?: boolean }
   ) => {
     if (!product) return;
@@ -371,6 +384,7 @@ export function QrPreviewGridGram({ batches }: Props) {
       }
 
       const includeRootKey = options?.includeRootKey !== false;
+      const tpl = templateSelectToApiBody(templateValue);
       const body = {
         product: {
           id: product.id,
@@ -381,8 +395,9 @@ export function QrPreviewGridGram({ batches }: Props) {
           isGram: true,
           rootKey: includeRootKey ? (product.rootKey ?? undefined) : undefined,
         },
-        templateVariant: variantId === "custom" ? "01" : variantId,
-        useCustomTemplate: variantId === "custom",
+        templateVariant: tpl.templateVariant,
+        useCustomTemplate: tpl.useCustomTemplate,
+        ...(tpl.cmsTemplateId != null ? { cmsTemplateId: tpl.cmsTemplateId } : {}),
         includeRootKey,
       };
 
@@ -565,8 +580,8 @@ export function QrPreviewGridGram({ batches }: Props) {
       hasRootKey?: boolean;
       rootKey?: string | null;
     };
-    selectedZipTemplateId: SerticardVariantId;
-    setSelectedZipTemplateId: (id: SerticardVariantId) => void;
+    selectedZipTemplateId: string;
+    setSelectedZipTemplateId: (id: string) => void;
     zipProgress: { percent: number; label: string } | null;
   }) => {
     const isOpen = downloadDropdownOpen === batchId;
@@ -633,7 +648,7 @@ export function QrPreviewGridGram({ batches }: Props) {
 
   const handleDownloadBatchSerticardsZip = async () => {
     if (!selectedBatch || batchItems.length === 0) return;
-    const templateId = selectedZipTemplateId;
+    const tpl = templateSelectToApiBody(selectedZipTemplateId);
     const products = batchItems.map((item) => ({
       id: item.id,
       name: selectedBatch.name,
@@ -668,8 +683,9 @@ export function QrPreviewGridGram({ batches }: Props) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             products: chunks[i],
-            templateVariant: templateId,
-            useCustomTemplate: false,
+            templateVariant: tpl.templateVariant,
+            useCustomTemplate: tpl.useCustomTemplate,
+            ...(tpl.cmsTemplateId != null ? { cmsTemplateId: tpl.cmsTemplateId } : {}),
           }),
         });
         if (!response.ok) {
@@ -732,7 +748,7 @@ export function QrPreviewGridGram({ batches }: Props) {
     weight: number,
     itemCount: number
   ) => {
-    const templateId = selectedZipTemplateId;
+    const tpl = templateSelectToApiBody(selectedZipTemplateId);
     try {
       setZipDownloadResult(null);
       setDownloadingZipBatchId(batchId);
@@ -767,8 +783,9 @@ export function QrPreviewGridGram({ batches }: Props) {
             products,
             batchId,
             productTitle: name,
-            templateVariant: templateId,
-            useCustomTemplate: false,
+            templateVariant: tpl.templateVariant,
+            useCustomTemplate: tpl.useCustomTemplate,
+            ...(tpl.cmsTemplateId != null ? { cmsTemplateId: tpl.cmsTemplateId } : {}),
           }),
         });
       } catch (networkErr) {
@@ -1331,13 +1348,23 @@ export function QrPreviewGridGram({ batches }: Props) {
                 <span className="text-xs text-white/60">Template ZIP:</span>
                 <select
                   value={selectedZipTemplateId}
-                  onChange={(e) => setSelectedZipTemplateId(e.target.value as SerticardVariantId)}
+                  onChange={(e) => setSelectedZipTemplateId(e.target.value)}
                   disabled={isDownloadingBatchZip}
                   className="rounded-lg border border-white/20 bg-white/5 px-2 py-1.5 text-xs text-white focus:border-[#FFD700]/50 focus:outline-none"
                 >
                   {SERTICARD_VARIANTS.map((v) => (
                     <option key={v.id} value={v.id} className="bg-gray-900 text-white">
                       {v.label}
+                    </option>
+                  ))}
+                  {hasCustomTemplate && (
+                    <option value="custom" className="bg-gray-900 text-white">
+                      ✨ Custom
+                    </option>
+                  )}
+                  {cmsTemplates.map((c) => (
+                    <option key={`cms-${c.id}`} value={`cms:${c.id}`} className="bg-gray-900 text-white">
+                      {c.name} (upload CMS)
                     </option>
                   ))}
                 </select>
@@ -1664,9 +1691,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                               </label>
                               <select
                                 value={selectedZipTemplateId}
-                                onChange={(e) =>
-                                  setSelectedZipTemplateId(e.target.value as SerticardVariantId)
-                                }
+                                onChange={(e) => setSelectedZipTemplateId(e.target.value)}
                                 disabled={isZipLoading}
                                 className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-white focus:border-[#FFD700]/50 focus:outline-none"
                               >
@@ -1677,6 +1702,20 @@ export function QrPreviewGridGram({ batches }: Props) {
                                     className="bg-gray-900 text-white"
                                   >
                                     {v.label}
+                                  </option>
+                                ))}
+                                {hasCustomTemplate && (
+                                  <option value="custom" className="bg-gray-900 text-white">
+                                    ✨ Custom
+                                  </option>
+                                )}
+                                {cmsTemplates.map((c) => (
+                                  <option
+                                    key={`cms-${c.id}`}
+                                    value={`cms:${c.id}`}
+                                    className="bg-gray-900 text-white"
+                                  >
+                                    {c.name} (upload CMS)
                                   </option>
                                 ))}
                               </select>
@@ -1736,13 +1775,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                               </label>
                               <select
                                 value={selectedSingleTemplateId}
-                                onChange={(e) =>
-                                  setSelectedSingleTemplateId(
-                                    (e.target.value === "custom" ? "custom" : e.target.value) as
-                                      | SerticardVariantId
-                                      | "custom"
-                                  )
-                                }
+                                onChange={(e) => setSelectedSingleTemplateId(e.target.value)}
                                 disabled={isLoading}
                                 className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-white focus:border-[#FFD700]/50 focus:outline-none"
                               >
@@ -1760,6 +1793,15 @@ export function QrPreviewGridGram({ batches }: Props) {
                                     ✨ Custom
                                   </option>
                                 )}
+                                {cmsTemplates.map((c) => (
+                                  <option
+                                    key={`cms-${c.id}`}
+                                    value={`cms:${c.id}`}
+                                    className="bg-gray-900 text-white"
+                                  >
+                                    {c.name} (upload CMS)
+                                  </option>
+                                ))}
                               </select>
                             </div>
                             <motion.button

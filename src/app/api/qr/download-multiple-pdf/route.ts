@@ -24,11 +24,16 @@ function buildZipCacheKey(args: {
   validProducts: Array<{ serialCode: string; isGram?: boolean }>;
   templateVariant: string;
   useCustom: boolean;
+  cmsTemplateId?: number | null;
 }): string {
-  const { batchId, validProducts, templateVariant, useCustom } = args;
+  const { batchId, validProducts, templateVariant, useCustom, cmsTemplateId } = args;
   const gram = validProducts.some((p) => p.isGram === true) ? 1 : 0;
+  const cms =
+    cmsTemplateId != null && Number.isFinite(cmsTemplateId) && cmsTemplateId > 0
+      ? Math.floor(cmsTemplateId)
+      : 0;
   if (batchId != null) {
-    return `gram-batch:${batchId}:tpl:${templateVariant}:custom:${useCustom ? 1 : 0}:gram:${gram}`;
+    return `gram-batch:${batchId}:tpl:${templateVariant}:custom:${useCustom ? 1 : 0}:cms:${cms}:gram:${gram}`;
   }
   const serials = validProducts
     .map((p) => String(p.serialCode || "").trim().toUpperCase())
@@ -36,7 +41,7 @@ function buildZipCacheKey(args: {
     .sort();
   const base = serials.join(",");
   const hash = createHash("sha256").update(base).digest("hex").slice(0, 32);
-  return `serials:${hash}:n:${serials.length}:tpl:${templateVariant}:custom:${useCustom ? 1 : 0}:gram:${gram}`;
+  return `serials:${hash}:n:${serials.length}:tpl:${templateVariant}:custom:${useCustom ? 1 : 0}:cms:${cms}:gram:${gram}`;
 }
 
 /**
@@ -85,6 +90,11 @@ export async function POST(request: NextRequest) {
     } = body;
     const templateVariant = templateVariantParam ?? "01";
     const useCustom = useCustomTemplate === true;
+    const rawCms = body?.cmsTemplateId;
+    const cmsParsed =
+      rawCms != null && rawCms !== "" ? Math.floor(Number(rawCms)) : null;
+    const cmsTemplateId =
+      cmsParsed != null && Number.isFinite(cmsParsed) && cmsParsed > 0 ? cmsParsed : null;
     const isGramRequest =
       body?.isGram === true ||
       (Array.isArray(productsFromFrontend) && productsFromFrontend.some((p: any) => p?.isGram));
@@ -300,6 +310,7 @@ export async function POST(request: NextRequest) {
       validProducts,
       templateVariant,
       useCustom,
+      cmsTemplateId,
     });
     const cached = await prisma.qrZipDownloadCache.findUnique({ where: { cacheKey } });
     if (cached) {
@@ -341,6 +352,7 @@ export async function POST(request: NextRequest) {
         productTitle: bodyProductTitle,
         templateVariant,
         useCustomTemplate: useCustom,
+        cmsTemplateId,
         batchNumber: batchNumber ?? bodyBatchId ?? Math.floor(Date.now() / 1000),
         cacheKey,
       };
@@ -368,6 +380,7 @@ export async function POST(request: NextRequest) {
       bodyProductTitle,
       templateVariant,
       useCustom,
+      cmsTemplateId,
       batchNumber: batchNumber ?? bodyBatchId ?? Math.floor(Date.now() / 1000),
       isGramRequest,
     };
@@ -423,6 +436,7 @@ type ZipGenOpts = {
   bodyProductTitle?: string;
   templateVariant: string;
   useCustom: boolean;
+  cmsTemplateId?: number | null;
   batchNumber: number;
   isGramRequest: boolean;
   /** When set, progress (Item 1-100: X%, ...) is written to this job for polling. */
@@ -447,6 +461,7 @@ type ZipChunkContext = {
   hasMultipleWeights: boolean;
   templateVariant: string;
   useCustom: boolean;
+  cmsTemplateId: number | null;
 };
 
 /** Callback untuk progress dalam satu chunk: (processed, total) => void. Dipanggil setiap beberapa item. */
@@ -518,6 +533,7 @@ async function buildOneZipChunk(
     isGramRequest,
     hasMultipleWeights,
     templateVariant,
+    cmsTemplateId,
   } = ctx;
     const zip = new JSZip();
     let successCount = 0;
@@ -564,7 +580,7 @@ async function buildOneZipChunk(
       frontCtx!.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
         const nameOffset = Math.round(frontTemplateImage.height * 0.038);
         const serialOffset = Math.round(frontTemplateImage.height * 0.038);
-        const isDarkTemplate = templateVariant !== "01";
+        const isDarkTemplate = templateVariant !== "01" && cmsTemplateId == null;
         const textColor = isDarkTemplate ? "#ffffff" : "#111111";
         const nameFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.nameMultiplier);
         const nameY = qrY - nameOffset;
@@ -686,7 +702,8 @@ async function executeZipGeneration(
   validProducts: ZipGenProduct[],
   opts: ZipGenOpts
 ): Promise<ZipOutcome> {
-  const { bodyProductTitle, templateVariant, useCustom, batchNumber, isGramRequest } = opts;
+  const { bodyProductTitle, templateVariant, useCustom, cmsTemplateId, batchNumber, isGramRequest } =
+    opts;
 
   // Group VALID products by weight (gramasi)
   const productsByWeight = new Map<number, ZipGenProduct[]>();
@@ -709,10 +726,10 @@ async function executeZipGeneration(
   console.log(`[QR Multiple] Will combine QR + template in canvas, then generate PDF with pdf-lib`);
   console.log(`[QR Multiple] Template variant: ${templateVariant}`);
 
-  // Pre-load BOTH templates (front and back) - custom or variant
-  // If useCustom flag is set, loadSerticardTemplates will automatically use custom templates
+  // Pre-load BOTH templates — CMS spread, custom pair, or built-in variant
   const { front: frontTemplateImage, back: backTemplateImage } = await loadSerticardTemplates(
-    useCustom ? undefined : templateVariant
+    cmsTemplateId != null ? "01" : useCustom ? undefined : templateVariant,
+    cmsTemplateId != null ? { cmsTemplateId } : undefined
   );
   const fontConfig = await getSerticardConfig();
   const sizeMultipliers = getFontSizeMultipliers(
@@ -742,6 +759,7 @@ async function executeZipGeneration(
     hasMultipleWeights,
     templateVariant,
     useCustom,
+    cmsTemplateId: cmsTemplateId ?? null,
   };
 
   const jobId = opts.jobId;
@@ -826,7 +844,13 @@ async function executeZipGeneration(
     });
       // Satu folder induk (batch-{num}-{date}), tiap batch 100 = subfolder sendiri; bisa selesai bertahap
       const batchFolder = `batch-${c + 1}-of-${totalChunks}`;
-      const zipBaseName = `serticard-${useCustom ? "custom" : `v${templateVariant}`}-${batchFolder}`;
+      const zipTpl =
+        cmsTemplateId != null
+          ? `cms-${cmsTemplateId}`
+          : useCustom
+            ? "custom"
+            : `v${templateVariant}`;
+      const zipBaseName = `serticard-${zipTpl}-${batchFolder}`;
       const r2Key = `qr-batches/batch-${batchNum}-${dateStr}/${batchFolder}/${zipBaseName}.zip`;
       await r2Client.send(
         new PutObjectCommand({
@@ -891,7 +915,13 @@ async function executeZipGeneration(
     compressionOptions: { level: 9 },
   });
     const dateStr = new Date().toISOString().split("T")[0];
-    const filename = `serticard-${useCustom ? "custom" : `v${templateVariant}`}-${validProducts.length}-${dateStr}.zip`;
+    const zipTplSingle =
+      cmsTemplateId != null
+        ? `cms-${cmsTemplateId}`
+        : useCustom
+          ? "custom"
+          : `v${templateVariant}`;
+    const filename = `serticard-${zipTplSingle}-${validProducts.length}-${dateStr}.zip`;
 
   // Single ZIP: R2 upload below (reuses zipBuffer, dateStr, filename from chunkResult)
   const successCount = chunkResult.successCount;
@@ -1066,6 +1096,7 @@ async function processZipJobInBackground(jobId: number): Promise<void> {
     productTitle?: string;
     templateVariant?: string;
     useCustomTemplate?: boolean;
+    cmsTemplateId?: number | null;
     batchNumber?: number;
     batchId?: number;
     cacheKey?: string;
@@ -1098,10 +1129,18 @@ async function processZipJobInBackground(jobId: number): Promise<void> {
     return;
   }
 
+  const cmsTemplateIdJob = (() => {
+    const v = payload.cmsTemplateId;
+    if (v == null) return null;
+    const n = Math.floor(Number(v));
+    return Number.isFinite(n) && n > 0 ? n : null;
+  })();
+
   const zipOpts: ZipGenOpts = {
     bodyProductTitle: payload.productTitle,
     templateVariant: payload.templateVariant ?? "01",
     useCustom: payload.useCustomTemplate === true,
+    cmsTemplateId: cmsTemplateIdJob,
     batchNumber: payload.batchNumber ?? payload.batchId ?? Math.floor(Date.now() / 1000),
     isGramRequest: validProducts.some((p) => p.isGram),
     jobId,

@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { EditableMedia } from "@/components/editable-media";
+
+const TIMELESS_ANCHOR_ID = "hero-home-timeless-anchor";
+/** Gap between button bottom and top of “Timeless” (px) */
+const HOME_EDIT_GAP_ABOVE_WORD = 10;
 
 const EDIT_BUTTON_DELAY_MS = 800;
 /** Home: earliest of idle callback or this delay (first wins); idle timeout caps wait on busy threads. */
@@ -36,6 +40,25 @@ export function HeroEditPortal({
 }: HeroEditPortalProps) {
   const [mounted, setMounted] = useState(false);
   const [showEditButton, setShowEditButton] = useState(false);
+  /** Home: fixed position above #hero-home-timeless-anchor; null = fallback to top-right */
+  const [homeAnchorPos, setHomeAnchorPos] = useState<{
+    left: number;
+    top: number;
+  } | null>(null);
+
+  const updateHomeAnchorPosition = useCallback(() => {
+    if (typeof document === "undefined") return;
+    const el = document.getElementById(TIMELESS_ANCHOR_ID);
+    if (!el) {
+      setHomeAnchorPos(null);
+      return;
+    }
+    const rect = el.getBoundingClientRect();
+    setHomeAnchorPos({
+      left: rect.left + rect.width / 2,
+      top: rect.top - HOME_EDIT_GAP_ABOVE_WORD,
+    });
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -71,23 +94,61 @@ export function HeroEditPortal({
     };
   }, [mounted, performanceMode]);
 
+  useLayoutEffect(() => {
+    if (!mounted || performanceMode !== "home") return;
+    updateHomeAnchorPosition();
+  }, [mounted, performanceMode, updateHomeAnchorPosition, showEditButton]);
+
+  useEffect(() => {
+    if (!mounted || performanceMode !== "home") return;
+    updateHomeAnchorPosition();
+    const onScrollOrResize = () => updateHomeAnchorPosition();
+    window.addEventListener("scroll", onScrollOrResize, { passive: true });
+    window.addEventListener("resize", onScrollOrResize, { passive: true });
+    const el = document.getElementById(TIMELESS_ANCHOR_ID);
+    const ro =
+      el && typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => updateHomeAnchorPosition())
+        : null;
+    if (el && ro) ro.observe(el);
+    return () => {
+      window.removeEventListener("scroll", onScrollOrResize);
+      window.removeEventListener("resize", onScrollOrResize);
+      ro?.disconnect();
+    };
+  }, [mounted, performanceMode, updateHomeAnchorPosition, showEditButton]);
+
   if (!mounted || typeof document === "undefined" || !document.body) {
     return null;
   }
 
   const isHomePerf = performanceMode === "home";
+  const useTimelessAnchor = isHomePerf && homeAnchorPos != null;
 
   return createPortal(
     <div
-      className="fixed top-20 right-4 z-[10002] flex flex-col items-end gap-2 pointer-events-auto sm:right-6"
+      className={
+        useTimelessAnchor
+          ? "fixed z-[10002] flex flex-col items-center gap-2 pointer-events-auto"
+          : "fixed top-20 right-4 z-[10002] flex flex-col items-end gap-2 pointer-events-auto sm:right-6"
+      }
       data-hero-edit-portal
       style={{
+        ...(useTimelessAnchor && homeAnchorPos
+          ? {
+              left: homeAnchorPos.left,
+              top: homeAnchorPos.top,
+              right: "auto",
+            }
+          : {}),
         opacity: showEditButton ? 1 : 0,
-        transform: isHomePerf
-          ? "translateZ(0)"
-          : showEditButton
-            ? "translateY(0)"
-            : "translateY(-8px)",
+        transform: useTimelessAnchor
+          ? "translate(-50%, -100%) translateZ(0)"
+          : isHomePerf
+            ? "translateZ(0)"
+            : showEditButton
+              ? "translateY(0)"
+              : "translateY(-8px)",
         transition: isHomePerf
           ? "opacity 0.2s ease-out"
           : "opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1), transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)",

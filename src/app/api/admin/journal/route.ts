@@ -1,7 +1,7 @@
 /**
  * Admin API: list and create journal posts (bilingual).
  * GET: list all
- * POST: create (titleId, titleEn, contentId, contentEn, excerptId?, excerptEn?, slug, heroImageR2Key?, publishedAt?, sortOrder?)
+ * POST: create (titleId, titleEn, contentId, contentEn, excerptId?, excerptEn?, slug, heroImageR2Key?, publishedAt?, articleDate?)
  */
 
 import { NextResponse } from "next/server";
@@ -62,7 +62,7 @@ export async function GET() {
 
   try {
     const list = await prisma.journal.findMany({
-      orderBy: [{ sortOrder: "asc" }, { publishedAt: "desc" }, { createdAt: "desc" }],
+      orderBy: [{ articleDate: "desc" }, { publishedAt: "desc" }, { id: "desc" }],
     });
     return NextResponse.json({ items: list });
   } catch (e) {
@@ -89,7 +89,6 @@ export async function POST(request: Request) {
       excerptEn,
       heroImageR2Key,
       publishedAt,
-      sortOrder,
       articleDate: rawArticleDate,
     } = body ?? {};
 
@@ -163,7 +162,6 @@ export async function POST(request: Request) {
         heroImageR2Key: heroImageR2Key && String(heroImageR2Key).trim() ? String(heroImageR2Key).trim() : null,
         articleDate,
         publishedAt: publishedAtDate,
-        sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
       },
     });
 

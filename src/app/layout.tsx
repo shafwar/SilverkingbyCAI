@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { Playfair_Display } from "next/font/google";
 import "@/styles/globals.css";
@@ -58,6 +58,14 @@ export const metadata: Metadata = {
   alternates: {
     canonical: metadataBase,
   },
+};
+
+/** Correct scaling + safe areas on all phones (iOS, Android notch/cutout, in-app browsers). */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#000000",
 };
 
 // Geist (next/font via geist package) + Playfair; Tailwind uses --font-geist-sans / --font-playfair.

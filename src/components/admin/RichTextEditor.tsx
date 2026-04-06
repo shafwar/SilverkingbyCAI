@@ -86,13 +86,15 @@ export function RichTextEditor({ value, onChange, placeholder, readOnly = false,
   );
 
   const editor = useEditor({
+    immediatelyRender: false,
+    shouldRerenderOnTransaction: true,
     extensions,
     content: value || "",
     editable: !readOnly,
     editorProps: {
       attributes: {
         class:
-          "prose prose-invert max-w-none focus:outline-none min-h-[180px] px-3 py-3 text-[15px] leading-relaxed prose-p:my-2 prose-headings:font-serif prose-headings:text-white prose-a:text-luxury-gold prose-strong:text-white prose-em:text-white/90",
+          "prose prose-invert max-w-none focus:outline-none min-h-[180px] px-3 py-3 text-[15px] leading-relaxed prose-p:my-2 prose-headings:font-serif prose-headings:text-white prose-a:text-luxury-gold prose-strong:text-white prose-strong:font-bold prose-em:text-white/90 [&_p]:font-normal [&_b]:font-bold [&_em]:italic [&_i]:italic",
       },
     },
     onUpdate({ editor }) {

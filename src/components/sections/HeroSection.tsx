@@ -672,7 +672,11 @@ export default function HeroSection({
                 {t("headline2")}
               </span>{" "}
               {/* Fragment 2 */}
-              <span className="word inline-block" style={{ transformStyle: "preserve-3d" }}>
+              <span
+                id="hero-home-timeless-anchor"
+                className="word inline-block"
+                style={{ transformStyle: "preserve-3d" }}
+              >
                 {t("headline3")}
               </span>{" "}
               <span

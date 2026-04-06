@@ -2,13 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-function buildGramBatchCacheKey(batchId: number, templateVariant: string, useCustom: boolean) {
+function buildGramBatchCacheKey(
+  batchId: number,
+  templateVariant: string,
+  useCustom: boolean,
+  cmsTemplateId: number
+) {
   const gram = 1;
-  return `gram-batch:${batchId}:tpl:${templateVariant}:custom:${useCustom ? 1 : 0}:gram:${gram}`;
+  return `gram-batch:${batchId}:tpl:${templateVariant}:custom:${useCustom ? 1 : 0}:cms:${cmsTemplateId}:gram:${gram}`;
 }
 
 /**
- * GET /api/qr/zip-ready?batchId=...&templateVariant=...&useCustom=0|1
+ * GET /api/qr/zip-ready?batchId=...&templateVariant=...&useCustom=0|1&cmsTemplateId=optional
  * Cek apakah ZIP untuk gram batch + template tertentu sudah siap (cached) di R2.
  * Jika sudah, return result yang sama seperti /download-multiple-pdf (success, downloads[], total_files, ...).
  */
@@ -22,13 +27,17 @@ export async function GET(request: NextRequest) {
   const batchIdStr = searchParams.get("batchId");
   const templateVariant = searchParams.get("templateVariant") ?? "01";
   const useCustom = searchParams.get("useCustom") === "1";
+  const cmsRaw = searchParams.get("cmsTemplateId");
+  const cmsParsed = cmsRaw != null && cmsRaw !== "" ? Math.floor(Number(cmsRaw)) : 0;
+  const cmsTemplateId =
+    Number.isFinite(cmsParsed) && cmsParsed > 0 ? cmsParsed : 0;
 
   const batchId = batchIdStr ? Number(batchIdStr) : NaN;
   if (!Number.isFinite(batchId) || batchId <= 0) {
     return NextResponse.json({ error: "Invalid batchId" }, { status: 400 });
   }
 
-  const cacheKey = buildGramBatchCacheKey(batchId, templateVariant, useCustom);
+  const cacheKey = buildGramBatchCacheKey(batchId, templateVariant, useCustom, cmsTemplateId);
 
   // 1) Cek cache formal
   const cached = await prisma.qrZipDownloadCache.findUnique({ where: { cacheKey } });

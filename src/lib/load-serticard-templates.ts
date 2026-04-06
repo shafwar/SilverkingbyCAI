@@ -10,6 +10,7 @@ import {
 } from "@/utils/serticard-templates";
 import { getSerticardConfig } from "@/lib/serticard-config";
 import { fileExistsInR2 } from "@/lib/r2-client";
+import { prisma } from "@/lib/prisma";
 
 const r2Client = new S3Client({
   region: "auto",
@@ -27,6 +28,29 @@ export type LoadedTemplates = {
   front: any;
   back: any;
 };
+
+export type LoadSerticardTemplatesOptions = {
+  /** CMS row id: single spread image in R2, split left = front (QR), right = back */
+  cmsTemplateId?: number | null;
+};
+
+/** Split one horizontal spread into two panels (same pipeline as paired front/back files). */
+function splitSpreadToFrontBack(fullImage: any, canvasMod: any): LoadedTemplates {
+  const w = fullImage.width as number;
+  const h = fullImage.height as number;
+  if (w < 8 || h < 8) {
+    throw new Error("Serticard template image is too small");
+  }
+  const leftW = Math.floor(w / 2);
+  const rightW = w - leftW;
+  const frontCanvas = canvasMod.createCanvas(leftW, h);
+  const backCanvas = canvasMod.createCanvas(rightW, h);
+  const fctx = frontCanvas.getContext("2d");
+  const bctx = backCanvas.getContext("2d");
+  fctx.drawImage(fullImage, 0, 0, leftW, h, 0, 0, leftW, h);
+  bctx.drawImage(fullImage, leftW, 0, rightW, h, 0, 0, rightW, h);
+  return { front: frontCanvas, back: backCanvas };
+}
 
 async function loadImageFromR2(key: string): Promise<any> {
   const canvasMod = await import("canvas").catch(() => null);
@@ -47,11 +71,25 @@ async function loadImageFromR2(key: string): Promise<any> {
  * 2. Else load based on variant (01, 03, etc)
  */
 export async function loadSerticardTemplates(
-  variantId?: string
+  variantId?: string,
+  options?: LoadSerticardTemplatesOptions
 ): Promise<LoadedTemplates> {
   const canvasMod = await import("canvas").catch(() => null);
   if (!canvasMod) {
     throw new Error("Canvas module unavailable in this environment");
+  }
+
+  const cmsId = options?.cmsTemplateId;
+  if (cmsId != null) {
+    const id = Math.floor(Number(cmsId));
+    if (Number.isFinite(id) && id > 0) {
+      const row = await prisma.serticardUploadedTemplate.findUnique({ where: { id } });
+      if (!row) {
+        throw new Error(`Serticard CMS template not found (id ${id})`);
+      }
+      const full = await loadImageFromR2(row.r2Key);
+      return splitSpreadToFrontBack(full, canvasMod);
+    }
   }
 
   const config = await getSerticardConfig();

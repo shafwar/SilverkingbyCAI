@@ -61,6 +61,13 @@ export async function POST(request: NextRequest) {
     const isGram = Boolean(product.isGram);
     const templateVariant = body?.templateVariant ?? "01";
     const useCustom = body?.useCustomTemplate === true;
+    const rawCms = body?.cmsTemplateId;
+    const cmsTemplateId =
+      rawCms != null && rawCms !== ""
+        ? Math.floor(Number(rawCms))
+        : null;
+    const useCmsTemplate =
+      cmsTemplateId != null && Number.isFinite(cmsTemplateId) && cmsTemplateId > 0;
 
     // Validate inputs
     if (!productName || productName.length === 0) {
@@ -101,10 +108,11 @@ export async function POST(request: NextRequest) {
       hasRootKey: !!rootKeyValue,
     });
 
-    // --- Load Serticard templates (custom or variant) ---
-    // If useCustom flag is set, loadSerticardTemplates will automatically use custom templates
-    const { front: frontTemplateImage, back: backTemplateImage } =
-      await loadSerticardTemplates(useCustom ? undefined : templateVariant);
+    // --- Load Serticard templates (CMS spread, custom pair, or variant) ---
+    const { front: frontTemplateImage, back: backTemplateImage } = await loadSerticardTemplates(
+      useCmsTemplate ? "01" : useCustom ? undefined : templateVariant,
+      useCmsTemplate ? { cmsTemplateId: cmsTemplateId! } : undefined
+    );
     const fontConfig = await getSerticardConfig();
     const sizeMultipliers = getFontSizeMultipliers(
       fontConfig.fontSizePreset === "KECIL" ? "KECIL" : "BESAR"
@@ -148,7 +156,7 @@ export async function POST(request: NextRequest) {
 
     const nameOffset = Math.round(frontTemplateImage.height * 0.038);
     const serialOffset = Math.round(frontTemplateImage.height * 0.038);
-    const isDarkTemplate = templateVariant !== "01";
+    const isDarkTemplate = !useCmsTemplate && templateVariant !== "01";
     const textColor = isDarkTemplate ? "#ffffff" : "#111111";
 
     const nameFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.nameMultiplier);

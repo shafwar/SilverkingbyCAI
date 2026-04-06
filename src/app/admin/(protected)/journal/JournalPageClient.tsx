@@ -17,7 +17,6 @@ type JournalItem = {
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  sortOrder: number;
 };
 
 function displayDateIso(row: JournalItem): string | null {
@@ -177,7 +176,7 @@ export function JournalPageClient() {
               <div className="h-px w-full bg-gradient-to-r from-transparent via-luxury-gold/25 to-transparent" aria-hidden />
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[760px] text-left text-[13px]">
-                  <thead>
+              <thead>
                     <tr className="border-b border-white/[0.07] bg-black/50">
                       <th
                         scope="col"
@@ -212,8 +211,8 @@ export function JournalPageClient() {
                       >
                         {t("actions")}
                       </th>
-                    </tr>
-                  </thead>
+                </tr>
+              </thead>
                   <tbody className="divide-y divide-white/[0.05]">
                     {items.map((row, i) => (
                       <tr
@@ -262,26 +261,26 @@ export function JournalPageClient() {
                               className="inline-flex rounded-lg p-2 text-white/55 transition hover:bg-white/10 hover:text-white"
                               aria-label={t("editPost")}
                               title={t("editPost")}
-                            >
-                              <Pencil className="h-4 w-4" />
+                      >
+                        <Pencil className="h-4 w-4" />
                             </Link>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(row.id)}
-                              disabled={deletingId === row.id}
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(row.id)}
+                        disabled={deletingId === row.id}
                               className="inline-flex rounded-lg p-2 text-white/55 transition hover:bg-red-500/15 hover:text-red-300 disabled:pointer-events-none disabled:opacity-35"
-                              aria-label={t("deletePost")}
-                              title={t("deletePost")}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                        aria-label={t("deletePost")}
+                        title={t("deletePost")}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
             </div>
           </>
         )}

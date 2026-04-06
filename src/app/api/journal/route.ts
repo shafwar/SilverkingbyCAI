@@ -27,7 +27,8 @@ export async function GET(request: Request) {
 
     const list = await prisma.journal.findMany({
       where: { publishedAt: { not: null } },
-      orderBy: [{ sortOrder: "asc" }, { articleDate: "desc" }, { publishedAt: "desc" }],
+      /** Newest article date first; tie-break by publish time then id */
+      orderBy: [{ articleDate: "desc" }, { publishedAt: "desc" }, { id: "desc" }],
       select: {
         slug: true,
         titleId: true,

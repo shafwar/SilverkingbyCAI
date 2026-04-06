@@ -211,6 +211,17 @@ model SerticardConfig {
   updatedAt        DateTime  @updatedAt
 }
 
+/// Admin-uploaded full spread (left = QR panel, right = back design); stored in R2 serticard-templates/
+model SerticardUploadedTemplate {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(191)
+  r2Key     String   @unique @db.VarChar(512)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+}
+
 /// Contact form feedback messages from users
 model Feedback {
   id        Int      @id @default(autoincrement())

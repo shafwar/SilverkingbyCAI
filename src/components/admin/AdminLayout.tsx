@@ -296,7 +296,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
     });
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen overflow-x-hidden bg-black text-white supports-[height:100dvh]:min-h-[100dvh]">
       <motion.nav
         initial={{ opacity: 0, y: -10 }}
         animate={
@@ -310,7 +310,8 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
           mobileOpen ? "border-b-0" : "border-b border-white/5"
         )}
       >
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-4 sm:px-5 md:px-6 py-2.5 sm:py-3">
+        <div className="pt-[env(safe-area-inset-top,0px)]">
+        <div className="mx-auto flex max-w-[1400px] items-center justify-between py-2.5 pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] sm:py-3 sm:pl-5 sm:pr-5 md:px-6">
           <Link
             href="/admin"
             prefetch={true}
@@ -357,6 +358,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
             </button>
           </div>
         </div>
+        </div>
       </motion.nav>
 
       {/* Full Screen Mobile Menu Overlay */}
@@ -370,7 +372,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
               duration: 0.4,
               ease: [0.25, 0.1, 0.25, 1], // Custom easing for premium feel
             }}
-            className="fixed inset-0 z-[101] bg-black lg:hidden overflow-y-auto"
+            className="fixed inset-0 z-[101] bg-black lg:hidden overflow-y-auto overflow-x-hidden overscroll-y-contain pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]"
             style={{ willChange: "transform" }}
           >
             {/* Menu Header */}
@@ -453,7 +455,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         )}
       </AnimatePresence>
 
-      <main className="mx-auto max-w-[1400px] px-4 sm:px-5 md:px-6 pb-8 sm:pb-10 md:pb-12 pt-16 sm:pt-20 md:pt-24 lg:pt-28">
+      <main className="mx-auto max-w-[1400px] min-w-0 pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] pb-[max(2rem,env(safe-area-inset-bottom,0px))] pt-[calc(3.25rem+env(safe-area-inset-top,0px))] sm:pl-5 sm:pr-5 sm:pb-[max(2.5rem,env(safe-area-inset-bottom,0px))] sm:pt-[calc(3.5rem+env(safe-area-inset-top,0px))] md:px-6 md:pb-[max(3rem,env(safe-area-inset-bottom,0px))] md:pt-[calc(3.5rem+env(safe-area-inset-top,0px))] lg:pt-[calc(3.5rem+env(safe-area-inset-top,0px))]">
         {children}
       </main>
 

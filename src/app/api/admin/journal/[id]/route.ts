@@ -1,6 +1,6 @@
 /**
  * Admin API: update and delete journal post.
- * PATCH: update (any of slug, titleId, titleEn, contentId, contentEn, excerptId?, excerptEn?, heroImageR2Key?, publishedAt?, sortOrder?)
+ * PATCH: update (any of slug, titleId, titleEn, contentId, contentEn, excerptId?, excerptEn?, heroImageR2Key?, publishedAt?, articleDate?)
  * DELETE: delete
  */
 
@@ -86,7 +86,6 @@ export async function PATCH(
       excerptEn?: string | null;
       heroImageR2Key?: string | null;
       publishedAt?: Date | null;
-      sortOrder?: number;
       articleDate?: Date | null;
     } = {};
 
@@ -98,7 +97,6 @@ export async function PATCH(
     if (body.excerptId !== undefined) updates.excerptId = body.excerptId == null || body.excerptId === "" ? null : String(body.excerptId).trim();
     if (body.excerptEn !== undefined) updates.excerptEn = body.excerptEn == null || body.excerptEn === "" ? null : String(body.excerptEn).trim();
     if (body.heroImageR2Key !== undefined) updates.heroImageR2Key = body.heroImageR2Key == null || body.heroImageR2Key === "" ? null : String(body.heroImageR2Key).trim();
-    if (body.sortOrder !== undefined) updates.sortOrder = typeof body.sortOrder === "number" ? body.sortOrder : existing.sortOrder;
     if (body.publishedAt !== undefined) {
       if (body.publishedAt === null || body.publishedAt === false || body.publishedAt === "false" || body.publishedAt === "") {
         updates.publishedAt = null;

@@ -28,7 +28,8 @@ import { Modal } from "./Modal";
 import { AnimatedCard } from "./AnimatedCard";
 import { useDownload } from "@/contexts/DownloadContext";
 import { toast } from "sonner";
-import { SERTICARD_VARIANTS, getSerticardVariant, getLocalTemplateFilename, type SerticardVariantId } from "@/utils/serticard-templates";
+import { SERTICARD_VARIANTS, getSerticardVariant, getLocalTemplateFilename } from "@/utils/serticard-templates";
+import { templateSelectToApiBody } from "@/utils/serticard-template-select";
 
 type Product = {
   id: number;
@@ -63,7 +64,7 @@ export function QrPreviewGrid() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
-  const [selectedTemplateVariant, setSelectedTemplateVariant] = useState<SerticardVariantId | "custom">("01");
+  const [selectedTemplateVariant, setSelectedTemplateVariant] = useState<string>("01");
 
   // Fetch serticard config for font settings and custom template availability
   const { data: fontConfig, mutate: mutateFontConfig } = useSWR<{
@@ -78,6 +79,11 @@ export function QrPreviewGrid() {
 
   const hasCustomTemplate = fontConfig?.customFrontR2Key && fontConfig?.customBackR2Key;
 
+  const { data: cmsTemplatesData, mutate: mutateCmsTemplates } = useSWR<{
+    templates: Array<{ id: number; name: string }>;
+  }>("/api/admin/serticard/cms-templates", fetcher, { revalidateOnFocus: false });
+  const cmsTemplates = cmsTemplatesData?.templates ?? [];
+
   // Listen for config updates from SerticardPanel
   useEffect(() => {
     const handleConfigUpdate = () => {
@@ -86,6 +92,12 @@ export function QrPreviewGrid() {
     window.addEventListener("serticard-config-updated", handleConfigUpdate);
     return () => window.removeEventListener("serticard-config-updated", handleConfigUpdate);
   }, [mutateFontConfig]);
+
+  useEffect(() => {
+    const onCms = () => mutateCmsTemplates();
+    window.addEventListener("serticard-cms-templates-updated", onCms);
+    return () => window.removeEventListener("serticard-cms-templates-updated", onCms);
+  }, [mutateCmsTemplates]);
 
   // Font size multipliers helper (client-side)
   const getFontSizeMultipliers = (preset: string) => {
@@ -227,6 +239,51 @@ export function QrPreviewGrid() {
   const handleDownload = async (product: Product) => {
     setIsDownloading(true);
     try {
+      if (selectedTemplateVariant.startsWith("cms:")) {
+        const tpl = templateSelectToApiBody(selectedTemplateVariant);
+        if (tpl.cmsTemplateId == null) {
+          throw new Error("Template CMS tidak valid");
+        }
+        const res = await fetch("/api/qr/download-single-pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            product: {
+              id: product.id,
+              name: product.name.trim(),
+              serialCode: product.serialCode.trim().toUpperCase(),
+              weight: product.weight,
+              isGram: false,
+            },
+            templateVariant: tpl.templateVariant,
+            useCustomTemplate: tpl.useCustomTemplate,
+            cmsTemplateId: tpl.cmsTemplateId,
+            includeRootKey: true,
+          }),
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          let msg = text;
+          try {
+            const j = JSON.parse(text) as { error?: string };
+            if (j?.error) msg = j.error;
+          } catch {
+            // ignore
+          }
+          throw new Error(msg || `HTTP ${res.status}`);
+        }
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${product.serialCode}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        return;
+      }
+
       console.log("[Download] Starting download for:", product.serialCode);
 
       // Use proxy endpoint for templates to avoid CORS/tainted canvas issues
@@ -349,7 +406,10 @@ export function QrPreviewGrid() {
       // === LAYOUT: Nama produk & serial - no white bg, bold & larger (03-18: white text on dark) ===
       const nameOffset = Math.round(frontTemplateImg.height * 0.038);
       const serialOffset = Math.round(frontTemplateImg.height * 0.038);
-        const isDarkTemplate = selectedTemplateVariant !== "01" && selectedTemplateVariant !== "custom";
+        const isDarkTemplate =
+          selectedTemplateVariant !== "01" &&
+          selectedTemplateVariant !== "custom" &&
+          !selectedTemplateVariant.startsWith("cms:");
       const textColor = isDarkTemplate ? "#ffffff" : "#111111";
 
       if (product.name && product.name.trim().length > 0) {
@@ -437,7 +497,10 @@ export function QrPreviewGrid() {
           fallbackCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
           const nameOffsetFb = Math.round(localFrontImg.height * 0.038);
           const serialOffsetFb = Math.round(localFrontImg.height * 0.038);
-          const isDarkFb = selectedTemplateVariant !== "01" && selectedTemplateVariant !== "custom";
+          const isDarkFb =
+            selectedTemplateVariant !== "01" &&
+            selectedTemplateVariant !== "custom" &&
+            !selectedTemplateVariant.startsWith("cms:");
           const textColorFb = isDarkFb ? "#ffffff" : "#111111";
 
           if (product.name && product.name.trim().length > 0) {
@@ -682,11 +745,13 @@ export function QrPreviewGrid() {
           // Call endpoint for this batch (100 files) - backend will generate and return 1 ZIP
           // CRITICAL: Send products (full objects) instead of serialCodes
           // Backend will use these products directly, same as handleDownload (single)
+          const tpl = templateSelectToApiBody(selectedTemplateVariant);
           const requestBody = {
             products,
             batchNumber,
-            templateVariant: selectedTemplateVariant === "custom" ? "01" : selectedTemplateVariant,
-            useCustomTemplate: selectedTemplateVariant === "custom",
+            templateVariant: tpl.templateVariant,
+            useCustomTemplate: tpl.useCustomTemplate,
+            ...(tpl.cmsTemplateId != null ? { cmsTemplateId: tpl.cmsTemplateId } : {}),
           };
           console.log(
             `[DownloadAll] Request body size:`,
@@ -1016,8 +1081,14 @@ export function QrPreviewGrid() {
         },
         body: JSON.stringify({
           serialCodes,
-          templateVariant: selectedTemplateVariant === "custom" ? "01" : selectedTemplateVariant,
-          useCustomTemplate: selectedTemplateVariant === "custom",
+          ...(() => {
+            const tpl = templateSelectToApiBody(selectedTemplateVariant);
+            return {
+              templateVariant: tpl.templateVariant,
+              useCustomTemplate: tpl.useCustomTemplate,
+              ...(tpl.cmsTemplateId != null ? { cmsTemplateId: tpl.cmsTemplateId } : {}),
+            };
+          })(),
         }),
         signal: abortController.signal,
       });
@@ -1611,7 +1682,7 @@ export function QrPreviewGrid() {
               <span className="text-[10px] sm:text-xs text-white/50 whitespace-nowrap">{t("serticardTemplate") || "Template:"}</span>
               <select
                 value={selectedTemplateVariant}
-                onChange={(e) => setSelectedTemplateVariant(e.target.value as SerticardVariantId | "custom")}
+                onChange={(e) => setSelectedTemplateVariant(e.target.value)}
                 className="rounded-full border border-white/15 bg-black/40 px-2.5 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs text-white focus:border-[#FFD700]/50 focus:outline-none focus:ring-1 focus:ring-[#FFD700]/30"
               >
                 {SERTICARD_VARIANTS.map((v) => (
@@ -1624,6 +1695,11 @@ export function QrPreviewGrid() {
                     ✨ Custom
                   </option>
                 )}
+                {cmsTemplates.map((c) => (
+                  <option key={`cms-${c.id}`} value={`cms:${c.id}`} className="bg-[#0a0a0a] text-white">
+                    {c.name} (upload CMS)
+                  </option>
+                ))}
               </select>
             </div>
 
