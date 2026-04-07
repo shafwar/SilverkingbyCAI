@@ -144,6 +144,9 @@ export function PersistentHomeHeroVideo() {
       posterUrl={posterUrl}
       posterVersion={undefined}
       posterPriority
+      lcpFriendlyPoster
+      deferAttachUntilIdle
+      idleAttachTimeoutMs={320}
       optimizeGpu
       lightVideoFade
       forcePoster={!shouldLoadHeroVideo}
@@ -156,7 +159,7 @@ export function PersistentHomeHeroVideo() {
       loop
       muted
       playsInline
-      preload="auto"
+      preload="metadata"
       disablePictureInPicture
       disableRemotePlayback
       onContextMenu={(e) => e.preventDefault()}

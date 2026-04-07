@@ -244,6 +244,9 @@ export default function AboutPageClient() {
             posterUrl={pageMediaAbout?.heroImageUrl ?? null}
             forcePoster={!shouldLoadHeroVideo}
             posterPriority
+            lcpFriendlyPoster
+            deferAttachUntilIdle
+            idleAttachTimeoutMs={320}
             optimizeGpu
             lightVideoFade
             containerClassName="absolute inset-0 z-10 h-full w-full"
@@ -258,7 +261,7 @@ export default function AboutPageClient() {
             loop
             muted
             playsInline
-            preload="auto"
+            preload="metadata"
             disablePictureInPicture
             disableRemotePlayback
             onContextMenu={(e) => e.preventDefault()}
@@ -293,8 +296,9 @@ export default function AboutPageClient() {
       {/* Hero Section – same size & layout as Distributor (min-h-screen, left-aligned, scroll button) */}
       <section className="relative flex min-h-screen items-center justify-start overflow-hidden">
         <div className="relative z-20 w-full text-left pl-4 sm:pl-6 md:pl-8 lg:pl-12 xl:pl-16 2xl:pl-20 pr-4 sm:pr-6 md:pr-8 lg:pr-12">
-          <ScrollRevealSection as="div" direction="up" delay={0.15} amount={0.4} className="space-y-6 sm:space-y-8 max-w-4xl">
-            <div ref={heroRef} className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-6 py-2 text-[12px] uppercase tracking-[0.45em] text-luxury-silver/60 backdrop-blur w-fit">
+          {/* Static hero copy (no scroll-reveal opacity:0) so LCP can paint headline/subtitle immediately */}
+          <div ref={heroRef} className="space-y-6 sm:space-y-8 max-w-4xl">
+            <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-6 py-2 text-[12px] uppercase tracking-[0.45em] text-luxury-silver/60 backdrop-blur w-fit">
               <span className="h-1 w-1 rounded-full bg-luxury-gold" />
               {t("hero.badge")}
               <span className="h-1 w-1 rounded-full bg-luxury-gold" />
@@ -305,7 +309,7 @@ export default function AboutPageClient() {
             <p className="text-base sm:text-lg md:text-xl font-sans font-light leading-relaxed text-luxury-silver/90 max-w-2xl">
               {t("hero.subtitle")}
             </p>
-          </ScrollRevealSection>
+          </div>
         </div>
         {/* Scroll indicator – same as Distributor */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-3 pointer-events-none">
