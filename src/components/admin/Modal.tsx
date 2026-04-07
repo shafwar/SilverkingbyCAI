@@ -29,7 +29,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
       {open && (
         <ModalPortal>
           <motion.div
-            className="absolute inset-0 flex items-center justify-center bg-black/90 backdrop-blur-md lg:bg-black/92 lg:backdrop-blur-none"
+            className="absolute inset-0 flex items-center justify-center bg-black/90 backdrop-blur-md"
             onMouseDown={onClose}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

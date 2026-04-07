@@ -24,7 +24,6 @@ import { SERTICARD_VARIANTS } from "@/utils/serticard-templates";
 import { templateSelectToApiBody } from "@/utils/serticard-template-select";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
-import { getViewportPortalRoot } from "@/utils/viewportPortalRoot";
 
 const ZIP_CHUNK_SIZE = 80;
 
@@ -1476,7 +1475,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm lg:bg-black/80 lg:backdrop-blur-none"
+                className="fixed inset-0 z-[9998] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
                 onClick={() => {
                   setDownloadDropdownOpen(null);
                   setZipDownloadResult(null);
@@ -1838,7 +1837,7 @@ export function QrPreviewGridGram({ batches }: Props) {
               </motion.div>
             )}
           </AnimatePresence>,
-          getViewportPortalRoot() ?? document.body
+          document.body
         )}
     </div>
   );

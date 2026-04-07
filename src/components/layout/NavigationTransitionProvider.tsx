@@ -262,12 +262,10 @@ export function NavigationTransitionProvider({ children }: { children: ReactNode
         setTimeout(() => {
           if (typeof document !== "undefined" && document.body) {
             // Double-check blur is removed
-            if (document.body.style.filter) {
-              console.warn("[NavigationTransition] Body filter still present, removing (fixed modals)");
-              document.body.style.removeProperty("filter");
-              document.body.style.removeProperty("opacity");
-              document.body.style.removeProperty("transition");
-              document.body.style.removeProperty("will-change");
+            if (document.body.style.filter.includes("blur")) {
+              console.warn("[NavigationTransition] Blur still present, forcing removal");
+              document.body.style.filter = "blur(0px)";
+              document.body.style.opacity = "1";
             }
           }
         }, 100);

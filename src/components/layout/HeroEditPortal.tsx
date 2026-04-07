@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { EditableMedia } from "@/components/editable-media";
-import { getViewportPortalRoot, SK_VIEWPORT_HERO_CHROME_Z } from "@/utils/viewportPortalRoot";
 
 const TIMELESS_ANCHOR_ID = "hero-home-timeless-anchor";
 /** Gap between button bottom and top of “Timeless” (px) */
@@ -27,7 +26,7 @@ export type HeroEditPortalProps = {
 
 /**
  * Hero edit button (Edit video / Edit photo):
- * - Portaled under document.documentElement (viewport root) so body translateZ does not break fixed
+ * - Portaled to document.body for consistent stacking across pages
  * - Parent controls when this mounts (splash/animation timing)
  * - Smooth opacity+translateY entrance once mounted
  */
@@ -119,8 +118,7 @@ export function HeroEditPortal({
     };
   }, [mounted, performanceMode, updateHomeAnchorPosition, showEditButton]);
 
-  const portalMount = typeof document !== "undefined" ? getViewportPortalRoot() : null;
-  if (!mounted || typeof document === "undefined" || !portalMount) {
+  if (!mounted || typeof document === "undefined" || !document.body) {
     return null;
   }
 
@@ -131,12 +129,11 @@ export function HeroEditPortal({
     <div
       className={
         useTimelessAnchor
-          ? "fixed flex flex-col items-center gap-2 pointer-events-auto"
-          : "fixed top-20 right-4 flex flex-col items-end gap-2 pointer-events-auto sm:right-6"
+          ? "fixed z-[10002] flex flex-col items-center gap-2 pointer-events-auto"
+          : "fixed top-20 right-4 z-[10002] flex flex-col items-end gap-2 pointer-events-auto sm:right-6"
       }
       data-hero-edit-portal
       style={{
-        zIndex: SK_VIEWPORT_HERO_CHROME_Z,
         ...(useTimelessAnchor && homeAnchorPos
           ? {
               left: homeAnchorPos.left,
@@ -169,6 +166,6 @@ export function HeroEditPortal({
         reduceOverlayChromeCost={isHomePerf}
       />
     </div>,
-    portalMount
+    document.body
   );
 }

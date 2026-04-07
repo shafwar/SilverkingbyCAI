@@ -7,6 +7,7 @@ import { Sparkles, Gem, ArrowRight, Shield, ArrowDown, QrCode, X } from "lucide-
 import type { LucideIcon } from "lucide-react";
 import { APP_NAME } from "@/utils/constants";
 import { useRef, useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useTranslations, useLocale } from "next-intl";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -18,7 +19,6 @@ import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { usePageSections } from "@/hooks/usePageSections";
 import { usePageMedia } from "@/hooks/usePageMedia";
-import { ModalPortal } from "@/components/ui/ModalPortal";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
@@ -443,6 +443,16 @@ export default function ProductsPageClient() {
       setFormattedPrice("");
     }
   }, [editingCms]);
+
+  // Same scroll lock as ModalPortal; portal target is documentElement so fixed layers use the viewport (body has transform in globals.css).
+  useEffect(() => {
+    if (!isAdmin || !editingCms) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isAdmin, editingCms]);
 
   // Handle file selection - accumulate files instead of replacing
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1089,6 +1099,7 @@ export default function ProductsPageClient() {
       <div
         className="fixed inset-0 z-0 w-screen h-screen overflow-hidden"
         style={{
+          willChange: "transform",
           backfaceVisibility: "hidden",
           WebkitBackfaceVisibility: "hidden",
           transform: "translateZ(0)",
@@ -1120,6 +1131,8 @@ export default function ProductsPageClient() {
               objectPosition: "center center",
               width: "100%",
               height: "100%",
+              transform: "translateZ(0)",
+              WebkitTransform: "translateZ(0)",
               pointerEvents: "none",
               outline: "none",
               WebkitTapHighlightColor: "transparent",
@@ -1508,29 +1521,37 @@ export default function ProductsPageClient() {
         </div>
       </section>
 
-      {/* Inline CMS Modal for Admin (create / edit product) */}
-      <AnimatePresence>
-        {isAdmin && editingCms && (
-          <ModalPortal>
-            <motion.div
-              className="absolute inset-0 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm lg:bg-black/85 lg:backdrop-blur-none"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => {
-                setEditingCms(null);
-                setCmsImageFiles([]);
-              }}
-            >
-              <motion.div
-                initial={{ opacity: 0, y: 20, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 20, scale: 0.96 }}
-                className="w-full max-w-xl max-h-[calc(100dvh-32px)] overflow-y-auto rounded-2xl border border-white/15 bg-gradient-to-b from-[#111] via-[#050505] to-black p-6 shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
-              >
+      {/* CMS create/edit product: portal to <html> so position:fixed is viewport-correct (body transform breaks fixed→body portals). */}
+      {isAdmin && typeof document !== "undefined"
+        ? createPortal(
+            <AnimatePresence>
+              {editingCms ? (
+                <motion.div
+                  key="products-cms-overlay"
+                  role="presentation"
+                  className="fixed inset-0 z-[9999] flex min-h-full w-full flex-col items-center justify-center overflow-y-auto overscroll-y-contain bg-black/75 px-4 py-8 backdrop-blur-sm sm:px-6"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={() => {
+                    setEditingCms(null);
+                    setCmsImageFiles([]);
+                  }}
+                >
+                  <motion.div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="products-cms-modal-title"
+                    initial={{ opacity: 0, y: 20, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 16, scale: 0.98 }}
+                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                    className="relative z-[1] mx-auto w-full max-w-xl flex-shrink-0 rounded-2xl border border-white/15 bg-gradient-to-b from-[#111] via-[#050505] to-black p-6 shadow-2xl max-h-[min(90dvh,100%)] overflow-y-auto overflow-x-hidden"
+                    onClick={(e) => e.stopPropagation()}
+                  >
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-white">
+                <h2 id="products-cms-modal-title" className="text-lg font-semibold text-white">
                   {editingCms.id ? t("cmsForm.editProduct") : t("cmsForm.addProduct")}
                 </h2>
                 <button
@@ -1757,11 +1778,13 @@ export default function ProductsPageClient() {
                   </button>
                 </div>
               </form>
-              </motion.div>
-            </motion.div>
-          </ModalPortal>
-        )}
-      </AnimatePresence>
+                  </motion.div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>,
+            document.documentElement
+          )
+        : null}
 
       {/* Running Text Promotional Section */}
       <section className="relative bg-black py-3 md:py-6 overflow-hidden">

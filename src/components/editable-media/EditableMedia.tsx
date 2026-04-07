@@ -2,7 +2,6 @@
 
 import { useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { getViewportPortalRoot, SK_VIEWPORT_MODAL_Z } from "@/utils/viewportPortalRoot";
 import Image from "next/image";
 import { Pencil, RotateCcw } from "lucide-react";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
@@ -374,8 +373,9 @@ export function EditableMedia({
             "flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-black/50 text-white/80 backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 disabled:opacity-50",
         };
     const btnClass = editLabel ? chrome.editLabeled : chrome.editIcon;
-    const buttonRowClass =
-      "relative z-10 flex shrink-0 flex-wrap items-center justify-end gap-2";
+    const buttonRowClass = reduceOverlayChromeCost
+      ? "relative z-[10002] flex shrink-0 flex-wrap items-center justify-end gap-2"
+      : "absolute top-3 right-3 z-[10002] flex items-center gap-2";
     const buttons = isAdmin ? (
       <div className={buttonRowClass}>
         {/* Restore: shown only when admin has replaced media; reverts to current/default website assets */}
@@ -564,19 +564,16 @@ export function EditableMedia({
   );
 }
 
+const CMS_MODAL_Z = 100000;
 const CMS_MODAL_ROOT_ID = "cms-modal-root";
 
 function getModalPortalTarget(): HTMLElement | null {
   if (typeof document === "undefined" || !document.body) return null;
-  return (
-    getViewportPortalRoot() ||
-    document.getElementById(CMS_MODAL_ROOT_ID) ||
-    document.body
-  );
+  return document.getElementById(CMS_MODAL_ROOT_ID) || document.body;
 }
 
 /**
- * CMS replace media modal. Used on ALL pages. Prefer viewport portal root (see getViewportPortalRoot).
+ * CMS replace media modal. Used on ALL pages. Portal to #cms-modal-root or body so same stacking as Home edit video.
  * Parent sets data-cms-modal-open before open so PageTransitionOverlay does not blur.
  */
 function EditableMediaModal({
@@ -631,7 +628,7 @@ function EditableMediaModal({
         bottom: 0,
         width: "100vw",
         height: "100dvh",
-        zIndex: SK_VIEWPORT_MODAL_Z,
+        zIndex: 1,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",

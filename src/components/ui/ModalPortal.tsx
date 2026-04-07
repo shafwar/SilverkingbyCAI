@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
-import { getViewportPortalRoot, SK_VIEWPORT_MODAL_Z } from "@/utils/viewportPortalRoot";
 
 type ModalPortalProps = {
   children: React.ReactNode;
@@ -11,11 +10,11 @@ type ModalPortalProps = {
 };
 
 /**
- * Renders modal into a root under `document.documentElement` so `position: fixed`
- * stays viewport-relative even when `body` has `transform: translateZ(0)`.
+ * Renders modal/backdrop into document.body to avoid `position: fixed` being constrained
+ * by transformed ancestors (e.g. translateZ(0)), which can cause gaps in the overlay.
  * Also locks body scroll while mounted.
  */
-export function ModalPortal({ children, zIndex = SK_VIEWPORT_MODAL_Z }: ModalPortalProps) {
+export function ModalPortal({ children, zIndex = 9999 }: ModalPortalProps) {
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -26,22 +25,11 @@ export function ModalPortal({ children, zIndex = SK_VIEWPORT_MODAL_Z }: ModalPor
 
   if (typeof document === "undefined") return null;
 
-  const mount = getViewportPortalRoot() ?? document.body;
-
   return createPortal(
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        width: "100vw",
-        height: "100dvh",
-        zIndex,
-        pointerEvents: "auto",
-      }}
-    >
+    <div style={{ position: "fixed", inset: 0, width: "100vw", height: "100dvh", zIndex }}>
       {children}
     </div>,
-    mount
+    document.body
   );
 }
 

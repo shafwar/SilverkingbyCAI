@@ -162,7 +162,7 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
   return (
     <AnimatePresence>
       {isOpen && (
-        <ModalPortal>
+        <ModalPortal zIndex={9999}>
           {/* Backdrop */}
           <motion.div
             variants={backdropVariants}
@@ -170,7 +170,7 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
             animate="visible"
             exit="exit"
             onClick={onClose}
-            className="absolute inset-0 bg-black/45 backdrop-blur-md lg:bg-black/55 lg:backdrop-blur-none"
+            className="absolute inset-0 bg-black/40 backdrop-blur-md"
           />
 
           {/* Modal Container - Minimalist & Elegant */}

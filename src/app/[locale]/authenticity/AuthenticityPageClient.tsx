@@ -704,14 +704,14 @@ export default function AuthenticityPageClient() {
       {/* Scanner Modal */}
       <AnimatePresence mode="wait">
         {showScanner && (
-          <ModalPortal>
+          <ModalPortal zIndex={9999}>
             <motion.div
               key="scanner-modal"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="absolute inset-0 flex items-start justify-center bg-black/80 p-6 pt-20 backdrop-blur-sm md:pt-24 lg:bg-black/88 lg:backdrop-blur-none"
+              className="absolute inset-0 flex items-start justify-center bg-black/80 backdrop-blur-sm p-6 pt-20 md:pt-24"
               onClick={() => {
                 console.log("[Authenticity] Closing scanner from backdrop");
                 setShowScanner(false);
@@ -744,14 +744,14 @@ export default function AuthenticityPageClient() {
       {/* Manual Input Modal */}
       <AnimatePresence mode="wait">
         {showManualInput && (
-          <ModalPortal>
+          <ModalPortal zIndex={9999}>
             <motion.div
               key="manual-input-modal"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="absolute inset-0 flex items-start justify-center bg-black/80 p-6 pt-36 backdrop-blur-sm md:pt-48 lg:pt-56 lg:bg-black/88 lg:backdrop-blur-none"
+              className="absolute inset-0 flex items-start justify-center bg-black/80 backdrop-blur-sm p-6 pt-36 md:pt-48 lg:pt-56"
               onClick={() => {
                 setShowManualInput(false);
                 setSerialNumber("");
