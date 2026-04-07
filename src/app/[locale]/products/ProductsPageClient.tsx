@@ -1111,11 +1111,9 @@ export default function ProductsPageClient() {
             version={pageSections.hero?.version}
             posterUrl={pageMediaProducts?.heroImageUrl ?? null}
             forcePoster={!shouldLoadHeroVideo}
-            lazyAttach
-            deferAttachUntilIdle
-            idleAttachTimeoutMs={520}
             posterPriority
             optimizeGpu
+            lightVideoFade
             containerClassName="absolute inset-0 w-screen h-screen z-10"
             className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
             style={{
@@ -1135,7 +1133,7 @@ export default function ProductsPageClient() {
             loop
             muted
             playsInline
-            preload="none"
+            preload="auto"
             disablePictureInPicture
             disableRemotePlayback
             onContextMenu={(e) => e.preventDefault()}

@@ -575,7 +575,7 @@ export default function WhatWeDoPageClient() {
         }}
         className="relative flex min-h-screen items-center justify-start overflow-hidden"
       >
-        {/* Full Screen Hero Background – no media until section data loaded (prevents any flash of wrong asset) */}
+        {/* Full Screen Hero Background – attach src immediately (fixed hero); faster than idle-deferred lazy attach on heavy pages */}
         <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
           <div className="absolute inset-0 bg-luxury-black z-0" />
           <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
@@ -588,11 +588,9 @@ export default function WhatWeDoPageClient() {
               version={pageSections.hero?.version}
               posterUrl={pageMediaWhatWeDo?.heroImageUrl ?? null}
               forcePoster={!shouldLoadHeroVideo}
-              lazyAttach
-              deferAttachUntilIdle
-              idleAttachTimeoutMs={520}
               posterPriority
               optimizeGpu
+              lightVideoFade
               containerClassName="absolute inset-0 w-screen h-screen z-10"
               className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
               style={{
@@ -610,7 +608,7 @@ export default function WhatWeDoPageClient() {
               loop
               muted
               playsInline
-              preload="none"
+              preload="auto"
               disablePictureInPicture
               disableRemotePlayback
             />

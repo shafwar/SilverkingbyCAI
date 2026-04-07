@@ -143,11 +143,9 @@ export function PersistentHomeHeroVideo() {
       version={effectiveHeroVideoVersion}
       posterUrl={posterUrl}
       posterVersion={undefined}
-      lazyAttach
-      deferAttachUntilIdle
-      idleAttachTimeoutMs={900}
       posterPriority
       optimizeGpu
+      lightVideoFade
       forcePoster={!shouldLoadHeroVideo}
       suspendSrc={prefersReducedMotion}
       snapVideoOpacity
@@ -158,7 +156,7 @@ export function PersistentHomeHeroVideo() {
       loop
       muted
       playsInline
-      preload="none"
+      preload="auto"
       disablePictureInPicture
       disableRemotePlayback
       onContextMenu={(e) => e.preventDefault()}

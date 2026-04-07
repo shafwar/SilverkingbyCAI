@@ -265,11 +265,9 @@ export default function DistributorPageClient({
               version={pageSections.hero?.version}
               posterUrl={pageMediaDistributor?.heroImageUrl ?? null}
               forcePoster={!shouldLoadHeroVideo}
-              lazyAttach
-              deferAttachUntilIdle
-              idleAttachTimeoutMs={520}
               posterPriority
               optimizeGpu
+              lightVideoFade
               containerClassName="absolute inset-0 w-full h-full"
               className="absolute inset-0 w-full h-full object-cover"
               style={{ objectFit: "cover" }}
@@ -277,7 +275,7 @@ export default function DistributorPageClient({
               loop
               muted
               playsInline
-              preload="none"
+              preload="auto"
             />
           ) : (
             <ImageLoadGuard

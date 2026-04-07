@@ -255,10 +255,8 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
                 posterUrl={posterUrl}
                 posterPriority
                 forcePoster={!shouldLoadHeroVideo}
-                lazyAttach
-                deferAttachUntilIdle
-                idleAttachTimeoutMs={520}
                 optimizeGpu
+                lightVideoFade
                 containerClassName="absolute inset-0 h-full w-full"
                 className="absolute inset-0 h-full w-full object-cover"
                 style={{ objectFit: "cover" }}
@@ -266,7 +264,7 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
                 loop
                 muted
                 playsInline
-                preload="none"
+                preload="auto"
                 onError={() => setHeroVideoError(true)}
               />
             </div>

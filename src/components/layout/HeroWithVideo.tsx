@@ -83,9 +83,6 @@ export default function HeroWithVideo({
             ref={videoRef}
             url={currentVideoSrc}
             posterUrl={r2FallbackImage}
-            lazyAttach
-            deferAttachUntilIdle
-            idleAttachTimeoutMs={520}
             posterPriority
             optimizeGpu
             lightVideoFade
@@ -102,7 +99,7 @@ export default function HeroWithVideo({
             loop
             muted
             playsInline
-            preload="none"
+            preload="auto"
             disablePictureInPicture
             disableRemotePlayback
             onContextMenu={(e) => e.preventDefault()}

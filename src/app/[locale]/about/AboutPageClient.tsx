@@ -232,7 +232,7 @@ export default function AboutPageClient() {
       {/* Navbar */}
       <Navbar />
 
-      {/* Hero: no media until section data loaded (prevents flash of wrong asset) */}
+      {/* Hero: fixed fullscreen — attach src immediately + preload for fast visible playback */}
       <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
         <div className="absolute inset-0 bg-luxury-black z-0" />
         {heroMediaType === "VIDEO" ? (
@@ -243,11 +243,9 @@ export default function AboutPageClient() {
             version={pageSections.hero?.version}
             posterUrl={pageMediaAbout?.heroImageUrl ?? null}
             forcePoster={!shouldLoadHeroVideo}
-            lazyAttach
-            deferAttachUntilIdle
-            idleAttachTimeoutMs={520}
             posterPriority
             optimizeGpu
+            lightVideoFade
             containerClassName="absolute inset-0 z-10 h-full w-full"
             className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
             style={{
@@ -260,7 +258,7 @@ export default function AboutPageClient() {
             loop
             muted
             playsInline
-            preload="none"
+            preload="auto"
             disablePictureInPicture
             disableRemotePlayback
             onContextMenu={(e) => e.preventDefault()}

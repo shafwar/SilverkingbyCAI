@@ -514,11 +514,9 @@ export default function AuthenticityPageClient() {
             version={pageSections.hero?.version}
             posterUrl={pageMediaAuthenticity?.heroImageUrl ?? null}
             forcePoster={!shouldLoadHeroVideo}
-            lazyAttach
-            deferAttachUntilIdle
-            idleAttachTimeoutMs={520}
             posterPriority
             optimizeGpu
+            lightVideoFade
             containerClassName="absolute inset-0 h-full w-full z-10"
             className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
             style={{
@@ -531,7 +529,7 @@ export default function AuthenticityPageClient() {
             loop
             muted
             playsInline
-            preload="none"
+            preload="auto"
             disablePictureInPicture
             disableRemotePlayback
             onContextMenu={(e) => e.preventDefault()}
