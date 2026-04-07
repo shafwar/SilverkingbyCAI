@@ -27,7 +27,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
   return (
     <AnimatePresence>
       {open && (
-        <ModalPortal zIndex={9999}>
+        <ModalPortal>
           <motion.div
             className="absolute inset-0 flex items-center justify-center bg-black/90 backdrop-blur-md"
             onMouseDown={onClose}

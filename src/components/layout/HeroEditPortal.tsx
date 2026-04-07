@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { EditableMedia } from "@/components/editable-media";
-import { getViewportPortalRoot } from "@/utils/viewportPortalRoot";
+import { getViewportPortalRoot, SK_VIEWPORT_HERO_CHROME_Z } from "@/utils/viewportPortalRoot";
 
 const TIMELESS_ANCHOR_ID = "hero-home-timeless-anchor";
 /** Gap between button bottom and top of “Timeless” (px) */
@@ -131,11 +131,12 @@ export function HeroEditPortal({
     <div
       className={
         useTimelessAnchor
-          ? "fixed z-[10002] flex flex-col items-center gap-2 pointer-events-auto"
-          : "fixed top-20 right-4 z-[10002] flex flex-col items-end gap-2 pointer-events-auto sm:right-6"
+          ? "fixed flex flex-col items-center gap-2 pointer-events-auto"
+          : "fixed top-20 right-4 flex flex-col items-end gap-2 pointer-events-auto sm:right-6"
       }
       data-hero-edit-portal
       style={{
+        zIndex: SK_VIEWPORT_HERO_CHROME_Z,
         ...(useTimelessAnchor && homeAnchorPos
           ? {
               left: homeAnchorPos.left,

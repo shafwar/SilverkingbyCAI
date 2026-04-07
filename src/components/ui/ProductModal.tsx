@@ -145,11 +145,14 @@ interface ProductModalProps {
 export default function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
   useEffect(() => {
     if (isOpen) {
+      document.body.style.overflow = "hidden";
       document.body.classList.add("modal-active");
     } else {
+      document.body.style.overflow = "unset";
       document.body.classList.remove("modal-active");
     }
     return () => {
+      document.body.style.overflow = "unset";
       document.body.classList.remove("modal-active");
     };
   }, [isOpen]);
@@ -159,7 +162,7 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
   return (
     <AnimatePresence>
       {isOpen && (
-        <ModalPortal zIndex={9999}>
+        <ModalPortal>
           {/* Backdrop */}
           <motion.div
             variants={backdropVariants}

@@ -1514,9 +1514,9 @@ export default function ProductsPageClient() {
       {/* Inline CMS Modal for Admin (create / edit product) */}
       <AnimatePresence>
         {isAdmin && editingCms && (
-          <ModalPortal zIndex={9999}>
+          <ModalPortal>
             <motion.div
-              className="flex min-h-[100dvh] w-full items-center justify-center bg-black/70 backdrop-blur-sm p-4 py-8"
+              className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

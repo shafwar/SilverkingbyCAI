@@ -29,7 +29,7 @@ export function ProductDrawer({
   return (
     <AnimatePresence>
       {isOpen && (
-        <ModalPortal zIndex={9999}>
+        <ModalPortal>
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}

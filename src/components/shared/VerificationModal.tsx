@@ -137,7 +137,7 @@ export function VerificationModal({ isOpen, onClose, data, isVerifying }: Verifi
   if (!isOpen) return null;
 
   return (
-    <ModalPortal zIndex={9999}>
+    <ModalPortal>
       <AnimatePresence mode="wait">
         <motion.div
           key="modal-backdrop"

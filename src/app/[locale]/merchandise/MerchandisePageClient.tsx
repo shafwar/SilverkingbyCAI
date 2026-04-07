@@ -1097,7 +1097,7 @@ export default function MerchandisePageClient() {
 
       <AnimatePresence>
         {isModalOpen && modalCategory && (
-          <ModalPortal zIndex={9999}>
+          <ModalPortal>
             <motion.div
               className="absolute inset-0 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
               initial={{ opacity: 0 }}

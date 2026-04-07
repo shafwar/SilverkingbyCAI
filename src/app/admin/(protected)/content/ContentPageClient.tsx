@@ -306,7 +306,7 @@ export function ContentPageClient() {
       </div>
 
       {modalOpen && (
-        <ModalPortal zIndex={9999}>
+        <ModalPortal>
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={closeModal} />
           <div className="absolute inset-0 flex items-center justify-center p-4" onClick={closeModal}>
             <div

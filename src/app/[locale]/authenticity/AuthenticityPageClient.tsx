@@ -72,56 +72,49 @@ function WorkflowTimeline({
   const pathMobileRef = useRef<SVGPathElement>(null);
   const [activeStep, setActiveStep] = useState<number | null>(null);
 
-  // Path draw tied to scroll — only register the path visible at current breakpoint (avoids double ScrollTrigger).
+  // Optional animation - won't block rendering
   useGSAP(
     () => {
       if (!timelineRef.current) return;
 
       const ctx = gsap.context(() => {
-        const root = timelineRef.current;
-        if (!root) return;
-
-        const mm = gsap.matchMedia();
-
-        mm.add("(min-width: 768px)", () => {
+        // Animate desktop path drawing - OPTIONAL
+        if (pathRef.current) {
           const path = pathRef.current;
-          if (!path) return;
           const pathLength = path.getTotalLength();
           path.style.strokeDasharray = `${pathLength}`;
           path.style.strokeDashoffset = `${pathLength}`;
+
           gsap.to(path, {
             strokeDashoffset: 0,
             ease: "none",
             scrollTrigger: {
-              trigger: root,
+              trigger: timelineRef.current,
               start: "top 60%",
               end: "bottom 20%",
               scrub: 1,
             },
           });
-        });
+        }
 
-        mm.add("(max-width: 767px)", () => {
+        // Animate mobile path drawing - OPTIONAL
+        if (pathMobileRef.current) {
           const pathMobile = pathMobileRef.current;
-          if (!pathMobile) return;
-          const len = pathMobile.getTotalLength();
-          pathMobile.style.strokeDasharray = `${len}`;
-          pathMobile.style.strokeDashoffset = `${len}`;
+          const pathMobileLength = pathMobile.getTotalLength();
+          pathMobile.style.strokeDasharray = `${pathMobileLength}`;
+          pathMobile.style.strokeDashoffset = `${pathMobileLength}`;
+
           gsap.to(pathMobile, {
             strokeDashoffset: 0,
             ease: "none",
             scrollTrigger: {
-              trigger: root,
+              trigger: timelineRef.current,
               start: "top 60%",
               end: "bottom 20%",
               scrub: 1,
             },
           });
-        });
-
-        return () => {
-          mm.revert();
-        };
+        }
       }, timelineRef);
 
       return () => ctx.revert();
@@ -510,12 +503,8 @@ export default function AuthenticityPageClient() {
 
       <Navbar />
 
-      {/* Hero background media — viewport-fixed (must not sit under a filtered ancestor; see PageTransitionOverlay) */}
-      <div
-        data-hero-fixed-backdrop
-        className="fixed inset-0 z-0 h-screen min-h-[100dvh] w-screen overflow-hidden"
-        aria-hidden
-      >
+      {/* Hero background media — fixed behind content */}
+      <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
         <div className="absolute inset-0 bg-luxury-black z-0" />
         {heroMediaType === "VIDEO" ? (
           <VideoLoadGuard
@@ -715,7 +704,7 @@ export default function AuthenticityPageClient() {
       {/* Scanner Modal */}
       <AnimatePresence mode="wait">
         {showScanner && (
-          <ModalPortal zIndex={9999}>
+          <ModalPortal>
             <motion.div
               key="scanner-modal"
               initial={{ opacity: 0 }}
@@ -755,7 +744,7 @@ export default function AuthenticityPageClient() {
       {/* Manual Input Modal */}
       <AnimatePresence mode="wait">
         {showManualInput && (
-          <ModalPortal zIndex={9999}>
+          <ModalPortal>
             <motion.div
               key="manual-input-modal"
               initial={{ opacity: 0 }}

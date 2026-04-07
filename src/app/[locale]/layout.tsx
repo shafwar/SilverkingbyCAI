@@ -47,9 +47,10 @@ export default async function LocaleLayout({
         <PersistentHomeHeroVideo />
         {children}
       </Providers>
+      {/* Legacy mount; live modals use #sk-viewport-portal-root. Keep low z so it never stacks above real modals. */}
       <div
         id="cms-modal-root"
-        className="fixed inset-0 z-[100000] pointer-events-none"
+        className="pointer-events-none fixed inset-0 z-0"
         aria-hidden
       />
     </NextIntlClientProvider>

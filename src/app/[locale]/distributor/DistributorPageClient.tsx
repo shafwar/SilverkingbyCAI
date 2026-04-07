@@ -488,9 +488,9 @@ export default function DistributorPageClient({
       {/* Modal Add / Edit (admin only) – CMS unchanged */}
       <AnimatePresence>
         {modalOpen && (
-          <ModalPortal zIndex={9999}>
+          <ModalPortal>
             <motion.div
-              className="flex min-h-[100dvh] w-full items-center justify-center bg-black/70 backdrop-blur-sm p-4 py-8"
+              className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 pt-24 sm:pt-28"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
