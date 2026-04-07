@@ -14,6 +14,44 @@ import {
 } from "@/utils/device";
 
 /**
+ * Strip blur/filter from body, main, and sections. Never leave `filter: blur(0px)` —
+ * any non-`none` filter on an ancestor breaks `position: fixed` (viewport-relative)
+ * for descendants, causing hero videos and portaled admin controls to scroll with the page.
+ */
+function clearPageTransitionBlurStyles(): void {
+  if (typeof document === "undefined" || !document.body) return;
+  const body = document.body;
+  body.style.removeProperty("filter");
+  body.style.removeProperty("opacity");
+  body.style.removeProperty("transition");
+  body.style.overflow = "";
+  body.style.willChange = "auto";
+
+  const heroSection = document.querySelector(".hero-section-transition");
+  if (heroSection) {
+    const el = heroSection as HTMLElement;
+    el.style.removeProperty("filter");
+    el.style.removeProperty("opacity");
+    el.style.removeProperty("transition");
+    el.style.willChange = "auto";
+  }
+  const mainContent = document.querySelector("main");
+  if (mainContent) {
+    const el = mainContent as HTMLElement;
+    el.style.removeProperty("filter");
+    el.style.removeProperty("opacity");
+    el.style.removeProperty("transition");
+    el.style.willChange = "auto";
+  }
+  document.querySelectorAll("section, article").forEach((node) => {
+    const el = node as HTMLElement;
+    el.style.removeProperty("filter");
+    el.style.removeProperty("transition");
+    el.style.willChange = "auto";
+  });
+}
+
+/**
  * Page Transition Overlay dengan Blur + Fade Effect
  * Mirip dengan antikode.com - smooth blur out pada halaman yang keluar
  * Optimized untuk mobile dan reduced motion preferences
@@ -268,28 +306,7 @@ export function PageTransitionOverlay() {
         console.warn("[PageTransition] Safety timeout - forcing blur removal after 3s");
         setIsBlurring(false);
 
-        // Force remove blur
-        if (document.body) {
-          document.body.style.filter = "blur(0px)";
-          document.body.style.opacity = "1";
-          document.body.style.overflow = "";
-        }
-
-        // Remove from all sections
-        const heroSection = document.querySelector(".hero-section-transition");
-        if (heroSection) {
-          (heroSection as HTMLElement).style.filter = "blur(0px)";
-          (heroSection as HTMLElement).style.opacity = "1";
-        }
-        const mainContent = document.querySelector("main");
-        if (mainContent) {
-          (mainContent as HTMLElement).style.filter = "blur(0px)";
-          (mainContent as HTMLElement).style.opacity = "1";
-        }
-        const sections = document.querySelectorAll("section, article");
-        sections.forEach((section) => {
-          (section as HTMLElement).style.filter = "blur(0px)";
-        });
+        clearPageTransitionBlurStyles();
       }, 3000); // 3 second safety timeout
     } else {
       // CLEAN: When isActive becomes false, ensure blur is removed smoothly
@@ -301,15 +318,7 @@ export function PageTransitionOverlay() {
         blurRemovalTimeoutRef.current = null;
       }
 
-      // Smooth blur removal as fallback
-      requestAnimationFrame(() => {
-        if (document.body && document.body.style.filter.includes("blur")) {
-          document.body.style.transition = `filter ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1)`;
-          document.body.style.filter = "blur(0px)";
-          document.body.style.opacity = "1";
-          document.body.style.overflow = "";
-        }
-      });
+      requestAnimationFrame(() => clearPageTransitionBlurStyles());
     }
 
     return () => {
@@ -359,31 +368,15 @@ export function PageTransitionOverlay() {
         }
 
         try {
-          // CRITICAL: Apply blur IMMEDIATELY to CURRENT page (source page)
-          // This ensures blur happens on the page user is currently viewing
-          // Use will-change untuk better performance
-          document.body.style.willChange = "filter, opacity";
-
-          // Apply blur SYNCHRONOUSLY - no transition delay for immediate effect
-          // This ensures blur is visible on CURRENT page before Next.js navigation
-          document.body.style.filter = `blur(${transitionSettings.blur}px)`;
-          document.body.style.opacity = "0.92";
+          // Do NOT set filter/opacity on document.body: non-none `filter` makes body the
+          // containing block for all position:fixed descendants → hero video + HeroEditPortal scroll incorrectly.
           document.body.style.overflow = "hidden";
-
-          console.log("[PageTransition] Blur applied to CURRENT page (source):", {
+          console.log("[PageTransition] Scroll locked on body (no body filter — fixed layers stay viewport-locked):", {
             blur: transitionSettings.blur,
             page: window.location.pathname,
           });
-
-          // Then add smooth transition for visual polish
-          // Use requestAnimationFrame to ensure blur is applied first
-          requestAnimationFrame(() => {
-            if (document.body) {
-              document.body.style.transition = `filter ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
-            }
-          });
         } catch (error) {
-          console.error("[PageTransition] Error applying body blur:", error);
+          console.error("[PageTransition] Error applying body scroll lock:", error);
         }
 
         // ENHANCED: Apply blur to ALL page sections, not just hero
@@ -501,23 +494,19 @@ export function PageTransitionOverlay() {
       // Remove will-change after transition untuk cleanup - faster cleanup
       setTimeout(
         () => {
-          if (document.body) {
+          requestAnimationFrame(() => {
+            if (typeof document === "undefined" || !document.body) return;
             try {
               document.body.style.willChange = "auto";
             } catch (error) {
               console.error("[PageTransition] Error cleaning up body willChange:", error);
             }
-          }
-          // Also cleanup hero section
-          requestAnimationFrame(() => {
-            if (typeof document !== "undefined") {
-              const heroSection = document.querySelector(".hero-section-transition");
-              if (heroSection) {
-                try {
-                  (heroSection as HTMLElement).style.willChange = "auto";
-                } catch (error) {
-                  console.error("[PageTransition] Error cleaning up hero willChange:", error);
-                }
+            const heroSection = document.querySelector(".hero-section-transition");
+            if (heroSection) {
+              try {
+                (heroSection as HTMLElement).style.willChange = "auto";
+              } catch (error) {
+                console.error("[PageTransition] Error cleaning up hero willChange:", error);
               }
             }
           });
@@ -525,116 +514,12 @@ export function PageTransitionOverlay() {
         transitionSettings.duration * 1000 + 50 // Reduced from 100ms to 50ms
       );
     } else if (!isBlurring) {
-      // CLEAN: Remove blur smoothly when transition completes
-      const removeBlur = () => {
-        if (typeof window === "undefined" || !document.body) {
-          return;
-        }
-
-        // Smooth transition for blur removal
-        const smoothRemove = () => {
-          try {
-            // Remove blur from body with smooth transition
-            if (document.body.style.filter.includes("blur")) {
-              document.body.style.transition = `filter ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1)`;
-              document.body.style.filter = "blur(0px)";
-              document.body.style.opacity = "1";
-              document.body.style.overflow = "";
-            }
-
-            // Remove from hero section
-            const heroSection = document.querySelector(".hero-section-transition");
-            if (heroSection) {
-              const heroEl = heroSection as HTMLElement;
-              if (heroEl.style.filter.includes("blur")) {
-                heroEl.style.transition = `filter ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1)`;
-                heroEl.style.filter = "blur(0px)";
-                heroEl.style.opacity = "1";
-              }
-            }
-
-            // Remove from main content
-            const mainContent = document.querySelector("main");
-            if (mainContent) {
-              const mainEl = mainContent as HTMLElement;
-              if (mainEl.style.filter.includes("blur")) {
-                mainEl.style.transition = `filter ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1)`;
-                mainEl.style.filter = "blur(0px)";
-                mainEl.style.opacity = "1";
-              }
-            }
-
-            // Remove from sections - clean and simple
-            const sections = document.querySelectorAll("section, article");
-            sections.forEach((section) => {
-              const sectionEl = section as HTMLElement;
-              if (sectionEl.style.filter && sectionEl.style.filter.includes("blur")) {
-                sectionEl.style.transition = `filter ${transitionSettings.duration * 0.6}s cubic-bezier(0.4, 0, 0.2, 1)`;
-                sectionEl.style.filter = "blur(0px)";
-              }
-            });
-
-            // Cleanup will-change after transition completes
-            setTimeout(() => {
-              if (document.body) {
-                document.body.style.willChange = "auto";
-              }
-              if (heroSection) {
-                (heroSection as HTMLElement).style.willChange = "auto";
-              }
-              if (mainContent) {
-                (mainContent as HTMLElement).style.willChange = "auto";
-              }
-            }, transitionSettings.duration * 600);
-          } catch (error) {
-            // Silent fail - don't spam console
-          }
-        };
-
-        // Use requestAnimationFrame for smooth removal
-        requestAnimationFrame(() => {
-          smoothRemove();
-        });
-      };
-
-      // Remove blur smoothly
-      removeBlur();
+      requestAnimationFrame(() => clearPageTransitionBlurStyles());
     }
 
     return () => {
-      // Cleanup - PRODUCTION-SAFE: Check for window and document
       if (typeof window === "undefined" || !document.body) return;
-
-      document.body.style.filter = "";
-      document.body.style.opacity = "";
-      document.body.style.overflow = "";
-      document.body.style.willChange = "auto";
-
-      if (typeof document !== "undefined") {
-        // Cleanup hero section
-        const heroSection = document.querySelector(".hero-section-transition");
-        if (heroSection) {
-          (heroSection as HTMLElement).style.filter = "";
-          (heroSection as HTMLElement).style.willChange = "auto";
-        }
-        // Cleanup main content
-        const mainContent = document.querySelector("main");
-        if (mainContent) {
-          (mainContent as HTMLElement).style.filter = "";
-          (mainContent as HTMLElement).style.opacity = "";
-          (mainContent as HTMLElement).style.willChange = "auto";
-        }
-        // Cleanup sections
-        const sections = document.querySelectorAll("section, article");
-        sections.forEach((section) => {
-          try {
-            (section as HTMLElement).style.filter = "";
-            (section as HTMLElement).style.willChange = "auto";
-          } catch (error) {
-            // Ignore errors
-          }
-        });
-      }
+      clearPageTransitionBlurStyles();
     };
   }, [isBlurring, transitionSettings, isMounted]);
 
@@ -663,10 +548,11 @@ export function PageTransitionOverlay() {
           }}
           className="fixed inset-0 z-[9999] pointer-events-none will-change-opacity"
           style={{
-            background: "rgba(0, 0, 0, 0.02)",
-            // Use transform for GPU acceleration
+            background: "rgba(0, 0, 0, 0.06)",
+            // Blur via backdrop-filter so we never need filter on body (which breaks position:fixed children).
+            backdropFilter: `blur(${transitionSettings.blur}px)`,
+            WebkitBackdropFilter: `blur(${transitionSettings.blur}px)`,
             transform: "translateZ(0)",
-            // Backface visibility untuk smooth rendering
             backfaceVisibility: "hidden",
             WebkitBackfaceVisibility: "hidden",
           }}

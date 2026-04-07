@@ -503,8 +503,12 @@ export default function AuthenticityPageClient() {
 
       <Navbar />
 
-      {/* Hero background media — fixed behind content */}
-      <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
+      {/* Hero background media — viewport-fixed (must not sit under a filtered ancestor; see PageTransitionOverlay) */}
+      <div
+        data-hero-fixed-backdrop
+        className="fixed inset-0 z-0 h-screen min-h-[100dvh] w-screen overflow-hidden"
+        aria-hidden
+      >
         <div className="absolute inset-0 bg-luxury-black z-0" />
         {heroMediaType === "VIDEO" ? (
           <VideoLoadGuard
