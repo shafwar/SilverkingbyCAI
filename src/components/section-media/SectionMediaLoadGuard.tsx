@@ -284,6 +284,14 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
             />
           </div>
         ) : null}
+        {/* lcpFriendlyPoster: <video> stays opacity:0 until decode — native poster is often invisible then; show same art as a layer underneath (no Next/Image priority). */}
+        {bustedPoster && lcpFriendlyPoster ? (
+          <div
+            className="pointer-events-none absolute inset-0 z-[1] bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: `url(${bustedPoster})` }}
+            aria-hidden
+          />
+        ) : null}
 
         {/* Include version in key so CMS replace at same R2 path forces a fresh decoder (no 1-frame old video). */}
         <video
@@ -299,6 +307,7 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
           style={{
             ...style,
             ...videoStyleProp,
+            ...(lcpFriendlyPoster && bustedPoster ? { zIndex: 2 } : {}),
             opacity: ready ? 1 : 0,
             transition: snapVideoOpacity
               ? "none"

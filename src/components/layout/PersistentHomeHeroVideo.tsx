@@ -155,8 +155,6 @@ export function PersistentHomeHeroVideo() {
       posterVersion={undefined}
       posterPriority
       lcpFriendlyPoster
-      deferAttachUntilIdle
-      idleAttachTimeoutMs={320}
       optimizeGpu
       lightVideoFade
       forcePoster={!shouldLoadHeroVideo}
