@@ -24,6 +24,7 @@ import { SERTICARD_VARIANTS } from "@/utils/serticard-templates";
 import { templateSelectToApiBody } from "@/utils/serticard-template-select";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
+import { getViewportPortalRoot } from "@/utils/viewportPortalRoot";
 
 const ZIP_CHUNK_SIZE = 80;
 
@@ -1837,7 +1838,7 @@ export function QrPreviewGridGram({ batches }: Props) {
               </motion.div>
             )}
           </AnimatePresence>,
-          document.body
+          getViewportPortalRoot() ?? document.body
         )}
     </div>
   );

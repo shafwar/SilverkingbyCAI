@@ -137,9 +137,9 @@
     /* Optimize for transitions */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Do NOT set transform/filter on body: it becomes the containing block for
-       position:fixed descendants (e.g. ModalPortal → Products/Distributor CMS modals),
-       so overlays anchor to the document top instead of the viewport. See docs/CMS_MODAL_VIEWPORT_POSITIONING.md */
+    /* GPU-friendly scroll/paint layer. Overlays that must stay viewport-fixed
+       (CMS modals, hero edit) mount under documentElement — see getViewportPortalRoot(). */
+    transform: translateZ(0);
   }
 
   /* Splash and home: Geist only, no system-ui */

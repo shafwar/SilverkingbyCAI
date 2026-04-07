@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { getViewportPortalRoot } from "@/utils/viewportPortalRoot";
 import Image from "next/image";
 import { Pencil, RotateCcw } from "lucide-react";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
@@ -99,6 +100,7 @@ export function EditableMedia({
   const closeModal = () => {
     if (typeof document !== "undefined") {
       document.body.removeAttribute("data-cms-modal-open");
+      document.body.style.overflow = "";
     }
     setModalOpen(false);
     setUploading(false);
@@ -568,11 +570,15 @@ const CMS_MODAL_ROOT_ID = "cms-modal-root";
 
 function getModalPortalTarget(): HTMLElement | null {
   if (typeof document === "undefined" || !document.body) return null;
-  return document.getElementById(CMS_MODAL_ROOT_ID) || document.body;
+  return (
+    getViewportPortalRoot() ||
+    document.getElementById(CMS_MODAL_ROOT_ID) ||
+    document.body
+  );
 }
 
 /**
- * CMS replace media modal. Used on ALL pages. Portal to #cms-modal-root or body so same stacking as Home edit video.
+ * CMS replace media modal. Used on ALL pages. Prefer viewport portal root (see getViewportPortalRoot).
  * Parent sets data-cms-modal-open before open so PageTransitionOverlay does not blur.
  */
 function EditableMediaModal({
@@ -605,17 +611,10 @@ function EditableMediaModal({
     const onEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
-    const html = document.documentElement;
-    const body = document.body;
-    const prevHtmlOverflow = html.style.overflow;
-    const prevBodyOverflow = body.style.overflow;
-    html.style.overflow = "hidden";
-    body.style.overflow = "hidden";
     document.addEventListener("keydown", onEscape);
+    document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onEscape);
-      html.style.overflow = prevHtmlOverflow;
-      body.style.overflow = prevBodyOverflow;
     };
   }, [onClose]);
 

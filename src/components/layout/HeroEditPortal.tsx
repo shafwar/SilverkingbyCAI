@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { EditableMedia } from "@/components/editable-media";
+import { getViewportPortalRoot } from "@/utils/viewportPortalRoot";
 
 const TIMELESS_ANCHOR_ID = "hero-home-timeless-anchor";
 /** Gap between button bottom and top of “Timeless” (px) */
@@ -26,7 +27,7 @@ export type HeroEditPortalProps = {
 
 /**
  * Hero edit button (Edit video / Edit photo):
- * - Portaled to document.body for consistent stacking across pages
+ * - Portaled under document.documentElement (viewport root) so body translateZ does not break fixed
  * - Parent controls when this mounts (splash/animation timing)
  * - Smooth opacity+translateY entrance once mounted
  */
@@ -118,7 +119,8 @@ export function HeroEditPortal({
     };
   }, [mounted, performanceMode, updateHomeAnchorPosition, showEditButton]);
 
-  if (!mounted || typeof document === "undefined" || !document.body) {
+  const portalMount = typeof document !== "undefined" ? getViewportPortalRoot() : null;
+  if (!mounted || typeof document === "undefined" || !portalMount) {
     return null;
   }
 
@@ -166,6 +168,6 @@ export function HeroEditPortal({
         reduceOverlayChromeCost={isHomePerf}
       />
     </div>,
-    document.body
+    portalMount
   );
 }
