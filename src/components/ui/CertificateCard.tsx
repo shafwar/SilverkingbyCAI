@@ -21,21 +21,36 @@ const CertificateCard: React.FC = () => {
     const raw = process.env.NEXT_PUBLIC_ABOUT_CERTIFICATE_IMAGE_URL;
     return typeof raw === "string" && raw.trim().startsWith("http") ? raw.trim() : null;
   }, []);
-  const primaryR2 = useMemo(() => getR2UrlClient(CERT_IMAGE_PRIMARY), []);
-  const fallbackR2 = useMemo(() => getR2UrlClient(CERT_IMAGE_FALLBACK), []);
-  const [imageSrc, setImageSrc] = useState(() => explicitUrl ?? primaryR2);
+
+  /** R2 first (production), then same-origin /public paths — covers “not migrated to R2 yet” and Docker without public asset. */
+  const candidateUrls = useMemo(() => {
+    if (explicitUrl) return [explicitUrl];
+    const r2Primary = getR2UrlClient(CERT_IMAGE_PRIMARY);
+    const r2Alt = getR2UrlClient(CERT_IMAGE_FALLBACK);
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const u of [r2Primary, r2Alt, CERT_IMAGE_PRIMARY, CERT_IMAGE_FALLBACK]) {
+      if (!seen.has(u)) {
+        seen.add(u);
+        out.push(u);
+      }
+    }
+    return out;
+  }, [explicitUrl]);
+
+  const [attemptIndex, setAttemptIndex] = useState(0);
+  const imageSrc = candidateUrls[attemptIndex] ?? candidateUrls[0];
 
   const handleImageError = () => {
-    if (explicitUrl) {
-      setLoadError(true);
-      return;
-    }
-    if (imageSrc === primaryR2) {
-      setImageSrc(fallbackR2);
+    setAttemptIndex((i) => {
+      const next = i + 1;
+      if (next >= candidateUrls.length) {
+        setLoadError(true);
+        return i;
+      }
       setIsImageLoaded(false);
-      return;
-    }
-    setLoadError(true);
+      return next;
+    });
   };
 
   // Smooth entrance animation
@@ -146,7 +161,7 @@ const CertificateCard: React.FC = () => {
               {!loadError ? (
                 <img
                   ref={imageRef}
-                  key={imageSrc}
+                  key={`${attemptIndex}-${imageSrc}`}
                   src={imageSrc}
                   alt={t("certificateName")}
                   className={`h-full w-full object-contain ${isImageLoaded ? "opacity-100" : "opacity-0"}`}

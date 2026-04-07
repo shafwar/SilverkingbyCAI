@@ -481,7 +481,7 @@
         "paragraph3": "Our ISO 9001:2015 certification covers the complete manufacturing process of precious metals, from raw material sourcing to final product verification, providing our customers with confidence in every bar they invest in."
       },
       "badge": "CERTIFIED",
-      "imageLoadError": "Could not load the certificate image. Ensure it is uploaded to R2, or set NEXT_PUBLIC_ABOUT_CERTIFICATE_IMAGE_URL."
+      "imageLoadError": "Could not load the certificate image. Upload it to R2 as static/images/sertificate.jpeg (or certificate.jpeg), add it under public/images/, or set NEXT_PUBLIC_ABOUT_CERTIFICATE_IMAGE_URL."
     },
     "cta": {
       "title": "Ready to verify",
