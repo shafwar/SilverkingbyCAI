@@ -137,8 +137,8 @@
     /* Optimize for transitions */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* GPU acceleration for smooth transitions */
-    transform: translateZ(0);
+    /* Do NOT use transform on body: it breaks position:fixed (viewport-relative) for modals
+       portaled to document.body — overlays anchor to the document top instead of the screen. */
   }
 
   /* Splash and home: Geist only, no system-ui */

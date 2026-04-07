@@ -607,9 +607,11 @@ function EditableMediaModal({
       if (e.key === "Escape") onClose();
     };
     document.addEventListener("keydown", onEscape);
+    const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onEscape);
+      document.body.style.overflow = prevOverflow;
     };
   }, [onClose]);
 

@@ -490,7 +490,7 @@ export default function DistributorPageClient({
         {modalOpen && (
           <ModalPortal zIndex={9999}>
             <motion.div
-              className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 pt-24 sm:pt-28"
+              className="fixed inset-0 flex items-center justify-center overflow-y-auto bg-black/70 backdrop-blur-sm p-4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
