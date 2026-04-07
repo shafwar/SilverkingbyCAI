@@ -1089,7 +1089,6 @@ export default function ProductsPageClient() {
       <div
         className="fixed inset-0 z-0 w-screen h-screen overflow-hidden"
         style={{
-          willChange: "transform",
           backfaceVisibility: "hidden",
           WebkitBackfaceVisibility: "hidden",
           transform: "translateZ(0)",
@@ -1121,8 +1120,6 @@ export default function ProductsPageClient() {
               objectPosition: "center center",
               width: "100%",
               height: "100%",
-              transform: "translateZ(0)",
-              WebkitTransform: "translateZ(0)",
               pointerEvents: "none",
               outline: "none",
               WebkitTapHighlightColor: "transparent",
@@ -1516,7 +1513,7 @@ export default function ProductsPageClient() {
         {isAdmin && editingCms && (
           <ModalPortal>
             <motion.div
-              className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+              className="absolute inset-0 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm lg:bg-black/85 lg:backdrop-blur-none"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

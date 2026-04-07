@@ -499,7 +499,6 @@ export default function MerchandisePageClient() {
                 className="absolute inset-0 origin-center"
                 style={{
                   backfaceVisibility: "hidden",
-                  willChange: "transform",
                   transform: "translateZ(0)",
                   WebkitBackfaceVisibility: "hidden",
                 }}
@@ -510,7 +509,7 @@ export default function MerchandisePageClient() {
               >
                 <motion.div
                   className="absolute inset-0 origin-center overflow-hidden"
-                  style={{ backfaceVisibility: "hidden", transform: "translateZ(0)" }}
+                  style={{ backfaceVisibility: "hidden" }}
                   animate={{ scale: 1.05 }}
                   transition={{ duration: 6, ease: "linear" }}
                 >
@@ -1099,7 +1098,7 @@ export default function MerchandisePageClient() {
         {isModalOpen && modalCategory && (
           <ModalPortal>
             <motion.div
-              className="absolute inset-0 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+              className="absolute inset-0 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm lg:bg-black/85 lg:backdrop-blur-none"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

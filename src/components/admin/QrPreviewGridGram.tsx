@@ -1476,7 +1476,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="fixed inset-0 z-[150000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm lg:bg-black/80 lg:backdrop-blur-none"
                 onClick={() => {
                   setDownloadDropdownOpen(null);
                   setZipDownloadResult(null);

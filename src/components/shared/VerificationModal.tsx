@@ -212,7 +212,7 @@ export function VerificationModal({ isOpen, onClose, data, isVerifying }: Verifi
 
                 {/* Badge */}
                 <motion.div
-                  className={`relative flex flex-col items-center justify-center rounded-3xl border-2 p-12 backdrop-blur-xl shadow-2xl ${
+                  className={`relative flex flex-col items-center justify-center rounded-3xl border-2 p-12 backdrop-blur-xl shadow-2xl lg:backdrop-blur-none ${
                     data.isAuthentic
                       ? "border-green-500/50 bg-gradient-to-br from-green-500/20 via-green-500/10 to-transparent"
                       : "border-red-500/50 bg-gradient-to-br from-red-500/20 via-red-500/10 to-transparent"
@@ -289,7 +289,7 @@ export function VerificationModal({ isOpen, onClose, data, isVerifying }: Verifi
               className="relative z-10 w-full max-w-2xl"
             >
               <motion.div
-                className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 via-white/[0.03] to-transparent p-8 md:p-10 backdrop-blur-xl shadow-[0_20px_70px_-30px_rgba(0,0,0,0.7)]"
+                className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 via-white/[0.03] to-transparent p-8 md:p-10 backdrop-blur-xl shadow-[0_20px_70px_-30px_rgba(0,0,0,0.7)] lg:backdrop-blur-none"
                 initial={{ filter: "blur(10px)" }}
                 animate={{ filter: "blur(0px)" }}
                 transition={{ delay: 0.2, duration: 0.4 }}

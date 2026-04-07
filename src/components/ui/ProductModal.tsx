@@ -170,7 +170,7 @@ export default function ProductModal({ product, isOpen, onClose }: ProductModalP
             animate="visible"
             exit="exit"
             onClick={onClose}
-            className="absolute inset-0 bg-black/40 backdrop-blur-md"
+            className="absolute inset-0 bg-black/45 backdrop-blur-md lg:bg-black/55 lg:backdrop-blur-none"
           />
 
           {/* Modal Container - Minimalist & Elegant */}

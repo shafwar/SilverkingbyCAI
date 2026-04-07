@@ -246,7 +246,6 @@ export default function DistributorPageClient({
       <div
         className="fixed inset-0 z-0 w-screen h-screen overflow-hidden"
         style={{
-          willChange: "transform",
           backfaceVisibility: "hidden",
           WebkitBackfaceVisibility: "hidden",
           transform: "translateZ(0)",
@@ -490,7 +489,7 @@ export default function DistributorPageClient({
         {modalOpen && (
           <ModalPortal>
             <motion.div
-              className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 pt-24 sm:pt-28"
+              className="absolute inset-0 flex items-center justify-center bg-black/75 p-4 pt-24 backdrop-blur-sm sm:pt-28 lg:bg-black/85 lg:backdrop-blur-none"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

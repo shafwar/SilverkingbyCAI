@@ -137,8 +137,9 @@
     /* Optimize for transitions */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* GPU-friendly scroll/paint layer. Overlays that must stay viewport-fixed
-       (CMS modals, hero edit) mount under documentElement — see getViewportPortalRoot(). */
+    /* One composited layer for document scroll; avoid extra will-change on nested
+       fixed heroes (see Products/Distributor). Viewport-fixed overlays use
+       getViewportPortalRoot() under documentElement. */
     transform: translateZ(0);
   }
 
@@ -862,4 +863,12 @@ body.modal-active .site-navbar {
   margin-top: 0.5rem;
   font-size: 0.8125rem;
   color: rgba(255, 255, 255, 0.45);
+}
+
+/* Backdrop blur over large regions is expensive on integrated GPUs; respect reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  [class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
 }
