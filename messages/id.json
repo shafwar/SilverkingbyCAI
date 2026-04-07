@@ -480,7 +480,8 @@
         "paragraph2": "Sertifikasi yang diakui secara internasional ini memvalidasi proses kontrol kualitas kami yang ketat, memastikan bahwa setiap produk Silver King memenuhi standar tertinggi kemurnian, presisi, dan keaslian.",
         "paragraph3": "Sertifikasi ISO 9001:2015 kami mencakup proses manufaktur lengkap logam mulia, dari pengadaan bahan baku hingga verifikasi produk akhir, memberikan kepercayaan kepada pelanggan kami dalam setiap batangan yang mereka investasikan."
       },
-      "badge": "BERSERTIFIKAT"
+      "badge": "BERSERTIFIKAT",
+      "imageLoadError": "Gambar sertifikat tidak dapat dimuat. Unggah ke R2 atau atur NEXT_PUBLIC_ABOUT_CERTIFICATE_IMAGE_URL."
     },
     "cta": {
       "title": "Siap untuk memverifikasi",

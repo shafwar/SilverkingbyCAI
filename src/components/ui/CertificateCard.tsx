@@ -1,15 +1,42 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Award } from "lucide-react";
+import { getR2UrlClient } from "@/utils/r2-url";
+
+/** R2 static paths (same pattern as Navbar / What We Do). Public folder may omit this file when assets live on R2 only. */
+const CERT_IMAGE_PRIMARY = "/images/sertificate.jpeg";
+const CERT_IMAGE_FALLBACK = "/images/certificate.jpeg";
 
 const CertificateCard: React.FC = () => {
   const t = useTranslations("about.certificate");
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  const explicitUrl = useMemo(() => {
+    const raw = process.env.NEXT_PUBLIC_ABOUT_CERTIFICATE_IMAGE_URL;
+    return typeof raw === "string" && raw.trim().startsWith("http") ? raw.trim() : null;
+  }, []);
+  const primaryR2 = useMemo(() => getR2UrlClient(CERT_IMAGE_PRIMARY), []);
+  const fallbackR2 = useMemo(() => getR2UrlClient(CERT_IMAGE_FALLBACK), []);
+  const [imageSrc, setImageSrc] = useState(() => explicitUrl ?? primaryR2);
+
+  const handleImageError = () => {
+    if (explicitUrl) {
+      setLoadError(true);
+      return;
+    }
+    if (imageSrc === primaryR2) {
+      setImageSrc(fallbackR2);
+      setIsImageLoaded(false);
+      return;
+    }
+    setLoadError(true);
+  };
 
   // Smooth entrance animation
   useEffect(() => {
@@ -116,17 +143,26 @@ const CertificateCard: React.FC = () => {
 
               {/* Certificate Image - Responsive aspect ratio */}
               <div className="relative aspect-[4/3] md:aspect-[3/2] lg:aspect-[4/3] overflow-hidden rounded-lg bg-white/5">
-              <img
-                ref={imageRef}
-                src="/images/sertificate.jpeg"
-                alt={t("certificateName")}
-                className={`h-full w-full object-contain ${isImageLoaded ? "opacity-100" : "opacity-0"}`}
-                onLoad={() => setIsImageLoaded(true)}
-                loading="lazy"
-                decoding="async"
-                draggable={false}
-              />
-              {!isImageLoaded && (
+              {!loadError ? (
+                <img
+                  ref={imageRef}
+                  key={imageSrc}
+                  src={imageSrc}
+                  alt={t("certificateName")}
+                  className={`h-full w-full object-contain ${isImageLoaded ? "opacity-100" : "opacity-0"}`}
+                  onLoad={() => setIsImageLoaded(true)}
+                  onError={handleImageError}
+                  loading="lazy"
+                  decoding="async"
+                  draggable={false}
+                />
+              ) : (
+                <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-2 px-4 text-center text-sm text-white/50">
+                  <p>{t("certificateName")}</p>
+                  <p className="text-xs text-white/35">{t("imageLoadError")}</p>
+                </div>
+              )}
+              {!isImageLoaded && !loadError && (
                 <div className="absolute inset-0 animate-pulse bg-white/5" aria-hidden />
               )}
             </div>

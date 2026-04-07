@@ -480,7 +480,8 @@
         "paragraph2": "This internationally recognized certification validates our rigorous quality control processes, ensuring that every Silver King product meets the highest standards of purity, precision, and authenticity.",
         "paragraph3": "Our ISO 9001:2015 certification covers the complete manufacturing process of precious metals, from raw material sourcing to final product verification, providing our customers with confidence in every bar they invest in."
       },
-      "badge": "CERTIFIED"
+      "badge": "CERTIFIED",
+      "imageLoadError": "Could not load the certificate image. Ensure it is uploaded to R2, or set NEXT_PUBLIC_ABOUT_CERTIFICATE_IMAGE_URL."
     },
     "cta": {
       "title": "Ready to verify",
