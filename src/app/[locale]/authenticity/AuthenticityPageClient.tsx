@@ -72,49 +72,56 @@ function WorkflowTimeline({
   const pathMobileRef = useRef<SVGPathElement>(null);
   const [activeStep, setActiveStep] = useState<number | null>(null);
 
-  // Optional animation - won't block rendering
+  // Path draw tied to scroll — only register the path visible at current breakpoint (avoids double ScrollTrigger).
   useGSAP(
     () => {
       if (!timelineRef.current) return;
 
       const ctx = gsap.context(() => {
-        // Animate desktop path drawing - OPTIONAL
-        if (pathRef.current) {
+        const root = timelineRef.current;
+        if (!root) return;
+
+        const mm = gsap.matchMedia();
+
+        mm.add("(min-width: 768px)", () => {
           const path = pathRef.current;
+          if (!path) return;
           const pathLength = path.getTotalLength();
           path.style.strokeDasharray = `${pathLength}`;
           path.style.strokeDashoffset = `${pathLength}`;
-
           gsap.to(path, {
             strokeDashoffset: 0,
             ease: "none",
             scrollTrigger: {
-              trigger: timelineRef.current,
+              trigger: root,
               start: "top 60%",
               end: "bottom 20%",
               scrub: 1,
             },
           });
-        }
+        });
 
-        // Animate mobile path drawing - OPTIONAL
-        if (pathMobileRef.current) {
+        mm.add("(max-width: 767px)", () => {
           const pathMobile = pathMobileRef.current;
-          const pathMobileLength = pathMobile.getTotalLength();
-          pathMobile.style.strokeDasharray = `${pathMobileLength}`;
-          pathMobile.style.strokeDashoffset = `${pathMobileLength}`;
-
+          if (!pathMobile) return;
+          const len = pathMobile.getTotalLength();
+          pathMobile.style.strokeDasharray = `${len}`;
+          pathMobile.style.strokeDashoffset = `${len}`;
           gsap.to(pathMobile, {
             strokeDashoffset: 0,
             ease: "none",
             scrollTrigger: {
-              trigger: timelineRef.current,
+              trigger: root,
               start: "top 60%",
               end: "bottom 20%",
               scrub: 1,
             },
           });
-        }
+        });
+
+        return () => {
+          mm.revert();
+        };
       }, timelineRef);
 
       return () => ctx.revert();

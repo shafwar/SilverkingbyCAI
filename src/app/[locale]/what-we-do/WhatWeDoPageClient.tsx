@@ -28,6 +28,7 @@ import {
 import Navbar from "@/components/layout/Navbar";
 import Link from "next/link";
 import Image from "next/image";
+import { prefersReducedMotion } from "@/utils/device";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -506,7 +507,20 @@ export default function WhatWeDoPageClient() {
       if (!pageRef.current) return;
 
       const ctx = gsap.context(() => {
-        // Only apply GSAP to elements with data-reveal (exclude Framer Motion elements)
+        if (typeof window !== "undefined" && prefersReducedMotion()) {
+          gsap.set(pageRef.current!.querySelectorAll("[data-reveal]"), {
+            autoAlpha: 1,
+            y: 0,
+          });
+          if (heroRef.current) {
+            gsap.set(heroRef.current.querySelectorAll("[data-hero]"), {
+              autoAlpha: 1,
+              y: 0,
+            });
+          }
+          return;
+        }
+
         gsap.set("[data-reveal]", { autoAlpha: 0, y: 40 });
 
         sectionsRef.current.forEach((section) => {

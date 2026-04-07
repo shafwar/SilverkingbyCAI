@@ -19,6 +19,7 @@ import { ModalPortal } from "@/components/ui/ModalPortal";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
+import { prefersReducedMotion } from "@/utils/device";
 import { Plus_Jakarta_Sans } from "next/font/google";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -152,22 +153,29 @@ export default function DistributorPageClient({
     () => {
       if (!pageRef.current) return;
       const sections = sectionRefs.current.filter(Boolean);
+      const reduceMotion =
+        typeof window !== "undefined" && prefersReducedMotion();
+
       const ctx = gsap.context(() => {
         sections.forEach((el) => {
           if (!el) return;
+          if (reduceMotion) {
+            gsap.set(el, { opacity: 1, y: 0 });
+            return;
+          }
+          // One-shot reveal: scrub forced style recalc on every scroll frame and felt heavy.
           gsap.fromTo(
             el,
             { opacity: 0, y: 56 },
             {
               opacity: 1,
               y: 0,
-              duration: 0.8,
+              duration: 0.75,
               ease: "power3.out",
               scrollTrigger: {
                 trigger: el,
-                start: "top 82%",
-                end: "top 55%",
-                scrub: 0.6,
+                start: "top 88%",
+                toggleActions: "play none none none",
               },
             }
           );
