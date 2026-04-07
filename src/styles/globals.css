@@ -137,9 +137,9 @@
     /* Optimize for transitions */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Do NOT set transform/filter/perspective on body: portals to document.body use
-       position:fixed; a transformed body becomes the containing block → modals anchor
-       to document top (hero) and scroll-lock feels like a freeze. See docs/CMS_MODAL_VIEWPORT_POSITIONING.md */
+    /* Do NOT set transform/filter on body: it becomes the containing block for
+       position:fixed descendants (e.g. ModalPortal → Products/Distributor CMS modals),
+       so overlays anchor to the document top instead of the viewport. See docs/CMS_MODAL_VIEWPORT_POSITIONING.md */
   }
 
   /* Splash and home: Geist only, no system-ui */
