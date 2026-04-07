@@ -134,10 +134,12 @@
     -ms-overflow-style: none;
     /* Prevent flash of content before splash screen */
     overflow-x: hidden;
+    /* Optimize for transitions */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Do NOT add transform/filter on body — breaks position:fixed for modals portaled to body
-       (CMS Edit Product / Distributor). See docs/CMS_MODAL_VIEWPORT_POSITIONING.md */
+    /* Do NOT set transform/filter/perspective on body: portals to document.body use
+       position:fixed; a transformed body becomes the containing block → modals anchor
+       to document top (hero) and scroll-lock feels like a freeze. See docs/CMS_MODAL_VIEWPORT_POSITIONING.md */
   }
 
   /* Splash and home: Geist only, no system-ui */

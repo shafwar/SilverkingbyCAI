@@ -444,16 +444,6 @@ export default function ProductsPageClient() {
     }
   }, [editingCms]);
 
-  /** Same flag as EditableMedia — blocks PageTransition body blur while CMS form is open */
-  useEffect(() => {
-    if (typeof document === "undefined" || !isAdmin) return;
-    if (editingCms) {
-      document.body.setAttribute("data-cms-modal-open", "true");
-      return () => document.body.removeAttribute("data-cms-modal-open");
-    }
-    document.body.removeAttribute("data-cms-modal-open");
-  }, [editingCms, isAdmin]);
-
   // Handle file selection - accumulate files instead of replacing
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newFiles = e.target.files;
@@ -1526,7 +1516,7 @@ export default function ProductsPageClient() {
         {isAdmin && editingCms && (
           <ModalPortal zIndex={9999}>
             <motion.div
-              className="fixed inset-0 z-0 flex min-h-0 items-center justify-center overflow-y-auto bg-black/70 backdrop-blur-sm p-4"
+              className="flex min-h-[100dvh] w-full items-center justify-center bg-black/70 backdrop-blur-sm p-4 py-8"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

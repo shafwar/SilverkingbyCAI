@@ -10,8 +10,10 @@ type ModalPortalProps = {
 };
 
 /**
- * Renders modal into document.body. Locks scroll on both html and body while mounted.
- * Requires body/html without transform/filter so position:fixed matches the viewport.
+ * Renders modal/backdrop into document.body so it sits above the app tree.
+ * Locks scroll on both html and body while mounted.
+ * Root is a viewport-fixed, scrollable shell (max 100dvh) so tall forms scroll inside
+ * the overlay instead of trapping users when body had transform/filter ancestors.
  */
 export function ModalPortal({ children, zIndex = 9999 }: ModalPortalProps) {
   useEffect(() => {
@@ -31,14 +33,18 @@ export function ModalPortal({ children, zIndex = 9999 }: ModalPortalProps) {
 
   return createPortal(
     <div
+      role="presentation"
       style={{
         position: "fixed",
         inset: 0,
-        width: "100vw",
+        width: "100%",
+        maxHeight: "100dvh",
         minHeight: "100dvh",
-        height: "100%",
         zIndex,
+        overflowX: "hidden",
+        overflowY: "auto",
         overscrollBehavior: "contain",
+        WebkitOverflowScrolling: "touch",
       }}
     >
       {children}
