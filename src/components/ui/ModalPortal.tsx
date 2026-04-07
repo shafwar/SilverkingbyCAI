@@ -10,20 +10,20 @@ type ModalPortalProps = {
 };
 
 /**
- * Renders modal/backdrop into document.body. Requires body NOT to use `transform`,
- * otherwise `position: fixed` is tied to body and the overlay appears at the document
- * top (e.g. hero) while scroll is locked — see globals.css body rules.
- * Locks document scroll while mounted (html + body for iOS).
+ * Renders modal into document.body. Locks scroll on both html and body while mounted.
+ * Requires body/html without transform/filter so position:fixed matches the viewport.
  */
 export function ModalPortal({ children, zIndex = 9999 }: ModalPortalProps) {
   useEffect(() => {
-    const prevBodyOverflow = document.body.style.overflow;
-    const prevHtmlOverflow = document.documentElement.style.overflow;
-    document.body.style.overflow = "hidden";
-    document.documentElement.style.overflow = "hidden";
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = prevBodyOverflow;
-      document.documentElement.style.overflow = prevHtmlOverflow;
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
     };
   }, []);
 
@@ -31,15 +31,12 @@ export function ModalPortal({ children, zIndex = 9999 }: ModalPortalProps) {
 
   return createPortal(
     <div
-      className="pointer-events-auto"
       style={{
         position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        width: "100%",
+        inset: 0,
+        width: "100vw",
         minHeight: "100dvh",
+        height: "100%",
         zIndex,
         overscrollBehavior: "contain",
       }}
@@ -49,4 +46,3 @@ export function ModalPortal({ children, zIndex = 9999 }: ModalPortalProps) {
     document.body
   );
 }
-

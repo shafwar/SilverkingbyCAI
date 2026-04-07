@@ -99,7 +99,6 @@ export function EditableMedia({
   const closeModal = () => {
     if (typeof document !== "undefined") {
       document.body.removeAttribute("data-cms-modal-open");
-      document.body.style.overflow = "";
     }
     setModalOpen(false);
     setUploading(false);
@@ -606,12 +605,17 @@ function EditableMediaModal({
     const onEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
     document.addEventListener("keydown", onEscape);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onEscape);
-      document.body.style.overflow = prevOverflow;
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
     };
   }, [onClose]);
 

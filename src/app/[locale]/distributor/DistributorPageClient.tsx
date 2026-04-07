@@ -19,7 +19,6 @@ import { ModalPortal } from "@/components/ui/ModalPortal";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
-import { prefersReducedMotion } from "@/utils/device";
 import { Plus_Jakarta_Sans } from "next/font/google";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -149,33 +148,35 @@ export default function DistributorPageClient({
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (modalOpen) {
+      document.body.setAttribute("data-cms-modal-open", "true");
+      return () => document.body.removeAttribute("data-cms-modal-open");
+    }
+    document.body.removeAttribute("data-cms-modal-open");
+  }, [modalOpen]);
+
   useGSAP(
     () => {
       if (!pageRef.current) return;
       const sections = sectionRefs.current.filter(Boolean);
-      const reduceMotion =
-        typeof window !== "undefined" && prefersReducedMotion();
-
       const ctx = gsap.context(() => {
         sections.forEach((el) => {
           if (!el) return;
-          if (reduceMotion) {
-            gsap.set(el, { opacity: 1, y: 0 });
-            return;
-          }
-          // One-shot reveal: scrub forced style recalc on every scroll frame and felt heavy.
           gsap.fromTo(
             el,
             { opacity: 0, y: 56 },
             {
               opacity: 1,
               y: 0,
-              duration: 0.75,
+              duration: 0.8,
               ease: "power3.out",
               scrollTrigger: {
                 trigger: el,
-                start: "top 88%",
-                toggleActions: "play none none none",
+                start: "top 82%",
+                end: "top 55%",
+                scrub: 0.6,
               },
             }
           );
@@ -498,7 +499,7 @@ export default function DistributorPageClient({
         {modalOpen && (
           <ModalPortal zIndex={9999}>
             <motion.div
-              className="fixed inset-0 flex items-center justify-center overflow-y-auto bg-black/70 backdrop-blur-sm p-4"
+              className="fixed inset-0 z-0 flex min-h-0 items-center justify-center overflow-y-auto bg-black/70 backdrop-blur-sm p-4 pt-24 sm:pt-28"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

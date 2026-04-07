@@ -23,7 +23,6 @@ import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import Image from "next/image";
-import { prefersReducedMotion } from "@/utils/device";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -445,6 +444,16 @@ export default function ProductsPageClient() {
     }
   }, [editingCms]);
 
+  /** Same flag as EditableMedia — blocks PageTransition body blur while CMS form is open */
+  useEffect(() => {
+    if (typeof document === "undefined" || !isAdmin) return;
+    if (editingCms) {
+      document.body.setAttribute("data-cms-modal-open", "true");
+      return () => document.body.removeAttribute("data-cms-modal-open");
+    }
+    document.body.removeAttribute("data-cms-modal-open");
+  }, [editingCms, isAdmin]);
+
   // Handle file selection - accumulate files instead of replacing
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newFiles = e.target.files;
@@ -749,9 +758,6 @@ export default function ProductsPageClient() {
 
       // CRITICAL: Use requestIdleCallback to defer heavy animations
       const initAnimations = () => {
-        const reduceMotion =
-          typeof window !== "undefined" && prefersReducedMotion();
-
         const ctx = gsap.context(() => {
           // Video is now full screen with no zoom - no GSAP animation needed
           // Video styling is handled via CSS (transform: none, width: 100vw, height: 100vh)
@@ -783,14 +789,8 @@ export default function ProductsPageClient() {
             }
           }
 
-          // Scroll-linked effects: use gsap.set in onUpdate — never gsap.to() per scroll tick
-          // (tween spam was forcing layout/style work every frame and made scrolling very heavy).
-          if (
-            !reduceMotion &&
-            scrollIndicatorRef.current &&
-            sectionsRef.current[0] &&
-            sectionsRef.current[1]
-          ) {
+          // Scroll Indicator Animation - Fluid scroll effect with GSAP
+          if (scrollIndicatorRef.current && sectionsRef.current[0] && sectionsRef.current[1]) {
             const heroSection = sectionsRef.current[0];
             const productSection = sectionsRef.current[1];
             const indicator = scrollIndicatorRef.current;
@@ -798,6 +798,7 @@ export default function ProductsPageClient() {
             const scrollWheel = indicator.querySelector("[data-scroll-wheel]");
             const scrollDot = indicator.querySelector("[data-scroll-dot]");
 
+            // Fluid floating animation for mouse icon
             if (mouseIcon) {
               gsap.to(mouseIcon, {
                 y: 6,
@@ -808,6 +809,7 @@ export default function ProductsPageClient() {
               });
             }
 
+            // Fluid scroll wheel animation - subtle bounce
             if (scrollWheel) {
               gsap.to(scrollWheel, {
                 y: 3,
@@ -818,6 +820,7 @@ export default function ProductsPageClient() {
               });
             }
 
+            // Fluid scroll dot animation - continuous smooth flow
             if (scrollDot) {
               const scrollDotAnimation = gsap.to(scrollDot, {
                 y: 48,
@@ -825,11 +828,14 @@ export default function ProductsPageClient() {
                 repeat: -1,
                 ease: "none",
               });
+
+              // Reset position on repeat for seamless loop
               scrollDotAnimation.eventCallback("onRepeat", () => {
                 gsap.set(scrollDot, { y: 0 });
               });
             }
 
+            // Smooth fade out scroll indicator when scrolling - fluid transition
             ScrollTrigger.create({
               trigger: heroSection,
               start: "bottom 85%",
@@ -837,14 +843,17 @@ export default function ProductsPageClient() {
               scrub: 0.5,
               onUpdate: (self) => {
                 const progress = self.progress;
-                gsap.set(indicator, {
+                gsap.to(indicator, {
                   opacity: 1 - progress,
                   scale: 1 - progress * 0.2,
                   y: progress * 20,
+                  duration: 0.1,
+                  ease: "power1.out",
                 });
               },
             });
 
+            // Hide completely when product section is in view - smooth fade
             ScrollTrigger.create({
               trigger: productSection,
               start: "top 95%",
@@ -852,66 +861,78 @@ export default function ProductsPageClient() {
               scrub: 0.5,
               onUpdate: (self) => {
                 const progress = self.progress;
-                gsap.set(indicator, {
+                gsap.to(indicator, {
                   opacity: Math.max(0, 1 - progress * 1.5),
                   scale: Math.max(0.7, 1 - progress * 0.3),
+                  duration: 0.1,
+                  ease: "power1.out",
                 });
               },
             });
           }
 
-          if (reduceMotion && scrollIndicatorRef.current) {
-            gsap.set(scrollIndicatorRef.current, { autoAlpha: 1, y: 0, scale: 1 });
-          }
-
+          // Fade to black effect when scrolling from hero to product section
           if (fadeOverlayRef.current && sectionsRef.current[0] && sectionsRef.current[1]) {
             const heroSection = sectionsRef.current[0];
             const productSection = sectionsRef.current[1];
 
+            // Initialize overlay opacity
             gsap.set(fadeOverlayRef.current, { opacity: 0 });
 
-            if (!reduceMotion) {
-              ScrollTrigger.create({
-                trigger: heroSection,
-                start: "bottom center",
-                end: "bottom top",
-                scrub: 0.5,
-                onUpdate: (self) => {
-                  const progress = self.progress;
-                  if (fadeOverlayRef.current) {
-                    gsap.set(fadeOverlayRef.current, { opacity: progress });
-                  }
-                  if (videoRef.current) {
-                    gsap.set(videoRef.current, {
-                      opacity: Math.max(0.1, 1 - progress * 0.9),
-                    });
-                  }
-                },
-              });
+            ScrollTrigger.create({
+              trigger: heroSection,
+              start: "bottom center",
+              end: "bottom top",
+              scrub: 0.5,
+              onUpdate: (self) => {
+                const progress = self.progress;
+                // Fade overlay to black
+                if (fadeOverlayRef.current) {
+                  gsap.to(fadeOverlayRef.current, {
+                    opacity: progress,
+                    duration: 0.1,
+                    ease: "none",
+                  });
+                }
+                // Also fade video opacity gradually
+                if (videoRef.current) {
+                  const videoOpacity = Math.max(0.1, 1 - progress * 0.9);
+                  gsap.to(videoRef.current, {
+                    opacity: videoOpacity,
+                    duration: 0.1,
+                    ease: "none",
+                  });
+                }
+              },
+            });
 
-              ScrollTrigger.create({
-                trigger: productSection,
-                start: "top center",
-                end: "top top",
-                scrub: 0.5,
-                onUpdate: (self) => {
-                  const progress = self.progress;
-                  if (fadeOverlayRef.current) {
-                    gsap.set(fadeOverlayRef.current, {
-                      opacity: Math.min(1, 0.5 + progress * 0.5),
-                    });
-                  }
-                  if (videoRef.current) {
-                    gsap.set(videoRef.current, {
-                      opacity: Math.max(0.05, 0.1 - progress * 0.05),
-                    });
-                  }
-                },
-              });
-            } else {
-              gsap.set(fadeOverlayRef.current, { opacity: 0 });
-              if (videoRef.current) gsap.set(videoRef.current, { opacity: 1 });
-            }
+            // Additional fade when product section comes into view
+            ScrollTrigger.create({
+              trigger: productSection,
+              start: "top center",
+              end: "top top",
+              scrub: 0.5,
+              onUpdate: (self) => {
+                const progress = self.progress;
+                // Complete fade to black
+                if (fadeOverlayRef.current) {
+                  gsap.to(fadeOverlayRef.current, {
+                    opacity: Math.min(1, 0.5 + progress * 0.5),
+                    duration: 0.1,
+                    ease: "none",
+                  });
+                }
+                // Fade video completely
+                if (videoRef.current) {
+                  const videoOpacity = Math.max(0.05, 0.1 - progress * 0.05);
+                  gsap.to(videoRef.current, {
+                    opacity: videoOpacity,
+                    duration: 0.1,
+                    ease: "none",
+                  });
+                }
+              },
+            });
           }
 
           // Section reveal with ScrollTrigger
@@ -935,8 +956,9 @@ export default function ProductsPageClient() {
             }
           });
 
+          // Floating animation for accents
           const floatElements = document.querySelectorAll("[data-float]");
-          if (!reduceMotion && floatElements.length > 0) {
+          if (floatElements.length > 0) {
             gsap.to(floatElements, {
               y: "random(-20, 20)",
               duration: "random(2, 4)",
@@ -950,10 +972,12 @@ export default function ProductsPageClient() {
             });
           }
 
+          // Bottom section reading text reveal animation
           if (bottomSectionRef.current && readingTextRef.current) {
             const textElements = readingTextRef.current.querySelectorAll("[data-reading-text]");
             const ctaElement = readingTextRef.current.querySelector("[data-cta-card]");
 
+            // Set initial state
             gsap.set(textElements, {
               opacity: 0.4,
               y: 30,
@@ -966,70 +990,88 @@ export default function ProductsPageClient() {
               });
             }
 
-            if (!reduceMotion) {
-              ScrollTrigger.create({
-                trigger: bottomSectionRef.current,
-                start: "top bottom",
-                end: "bottom top",
-                scrub: 1,
-                onUpdate: (self) => {
-                  const progress = self.progress;
+            // Create scroll trigger for text reveal
+            ScrollTrigger.create({
+              trigger: bottomSectionRef.current,
+              start: "top bottom",
+              end: "bottom top",
+              scrub: 1,
+              onUpdate: (self) => {
+                const progress = self.progress;
 
-                  textElements.forEach((el, index) => {
-                    const staggerDelay = index * 0.15;
-                    const adjustedProgress = Math.min(1, Math.max(0, progress - staggerDelay));
-                    const elOpacity = 0.4 + adjustedProgress * 0.6;
-                    const elTranslateY = 30 - adjustedProgress * 30;
-                    gsap.set(el, { opacity: elOpacity, y: elTranslateY });
+                // Animate text elements with smooth stagger
+                textElements.forEach((el, index) => {
+                  const staggerDelay = index * 0.15;
+                  const adjustedProgress = Math.min(1, Math.max(0, progress - staggerDelay));
+
+                  // Smooth reveal: start at 0.4 opacity, end at 1.0
+                  const elOpacity = 0.4 + adjustedProgress * 0.6;
+                  // Smooth translate: start at 30px, end at 0px
+                  const elTranslateY = 30 - adjustedProgress * 30;
+
+                  gsap.to(el, {
+                    opacity: elOpacity,
+                    y: elTranslateY,
+                    duration: 0.1,
+                    ease: "none",
                   });
+                });
 
-                  if (ctaElement) {
-                    const ctaStartProgress = 0.3;
-                    if (progress > ctaStartProgress) {
-                      const ctaProgress = Math.min(
-                        1,
-                        (progress - ctaStartProgress) / (1 - ctaStartProgress)
-                      );
-                      const finalOpacity = Math.max(0.8, ctaProgress);
-                      gsap.set(ctaElement, {
-                        opacity: finalOpacity,
-                        y: 40 - ctaProgress * 40,
-                      });
-                      if (ctaProgress > 0.5 && !ctaElement.classList.contains("is-floating")) {
-                        ctaElement.classList.add("is-floating");
-                      }
-                    } else {
-                      gsap.set(ctaElement, {
-                        opacity: progress * 0.5,
-                        y: 40 - progress * 20,
-                      });
-                      ctaElement.classList.remove("is-floating");
-                    }
-                  }
-                },
-              });
+                // Animate CTA card - appears earlier and more visible
+                if (ctaElement) {
+                  const ctaStartProgress = 0.3; // Start appearing earlier
+                  if (progress > ctaStartProgress) {
+                    const ctaProgress = Math.min(
+                      1,
+                      (progress - ctaStartProgress) / (1 - ctaStartProgress)
+                    );
+                    // Ensure minimum opacity for visibility
+                    const finalOpacity = Math.max(0.8, ctaProgress);
 
-              if (ctaElement) {
-                setTimeout(() => {
-                  const computedStyle = window.getComputedStyle(ctaElement);
-                  const currentOpacity = parseFloat(computedStyle.opacity);
-                  if (currentOpacity < 0.5) {
                     gsap.to(ctaElement, {
-                      opacity: 0.9,
-                      y: 0,
-                      duration: 0.8,
-                      ease: "power2.out",
+                      opacity: finalOpacity,
+                      y: 40 - ctaProgress * 40,
+                      duration: 0.1,
+                      ease: "none",
                     });
-                    ctaElement.classList.add("is-floating");
+
+                    // Add floating class when CTA is visible
+                    if (ctaProgress > 0.5 && !ctaElement.classList.contains("is-floating")) {
+                      ctaElement.classList.add("is-floating");
+                    }
+                  } else {
+                    // Keep some visibility even when not fully scrolled
+                    gsap.to(ctaElement, {
+                      opacity: progress * 0.5, // Partial visibility
+                      y: 40 - progress * 20,
+                      duration: 0.1,
+                      ease: "none",
+                    });
+                    ctaElement.classList.remove("is-floating");
                   }
-                }, 2000);
-              }
-            } else {
-              gsap.set(textElements, { opacity: 1, y: 0 });
-              if (ctaElement) {
-                gsap.set(ctaElement, { opacity: 1, y: 0 });
-                ctaElement.classList.add("is-floating");
-              }
+                }
+              },
+            });
+
+            // Floating animation for CTA card using CSS animation
+            // This will be handled by CSS class, no GSAP needed to avoid conflicts
+
+            // Fallback: Ensure CTA is visible after a delay if scroll trigger doesn't work
+            if (ctaElement) {
+              setTimeout(() => {
+                const computedStyle = window.getComputedStyle(ctaElement);
+                const currentOpacity = parseFloat(computedStyle.opacity);
+                if (currentOpacity < 0.5) {
+                  // If CTA is still not visible, make it visible
+                  gsap.to(ctaElement, {
+                    opacity: 0.9,
+                    y: 0,
+                    duration: 0.8,
+                    ease: "power2.out",
+                  });
+                  ctaElement.classList.add("is-floating");
+                }
+              }, 2000);
             }
           }
         }, pageRef);
@@ -1054,7 +1096,16 @@ export default function ProductsPageClient() {
       className="min-h-screen bg-luxury-black text-white selection:bg-luxury-gold/20 selection:text-white"
     >
       {/* Full Screen Video Background - No Zoom, High Quality */}
-      <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
+      <div
+        className="fixed inset-0 z-0 w-screen h-screen overflow-hidden"
+        style={{
+          willChange: "transform",
+          backfaceVisibility: "hidden",
+          WebkitBackfaceVisibility: "hidden",
+          transform: "translateZ(0)",
+          WebkitTransform: "translateZ(0)",
+        }}
+      >
         <div className="absolute inset-0 bg-luxury-black z-0" />
         <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/35 via-black/10 to-black/55 pointer-events-none" />
         <div
@@ -1080,6 +1131,8 @@ export default function ProductsPageClient() {
               objectPosition: "center center",
               width: "100%",
               height: "100%",
+              transform: "translateZ(0)",
+              WebkitTransform: "translateZ(0)",
               pointerEvents: "none",
               outline: "none",
               WebkitTapHighlightColor: "transparent",
@@ -1473,7 +1526,7 @@ export default function ProductsPageClient() {
         {isAdmin && editingCms && (
           <ModalPortal zIndex={9999}>
             <motion.div
-              className="fixed inset-0 flex items-center justify-center overflow-y-auto bg-black/70 backdrop-blur-sm p-4"
+              className="fixed inset-0 z-0 flex min-h-0 items-center justify-center overflow-y-auto bg-black/70 backdrop-blur-sm p-4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

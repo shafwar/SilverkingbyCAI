@@ -134,11 +134,10 @@
     -ms-overflow-style: none;
     /* Prevent flash of content before splash screen */
     overflow-x: hidden;
-    /* Optimize for transitions */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Do NOT use transform on body: it breaks position:fixed (viewport-relative) for modals
-       portaled to document.body — overlays anchor to the document top instead of the screen. */
+    /* Do NOT add transform/filter on body — breaks position:fixed for modals portaled to body
+       (CMS Edit Product / Distributor). See docs/CMS_MODAL_VIEWPORT_POSITIONING.md */
   }
 
   /* Splash and home: Geist only, no system-ui */
