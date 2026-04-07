@@ -20,11 +20,17 @@ export type ReliableVideoAutoplayMode = "default" | "background";
  */
 export function useReliableVideoAutoplay(
   videoRef: React.RefObject<HTMLVideoElement | null>,
-  options?: { mode?: ReliableVideoAutoplayMode; reattachKey?: number | string }
+  options?: {
+    mode?: ReliableVideoAutoplayMode;
+    reattachKey?: number | string;
+    /** When true (e.g. scrolled past hero), do not auto-resume after pause — see usePauseBackgroundVideoOnScrollAndHidden */
+    holdPausedRef?: React.MutableRefObject<boolean>;
+  }
 ) {
   const mode = options?.mode ?? "default";
   const isBackground = mode === "background";
   const reattachKey = options?.reattachKey ?? 0;
+  const holdPausedRef = options?.holdPausedRef;
   const retryCountRef = useRef(0);
   const playCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -64,6 +70,7 @@ export function useReliableVideoAutoplay(
 
       const tryPlay = async (force = false) => {
         if (cancelled || !video) return;
+        if (holdPausedRef?.current) return;
 
         const srcAttr = video.getAttribute("src");
         if (!(srcAttr && srcAttr.trim()) && !video.currentSrc) {
@@ -118,8 +125,10 @@ export function useReliableVideoAutoplay(
       };
 
       const handlePause = () => {
+        if (holdPausedRef?.current) return;
         if (!video.ended && !cancelled) {
           setTimeout(() => {
+            if (holdPausedRef?.current) return;
             if (!cancelled && video && video.paused && !video.ended) {
               void tryPlay(true);
             }
@@ -135,8 +144,10 @@ export function useReliableVideoAutoplay(
       };
 
       const handleWaiting = () => {
+        if (holdPausedRef?.current) return;
         if (!cancelled && video && video.paused && !video.ended) {
           setTimeout(() => {
+            if (holdPausedRef?.current) return;
             if (!cancelled && video && video.paused) {
               void tryPlay(true);
             }
@@ -145,6 +156,7 @@ export function useReliableVideoAutoplay(
       };
 
       const handleVisibilityChange = () => {
+        if (holdPausedRef?.current) return;
         if (!document.hidden && !cancelled && video && video.paused && !video.ended) {
           void tryPlay(true);
         }
@@ -161,6 +173,7 @@ export function useReliableVideoAutoplay(
       const intervalMs = isBackground ? 20000 : 2000;
       playCheckIntervalRef.current = setInterval(() => {
         if (cancelled || !video) return;
+        if (holdPausedRef?.current) return;
 
         if (video.paused && !video.ended && !document.hidden) {
           void tryPlay(true);
@@ -235,5 +248,5 @@ export function useReliableVideoAutoplay(
       if (retryTimeoutId) window.clearTimeout(retryTimeoutId);
       detach?.();
     };
-  }, [videoRef, isBackground, reattachKey]);
+  }, [videoRef, isBackground, reattachKey, holdPausedRef]);
 }

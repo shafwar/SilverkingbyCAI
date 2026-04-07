@@ -8,6 +8,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
+import { usePauseBackgroundVideoOnScrollAndHidden } from "@/hooks/usePauseBackgroundVideoOnScrollAndHidden";
 import { usePageSections } from "@/hooks/usePageSections";
 import { usePageMedia } from "@/hooks/usePageMedia";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
@@ -58,7 +59,7 @@ type ValueItem = {
 const FeatureCard = ({ feature }: { feature: FeatureItem; index: number }) => {
   return (
     <div className="group relative min-h-[360px]">
-      <div className="relative flex h-full flex-col rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] p-10 backdrop-blur-xl transition-all duration-300 hover:border-luxury-gold/40 hover:shadow-[0px_20px_60px_-30px_rgba(212,175,55,0.4)]">
+      <div className="relative flex h-full flex-col rounded-3xl border border-white/10 bg-gradient-to-br from-black/50 to-black/30 p-10 md:backdrop-blur-md transition-all duration-300 hover:border-luxury-gold/40 hover:shadow-[0px_20px_60px_-30px_rgba(212,175,55,0.4)]">
         <div className="relative z-10">
           <div
             className={`mb-6 inline-flex rounded-2xl bg-gradient-to-br ${feature.gradient} p-4 shadow-lg`}
@@ -101,7 +102,7 @@ const StepCard = ({ step, index }: { step: StepItem; index: number }) => {
 const ValueCard = ({ value }: { value: ValueItem; index: number }) => {
   return (
     <div className="min-h-[220px]">
-      <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 via-white/[0.03] to-transparent p-8 text-center backdrop-blur-xl shadow-[0_20px_70px_-30px_rgba(0,0,0,0.7)] transition-transform duration-300 hover:scale-[1.02]">
+      <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-black/45 via-black/25 to-transparent p-8 text-center md:backdrop-blur-md shadow-[0_20px_70px_-30px_rgba(0,0,0,0.7)] transition-transform duration-300 hover:scale-[1.02]">
         <value.icon className="mx-auto mb-4 h-10 w-10 text-luxury-gold" />
         <h3 className="mb-2 text-lg font-semibold text-luxury-gold">{value.title}</h3>
         <p className="text-sm text-luxury-silver/70">{value.description}</p>
@@ -119,6 +120,7 @@ export default function AboutPageClient() {
   const noiseOverlay = useRef<HTMLDivElement | null>(null);
   const gradientOverlay = useRef<HTMLDivElement | null>(null);
   const heroVideoRef = useRef<HTMLVideoElement | null>(null);
+  const holdHeroVideoPausedRef = useRef(false);
   const { sections: pageSections, refetch: refetchPageSections } = usePageSections("about");
   const { data: pageMediaAbout } = usePageMedia("about");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
@@ -127,7 +129,15 @@ export default function AboutPageClient() {
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
   // Ensure about-page hero video autoplays reliably on all devices
-  useReliableVideoAutoplay(heroVideoRef, { mode: "background" });
+  useReliableVideoAutoplay(heroVideoRef, {
+    mode: "background",
+    holdPausedRef: holdHeroVideoPausedRef,
+  });
+  usePauseBackgroundVideoOnScrollAndHidden(heroVideoRef, {
+    enabled: heroMediaType === "VIDEO" && shouldLoadHeroVideo,
+    scrollPastVH: 0.42,
+    holdPausedRef: holdHeroVideoPausedRef,
+  });
 
   const featureItems = useMemo<FeatureItem[]>(
     () => [
@@ -219,7 +229,7 @@ export default function AboutPageClient() {
     >
       <div
         ref={noiseOverlay}
-        className="pointer-events-none fixed inset-0 z-0 opacity-60 mix-blend-soft-light"
+        className="pointer-events-none fixed inset-0 z-0 opacity-[0.22]"
       />
       <div
         ref={gradientOverlay}

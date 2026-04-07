@@ -54,20 +54,13 @@ const CertificateCard: React.FC = () => {
   };
 
   const imageVariants = {
-    hidden: { opacity: 0, scale: 0.9, y: 20 },
+    hidden: { opacity: 0, y: 12 },
     visible: {
       opacity: 1,
-      scale: 1,
       y: 0,
       transition: {
-        duration: 0.7,
-        delay: 0.2,
-      },
-    },
-    hover: {
-      scale: 1.03,
-      transition: {
-        duration: 0.4,
+        duration: 0.55,
+        delay: 0.15,
       },
     },
   };
@@ -105,9 +98,9 @@ const CertificateCard: React.FC = () => {
           {/* Certificate Display - Direct view, no clickable modal */}
           <motion.div variants={imageVariants} className="relative group">
             {/* Container with proper padding and responsive sizing */}
-            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 p-4 md:p-6 lg:p-8 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.5)] backdrop-blur-sm">
-              {/* Subtle glow effect */}
-              <div className="absolute -inset-1 bg-gradient-to-r from-luxury-gold/10 via-luxury-lightGold/10 to-luxury-gold/10 blur-xl opacity-50 transition-opacity duration-500 rounded-2xl" />
+            <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-br from-black/40 to-black/25 p-4 md:p-6 lg:p-8 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.5)] md:backdrop-blur-sm">
+              {/* Subtle glow — smaller blur = less GPU cost while scrolling */}
+              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-luxury-gold/10 via-luxury-lightGold/10 to-luxury-gold/10 opacity-35 blur-md transition-opacity duration-500" />
 
             {/* Badge - Positioned over image */}
               <div className="absolute top-4 left-4 md:top-6 md:left-6 z-10">
@@ -115,7 +108,7 @@ const CertificateCard: React.FC = () => {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.4, duration: 0.5 }}
-                  className="bg-gradient-to-r from-luxury-gold/95 to-luxury-lightGold/95 text-luxury-black text-xs uppercase px-3 py-1.5 rounded-full shadow-lg font-bold tracking-wide backdrop-blur-sm"
+                  className="rounded-full bg-gradient-to-r from-luxury-gold/95 to-luxury-lightGold/95 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-luxury-black shadow-lg"
               >
                 {t("badge")}
               </motion.div>
@@ -127,15 +120,14 @@ const CertificateCard: React.FC = () => {
                 ref={imageRef}
                 src="/images/sertificate.jpeg"
                 alt={t("certificateName")}
-                  className={`w-full h-full object-contain ${
-                  isImageLoaded ? "opacity-100" : "opacity-0"
-                }`}
+                className={`h-full w-full object-contain ${isImageLoaded ? "opacity-100" : "opacity-0"}`}
                 onLoad={() => setIsImageLoaded(true)}
                 loading="lazy"
+                decoding="async"
                 draggable={false}
               />
               {!isImageLoaded && (
-                <div className="absolute inset-0 bg-gradient-to-r from-white/5 via-white/10 to-white/5 animate-shimmer" />
+                <div className="absolute inset-0 animate-pulse bg-white/5" aria-hidden />
               )}
             </div>
 
@@ -150,21 +142,6 @@ const CertificateCard: React.FC = () => {
         </div>
       </motion.div>
 
-      {/* Custom animations */}
-      <style jsx global>{`
-        @keyframes shimmer {
-          0% {
-            background-position: -1000px 0;
-          }
-          100% {
-            background-position: 1000px 0;
-          }
-        }
-        .animate-shimmer {
-          animation: shimmer 2s infinite linear;
-          background-size: 2000px 100%;
-        }
-      `}</style>
     </>
   );
 };

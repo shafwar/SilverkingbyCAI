@@ -8,6 +8,7 @@ import { usePageSections } from "@/hooks/usePageSections";
 import { usePageMedia } from "@/hooks/usePageMedia";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
+import { usePauseBackgroundVideoOnScrollAndHidden } from "@/hooks/usePauseBackgroundVideoOnScrollAndHidden";
 import { VideoLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import { HomeHeroSectionsContext } from "@/components/layout/HomeHeroSectionsContext";
@@ -83,6 +84,7 @@ function usePrefersReducedMotion(): boolean {
 export function PersistentHomeHeroVideo() {
   const pathname = usePathname();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const holdHomeHeroPausedRef = useRef(false);
   const [isHome, setIsHome] = useState(() => isHomePath(pathname));
   /** Once user has opened home, keep <video> mounted (pause when away) — avoids re-decode, blank, and transition jank on SPA return */
   const [everHome, setEverHome] = useState(() => isHomePath(pathname));
@@ -106,7 +108,15 @@ export function PersistentHomeHeroVideo() {
       ? pageMedia.heroImageUrl
       : "/images/hero-fallback.jpg";
 
-  useReliableVideoAutoplay(videoRef, { mode: "background" });
+  useReliableVideoAutoplay(videoRef, {
+    mode: "background",
+    holdPausedRef: holdHomeHeroPausedRef,
+  });
+  usePauseBackgroundVideoOnScrollAndHidden(videoRef, {
+    enabled: isHome && everHome && shouldLoadHeroVideo && !prefersReducedMotion,
+    scrollPastVH: 0.5,
+    holdPausedRef: holdHomeHeroPausedRef,
+  });
 
   useEffect(() => {
     const home = isHomePath(pathname);
