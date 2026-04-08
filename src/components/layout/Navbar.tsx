@@ -1,6 +1,6 @@
 "use client";
 
-import { MouseEvent, useEffect, useState, useMemo } from "react";
+import { MouseEvent, useEffect, useState, useMemo, useRef } from "react";
 import { Link } from "@/i18n/routing";
 import Image from "next/image";
 import { ArrowRight, X, QrCode, ShieldCheck } from "lucide-react";
@@ -15,7 +15,8 @@ export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
+  /** Ref avoids re-subscribing scroll listener on every pixel scrolled (was killing INP / main thread). */
+  const lastScrollYRef = useRef(0);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const t = useTranslations("nav");
   const locale = useLocale();
@@ -23,38 +24,31 @@ export default function Navbar() {
   const router = useRouter();
 
   useEffect(() => {
-    // PRODUCTION-SAFE: Ensure window exists
     if (typeof window === "undefined") return;
 
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      const scrollThreshold = 10; // Lower threshold for mobile responsiveness
-      const scrollDelta = 5; // Minimum scroll delta to trigger hide/show
+      const scrollThreshold = 10;
+      const scrollDelta = 5;
+      const lastScrollY = lastScrollYRef.current;
 
-      // Always show navbar at top of page (below threshold)
       if (currentScrollY < scrollThreshold) {
         setIsVisible(true);
-        setLastScrollY(currentScrollY);
+        lastScrollYRef.current = currentScrollY;
         return;
       }
 
-      // Calculate scroll direction with delta threshold
       const scrollDifference = currentScrollY - lastScrollY;
 
-      // Hide navbar when scrolling down (with delta threshold to prevent jitter)
       if (scrollDifference > scrollDelta) {
         setIsVisible(false);
-      }
-      // Show navbar when scrolling up (with delta threshold)
-      else if (scrollDifference < -scrollDelta) {
+      } else if (scrollDifference < -scrollDelta) {
         setIsVisible(true);
       }
-      // If scroll difference is small, maintain current state
 
-      setLastScrollY(currentScrollY);
+      lastScrollYRef.current = currentScrollY;
     };
 
-    // Throttle scroll events for better performance (optimized for mobile)
     let ticking = false;
     const throttledHandleScroll = () => {
       if (!ticking) {
@@ -66,12 +60,10 @@ export default function Navbar() {
       }
     };
 
-    // Initial check
     handleScroll();
-
     window.addEventListener("scroll", throttledHandleScroll, { passive: true });
     return () => window.removeEventListener("scroll", throttledHandleScroll);
-  }, [lastScrollY]);
+  }, []);
 
   // Check if modal is open by checking body class
   useEffect(() => {
@@ -161,84 +153,35 @@ export default function Navbar() {
     [t]
   );
 
-  // OPTIMIZED: ULTRA-AGGRESSIVE prefetch for ALL navigation links
-  // Uses multiple strategies including Next.js native router for locale routes
-  // Enhanced with immediate prefetching and hover prefetching
+  /** One idle pass of router.prefetch — avoids triple DOM prefetch + duplicate <link> tags (better INP). */
   useEffect(() => {
-    const prefetchNavLinks = () => {
-      // Include contact page in prefetch list
-      const allLinks = [...navLinks, { name: "contact", href: "/contact" }];
+    if (typeof window === "undefined") return;
 
+    const allLinks = [...navLinks, { name: "contact", href: "/contact" as const }];
+    const run = () => {
       allLinks.forEach((link) => {
-        // Strategy 1: Use next-intl router.prefetch (handles locale automatically)
         try {
           router.prefetch(link.href);
-        } catch (error) {
-          // Silently fail
-        }
-
-        // Strategy 2: Direct link prefetch with explicit locale path
-        // This ensures the browser caches the exact URL with locale prefix
-        if (typeof window !== "undefined") {
-          try {
-            const fullPath =
-              locale === routing.defaultLocale
-                ? link.href
-                : `/${locale}${link.href === "/" ? "" : link.href}`;
-
-            // Prefetch document
-            const prefetchLink = document.createElement("link");
-            prefetchLink.rel = "prefetch";
-            prefetchLink.as = "document";
-            prefetchLink.href = fullPath;
-            if (!document.querySelector(`link[rel="prefetch"][href="${fullPath}"]`)) {
-              document.head.appendChild(prefetchLink);
-            }
-
-            // Prefetch RSC payload (React Server Components)
-            const rscLink = document.createElement("link");
-            rscLink.rel = "prefetch";
-            rscLink.as = "fetch";
-            rscLink.href = `${fullPath}?_rsc=`;
-            rscLink.crossOrigin = "anonymous";
-            if (!document.querySelector(`link[rel="prefetch"][href="${fullPath}?_rsc="]`)) {
-              document.head.appendChild(rscLink);
-            }
-          } catch (error) {
-            // Silently fail
-          }
+        } catch {
+          /* ignore */
         }
       });
     };
 
-    // Prefetch immediately on mount
-    prefetchNavLinks();
-
-    // Also prefetch again after a short delay to ensure it's cached
-    const timeoutId = setTimeout(() => {
-      prefetchNavLinks();
-    }, 300);
-
-    // Prefetch one more time after page is fully loaded
-    const handleLoad = () => {
-      prefetchNavLinks();
-    };
-
-    if (typeof window !== "undefined") {
-      if (document.readyState === "complete") {
-        handleLoad();
-      } else {
-        window.addEventListener("load", handleLoad, { once: true });
-      }
+    const w = window;
+    let ricId: number | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    if ("requestIdleCallback" in w) {
+      ricId = w.requestIdleCallback(run, { timeout: 2200 });
+    } else {
+      timeoutId = setTimeout(run, 600);
     }
 
     return () => {
-      clearTimeout(timeoutId);
-      if (typeof window !== "undefined") {
-        window.removeEventListener("load", handleLoad);
-      }
+      if (ricId != null) w.cancelIdleCallback(ricId);
+      if (timeoutId != null) clearTimeout(timeoutId);
     };
-  }, [locale, router, navLinks]); // Re-prefetch when locale changes
+  }, [locale, router, navLinks]);
 
   const handleNavClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
     // Allow default navigation for special keys (open in new tab, etc.)
@@ -310,25 +253,10 @@ export default function Navbar() {
                 className="relative font-sans text-[0.9375rem] font-medium text-white/70 transition-all duration-300 hover:text-white focus-visible:text-white group-hover:text-white/40 group-hover:hover:text-white"
                 onClick={(event) => handleNavClick(event, link.href)}
                 onMouseEnter={() => {
-                  // Aggressive hover prefetching for instant navigation
                   try {
                     router.prefetch(link.href);
-                    const fullPath =
-                      locale === routing.defaultLocale
-                        ? link.href
-                        : `/${locale}${link.href === "/" ? "" : link.href}`;
-                    if (
-                      typeof window !== "undefined" &&
-                      !document.querySelector(`link[rel="prefetch"][href="${fullPath}"]`)
-                    ) {
-                      const prefetchLink = document.createElement("link");
-                      prefetchLink.rel = "prefetch";
-                      prefetchLink.as = "document";
-                      prefetchLink.href = fullPath;
-                      document.head.appendChild(prefetchLink);
-                    }
-                  } catch (e) {
-                    // Silently fail
+                  } catch {
+                    /* ignore */
                   }
                 }}
                 role="menuitem"
@@ -389,23 +317,10 @@ export default function Navbar() {
               prefetch={true}
               onClick={(event) => handleNavClick(event, "/contact")}
               onMouseEnter={() => {
-                // Aggressive hover prefetching
                 try {
                   router.prefetch("/contact");
-                  const fullPath =
-                    locale === routing.defaultLocale ? "/contact" : `/${locale}/contact`;
-                  if (
-                    typeof window !== "undefined" &&
-                    !document.querySelector(`link[rel="prefetch"][href="${fullPath}"]`)
-                  ) {
-                    const prefetchLink = document.createElement("link");
-                    prefetchLink.rel = "prefetch";
-                    prefetchLink.as = "document";
-                    prefetchLink.href = fullPath;
-                    document.head.appendChild(prefetchLink);
-                  }
-                } catch (e) {
-                  // Silently fail
+                } catch {
+                  /* ignore */
                 }
               }}
               className="group relative overflow-hidden inline-flex items-center gap-2.5 rounded-full bg-gradient-to-r from-white/[0.12] to-white/[0.08] backdrop-blur-xl border border-white/[0.15] px-6 py-3 font-sans text-[0.9375rem] font-semibold text-white shadow-[0_8px_32px_rgba(0,0,0,0.12)] transition-all duration-500 hover:shadow-[0_8px_32px_rgba(212,175,55,0.25)] hover:scale-105 hover:border-luxury-gold/30"
@@ -544,25 +459,10 @@ export default function Navbar() {
                             setIsMobileMenuOpen(false);
                           }}
                           onMouseEnter={() => {
-                            // Aggressive hover prefetching for mobile menu
                             try {
                               router.prefetch(link.href);
-                              const fullPath =
-                                locale === routing.defaultLocale
-                                  ? link.href
-                                  : `/${locale}${link.href === "/" ? "" : link.href}`;
-                              if (
-                                typeof window !== "undefined" &&
-                                !document.querySelector(`link[rel="prefetch"][href="${fullPath}"]`)
-                              ) {
-                                const prefetchLink = document.createElement("link");
-                                prefetchLink.rel = "prefetch";
-                                prefetchLink.as = "document";
-                                prefetchLink.href = fullPath;
-                                document.head.appendChild(prefetchLink);
-                              }
-                            } catch (e) {
-                              // Silently fail
+                            } catch {
+                              /* ignore */
                             }
                           }}
                           className="block font-sans text-2xl sm:text-3xl font-medium text-white py-4 transition-all duration-300 hover:text-white/80"

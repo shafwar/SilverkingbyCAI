@@ -113,7 +113,7 @@ export function usePagePrefetch() {
       prefetchRoute("/");
       prefetchRoute("/about");
       routes.slice(2).forEach((route, index) => {
-        schedulePrefetch(route, (index + 1) * 350);
+        schedulePrefetch(route, (index + 1) * 550);
       });
     };
 

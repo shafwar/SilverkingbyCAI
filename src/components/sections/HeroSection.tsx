@@ -283,119 +283,12 @@ export default function HeroSection({
   const subtitleRef = useRef<HTMLParagraphElement>(null);
   const statsRef = useRef<HTMLDivElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [isPageTransitioning, setIsPageTransitioning] = useState(false);
-  const prevPathnameRef = useRef<string | null>(null);
-  const fadeInTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ENHANCED: Detect page transition untuk smooth fade-in/out
-  // Works for BOTH navigating TO home AND FROM home to other pages
+  /** Keep hero shell cheap on SPA route changes — previous GSAP+blur here cost hundreds of ms main-thread (bad INP). */
   useEffect(() => {
-    // Normalize pathname untuk consistent detection
-    const normalizedPathname = pathname.replace(/^\/[a-z]{2}$/, "/").replace(/^\/[a-z]{2}\//, "/");
-    const isHomePage =
-      normalizedPathname === "/" || pathname === "/" || pathname === "/en" || pathname === "/id";
-
-    // Check if pathname changed
-    const wasDifferentPage =
-      prevPathnameRef.current !== null &&
-      prevPathnameRef.current !== pathname &&
-      prevPathnameRef.current !== normalizedPathname;
-
-    // Check if we were on home page before
-    const wasOnHomePage =
-      prevPathnameRef.current !== null &&
-      (prevPathnameRef.current === "/" ||
-        prevPathnameRef.current === "/en" ||
-        prevPathnameRef.current === "/id" ||
-        prevPathnameRef.current.replace(/^\/[a-z]{2}$/, "/").replace(/^\/[a-z]{2}\//, "/") === "/");
-
-    if (isHomePage) {
-      // We're on home page now
-      if (wasDifferentPage && wasOnHomePage === false) {
-        // User just navigated TO home from another page - trigger fade-in
-        console.log("[HeroSection] Navigating to home, triggering fade-in", {
-          prevPath: prevPathnameRef.current,
-          currentPath: pathname,
-        });
-
-        setIsPageTransitioning(true);
-
-        // Clear any existing fade-in timeout
-        if (fadeInTimeoutRef.current) {
-          clearTimeout(fadeInTimeoutRef.current);
-        }
-
-        // IMPORTANT: Don't set opacity to 0 immediately - keep it visible with blur
-        // Match the DEEP blur from PageTransitionOverlay (14px * 1.2 = ~17px)
-        if (containerRef.current) {
-          gsap.set(containerRef.current, {
-            opacity: 0.94,
-            filter: "blur(17px)", // DEEP blur matching PageTransitionOverlay hero blur
-          });
-        }
-
-        // Wait for fade-in
-        const fadeInDelay = 250;
-
-        fadeInTimeoutRef.current = setTimeout(() => {
-          if (containerRef.current) {
-            // Smooth fade-in animation dengan GSAP
-            gsap.fromTo(
-              containerRef.current,
-              {
-                opacity: 0.94,
-                filter: "blur(17px)", // DEEP blur
-              },
-              {
-                opacity: 1,
-                filter: "blur(0px)",
-                duration: 0.7, // Longer duration for smoother blur removal
-                ease: "power2.out",
-                onComplete: () => {
-                  setIsPageTransitioning(false);
-                  console.log("[HeroSection] Fade-in complete");
-                },
-              }
-            );
-          }
-        }, fadeInDelay);
-      } else if (prevPathnameRef.current === null) {
-        // Initial mount - ensure visible
-        if (containerRef.current) {
-          gsap.set(containerRef.current, {
-            opacity: 1,
-            filter: "blur(0px)",
-          });
-        }
-      } else {
-        // Already on home page, ensure it's visible
-        if (containerRef.current) {
-          gsap.set(containerRef.current, {
-            opacity: 1,
-            filter: "blur(0px)",
-          });
-        }
-      }
-    } else if (wasOnHomePage && wasDifferentPage) {
-      // ENHANCED: User navigated FROM home to another page
-      // Ensure hero section participates in blur transition
-      console.log("[HeroSection] Navigating from home to another page", {
-        prevPath: prevPathnameRef.current,
-        currentPath: pathname,
-      });
-
-      // No transition blur - removed
+    if (containerRef.current) {
+      gsap.set(containerRef.current, { opacity: 1, filter: "none", clearProps: "filter" });
     }
-
-    // Always update prevPathnameRef
-    prevPathnameRef.current = pathname;
-
-    // Cleanup timeout on unmount
-    return () => {
-      if (fadeInTimeoutRef.current) {
-        clearTimeout(fadeInTimeoutRef.current);
-      }
-    };
   }, [pathname]);
 
   // Features data from translations - simple and stable
@@ -598,10 +491,6 @@ export default function HeroSection({
       className={`relative h-screen w-full overflow-hidden hero-section-transition ${skipVideo ? "bg-transparent" : "bg-black"}`}
       style={{
         pointerEvents: "auto",
-        // ALWAYS ensure HeroSection participates in page transition blur
-        willChange: isPageTransitioning ? "opacity, filter" : "auto",
-        // Ensure initial state is correct for transitions
-        // Don't set opacity to 0 if not transitioning to prevent flash
       }}
     >
       {/* Video Background — skip when PersistentHomeHeroVideo in layout is used (skipVideo); on slow connection show poster only */}
