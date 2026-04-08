@@ -98,6 +98,16 @@
   }
 }
 
+/* Stop orb keyframes when user is not looking at the tab/window (paired with PersistentHomeHeroVideo) */
+html[data-doc-hidden] .sk-home-orb,
+html[data-doc-hidden] .sk-home-orb-d1,
+html[data-doc-hidden] .sk-home-orb-d2,
+html[data-window-blurred] .sk-home-orb,
+html[data-window-blurred] .sk-home-orb-d1,
+html[data-window-blurred] .sk-home-orb-d2 {
+  animation-play-state: paused;
+}
+
 @layer base {
   * {
     -webkit-font-smoothing: antialiased;

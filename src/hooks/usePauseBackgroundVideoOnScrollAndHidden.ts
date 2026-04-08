@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type MutableRefObject, type RefObject } from "react";
+import { useEffect, useRef, type MutableRefObject, type RefObject } from "react";
 
 type Options = {
   /** Pause when scrollY exceeds this fraction of visual viewport height (0–1). */
@@ -8,6 +8,11 @@ type Options = {
   enabled?: boolean;
   /** When set, updated each frame so useReliableVideoAutoplay can skip auto-resume. */
   holdPausedRef?: MutableRefObject<boolean>;
+  /**
+   * When true, pause while the browser window is not focused (Cmd-Tab, another app on top).
+   * `document.hidden` does not always fire in that case; this cuts decoder/GPU use on laptops.
+   */
+  pauseOnWindowBlur?: boolean;
 };
 
 /**
@@ -21,6 +26,8 @@ export function usePauseBackgroundVideoOnScrollAndHidden(
   const scrollPastVH = options?.scrollPastVH ?? 0.45;
   const enabled = options?.enabled ?? true;
   const holdPausedRef = options?.holdPausedRef;
+  const pauseOnWindowBlur = options?.pauseOnWindowBlur ?? false;
+  const windowBlurredRef = useRef(false);
 
   useEffect(() => {
     if (!enabled || typeof window === "undefined") return;
@@ -36,10 +43,11 @@ export function usePauseBackgroundVideoOnScrollAndHidden(
       const vh = window.visualViewport?.height ?? window.innerHeight;
       const y = window.scrollY || document.documentElement.scrollTop;
       const scrolledPast = y > vh * scrollPastVH;
-      const hold = document.hidden || scrolledPast;
+      const blurred = pauseOnWindowBlur && windowBlurredRef.current;
+      const hold = document.hidden || scrolledPast || blurred;
       if (holdPausedRef) holdPausedRef.current = hold;
 
-      if (document.hidden) {
+      if (document.hidden || blurred) {
         if (!video.paused) video.pause();
         return;
       }
@@ -60,14 +68,32 @@ export function usePauseBackgroundVideoOnScrollAndHidden(
       raf = requestAnimationFrame(tick);
     };
 
+    const onWinBlur = () => {
+      windowBlurredRef.current = true;
+      tick();
+    };
+    const onWinFocus = () => {
+      windowBlurredRef.current = false;
+      tick();
+    };
+
     tick();
     window.addEventListener("scroll", onScroll, { passive: true });
     document.addEventListener("visibilitychange", tick);
+    if (pauseOnWindowBlur) {
+      window.addEventListener("blur", onWinBlur);
+      window.addEventListener("focus", onWinFocus);
+    }
     return () => {
       window.removeEventListener("scroll", onScroll);
       document.removeEventListener("visibilitychange", tick);
+      if (pauseOnWindowBlur) {
+        window.removeEventListener("blur", onWinBlur);
+        window.removeEventListener("focus", onWinFocus);
+      }
       cancelAnimationFrame(raf);
+      windowBlurredRef.current = false;
       if (holdPausedRef) holdPausedRef.current = false;
     };
-  }, [enabled, scrollPastVH, videoRef, holdPausedRef]);
+  }, [enabled, scrollPastVH, pauseOnWindowBlur, videoRef, holdPausedRef]);
 }

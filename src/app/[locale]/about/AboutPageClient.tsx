@@ -137,6 +137,7 @@ export default function AboutPageClient() {
     enabled: heroMediaType === "VIDEO" && shouldLoadHeroVideo,
     scrollPastVH: 0.42,
     holdPausedRef: holdHeroVideoPausedRef,
+    pauseOnWindowBlur: true,
   });
 
   const featureItems = useMemo<FeatureItem[]>(

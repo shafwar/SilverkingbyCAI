@@ -114,8 +114,9 @@ export function PersistentHomeHeroVideo() {
   });
   usePauseBackgroundVideoOnScrollAndHidden(videoRef, {
     enabled: isHome && everHome && shouldLoadHeroVideo && !prefersReducedMotion,
-    scrollPastVH: 0.5,
+    scrollPastVH: 0.38,
     holdPausedRef: holdHomeHeroPausedRef,
+    pauseOnWindowBlur: true,
   });
 
   useEffect(() => {
@@ -123,6 +124,35 @@ export function PersistentHomeHeroVideo() {
     setIsHome(home);
     if (home) setEverHome(true);
   }, [pathname]);
+
+  /** Off home: hold autoplay watchdog + pause so video cannot resume in background while layout keeps the node mounted */
+  useEffect(() => {
+    if (!isHome) {
+      holdHomeHeroPausedRef.current = true;
+      videoRef.current?.pause();
+    }
+  }, [isHome]);
+
+  /** Pause CSS hero orbs when tab hidden or window blurred (saves compositor work on laptops) */
+  useEffect(() => {
+    const root = document.documentElement;
+    const syncDocHidden = () => {
+      root.toggleAttribute("data-doc-hidden", document.hidden);
+    };
+    const onBlur = () => root.setAttribute("data-window-blurred", "");
+    const onFocus = () => root.removeAttribute("data-window-blurred");
+    syncDocHidden();
+    document.addEventListener("visibilitychange", syncDocHidden);
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", syncDocHidden);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", onFocus);
+      root.removeAttribute("data-doc-hidden");
+      root.removeAttribute("data-window-blurred");
+    };
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -158,7 +188,7 @@ export function PersistentHomeHeroVideo() {
       optimizeGpu
       lightVideoFade
       forcePoster={!shouldLoadHeroVideo}
-      suspendSrc={prefersReducedMotion}
+      suspendSrc={prefersReducedMotion || !isHome}
       snapVideoOpacity
       containerClassName="absolute inset-0 min-w-full min-h-full w-full h-full"
       className="absolute left-1/2 top-1/2 min-w-full min-h-full w-full h-full -translate-x-1/2 -translate-y-1/2 object-cover"
