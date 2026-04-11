@@ -24,8 +24,9 @@ const inputClass =
   "w-full min-w-0 rounded-xl border border-white/10 bg-black/40 px-3.5 py-3 text-base text-white placeholder:text-white/25 outline-none transition focus:border-luxury-gold/40 focus:ring-2 focus:ring-luxury-gold/12 sm:py-2.5 sm:text-sm";
 
 const helperTextClass = "text-[0.8125rem] leading-relaxed text-white/48 sm:text-sm sm:text-white/50";
-const cardMutedClass =
-  "rounded-xl border border-white/[0.06] bg-black/25 p-4 sm:p-5";
+/** Equal-width columns (50/50 on sm+): basis-0 + flex-1 + min-w-0 */
+const uploadColClass =
+  "flex min-h-0 min-w-0 flex-1 basis-0 flex-col rounded-xl border border-white/[0.06] bg-black/25 p-4 sm:p-5";
 
 function FieldLabel({ children, dense }: { children: React.ReactNode; dense?: boolean }) {
   return (
@@ -205,7 +206,7 @@ export function SerticardPanel() {
         transition={{ delay: 0.03 }}
         className={clsx(shellClass, "overflow-hidden")}
       >
-        <div className="border-b border-white/[0.06] px-4 py-4 sm:px-5 sm:py-4">
+        <div className="border-b border-white/[0.06] px-4 py-3.5 sm:px-5 sm:py-4">
           <div className="flex flex-wrap items-center gap-2">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-luxury-gold/75">
               <ImageIcon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
@@ -214,24 +215,24 @@ export function SerticardPanel() {
               {t("sectionUploadTitle")}
             </h2>
           </div>
-          <p className={`mt-2 ${helperTextClass}`}>{t("sectionUploadLead")}</p>
-          <p className="mt-2 text-[0.75rem] font-medium uppercase tracking-[0.08em] text-white/38 sm:text-[11px] sm:tracking-[0.1em]">
-            {t("uploadSectionSummary")}
-          </p>
         </div>
 
-        <div className="grid min-w-0 gap-4 p-4 sm:gap-5 sm:p-5 md:grid-cols-2">
-          <div className={cardMutedClass}>
+        <div className="flex min-w-0 flex-col gap-4 p-4 sm:flex-row sm:gap-5 sm:p-5">
+          <div className={uploadColClass}>
             <p className="text-[13px] font-semibold text-white/88 sm:text-sm">{t("frontFieldLabel")}</p>
             <p className={`mt-1.5 ${helperTextClass}`}>{t("frontHint")}</p>
-            <div className="mt-4 flex min-h-[168px] flex-col items-center justify-center rounded-lg border border-dashed border-white/12 bg-black/35 px-3 py-5">
+            <div className="mt-4 flex min-h-[180px] w-full flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-white/12 bg-black/35 px-3 py-5">
               {frontPreview ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={frontPreview} alt="" className="max-h-36 object-contain" />
+                <img
+                  src={frontPreview}
+                  alt=""
+                  className="max-h-40 w-full max-w-[200px] object-contain"
+                />
               ) : (
                 <span className="text-xs text-white/35">{t("noCustomYet")}</span>
               )}
-              <label className="mt-3 inline-flex min-h-[40px] cursor-pointer touch-manipulation items-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3.5 py-2 text-xs font-medium text-white/90 transition hover:border-luxury-gold/30 hover:bg-white/[0.1] sm:text-sm">
+              <label className="mt-3 inline-flex min-h-[40px] w-full max-w-[220px] cursor-pointer touch-manipulation items-center justify-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3.5 py-2 text-xs font-medium text-white/90 transition hover:border-luxury-gold/30 hover:bg-white/[0.1] sm:text-sm">
                 <Upload className="h-3.5 w-3.5 shrink-0 text-luxury-gold/65" />
                 {uploading === "front" ? t("uploading") : t("upload")}
                 <input
@@ -248,17 +249,21 @@ export function SerticardPanel() {
             </div>
           </div>
 
-          <div className={cardMutedClass}>
+          <div className={uploadColClass}>
             <p className="text-[13px] font-semibold text-white/88 sm:text-sm">{t("backFieldLabel")}</p>
             <p className={`mt-1.5 ${helperTextClass}`}>{t("backHint")}</p>
-            <div className="mt-4 flex min-h-[168px] flex-col items-center justify-center rounded-lg border border-dashed border-white/12 bg-black/35 px-3 py-5">
+            <div className="mt-4 flex min-h-[180px] w-full flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-white/12 bg-black/35 px-3 py-5">
               {backPreview ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={backPreview} alt="" className="max-h-36 object-contain" />
+                <img
+                  src={backPreview}
+                  alt=""
+                  className="max-h-40 w-full max-w-[200px] object-contain"
+                />
               ) : (
                 <span className="text-xs text-white/35">{t("noCustomYet")}</span>
               )}
-              <label className="mt-3 inline-flex min-h-[40px] cursor-pointer touch-manipulation items-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3.5 py-2 text-xs font-medium text-white/90 transition hover:border-luxury-gold/30 hover:bg-white/[0.1] sm:text-sm">
+              <label className="mt-3 inline-flex min-h-[40px] w-full max-w-[220px] cursor-pointer touch-manipulation items-center justify-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3.5 py-2 text-xs font-medium text-white/90 transition hover:border-luxury-gold/30 hover:bg-white/[0.1] sm:text-sm">
                 <Upload className="h-3.5 w-3.5 shrink-0 text-luxury-gold/65" />
                 {uploading === "back" ? t("uploading") : t("upload")}
                 <input
