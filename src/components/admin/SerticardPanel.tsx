@@ -31,7 +31,9 @@ const inputClass =
 const selectClass =
   "w-full min-w-0 rounded-xl border border-white/10 bg-black/40 px-3.5 py-3 text-base text-white outline-none transition focus:border-luxury-gold/40 focus:ring-2 focus:ring-luxury-gold/12 sm:py-2.5 sm:text-sm";
 
-const helperTextClass = "text-[0.9375rem] leading-relaxed text-white/52 sm:text-sm";
+const helperTextClass = "text-[0.8125rem] leading-relaxed text-white/48 sm:text-sm sm:text-white/50";
+const cardMutedClass =
+  "rounded-xl border border-white/[0.06] bg-black/25 p-4 sm:p-5";
 
 function FieldLabel({ children, dense }: { children: React.ReactNode; dense?: boolean }) {
   return (
@@ -45,14 +47,6 @@ function FieldLabel({ children, dense }: { children: React.ReactNode; dense?: bo
     >
       {children}
     </span>
-  );
-}
-
-function Subheading({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="mb-2 text-[0.9375rem] font-semibold leading-snug tracking-tight text-white/92 sm:mb-3 sm:text-base">
-      {children}
-    </h2>
   );
 }
 
@@ -131,11 +125,7 @@ export function SerticardPanel() {
       );
       if (side === "front") setFrontPreview(URL.createObjectURL(file));
       else setBackPreview(URL.createObjectURL(file));
-      toast.success(
-        side === "front"
-          ? "Template depan berhasil diunggah. Lengkapi juga belakang agar opsi custom aktif di Pratinjau QR."
-          : "Template belakang berhasil diunggah. Lengkapi juga depan agar opsi custom aktif di Pratinjau QR."
-      );
+      toast.success(side === "front" ? t("uploadFrontOk") : t("uploadBackOk"));
       fetchConfig();
       notifyConfigUpdated();
     } catch (e) {
@@ -231,112 +221,95 @@ export function SerticardPanel() {
 
   return (
     <div className="w-full min-w-0 space-y-6 sm:space-y-8 pb-10 sm:pb-12">
-      {/* Ringkasan */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={clsx(shellClass, "px-3.5 py-3.5 sm:px-5 sm:py-4")}
-      >
-        <div className="flex min-w-0 items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/50">
-          <ImageIcon className="h-4 w-4 shrink-0 text-luxury-gold/60" aria-hidden />
-          <span className="min-w-0">{t("introEyebrow")}</span>
-        </div>
-        <p className={`mt-4 border-t border-white/[0.06] pt-4 ${helperTextClass}`}>{t("introBody")}</p>
-      </motion.div>
-
-      {/* Upload depan / belakang */}
+      {/* Upload depan / belakang — satu kartu ringkas */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.03 }}
         className={clsx(shellClass, "overflow-hidden")}
       >
-        <div className="border-b border-white/[0.06] px-3.5 py-3.5 sm:px-5 sm:py-4">
-          <Subheading>{t("sectionUploadTitle")}</Subheading>
-          <p className={helperTextClass}>{t("sectionUploadLead")}</p>
+        <div className="border-b border-white/[0.06] px-4 py-4 sm:px-5 sm:py-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-luxury-gold/75">
+              <ImageIcon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+            </span>
+            <h2 className="min-w-0 flex-1 text-base font-semibold tracking-tight text-white/92 sm:text-[1.05rem]">
+              {t("sectionUploadTitle")}
+            </h2>
+          </div>
+          <p className={`mt-2 ${helperTextClass}`}>{t("sectionUploadLead")}</p>
+          <p className="mt-2 text-[0.75rem] font-medium uppercase tracking-[0.08em] text-white/38 sm:text-[11px] sm:tracking-[0.1em]">
+            {t("uploadSectionSummary")}
+          </p>
         </div>
 
-        <div className="grid min-w-0 gap-0 md:grid-cols-2 md:divide-x md:divide-white/[0.06]">
-          <div className="space-y-4 p-3.5 sm:space-y-5 sm:p-5">
-            <div>
-              <FieldLabel>{t("frontFieldLabel")}</FieldLabel>
-              <p className={`mb-3 ${helperTextClass}`}>{t("frontFieldHelp")}</p>
-              <ul className={`mb-4 list-disc space-y-1.5 pl-5 ${helperTextClass}`}>
-                <li>{t("frontBullet1")}</li>
-                <li>{t("frontBullet2")}</li>
-                <li>{t("frontBullet3")}</li>
-              </ul>
-              <div className="relative flex min-h-[200px] flex-col items-center justify-center rounded-xl border-2 border-dashed border-white/18 bg-black/30 p-4">
-                {frontPreview ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={frontPreview} alt="" className="max-h-40 object-contain rounded-lg" />
-                ) : (
-                  <span className="text-sm text-white/40">{t("noCustomYet")}</span>
-                )}
-                <label className="mt-4 inline-flex min-h-[44px] cursor-pointer touch-manipulation items-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] px-4 py-2.5 text-sm font-medium text-white transition hover:border-luxury-gold/35 hover:bg-white/[0.12]">
-                  <Upload className="h-4 w-4 shrink-0 text-luxury-gold/70" />
-                  {uploading === "front" ? t("uploading") : t("upload")}
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/jpg"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) handleUpload("front", f);
-                    }}
-                    disabled={!!uploading}
-                  />
-                </label>
-              </div>
+        <div className="grid min-w-0 gap-4 p-4 sm:gap-5 sm:p-5 md:grid-cols-2">
+          <div className={cardMutedClass}>
+            <p className="text-[13px] font-semibold text-white/88 sm:text-sm">{t("frontFieldLabel")}</p>
+            <p className={`mt-1.5 ${helperTextClass}`}>{t("frontHint")}</p>
+            <div className="mt-4 flex min-h-[168px] flex-col items-center justify-center rounded-lg border border-dashed border-white/12 bg-black/35 px-3 py-5">
+              {frontPreview ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={frontPreview} alt="" className="max-h-36 object-contain" />
+              ) : (
+                <span className="text-xs text-white/35">{t("noCustomYet")}</span>
+              )}
+              <label className="mt-3 inline-flex min-h-[40px] cursor-pointer touch-manipulation items-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3.5 py-2 text-xs font-medium text-white/90 transition hover:border-luxury-gold/30 hover:bg-white/[0.1] sm:text-sm">
+                <Upload className="h-3.5 w-3.5 shrink-0 text-luxury-gold/65" />
+                {uploading === "front" ? t("uploading") : t("upload")}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleUpload("front", f);
+                  }}
+                  disabled={!!uploading}
+                />
+              </label>
             </div>
           </div>
 
-          <div className="space-y-4 border-t border-white/[0.06] p-3.5 sm:space-y-5 sm:p-5 md:border-t-0">
-            <div>
-              <FieldLabel>{t("backFieldLabel")}</FieldLabel>
-              <p className={`mb-3 ${helperTextClass}`}>{t("backFieldHelp")}</p>
-              <ul className={`mb-4 list-disc space-y-1.5 pl-5 ${helperTextClass}`}>
-                <li>{t("backBullet1")}</li>
-                <li>{t("backBullet2")}</li>
-                <li>{t("backBullet3")}</li>
-              </ul>
-              <div className="relative flex min-h-[200px] flex-col items-center justify-center rounded-xl border-2 border-dashed border-white/18 bg-black/30 p-4">
-                {backPreview ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={backPreview} alt="" className="max-h-40 object-contain rounded-lg" />
-                ) : (
-                  <span className="text-sm text-white/40">{t("noCustomYet")}</span>
-                )}
-                <label className="mt-4 inline-flex min-h-[44px] cursor-pointer touch-manipulation items-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] px-4 py-2.5 text-sm font-medium text-white transition hover:border-luxury-gold/35 hover:bg-white/[0.12]">
-                  <Upload className="h-4 w-4 shrink-0 text-luxury-gold/70" />
-                  {uploading === "back" ? t("uploading") : t("upload")}
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/jpg"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) handleUpload("back", f);
-                    }}
-                    disabled={!!uploading}
-                  />
-                </label>
-              </div>
+          <div className={cardMutedClass}>
+            <p className="text-[13px] font-semibold text-white/88 sm:text-sm">{t("backFieldLabel")}</p>
+            <p className={`mt-1.5 ${helperTextClass}`}>{t("backHint")}</p>
+            <div className="mt-4 flex min-h-[168px] flex-col items-center justify-center rounded-lg border border-dashed border-white/12 bg-black/35 px-3 py-5">
+              {backPreview ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={backPreview} alt="" className="max-h-36 object-contain" />
+              ) : (
+                <span className="text-xs text-white/35">{t("noCustomYet")}</span>
+              )}
+              <label className="mt-3 inline-flex min-h-[40px] cursor-pointer touch-manipulation items-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3.5 py-2 text-xs font-medium text-white/90 transition hover:border-luxury-gold/30 hover:bg-white/[0.1] sm:text-sm">
+                <Upload className="h-3.5 w-3.5 shrink-0 text-luxury-gold/65" />
+                {uploading === "back" ? t("uploading") : t("upload")}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleUpload("back", f);
+                  }}
+                  disabled={!!uploading}
+                />
+              </label>
             </div>
           </div>
         </div>
 
         {(config.customFrontR2Key || config.customBackR2Key) && (
-          <div className="border-t border-white/[0.06] px-3.5 py-3 sm:px-5 sm:py-4">
+          <div className="flex flex-col gap-1 border-t border-white/[0.06] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
             <button
               type="button"
               onClick={handleClearCustom}
               disabled={saving}
-              className="text-sm font-medium text-amber-400/95 transition hover:text-amber-300 disabled:opacity-50"
+              className="self-start text-xs font-medium text-amber-400/95 transition hover:text-amber-300 disabled:opacity-50 sm:text-sm"
             >
               {saving ? t("resetting") : t("resetToDefault")}
             </button>
-            <p className={`mt-2 ${helperTextClass}`}>{t("resetHint")}</p>
+            <p className={`max-w-xl text-xs sm:text-[13px] ${helperTextClass}`}>{t("resetHint")}</p>
           </div>
         )}
       </motion.div>
