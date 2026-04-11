@@ -31,6 +31,11 @@ export type AdminPageLayoutProps = {
    * does not visually fuse with the nav (e.g. journal new/edit).
    */
   detachedFromNav?: boolean;
+  /**
+   * Detail header (pages with `leading`): quieter typography, no gold status pill,
+   * eyebrow as subtle text — for simple tool pages like Serticard.
+   */
+  detailHeaderStyle?: "default" | "quiet";
 };
 
 function AdminHeaderStatusBadge({ children }: { children: React.ReactNode }) {
@@ -56,35 +61,67 @@ function DetailHeaderTitleBlock({
   description,
   titleIcon,
   eyebrow,
+  style = "default",
 }: {
   title: string;
   description?: string;
   titleIcon?: ReactNode;
   eyebrow: string;
+  style?: "default" | "quiet";
 }) {
+  const quiet = style === "quiet";
   return (
-    <div className="flex w-full min-w-0 items-start gap-3 sm:items-center sm:gap-5 lg:gap-8">
+    <div
+      className={clsx(
+        "flex w-full min-w-0 items-start gap-3 sm:items-center",
+        quiet ? "gap-3 sm:gap-4" : "sm:gap-5 lg:gap-8"
+      )}
+    >
       {titleIcon ? (
         <div
-          className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.1] bg-white/[0.04] text-luxury-gold/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] sm:mt-0 sm:h-10 sm:w-10 sm:rounded-xl"
+          className={clsx(
+            "mt-0.5 flex shrink-0 items-center justify-center rounded-lg border border-white/[0.1] bg-white/[0.04] text-luxury-gold/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] sm:mt-0 sm:rounded-xl",
+            quiet ? "h-8 w-8 sm:h-9 sm:w-9" : "h-9 w-9 sm:h-10 sm:w-10"
+          )}
           aria-hidden
         >
           {titleIcon}
         </div>
       ) : null}
-      <div className="min-w-0 flex-1 space-y-2 sm:space-y-2.5">
-        <h1 className="text-lg font-bold leading-snug tracking-tight text-white sm:text-xl md:text-2xl lg:text-3xl">
+      <div className={clsx("min-w-0 flex-1", quiet ? "space-y-1 sm:space-y-1.5" : "space-y-2 sm:space-y-2.5")}>
+        {quiet ? (
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/42 sm:text-[11px] sm:tracking-[0.16em]">
+            {eyebrow}
+          </p>
+        ) : null}
+        <h1
+          className={clsx(
+            "font-semibold leading-snug tracking-tight text-white",
+            quiet
+              ? "text-base sm:text-lg md:text-xl"
+              : "text-lg font-bold sm:text-xl md:text-2xl lg:text-3xl"
+          )}
+        >
           {title}
         </h1>
         {description ? (
-          <p className="text-[0.8125rem] leading-relaxed text-white/62 sm:text-sm sm:text-white/65 md:text-[1.0625rem] md:leading-relaxed md:text-white/68">
+          <p
+            className={clsx(
+              "leading-relaxed",
+              quiet
+                ? "max-w-2xl text-[0.8125rem] text-white/52 sm:text-sm"
+                : "text-[0.8125rem] text-white/62 sm:text-sm sm:text-white/65 md:text-[1.0625rem] md:leading-relaxed md:text-white/68"
+            )}
+          >
             {description}
           </p>
         ) : null}
       </div>
-      <div className="shrink-0 self-center pl-1 sm:pl-3 md:pl-4">
-        <AdminHeaderStatusBadge>{eyebrow}</AdminHeaderStatusBadge>
-      </div>
+      {!quiet ? (
+        <div className="shrink-0 self-center pl-1 sm:pl-3 md:pl-4">
+          <AdminHeaderStatusBadge>{eyebrow}</AdminHeaderStatusBadge>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -104,6 +141,7 @@ export function AdminPageLayout({
   noContentPadding = false,
   fluid = false,
   detachedFromNav = false,
+  detailHeaderStyle = "default",
 }: AdminPageLayoutProps) {
   const shellX =
     fluid === true
@@ -111,6 +149,7 @@ export function AdminPageLayout({
       : "mx-auto max-w-7xl px-4 sm:px-6 lg:px-8";
 
   const detailHeader = Boolean(leading);
+  const quietHeader = detailHeader && detailHeaderStyle === "quiet";
 
   const heightShell = detachedFromNav
     ? "h-[calc(100vh-3.25rem-env(safe-area-inset-top,0px)-0.75rem)] supports-[height:100svh]:h-[calc(100svh-3.25rem-env(safe-area-inset-top,0px)-0.75rem)] supports-[height:100dvh]:h-[calc(100dvh-3.25rem-env(safe-area-inset-top,0px)-0.75rem)] sm:h-[calc(100vh-3.5rem-env(safe-area-inset-top,0px)-1rem)] sm:supports-[height:100svh]:h-[calc(100svh-3.5rem-env(safe-area-inset-top,0px)-1rem)] sm:supports-[height:100dvh]:h-[calc(100dvh-3.5rem-env(safe-area-inset-top,0px)-1rem)]"
@@ -141,7 +180,9 @@ export function AdminPageLayout({
             className={clsx(
               "flex justify-between",
               detailHeader
-                ? "flex-col gap-4 py-4 sm:flex-row sm:items-center sm:gap-8 sm:py-5 md:py-6"
+                ? quietHeader
+                  ? "flex-col gap-3 py-3 sm:flex-row sm:items-center sm:gap-6 sm:py-4"
+                  : "flex-col gap-4 py-4 sm:flex-row sm:items-center sm:gap-8 sm:py-5 md:py-6"
                 : "flex-col gap-4 py-5 sm:flex-row sm:items-start sm:gap-8 sm:py-8"
             )}
           >
@@ -149,13 +190,20 @@ export function AdminPageLayout({
               className={clsx(
                 "flex min-w-0 flex-1",
                 detailHeader
-                  ? "flex-col gap-4 sm:flex-row sm:items-center sm:gap-8"
+                  ? quietHeader
+                    ? "flex-col gap-3 sm:flex-row sm:items-center sm:gap-5"
+                    : "flex-col gap-4 sm:flex-row sm:items-center sm:gap-8"
                   : "flex-col gap-5 sm:flex-row sm:items-start sm:gap-0"
               )}
             >
               {leading ? (
                 <div className="flex min-w-0 shrink-0 justify-start">
-                  <div className="w-fit max-w-full rounded-xl bg-white/[0.04] p-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)] sm:p-2">
+                  <div
+                    className={clsx(
+                      "w-fit max-w-full rounded-xl bg-white/[0.04] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)]",
+                      quietHeader ? "p-1 sm:p-1.5" : "p-1.5 sm:p-2"
+                    )}
+                  >
                     {leading}
                   </div>
                 </div>
@@ -164,7 +212,9 @@ export function AdminPageLayout({
                 className={clsx(
                   "min-w-0 flex-1",
                   leading
-                    ? "pl-0 sm:border-l sm:border-white/[0.1] sm:pl-6 md:pl-8 lg:pl-10"
+                    ? quietHeader
+                      ? "pl-0 sm:border-l sm:border-white/[0.08] sm:pl-5 md:pl-6"
+                      : "pl-0 sm:border-l sm:border-white/[0.1] sm:pl-6 md:pl-8 lg:pl-10"
                     : ""
                 )}
               >
@@ -174,6 +224,7 @@ export function AdminPageLayout({
                     description={description}
                     titleIcon={titleIcon}
                     eyebrow={eyebrow}
+                    style={detailHeaderStyle === "quiet" ? "quiet" : "default"}
                   />
                 ) : (
                   <div className="space-y-1">
