@@ -2,54 +2,96 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Upload, Loader2, ImageIcon, Trash2, LayoutTemplate } from "lucide-react";
+import { Upload, Loader2, ImageIcon, Palette } from "lucide-react";
 import { toast } from "sonner";
-import useSWR from "swr";
-import { fetcher } from "@/lib/fetcher";
+import clsx from "clsx";
+import { useTranslations } from "next-intl";
 
 type Config = {
   customFrontR2Key: string | null;
   customBackR2Key: string | null;
+  customTemplateDropdownLabel: string | null;
+  fontFamily: string;
+  fontSizePreset: string;
 };
+
+type FontOption = { value: string; label: string };
+type SizeOption = { value: string; label: string };
 
 function getPreviewUrl(side: "front" | "back"): string {
   return `/api/admin/serticard/preview?side=${side}&t=${Date.now()}`;
 }
 
-type CmsTemplateRow = { id: number; name: string; r2Key: string; createdAt: string };
+const shellClass =
+  "rounded-xl border border-white/[0.07] bg-gradient-to-b from-white/[0.05] to-white/[0.015] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:rounded-2xl";
+
+const inputClass =
+  "w-full min-w-0 rounded-xl border border-white/10 bg-black/40 px-3.5 py-3 text-base text-white placeholder:text-white/25 outline-none transition focus:border-luxury-gold/40 focus:ring-2 focus:ring-luxury-gold/12 sm:py-2.5 sm:text-sm";
+
+const selectClass =
+  "w-full min-w-0 rounded-xl border border-white/10 bg-black/40 px-3.5 py-3 text-base text-white outline-none transition focus:border-luxury-gold/40 focus:ring-2 focus:ring-luxury-gold/12 sm:py-2.5 sm:text-sm";
+
+const helperTextClass = "text-[0.9375rem] leading-relaxed text-white/52 sm:text-sm";
+
+function FieldLabel({ children, dense }: { children: React.ReactNode; dense?: boolean }) {
+  return (
+    <span
+      className={clsx(
+        "block uppercase tracking-[0.12em] text-white/55",
+        dense
+          ? "mb-1 text-[0.6875rem] font-bold tracking-[0.11em] text-white/62 sm:text-[0.75rem] sm:tracking-[0.12em]"
+          : "mb-1.5 text-[0.8125rem] font-semibold sm:mb-2 sm:text-[13px]"
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function Subheading({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="mb-2 text-[0.9375rem] font-semibold leading-snug tracking-tight text-white/92 sm:mb-3 sm:text-base">
+      {children}
+    </h2>
+  );
+}
 
 export function SerticardPanel() {
+  const t = useTranslations("admin.serticard");
   const [config, setConfig] = useState<Config | null>(null);
+  const [fontFamilies, setFontFamilies] = useState<FontOption[]>([]);
+  const [fontSizePresets, setFontSizePresets] = useState<SizeOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [frontPreview, setFrontPreview] = useState<string | null>(null);
   const [backPreview, setBackPreview] = useState<string | null>(null);
-  const [cmsName, setCmsName] = useState("");
-  const [cmsUploading, setCmsUploading] = useState(false);
-  const [deletingCmsId, setDeletingCmsId] = useState<number | null>(null);
 
-  const {
-    data: cmsListData,
-    mutate: mutateCmsList,
-    isLoading: cmsListLoading,
-  } = useSWR<{ templates: CmsTemplateRow[] }>("/api/admin/serticard/cms-templates", fetcher, {
-    revalidateOnFocus: false,
-  });
-  const cmsTemplates = cmsListData?.templates ?? [];
+  const [templateDropdownName, setTemplateDropdownName] = useState("");
+  const [fontFamily, setFontFamily] = useState("Arial");
+  const [fontSizePreset, setFontSizePreset] = useState("BESAR");
 
   const fetchConfig = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/serticard/config");
       if (!res.ok) throw new Error("Failed to fetch config");
       const data = await res.json();
+      setFontFamilies(Array.isArray(data.fontFamilies) ? data.fontFamilies : []);
+      setFontSizePresets(Array.isArray(data.fontSizePresets) ? data.fontSizePresets : []);
       setConfig({
         customFrontR2Key: data.customFrontR2Key ?? null,
         customBackR2Key: data.customBackR2Key ?? null,
+        customTemplateDropdownLabel: data.customTemplateDropdownLabel ?? null,
+        fontFamily: data.fontFamily ?? "Arial",
+        fontSizePreset: data.fontSizePreset ?? "BESAR",
       });
+      setTemplateDropdownName(data.customTemplateDropdownLabel ?? "");
+      setFontFamily(data.fontFamily ?? "Arial");
+      setFontSizePreset(data.fontSizePreset ?? "BESAR");
       setFrontPreview(data.customFrontR2Key ? getPreviewUrl("front") : null);
       setBackPreview(data.customBackR2Key ? getPreviewUrl("back") : null);
-    } catch (e) {
+    } catch {
       toast.error("Gagal memuat konfigurasi");
       setConfig(null);
     } finally {
@@ -60,6 +102,12 @@ export function SerticardPanel() {
   useEffect(() => {
     fetchConfig();
   }, [fetchConfig]);
+
+  const notifyConfigUpdated = () => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("serticard-config-updated"));
+    }
+  };
 
   const handleUpload = async (side: "front" | "back", file: File) => {
     setUploading(side);
@@ -83,12 +131,13 @@ export function SerticardPanel() {
       );
       if (side === "front") setFrontPreview(URL.createObjectURL(file));
       else setBackPreview(URL.createObjectURL(file));
-      toast.success(`Template ${side === "front" ? "depan" : "belakang"} berhasil diunggah. Opsi "Custom" sekarang tersedia di dropdown download.`);
+      toast.success(
+        side === "front"
+          ? "Template depan berhasil diunggah. Lengkapi juga belakang agar opsi custom aktif di Pratinjau QR."
+          : "Template belakang berhasil diunggah. Lengkapi juga depan agar opsi custom aktif di Pratinjau QR."
+      );
       fetchConfig();
-      // Trigger refresh for other components (QrPreviewGrid, QrPreviewGridGram)
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("serticard-config-updated"));
-      }
+      notifyConfigUpdated();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Gagal mengunggah template");
     } finally {
@@ -96,46 +145,38 @@ export function SerticardPanel() {
     }
   };
 
-  const handleCmsUpload = async (file: File) => {
-    const name = cmsName.trim() || file.name.replace(/\.[^.]+$/, "") || "Template";
-    setCmsUploading(true);
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSettings(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("name", name);
-      const res = await fetch("/api/admin/serticard/cms-templates", { method: "POST", body: fd });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error((data as { error?: string }).error || "Upload gagal");
-      toast.success(`Template “${name}” tersimpan di R2 dan muncul di dropdown QR Preview.`);
-      setCmsName("");
-      await mutateCmsList();
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("serticard-cms-templates-updated"));
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Gagal mengunggah template CMS");
+      const res = await fetch("/api/admin/serticard/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fontFamily,
+          fontSizePreset,
+          customTemplateDropdownLabel: templateDropdownName.trim() || null,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      const data = await res.json();
+      setConfig((c) =>
+        c
+          ? {
+              ...c,
+              fontFamily: data.fontFamily ?? fontFamily,
+              fontSizePreset: data.fontSizePreset ?? fontSizePreset,
+              customTemplateDropdownLabel: data.customTemplateDropdownLabel ?? null,
+            }
+          : c
+      );
+      setTemplateDropdownName(data.customTemplateDropdownLabel ?? "");
+      toast.success(t("settingsSavedToast"));
+      notifyConfigUpdated();
+    } catch {
+      toast.error(t("settingsSaveFailedToast"));
     } finally {
-      setCmsUploading(false);
-    }
-  };
-
-  const handleDeleteCms = async (id: number) => {
-    setDeletingCmsId(id);
-    try {
-      const res = await fetch(`/api/admin/serticard/cms-templates/${id}`, { method: "DELETE" });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error((j as { error?: string }).error || "Gagal menghapus");
-      }
-      toast.success("Template CMS dihapus.");
-      await mutateCmsList();
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("serticard-cms-templates-updated"));
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Gagal menghapus");
-    } finally {
-      setDeletingCmsId(null);
+      setSavingSettings(false);
     }
   };
 
@@ -155,19 +196,18 @@ export function SerticardPanel() {
               ...c,
               customFrontR2Key: data.customFrontR2Key ?? null,
               customBackR2Key: data.customBackR2Key ?? null,
+              customTemplateDropdownLabel: data.customTemplateDropdownLabel ?? null,
             }
           : c
       );
+      setTemplateDropdownName("");
       setFrontPreview(null);
       setBackPreview(null);
-      toast.success("Kembali ke template bawaan. Opsi Custom telah dihapus dari dropdown.");
+      toast.success(t("resetTemplatesToast"));
       fetchConfig();
-      // Trigger refresh for other components
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("serticard-config-updated"));
-      }
+      notifyConfigUpdated();
     } catch {
-      toast.error("Gagal mereset template");
+      toast.error(t("resetTemplatesFailedToast"));
     } finally {
       setSaving(false);
     }
@@ -190,183 +230,197 @@ export function SerticardPanel() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Upload Template */}
+    <div className="w-full min-w-0 space-y-6 sm:space-y-8 pb-10 sm:pb-12">
+      {/* Ringkasan */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-xl border border-white/10 bg-white/5 p-6"
+        className={clsx(shellClass, "px-3.5 py-3.5 sm:px-5 sm:py-4")}
       >
-        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <ImageIcon className="h-5 w-5" />
-          Upload Desain Serticard (depan / belakang terpisah)
-        </h3>
-        <p className="text-sm text-white/60 mb-4">
-          Unggah gambar template depan dan/atau belakang (PNG atau JPEG). Template custom akan digunakan saat generate PDF.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Front */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/80">Template Depan (Front)</label>
-            <div className="relative rounded-lg border-2 border-dashed border-white/20 bg-black/30 p-4 min-h-[160px] flex flex-col items-center justify-center">
-              {frontPreview ? (
-                <img
-                  src={frontPreview}
-                  alt="Front preview"
-                  className="max-h-32 object-contain rounded"
-                />
-              ) : (
-                <span className="text-white/40 text-sm">Belum ada template custom</span>
-              )}
-              <label className="mt-2 cursor-pointer inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20 transition-colors">
-                <Upload className="h-4 w-4" />
-                {uploading === "front" ? "Mengunggah..." : "Unggah"}
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/jpg"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleUpload("front", f);
-                  }}
-                  disabled={!!uploading}
-                />
-              </label>
+        <div className="flex min-w-0 items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/50">
+          <ImageIcon className="h-4 w-4 shrink-0 text-luxury-gold/60" aria-hidden />
+          <span className="min-w-0">{t("introEyebrow")}</span>
+        </div>
+        <p className={`mt-4 border-t border-white/[0.06] pt-4 ${helperTextClass}`}>{t("introBody")}</p>
+      </motion.div>
+
+      {/* Upload depan / belakang */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.03 }}
+        className={clsx(shellClass, "overflow-hidden")}
+      >
+        <div className="border-b border-white/[0.06] px-3.5 py-3.5 sm:px-5 sm:py-4">
+          <Subheading>{t("sectionUploadTitle")}</Subheading>
+          <p className={helperTextClass}>{t("sectionUploadLead")}</p>
+        </div>
+
+        <div className="grid min-w-0 gap-0 md:grid-cols-2 md:divide-x md:divide-white/[0.06]">
+          <div className="space-y-4 p-3.5 sm:space-y-5 sm:p-5">
+            <div>
+              <FieldLabel>{t("frontFieldLabel")}</FieldLabel>
+              <p className={`mb-3 ${helperTextClass}`}>{t("frontFieldHelp")}</p>
+              <ul className={`mb-4 list-disc space-y-1.5 pl-5 ${helperTextClass}`}>
+                <li>{t("frontBullet1")}</li>
+                <li>{t("frontBullet2")}</li>
+                <li>{t("frontBullet3")}</li>
+              </ul>
+              <div className="relative flex min-h-[200px] flex-col items-center justify-center rounded-xl border-2 border-dashed border-white/18 bg-black/30 p-4">
+                {frontPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={frontPreview} alt="" className="max-h-40 object-contain rounded-lg" />
+                ) : (
+                  <span className="text-sm text-white/40">{t("noCustomYet")}</span>
+                )}
+                <label className="mt-4 inline-flex min-h-[44px] cursor-pointer touch-manipulation items-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] px-4 py-2.5 text-sm font-medium text-white transition hover:border-luxury-gold/35 hover:bg-white/[0.12]">
+                  <Upload className="h-4 w-4 shrink-0 text-luxury-gold/70" />
+                  {uploading === "front" ? t("uploading") : t("upload")}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleUpload("front", f);
+                    }}
+                    disabled={!!uploading}
+                  />
+                </label>
+              </div>
             </div>
           </div>
-          {/* Back */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/80">Template Belakang (Back)</label>
-            <div className="relative rounded-lg border-2 border-dashed border-white/20 bg-black/30 p-4 min-h-[160px] flex flex-col items-center justify-center">
-              {backPreview ? (
-                <img
-                  src={backPreview}
-                  alt="Back preview"
-                  className="max-h-32 object-contain rounded"
-                />
-              ) : (
-                <span className="text-white/40 text-sm">Belum ada template custom</span>
-              )}
-              <label className="mt-2 cursor-pointer inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20 transition-colors">
-                <Upload className="h-4 w-4" />
-                {uploading === "back" ? "Mengunggah..." : "Unggah"}
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/jpg"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleUpload("back", f);
-                  }}
-                  disabled={!!uploading}
-                />
-              </label>
+
+          <div className="space-y-4 border-t border-white/[0.06] p-3.5 sm:space-y-5 sm:p-5 md:border-t-0">
+            <div>
+              <FieldLabel>{t("backFieldLabel")}</FieldLabel>
+              <p className={`mb-3 ${helperTextClass}`}>{t("backFieldHelp")}</p>
+              <ul className={`mb-4 list-disc space-y-1.5 pl-5 ${helperTextClass}`}>
+                <li>{t("backBullet1")}</li>
+                <li>{t("backBullet2")}</li>
+                <li>{t("backBullet3")}</li>
+              </ul>
+              <div className="relative flex min-h-[200px] flex-col items-center justify-center rounded-xl border-2 border-dashed border-white/18 bg-black/30 p-4">
+                {backPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={backPreview} alt="" className="max-h-40 object-contain rounded-lg" />
+                ) : (
+                  <span className="text-sm text-white/40">{t("noCustomYet")}</span>
+                )}
+                <label className="mt-4 inline-flex min-h-[44px] cursor-pointer touch-manipulation items-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] px-4 py-2.5 text-sm font-medium text-white transition hover:border-luxury-gold/35 hover:bg-white/[0.12]">
+                  <Upload className="h-4 w-4 shrink-0 text-luxury-gold/70" />
+                  {uploading === "back" ? t("uploading") : t("upload")}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleUpload("back", f);
+                    }}
+                    disabled={!!uploading}
+                  />
+                </label>
+              </div>
             </div>
           </div>
         </div>
+
         {(config.customFrontR2Key || config.customBackR2Key) && (
-          <button
-            onClick={handleClearCustom}
-            disabled={saving}
-            className="mt-4 text-sm text-amber-400 hover:text-amber-300 disabled:opacity-50"
-          >
-            Kembali ke template bawaan
-          </button>
+          <div className="border-t border-white/[0.06] px-3.5 py-3 sm:px-5 sm:py-4">
+            <button
+              type="button"
+              onClick={handleClearCustom}
+              disabled={saving}
+              className="text-sm font-medium text-amber-400/95 transition hover:text-amber-300 disabled:opacity-50"
+            >
+              {saving ? t("resetting") : t("resetToDefault")}
+            </button>
+            <p className={`mt-2 ${helperTextClass}`}>{t("resetHint")}</p>
+          </div>
         )}
       </motion.div>
 
-      {/* CMS: satu file spread kiri + kanan */}
-      <motion.div
+      {/* Nama dropdown + font — simpan di bawah seperti journal */}
+      <motion.form
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-        className="rounded-xl border border-[#FFD700]/20 bg-[#FFD700]/5 p-6"
+        transition={{ delay: 0.06 }}
+        onSubmit={handleSaveSettings}
+        className={clsx(shellClass, "overflow-hidden")}
       >
-        <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-          <LayoutTemplate className="h-5 w-5 text-[#FFD700]" />
-          Template serticard CMS (satu gambar — kiri dan kanan)
-        </h3>
-        <div className="rounded-lg border border-white/10 bg-black/30 p-4 mb-4 space-y-2 text-sm text-white/75">
-          <p className="font-medium text-[#FFD700]/90">Petunjuk upload</p>
-          <ul className="list-disc pl-5 space-y-1 text-white/65">
-            <li>
-              Unggah <strong className="text-white/90">satu file</strong> berisi panel{" "}
-              <strong className="text-white/90">kiri</strong> (area QR / teks nanti) dan{" "}
-              <strong className="text-white/90">kanan</strong> (desain belakang), dalam satu baris
-              horizontal — sama seperti layout PDF akhir.
-            </li>
-            <li>
-              File harus <strong className="text-white/90">polos</strong>: tanpa QR, tanpa kode
-              unicode/serial, tanpa data dinamis (sistem yang akan menempelkannya).
-            </li>
-            <li>Format: PNG atau JPEG. File disimpan di R2 pada folder{" "}
-              <code className="text-[#FFD700]/80 text-xs">serticard-templates/</code> dengan nama unik.
-            </li>
-          </ul>
+        <div className="border-b border-white/[0.06] px-3.5 py-3.5 sm:px-5 sm:py-4">
+          <div className="mb-2 flex items-center gap-2.5 sm:mb-3">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-luxury-gold/80 sm:h-9 sm:w-9">
+              <Palette className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={1.75} />
+            </span>
+            <h2 className="min-w-0 text-[0.9375rem] font-semibold leading-snug tracking-tight text-white/92 sm:text-base">
+              {t("sectionAppearanceTitle")}
+            </h2>
+          </div>
+          <p className={helperTextClass}>{t("sectionAppearanceLead")}</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+
+        <div className="space-y-5 p-3.5 sm:space-y-6 sm:p-5">
           <div>
-            <label className="block text-sm font-medium text-white/80 mb-1">Nama template (di dropdown)</label>
+            <FieldLabel dense>Nama template (di dropdown)</FieldLabel>
             <input
               type="text"
-              value={cmsName}
-              onChange={(e) => setCmsName(e.target.value)}
-              placeholder="Contoh: Eid Limited Edition"
-              className="w-full rounded-lg border border-white/20 bg-black/40 px-4 py-2.5 text-white placeholder:text-white/35 focus:border-[#FFD700]/50 focus:outline-none"
+              value={templateDropdownName}
+              onChange={(e) => setTemplateDropdownName(e.target.value)}
+              placeholder={t("templateNamePlaceholder")}
+              className={inputClass}
+              maxLength={191}
             />
+            <p className={`mt-2.5 ${helperTextClass}`}>{t("templateNameHelp")}</p>
           </div>
-          <div className="flex flex-col justify-end">
-            <label className="inline-flex items-center justify-center gap-2 rounded-full bg-[#FFD700]/15 border border-[#FFD700]/40 px-4 py-2.5 text-sm text-[#FFD700] hover:bg-[#FFD700]/25 cursor-pointer">
-              <Upload className="h-4 w-4" />
-              {cmsUploading ? "Mengunggah..." : "Pilih file spread"}
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/jpg"
-                className="hidden"
-                disabled={cmsUploading}
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  e.target.value = "";
-                  if (f) void handleCmsUpload(f);
-                }}
-              />
-            </label>
+
+          <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+            <div>
+              <FieldLabel dense>{t("fontFamilyLabel")}</FieldLabel>
+              <select
+                value={fontFamily}
+                onChange={(e) => setFontFamily(e.target.value)}
+                className={selectClass}
+              >
+                {fontFamilies.map((f) => (
+                  <option key={f.value} value={f.value} className="bg-[#0a0a0a]">
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <FieldLabel dense>{t("fontSizeLabel")}</FieldLabel>
+              <select
+                value={fontSizePreset}
+                onChange={(e) => setFontSizePreset(e.target.value)}
+                className={selectClass}
+              >
+                {fontSizePresets.map((f) => (
+                  <option key={f.value} value={f.value} className="bg-[#0a0a0a]">
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <p className={helperTextClass}>{t("fontHelp")}</p>
+        </div>
+
+        <div className="border-t border-white/[0.06] px-3.5 py-4 sm:px-6 sm:py-6">
+          <p className={`mb-3 text-center sm:mb-4 sm:text-left ${helperTextClass}`}>{t("saveFooterHint")}</p>
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:gap-3">
+            <button
+              type="submit"
+              disabled={savingSettings}
+              className="inline-flex min-h-[48px] w-full touch-manipulation items-center justify-center rounded-xl bg-gradient-to-r from-[#e8c547] to-[#c9a227] px-6 py-3 text-sm font-semibold text-black shadow-[0_0_24px_-6px_rgba(232,197,71,0.35)] transition hover:brightness-105 disabled:opacity-50 sm:min-h-[44px] sm:w-auto sm:min-w-[160px] sm:py-2.5"
+            >
+              {savingSettings ? t("savingSettings") : t("saveSettings")}
+            </button>
           </div>
         </div>
-        <div className="border-t border-white/10 pt-4">
-          <p className="text-xs text-white/50 mb-2">Template tersimpan ({cmsListLoading ? "…" : cmsTemplates.length})</p>
-          {cmsTemplates.length === 0 ? (
-            <p className="text-sm text-white/40">Belum ada template CMS.</p>
-          ) : (
-            <ul className="space-y-2">
-              {cmsTemplates.map((row) => (
-                <li
-                  key={row.id}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-sm"
-                >
-                  <div className="min-w-0">
-                    <div className="text-white font-medium truncate">{row.name}</div>
-                    <div className="text-[10px] text-white/40 font-mono truncate">{row.r2Key}</div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteCms(row.id)}
-                    disabled={deletingCmsId === row.id}
-                    className="shrink-0 p-2 rounded-lg text-red-400 hover:bg-red-500/10 disabled:opacity-50"
-                    aria-label="Hapus template"
-                  >
-                    {deletingCmsId === row.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </motion.div>
+      </motion.form>
     </div>
   );
 }

@@ -203,12 +203,13 @@ model ScanLogSummary {
 /// Serticard custom config - single row (id=1)
 /// Admin can upload custom templates and configure font
 model SerticardConfig {
-  id               Int       @id @default(1)
-  customFrontR2Key String?   // e.g. templates/serticard-custom-front.png
-  customBackR2Key  String?   // e.g. templates/serticard-custom-back.png
-  fontFamily       String    @default("Arial")   // Arial | Lucida Sans | Times New Roman | SF Mono
-  fontSizePreset   String    @default("BESAR")   // BESAR | KECIL
-  updatedAt        DateTime  @updatedAt
+  id                          Int       @id @default(1)
+  customFrontR2Key            String?   // e.g. templates/serticard-custom-front.png
+  customBackR2Key             String?   // e.g. templates/serticard-custom-back.png
+  customTemplateDropdownLabel String?   @db.VarChar(191) // optional label for "custom" in QR Preview template select
+  fontFamily                  String    @default("Arial")   // Arial | Lucida Sans | Times New Roman | SF Mono
+  fontSizePreset              String    @default("BESAR")   // BESAR | KECIL
+  updatedAt                   DateTime  @updatedAt
 }
 
 /// Admin-uploaded full spread (left = QR panel, right = back design); stored in R2 serticard-templates/

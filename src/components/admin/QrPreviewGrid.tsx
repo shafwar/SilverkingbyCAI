@@ -66,23 +66,28 @@ export function QrPreviewGrid() {
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const [selectedTemplateVariant, setSelectedTemplateVariant] = useState<string>("01");
 
+  useEffect(() => {
+    setSelectedTemplateVariant((v) => (typeof v === "string" && v.startsWith("cms:") ? "01" : v));
+  }, []);
+
   // Fetch serticard config for font settings and custom template availability
   const { data: fontConfig, mutate: mutateFontConfig } = useSWR<{
     fontFamily: string;
     fontSizePreset: string;
     customFrontR2Key: string | null;
     customBackR2Key: string | null;
+    customTemplateDropdownLabel?: string | null;
   }>("/api/admin/serticard/config", fetcher, {
     revalidateOnFocus: false,
     revalidateOnReconnect: true,
   });
 
   const hasCustomTemplate = fontConfig?.customFrontR2Key && fontConfig?.customBackR2Key;
-
-  const { data: cmsTemplatesData, mutate: mutateCmsTemplates } = useSWR<{
-    templates: Array<{ id: number; name: string }>;
-  }>("/api/admin/serticard/cms-templates", fetcher, { revalidateOnFocus: false });
-  const cmsTemplates = cmsTemplatesData?.templates ?? [];
+  const customTemplateSelectLabel = (() => {
+    const raw = fontConfig?.customTemplateDropdownLabel?.trim();
+    if (raw) return `✨ ${raw}`;
+    return "✨ Custom";
+  })();
 
   // Listen for config updates from SerticardPanel
   useEffect(() => {
@@ -92,12 +97,6 @@ export function QrPreviewGrid() {
     window.addEventListener("serticard-config-updated", handleConfigUpdate);
     return () => window.removeEventListener("serticard-config-updated", handleConfigUpdate);
   }, [mutateFontConfig]);
-
-  useEffect(() => {
-    const onCms = () => mutateCmsTemplates();
-    window.addEventListener("serticard-cms-templates-updated", onCms);
-    return () => window.removeEventListener("serticard-cms-templates-updated", onCms);
-  }, [mutateCmsTemplates]);
 
   // Font size multipliers helper (client-side)
   const getFontSizeMultipliers = (preset: string) => {
@@ -1692,14 +1691,9 @@ export function QrPreviewGrid() {
                 ))}
                 {hasCustomTemplate && (
                   <option value="custom" className="bg-[#0a0a0a] text-[#FFD700] font-semibold">
-                    ✨ Custom
+                    {customTemplateSelectLabel}
                   </option>
                 )}
-                {cmsTemplates.map((c) => (
-                  <option key={`cms-${c.id}`} value={`cms:${c.id}`} className="bg-[#0a0a0a] text-white">
-                    {c.name} (upload CMS)
-                  </option>
-                ))}
               </select>
             </div>
 

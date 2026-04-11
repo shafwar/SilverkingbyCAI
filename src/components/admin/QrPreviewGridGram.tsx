@@ -140,19 +140,25 @@ export function QrPreviewGridGram({ batches }: Props) {
   const [zipR2StatusLoading, setZipR2StatusLoading] = useState(false);
   const [selectedSingleTemplateId, setSelectedSingleTemplateId] = useState<string>("01");
 
+  useEffect(() => {
+    setSelectedZipTemplateId((v) => (typeof v === "string" && v.startsWith("cms:") ? "01" : v));
+    setSelectedSingleTemplateId((v) => (typeof v === "string" && v.startsWith("cms:") ? "01" : v));
+  }, []);
+
   // Fetch serticard config to check for custom template
   const { data: fontConfig, mutate: mutateFontConfig } = useSWR<{
     customFrontR2Key: string | null;
     customBackR2Key: string | null;
+    customTemplateDropdownLabel?: string | null;
   }>("/api/admin/serticard/config", fetcher, {
     revalidateOnFocus: false,
   });
   const hasCustomTemplate = fontConfig?.customFrontR2Key && fontConfig?.customBackR2Key;
-
-  const { data: cmsTemplatesData, mutate: mutateCmsTemplates } = useSWR<{
-    templates: Array<{ id: number; name: string }>;
-  }>("/api/admin/serticard/cms-templates", fetcher, { revalidateOnFocus: false });
-  const cmsTemplates = cmsTemplatesData?.templates ?? [];
+  const customTemplateSelectLabel = (() => {
+    const raw = fontConfig?.customTemplateDropdownLabel?.trim();
+    if (raw) return `✨ ${raw}`;
+    return "✨ Custom";
+  })();
 
   // Listen for config updates from SerticardPanel
   useEffect(() => {
@@ -162,12 +168,6 @@ export function QrPreviewGridGram({ batches }: Props) {
     window.addEventListener("serticard-config-updated", handleConfigUpdate);
     return () => window.removeEventListener("serticard-config-updated", handleConfigUpdate);
   }, [mutateFontConfig]);
-
-  useEffect(() => {
-    const onCms = () => mutateCmsTemplates();
-    window.addEventListener("serticard-cms-templates-updated", onCms);
-    return () => window.removeEventListener("serticard-cms-templates-updated", onCms);
-  }, [mutateCmsTemplates]);
 
   // Real-time status dari R2 + audit "pernah diunduh" (global, server-side)
   useEffect(() => {
@@ -1359,14 +1359,9 @@ export function QrPreviewGridGram({ batches }: Props) {
                   ))}
                   {hasCustomTemplate && (
                     <option value="custom" className="bg-gray-900 text-white">
-                      ✨ Custom
+                      {customTemplateSelectLabel}
                     </option>
                   )}
-                  {cmsTemplates.map((c) => (
-                    <option key={`cms-${c.id}`} value={`cms:${c.id}`} className="bg-gray-900 text-white">
-                      {c.name} (upload CMS)
-                    </option>
-                  ))}
                 </select>
                 <motion.button
                   type="button"
@@ -1706,18 +1701,9 @@ export function QrPreviewGridGram({ batches }: Props) {
                                 ))}
                                 {hasCustomTemplate && (
                                   <option value="custom" className="bg-gray-900 text-white">
-                                    ✨ Custom
+                                    {customTemplateSelectLabel}
                                   </option>
                                 )}
-                                {cmsTemplates.map((c) => (
-                                  <option
-                                    key={`cms-${c.id}`}
-                                    value={`cms:${c.id}`}
-                                    className="bg-gray-900 text-white"
-                                  >
-                                    {c.name} (upload CMS)
-                                  </option>
-                                ))}
                               </select>
                             </div>
                             {isZipLoading && (
@@ -1790,18 +1776,9 @@ export function QrPreviewGridGram({ batches }: Props) {
                                 ))}
                                 {hasCustomTemplate && (
                                   <option value="custom" className="bg-gray-900 text-white">
-                                    ✨ Custom
+                                    {customTemplateSelectLabel}
                                   </option>
                                 )}
-                                {cmsTemplates.map((c) => (
-                                  <option
-                                    key={`cms-${c.id}`}
-                                    value={`cms:${c.id}`}
-                                    className="bg-gray-900 text-white"
-                                  >
-                                    {c.name} (upload CMS)
-                                  </option>
-                                ))}
                               </select>
                             </div>
                             <motion.button

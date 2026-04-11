@@ -21,6 +21,7 @@ export type FontSizePreset = (typeof FONT_SIZE_PRESETS)[number]["value"];
 export type SerticardConfigData = {
   customFrontR2Key: string | null;
   customBackR2Key: string | null;
+  customTemplateDropdownLabel: string | null;
   fontFamily: string;
   fontSizePreset: string;
 };
@@ -28,6 +29,7 @@ export type SerticardConfigData = {
 const DEFAULT_CONFIG: SerticardConfigData = {
   customFrontR2Key: null,
   customBackR2Key: null,
+  customTemplateDropdownLabel: null,
   fontFamily: "Arial",
   fontSizePreset: "BESAR",
 };
@@ -45,6 +47,7 @@ export async function getSerticardConfig(): Promise<SerticardConfigData> {
   return {
     customFrontR2Key: row.customFrontR2Key,
     customBackR2Key: row.customBackR2Key,
+    customTemplateDropdownLabel: row.customTemplateDropdownLabel ?? null,
     fontFamily: row.fontFamily,
     fontSizePreset: row.fontSizePreset,
   };
