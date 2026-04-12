@@ -24,6 +24,7 @@ import {
   MessageSquare,
   BookOpen,
   LayoutTemplate,
+  AlertTriangle,
 } from "lucide-react";
 import clsx from "clsx";
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
@@ -77,6 +78,11 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
       { label: "CMS Products", href: `/${locale}/products`, icon: Edit3, isExternal: true },
       { label: safeT(t, "qrPreview", "QR Preview"), href: "/admin/qr-preview", icon: QrCode },
       {
+        label: safeT(t, "zipIssuesNav", "ZIP issues"),
+        href: "/admin/qr-preview/zip-issues",
+        icon: AlertTriangle,
+      },
+      {
         label: safeT(t, "serticardNav", "Serticard"),
         href: "/admin/serticard",
         icon: LayoutTemplate,
@@ -102,6 +108,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
       "/admin/products",
       "/admin/qr-preview",
       "/admin/qr-preview/page2",
+      "/admin/qr-preview/zip-issues",
       "/admin/serticard",
       "/admin/logs",
       "/admin/analytics",

@@ -685,6 +685,7 @@ export function QrPreviewGridGram({ batches }: Props) {
             products: chunks[i],
             templateVariant: tpl.templateVariant,
             useCustomTemplate: tpl.useCustomTemplate,
+            includeRootKey: true,
             ...(tpl.cmsTemplateId != null ? { cmsTemplateId: tpl.cmsTemplateId } : {}),
           }),
         });
@@ -785,6 +786,7 @@ export function QrPreviewGridGram({ batches }: Props) {
             productTitle: name,
             templateVariant: tpl.templateVariant,
             useCustomTemplate: tpl.useCustomTemplate,
+            includeRootKey: true,
             ...(tpl.cmsTemplateId != null ? { cmsTemplateId: tpl.cmsTemplateId } : {}),
           }),
         });

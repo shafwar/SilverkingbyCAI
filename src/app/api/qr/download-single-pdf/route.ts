@@ -5,7 +5,7 @@ import { PDFDocument } from "pdf-lib";
 import { loadSerticardTemplates, isAffirmativeCustomFlag } from "@/lib/load-serticard-templates";
 import { getSerticardConfig, getFontSizeMultipliers } from "@/lib/serticard-config";
 import { getCanvasPdfSansFamily, getCanvasPdfMonoFamily } from "@/lib/serticard-canvas-font";
-import { drawSerticardRootKeyPill } from "@/lib/serticard-draw-rootkey";
+import { composeSerticardSpreadPngBuffers } from "@/lib/serticard-compose-spread-png";
 
 /**
  * Generate a SINGLE Serticard PDF (front + back) for one QR code.
@@ -152,84 +152,32 @@ export async function POST(request: NextRequest) {
     const qrBuffer = Buffer.from(await qrResponse.arrayBuffer());
     const qrImage = await canvasMod.loadImage(qrBuffer);
 
-    // --- Compose FRONT canvas (same layout as download-multiple-pdf/handleDownload) ---
-    const frontCanvas = canvasMod.createCanvas(frontTemplateImage.width, frontTemplateImage.height);
-    const frontCtx = frontCanvas.getContext("2d");
-    frontCtx.drawImage(frontTemplateImage, 0, 0);
+    const rootKeyForBack =
+      includeRootKey && rootKeyValue != null && rootKeyValue.length > 0
+        ? rootKeyValue.toUpperCase()
+        : null;
 
-    // Layout tuned for Serticard 01 (603x1053); scaled proportionally for 03-18
-    const qrSize = Math.min(frontTemplateImage.width * 0.55, frontTemplateImage.height * 0.55, 900);
-    const qrX = (frontTemplateImage.width - qrSize) / 2;
-    const qrY = frontTemplateImage.height * 0.38;
-
-    const padding = 8;
-    frontCtx.fillStyle = "#ffffff";
-    frontCtx.fillRect(qrX - padding, qrY - padding, qrSize + padding * 2, qrSize + padding * 2);
-    frontCtx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
-
-    const nameOffset = Math.round(frontTemplateImage.height * 0.038);
-    const serialOffset = Math.round(frontTemplateImage.height * 0.038);
-    const isDarkTemplate =
-      !useCmsTemplate && (useCustomRequested || templateVariant !== "01");
-    const textColor = isDarkTemplate ? "#ffffff" : "#111111";
-
-    let nameFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.nameMultiplier);
-    const nameY = qrY - nameOffset;
-    const displayProductName = productName && productName.length > 0 ? productName : "PRODUCT";
-
-    frontCtx.fillStyle = textColor;
-    frontCtx.textAlign = "center";
-    frontCtx.textBaseline = "bottom";
-    const maxNameW = frontTemplateImage.width * 0.9;
-    while (nameFontSize > 10) {
-      frontCtx.font = `bold ${nameFontSize}px ${sansFamily}`;
-      if (frontCtx.measureText(displayProductName).width <= maxNameW) break;
-      nameFontSize -= 1;
-    }
-    frontCtx.fillText(displayProductName, frontTemplateImage.width / 2, nameY);
-
-    console.log("[QR Single PDF] Product name rendered:", {
-      text: displayProductName,
-      fontSize: nameFontSize,
-      font: frontCtx.font,
+    const { frontBuffer, backBuffer } = composeSerticardSpreadPngBuffers({
+      canvasMod,
+      frontTemplateImage,
+      backTemplateImage,
+      qrImage,
+      productName,
+      productSerialCode,
+      sizeMultipliers,
+      sansFamily,
+      monoFamily,
+      templateVariant,
+      useCustomTemplate: useCustomRequested,
+      cmsTemplateId: useCmsTemplate ? cmsTemplateId! : null,
+      rootKeyForBack,
     });
 
-    const serialFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.serialMultiplier);
-    const serialY = qrY + qrSize + serialOffset;
-    const displaySerialCode = productSerialCode && productSerialCode.length > 0 ? productSerialCode : "UNKNOWN";
-
-    frontCtx.fillStyle = textColor;
-    frontCtx.textAlign = "center";
-    frontCtx.textBaseline = "top";
-    frontCtx.font = `bold ${serialFontSize}px ${monoFamily}`;
-    frontCtx.fillText(displaySerialCode, frontTemplateImage.width / 2, serialY);
-
-    const productRootKey =
-      rootKeyValue != null && rootKeyValue.length > 0 ? rootKeyValue.toUpperCase() : null;
-
-    console.log("[QR Single PDF] Serial code rendered:", {
-      text: displaySerialCode,
-      fontSize: serialFontSize,
-      font: frontCtx.font,
-      hasRootKey: !!productRootKey,
+    console.log("[QR Single PDF] Rendered spread PNGs", {
+      productName,
+      productSerialCode,
+      hasRootKey: !!rootKeyForBack,
     });
-
-    const frontBuffer = frontCanvas.toBuffer("image/png");
-
-    // --- BACK canvas (template + root key label) ---
-    const backCanvas = canvasMod.createCanvas(backTemplateImage.width, backTemplateImage.height);
-    const backCtx = backCanvas.getContext("2d");
-    backCtx.drawImage(backTemplateImage, 0, 0);
-
-    if (productRootKey) {
-      drawSerticardRootKeyPill(
-        backCtx,
-        backTemplateImage.width,
-        backTemplateImage.height,
-        productRootKey
-      );
-    }
-    const backBuffer = backCanvas.toBuffer("image/png");
 
     // --- Build single PDF with front+back side-by-side - UNIFIED DIMENSIONS for 100% balance ---
     // Serticard 01-02 have matching dimensions; 03-18 have mismatched front/back sizes.

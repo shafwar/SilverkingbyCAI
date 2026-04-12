@@ -355,6 +355,33 @@ model QrZipDownloadCache {
   @@index([createdAt])
 }
 
+/// Item yang gagal verifikasi render ZIP atau ditolak filter (nama/serial kosong, 0000, dll.) — untuk alert admin & unduh ulang PDF satuan.
+model SerticardZipRenderIssue {
+  id                Int       @id @default(autoincrement())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  jobId             Int?
+  /// RENDER_FAIL = buffer/PDF gagal cek; INVALID_INPUT = tidak masuk ZIP karena filter
+  source            String    @default("RENDER_FAIL") @db.VarChar(32)
+  serialCode        String    @db.VarChar(191)
+  productName       String?   @db.VarChar(500)
+  productId         Int?
+  weight            Int       @default(0)
+  isGram            Boolean   @default(false)
+  rootKey           String?   @db.VarChar(255)
+  reasons           Json
+  templateVariant   String    @default("01") @db.VarChar(32)
+  useCustomTemplate Boolean   @default(false)
+  cmsTemplateId     Int?
+  includeRootKey    Boolean   @default(true)
+  dismissedAt       DateTime?
+
+  @@index([dismissedAt])
+  @@index([createdAt])
+  @@index([serialCode])
+  @@index([jobId])
+}
+
 /// Audit klik download admin (tidak bisa deteksi file benar-benar ada di folder lokal, tapi bisa catat "pernah diunduh").
 model QrZipDownloadAudit {
   id                Int      @id @default(autoincrement())

@@ -28,6 +28,10 @@ import { useDownload } from "@/contexts/DownloadContext";
 import { toast } from "sonner";
 import { SERTICARD_VARIANTS } from "@/utils/serticard-templates";
 import { templateSelectToApiBody } from "@/utils/serticard-template-select";
+import {
+  mergeZipVerificationSummaries,
+  type ZipVerificationSummary,
+} from "@/lib/serticard-zip-verification";
 
 type Product = {
   id: number;
@@ -270,6 +274,7 @@ export function QrPreviewGrid() {
       const BATCH_SIZE = 100;
       const totalBatches = Math.ceil(allProducts.length / BATCH_SIZE);
       let downloadedBatches = 0;
+      const zipVerificationBatches: ZipVerificationSummary[] = [];
 
       // Split products into batches of 100 and download each batch as a separate ZIP
       // CRITICAL: Send full product objects (like handleDownload single), not just serialCodes
@@ -336,6 +341,7 @@ export function QrPreviewGrid() {
             batchNumber,
             templateVariant: tpl.templateVariant,
             useCustomTemplate: tpl.useCustomTemplate,
+            includeRootKey: true,
             ...(tpl.cmsTemplateId != null ? { cmsTemplateId: tpl.cmsTemplateId } : {}),
           };
           console.log(
@@ -393,6 +399,9 @@ export function QrPreviewGrid() {
           if (contentType?.includes("application/json")) {
             // Response is JSON with R2 download URL
             const result = await response.json();
+            if (result?.verification && typeof result.verification === "object") {
+              zipVerificationBatches.push(result.verification as ZipVerificationSummary);
+            }
             if (result.success && result.downloadUrl) {
               setDownloadLabel(`Mengunduh batch ${batchNumber}/${totalBatches} dari R2...`);
               setDownloadPercent(Math.round(((downloadedBatches + 0.5) / totalBatches) * 100));
@@ -577,8 +586,25 @@ export function QrPreviewGrid() {
         setIsDownloadMinimized(false);
       }, 2000);
 
+      const mergedVerify = mergeZipVerificationSummaries(zipVerificationBatches);
+      const verifyLine =
+        mergedVerify &&
+        (mergedVerify.items.length > 0 ||
+          mergedVerify.warnings.length > 0 ||
+          mergedVerify.renderFailures.length > 0)
+          ? t("zipVerificationSummary", {
+              verified: mergedVerify.items.length,
+              warnings: mergedVerify.warnings.length,
+              failed: mergedVerify.renderFailures.length,
+            })
+          : null;
       toast.success("Download berhasil", {
-        description: `Berhasil mengunduh ${totalBatches} file ZIP (${allProducts.length} file QR total). Setiap ZIP berisi 100 file PDF (kecuali batch terakhir).`,
+        description: [
+          `Berhasil mengunduh ${totalBatches} file ZIP (${allProducts.length} file QR total). Setiap ZIP berisi 100 file PDF (kecuali batch terakhir).`,
+          verifyLine,
+        ]
+          .filter(Boolean)
+          .join("\n"),
       });
     } catch (error: any) {
       // Check if error is due to abort
@@ -669,6 +695,8 @@ export function QrPreviewGrid() {
     const abortController = new AbortController();
     setDownloadAbortController(abortController);
 
+    let zipVerificationForToast: ZipVerificationSummary | null = null;
+
     try {
       // Download selected QR codes as ZIP with PDFs (one PDF per QR)
       const response = await fetch("/api/qr/download-multiple-pdf", {
@@ -678,6 +706,7 @@ export function QrPreviewGrid() {
         },
         body: JSON.stringify({
           products: productsPayload,
+          includeRootKey: true,
           ...(() => {
             const tpl = templateSelectToApiBody(selectedTemplateVariant);
             return {
@@ -767,6 +796,10 @@ export function QrPreviewGrid() {
           }
         }
 
+        if (result?.verification && typeof result.verification === "object") {
+          zipVerificationForToast = result.verification as ZipVerificationSummary;
+        }
+
         const primaryUrl = (result.downloadUrl || result.download_url) as string | undefined;
         const downloads = Array.isArray(result.downloads) ? result.downloads : [];
 
@@ -837,6 +870,7 @@ export function QrPreviewGrid() {
           throw new Error((result.error as string) || `Gagal mendapatkan URL download`);
         }
       } else if (contentType?.startsWith("application/zip")) {
+        setDownloadLabel("Mengunduh ZIP (verifikasi per item ada di SERTICARD-ZIP-VERIFICATION.json)…");
         // Direct ZIP download (fallback)
         // Stream download with progress
         const contentLength = response.headers.get("content-length");
@@ -910,7 +944,20 @@ export function QrPreviewGrid() {
         setIsDownloadMinimized(false);
       }, 2000);
 
-      toast.success(t("downloadSelectedSuccess", { count: productsPayload.length }));
+      const verifyDesc =
+        zipVerificationForToast &&
+        (zipVerificationForToast.items.length > 0 ||
+          zipVerificationForToast.warnings.length > 0 ||
+          zipVerificationForToast.renderFailures.length > 0)
+          ? t("zipVerificationSummary", {
+              verified: zipVerificationForToast.items.length,
+              warnings: zipVerificationForToast.warnings.length,
+              failed: zipVerificationForToast.renderFailures.length,
+            })
+          : undefined;
+      toast.success(t("downloadSelectedSuccess", { count: productsPayload.length }), {
+        ...(verifyDesc ? { description: verifyDesc } : {}),
+      });
     } catch (error: any) {
       // Check if error is due to abort
       if (error?.name === "AbortError" || abortController.signal.aborted) {

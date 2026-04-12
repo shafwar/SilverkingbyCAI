@@ -26,6 +26,7 @@ export function AdminNav({ email }: { email?: string | null }) {
       { label: t("qrPreview"), href: "/admin/qr-preview" },
       // Page 2 – gram-based QR preview
       { label: `${t("qrPreview")} 2`, href: "/admin/qr-preview/page2" },
+      { label: t("zipIssuesNav"), href: "/admin/qr-preview/zip-issues" },
       { label: t("logs"), href: "/admin/logs" },
       { label: tExport("label"), href: "/admin/export" },
     ],

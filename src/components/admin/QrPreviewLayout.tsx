@@ -2,15 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { ZipIssuesBanner } from "@/components/admin/ZipIssuesBanner";
 
 type QrPreviewLayoutProps = {
   children: React.ReactNode;
 };
 
 export function QrPreviewLayout({ children }: QrPreviewLayoutProps) {
+  const t = useTranslations("admin.zipIssues");
   const pathname = usePathname();
-  const isPage1 = pathname === "/admin/qr-preview" || pathname.endsWith("/qr-preview");
+  const isZipIssues = pathname.includes("/qr-preview/zip-issues");
   const isPage2 = pathname.includes("/qr-preview/page2");
+  const isPage1 =
+    !isZipIssues &&
+    !isPage2 &&
+    (pathname === "/admin/qr-preview" || pathname.endsWith("/qr-preview"));
 
   return (
     <div className="flex h-[calc(100vh-8rem)] flex-col overflow-hidden bg-gradient-to-b from-white/[0.02] to-transparent">
@@ -30,7 +37,7 @@ export function QrPreviewLayout({ children }: QrPreviewLayoutProps) {
               </p>
             </div>
             <nav
-              className="flex rounded-2xl border border-white/10 bg-white/5 p-1.5 shadow-inner"
+              className="flex flex-wrap gap-1.5 rounded-2xl border border-white/10 bg-white/5 p-1.5 shadow-inner"
               aria-label="Pilih tipe produk"
             >
               <Link
@@ -59,6 +66,19 @@ export function QrPreviewLayout({ children }: QrPreviewLayoutProps) {
                   Batch per gramasi
                 </span>
               </Link>
+              <Link
+                href="/admin/qr-preview/zip-issues"
+                className={`flex flex-col rounded-xl px-5 py-3 text-left transition-all sm:min-w-[140px] ${
+                  isZipIssues
+                    ? "bg-white text-black shadow-sm"
+                    : "text-white/70 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                <span className="text-sm font-semibold">{t("tabTitle")}</span>
+                <span className={`mt-0.5 text-[10px] ${isZipIssues ? "text-black/60" : "text-white/50"}`}>
+                  {t("tabSubtitle")}
+                </span>
+              </Link>
             </nav>
           </div>
         </div>
@@ -67,6 +87,7 @@ export function QrPreviewLayout({ children }: QrPreviewLayoutProps) {
       {/* Content */}
       <div className="min-h-0 flex-1 overflow-y-auto scrollbar-admin">
         <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+          {!isZipIssues ? <ZipIssuesBanner /> : null}
           {children}
         </div>
       </div>
