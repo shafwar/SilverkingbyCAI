@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { PDFDocument } from "pdf-lib";
 import { loadSerticardTemplates, isAffirmativeCustomFlag } from "@/lib/load-serticard-templates";
 import { getSerticardConfig, getFontSizeMultipliers } from "@/lib/serticard-config";
+import { getCanvasPdfSansFamily, getCanvasPdfMonoFamily } from "@/lib/serticard-canvas-font";
+import { drawSerticardRootKeyPill } from "@/lib/serticard-draw-rootkey";
 
 /**
  * Generate a SINGLE Serticard PDF (front + back) for one QR code.
@@ -94,7 +96,12 @@ export async function POST(request: NextRequest) {
         : null;
     if (includeRootKey && !rootKeyValue && isGram) {
       const gramItem = await prisma.gramProductItem.findFirst({
-        where: { uniqCode: productSerialCode },
+        where: {
+          uniqCode: productSerialCode,
+          ...(product.id != null && Number.isFinite(Number(product.id))
+            ? { id: Math.floor(Number(product.id)) }
+            : {}),
+        },
         select: { rootKey: true },
       });
       if (gramItem?.rootKey?.trim()) rootKeyValue = gramItem.rootKey.trim();
@@ -121,6 +128,8 @@ export async function POST(request: NextRequest) {
     const sizeMultipliers = getFontSizeMultipliers(
       fontConfig.fontSizePreset === "KECIL" ? "KECIL" : "BESAR"
     );
+    const sansFamily = getCanvasPdfSansFamily(fontConfig.fontFamily);
+    const monoFamily = getCanvasPdfMonoFamily();
 
     // --- Fetch QR-only image for this serial/uniq code ---
     const baseUrl =
@@ -164,32 +173,35 @@ export async function POST(request: NextRequest) {
       !useCmsTemplate && (useCustomRequested || templateVariant !== "01");
     const textColor = isDarkTemplate ? "#ffffff" : "#111111";
 
-    const nameFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.nameMultiplier);
+    let nameFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.nameMultiplier);
     const nameY = qrY - nameOffset;
-    const nameFont = `bold ${nameFontSize}px ${fontConfig.fontFamily}, sans-serif`;
     const displayProductName = productName && productName.length > 0 ? productName : "PRODUCT";
 
     frontCtx.fillStyle = textColor;
     frontCtx.textAlign = "center";
     frontCtx.textBaseline = "bottom";
-    frontCtx.font = nameFont;
+    const maxNameW = frontTemplateImage.width * 0.9;
+    while (nameFontSize > 10) {
+      frontCtx.font = `bold ${nameFontSize}px ${sansFamily}`;
+      if (frontCtx.measureText(displayProductName).width <= maxNameW) break;
+      nameFontSize -= 1;
+    }
     frontCtx.fillText(displayProductName, frontTemplateImage.width / 2, nameY);
 
     console.log("[QR Single PDF] Product name rendered:", {
       text: displayProductName,
       fontSize: nameFontSize,
-      font: nameFont,
+      font: frontCtx.font,
     });
 
     const serialFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.serialMultiplier);
     const serialY = qrY + qrSize + serialOffset;
-    const serialFont = `bold ${serialFontSize}px ${fontConfig.fontFamily}, monospace`;
     const displaySerialCode = productSerialCode && productSerialCode.length > 0 ? productSerialCode : "UNKNOWN";
 
     frontCtx.fillStyle = textColor;
     frontCtx.textAlign = "center";
     frontCtx.textBaseline = "top";
-    frontCtx.font = serialFont;
+    frontCtx.font = `bold ${serialFontSize}px ${monoFamily}`;
     frontCtx.fillText(displaySerialCode, frontTemplateImage.width / 2, serialY);
 
     const productRootKey =
@@ -198,7 +210,7 @@ export async function POST(request: NextRequest) {
     console.log("[QR Single PDF] Serial code rendered:", {
       text: displaySerialCode,
       fontSize: serialFontSize,
-      font: serialFont,
+      font: frontCtx.font,
       hasRootKey: !!productRootKey,
     });
 
@@ -209,39 +221,13 @@ export async function POST(request: NextRequest) {
     const backCtx = backCanvas.getContext("2d");
     backCtx.drawImage(backTemplateImage, 0, 0);
 
-    // Root key: render on BACK side at bottom-left (as per UI spec / marked area).
     if (productRootKey) {
-      const padX = Math.round(backTemplateImage.width * 0.08);
-      const padY = Math.round(backTemplateImage.height * 0.08);
-      const x = padX;
-      const y = backTemplateImage.height - padY;
-      const fontSize = Math.max(14, Math.min(22, Math.floor(backTemplateImage.width * 0.04)));
-      const font = `600 ${fontSize}px ${fontConfig.fontFamily}, monospace`;
-      backCtx.save();
-      backCtx.font = font;
-      backCtx.textAlign = "left";
-      backCtx.textBaseline = "alphabetic";
-
-      const label = productRootKey;
-      const metrics = backCtx.measureText(label);
-      const boxW = Math.ceil(metrics.width + fontSize * 0.9);
-      const boxH = Math.ceil(fontSize * 1.4);
-      const boxX = x - Math.floor(fontSize * 0.45);
-      const boxY = y - boxH + Math.floor(fontSize * 0.25);
-      backCtx.fillStyle = "rgba(0,0,0,0.45)";
-      const r = Math.ceil(fontSize * 0.4);
-      backCtx.beginPath();
-      backCtx.moveTo(boxX + r, boxY);
-      backCtx.arcTo(boxX + boxW, boxY, boxX + boxW, boxY + boxH, r);
-      backCtx.arcTo(boxX + boxW, boxY + boxH, boxX, boxY + boxH, r);
-      backCtx.arcTo(boxX, boxY + boxH, boxX, boxY, r);
-      backCtx.arcTo(boxX, boxY, boxX + boxW, boxY, r);
-      backCtx.closePath();
-      backCtx.fill();
-
-      backCtx.fillStyle = "#ffffff";
-      backCtx.fillText(label, x, y);
-      backCtx.restore();
+      drawSerticardRootKeyPill(
+        backCtx,
+        backTemplateImage.width,
+        backTemplateImage.height,
+        productRootKey
+      );
     }
     const backBuffer = backCanvas.toBuffer("image/png");
 

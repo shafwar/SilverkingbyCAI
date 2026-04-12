@@ -1753,7 +1753,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                               Satuan PDF (1 file, item pertama)
                             </div>
                             <p className="text-[10px] text-white/45 mb-2">
-                              Hanya nama produk dan ID. Root key untuk ZIP.
+                              Judul batch, kode unik (uniq), dan root key — sama seperti tiap lembar di ZIP.
                             </p>
                             <div className="mb-2">
                               <label className="text-[10px] text-white/45 block mb-1">
@@ -1785,7 +1785,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                               type="button"
                               onClick={() =>
                                 handleDownloadSingle(product, selectedSingleTemplateId, {
-                                  includeRootKey: false,
+                                  includeRootKey: true,
                                 })
                               }
                               disabled={isLoading}

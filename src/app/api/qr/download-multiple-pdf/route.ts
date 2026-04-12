@@ -9,6 +9,8 @@ import { PDFDocument } from "pdf-lib";
 import { createHash } from "crypto";
 import { loadSerticardTemplates, isAffirmativeCustomFlag } from "@/lib/load-serticard-templates";
 import { getSerticardConfig, getFontSizeMultipliers } from "@/lib/serticard-config";
+import { getCanvasPdfSansFamily, getCanvasPdfMonoFamily } from "@/lib/serticard-canvas-font";
+import { drawSerticardRootKeyPill } from "@/lib/serticard-draw-rootkey";
 
 /** Request dengan product count di atas ini diproses di background (hindari timeout 524). */
 const ZIP_JOB_THRESHOLD = 25;
@@ -541,6 +543,8 @@ async function buildOneZipChunk(
     cmsTemplateId,
     useCustom,
   } = ctx;
+  const sansFamily = getCanvasPdfSansFamily(fontConfig.fontFamily);
+  const monoFamily = getCanvasPdfMonoFamily();
     const zip = new JSZip();
     let successCount = 0;
     let failCount = 0;
@@ -590,19 +594,24 @@ async function buildOneZipChunk(
         const isDarkTemplate =
           cmsTemplateId == null && (useCustom || templateVariant !== "01");
         const textColor = isDarkTemplate ? "#ffffff" : "#111111";
-        const nameFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.nameMultiplier);
+        let nameFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.nameMultiplier);
         const nameY = qrY - nameOffset;
       frontCtx!.fillStyle = textColor;
       frontCtx!.textAlign = "center";
       frontCtx!.textBaseline = "bottom";
-      frontCtx!.font = `bold ${nameFontSize}px ${fontConfig.fontFamily}, sans-serif`;
+      const maxNameW = frontTemplateImage.width * 0.9;
+      while (nameFontSize > 10) {
+        frontCtx!.font = `bold ${nameFontSize}px ${sansFamily}`;
+        if (frontCtx!.measureText(productName).width <= maxNameW) break;
+        nameFontSize -= 1;
+      }
       frontCtx!.fillText(productName, frontTemplateImage.width / 2, nameY);
         const serialFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.serialMultiplier);
         const serialY = qrY + qrSize + serialOffset;
       frontCtx!.fillStyle = textColor;
       frontCtx!.textAlign = "center";
       frontCtx!.textBaseline = "top";
-      frontCtx!.font = `bold ${serialFontSize}px ${fontConfig.fontFamily}, monospace`;
+      frontCtx!.font = `bold ${serialFontSize}px ${monoFamily}`;
       frontCtx!.fillText(productSerialCode, frontTemplateImage.width / 2, serialY);
       const productRootKey =
         (product as any).rootKey != null && String((product as any).rootKey).trim() !== ""
@@ -613,42 +622,13 @@ async function buildOneZipChunk(
         const backCtx = backCanvas.getContext("2d");
       backCtx!.drawImage(backTemplateImage, 0, 0);
 
-      // Root key: render on BACK side at bottom-left (as per UI spec / marked area).
       if (productRootKey) {
-        const padX = Math.round(backTemplateImage.width * 0.08);
-        const padY = Math.round(backTemplateImage.height * 0.08);
-        const x = padX;
-        const y = backTemplateImage.height - padY;
-        const fontSize = Math.max(14, Math.min(22, Math.floor(backTemplateImage.width * 0.04)));
-        const font = `600 ${fontSize}px ${fontConfig.fontFamily}, monospace`;
-        backCtx!.save();
-        backCtx!.font = font;
-        backCtx!.textAlign = "left";
-        backCtx!.textBaseline = "alphabetic";
-
-        // Background pill for readability on light templates
-        const label = productRootKey;
-        const metrics = backCtx!.measureText(label);
-        const boxW = Math.ceil(metrics.width + fontSize * 0.9);
-        const boxH = Math.ceil(fontSize * 1.4);
-        const boxX = x - Math.floor(fontSize * 0.45);
-        const boxY = y - boxH + Math.floor(fontSize * 0.25);
-        backCtx!.fillStyle = "rgba(0,0,0,0.45)";
-        const r = Math.ceil(fontSize * 0.4);
-        // rounded rect
-        backCtx!.beginPath();
-        backCtx!.moveTo(boxX + r, boxY);
-        backCtx!.arcTo(boxX + boxW, boxY, boxX + boxW, boxY + boxH, r);
-        backCtx!.arcTo(boxX + boxW, boxY + boxH, boxX, boxY + boxH, r);
-        backCtx!.arcTo(boxX, boxY + boxH, boxX, boxY, r);
-        backCtx!.arcTo(boxX, boxY, boxX + boxW, boxY, r);
-        backCtx!.closePath();
-        backCtx!.fill();
-
-        // Text
-        backCtx!.fillStyle = "#ffffff";
-        backCtx!.fillText(label, x, y);
-        backCtx!.restore();
+        drawSerticardRootKeyPill(
+          backCtx!,
+          backTemplateImage.width,
+          backTemplateImage.height,
+          productRootKey
+        );
       }
 
         const backBuffer = backCanvas.toBuffer("image/png");
