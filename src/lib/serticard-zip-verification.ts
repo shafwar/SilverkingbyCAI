@@ -104,6 +104,47 @@ export function buildZipVerificationManifest(v: ZipVerificationSummary): Record<
   };
 }
 
+/**
+ * When the API returns a raw ZIP body, verification counts are exposed on these headers
+ * (see download-multiple-pdf). Reconstructs a summary compatible with merge/toast logic.
+ */
+export function zipVerificationSummaryFromHttpHeaders(headers: {
+  get(name: string): string | null;
+}): ZipVerificationSummary | null {
+  const v = headers.get("X-Serticard-Verified-Count");
+  if (v == null || v === "") return null;
+  const verified = Math.max(0, parseInt(v, 10) || 0);
+  const warnings = Math.max(0, parseInt(headers.get("X-Serticard-Warning-Count") || "0", 10));
+  const failed = Math.max(0, parseInt(headers.get("X-Serticard-Failed-Count") || "0", 10));
+  const stubItem = (): ZipVerificationItem => ({
+    serialCode: "",
+    productNameLen: 0,
+    serialLen: 0,
+    rootKeyRendered: false,
+    frontPngBytes: 0,
+    backPngBytes: 0,
+    pdfBytes: 0,
+    checks: [],
+  });
+  const stubWarn = (): ZipVerificationWarning => ({
+    code: "SUMMARY",
+    serialCode: "",
+    message: "",
+  });
+  const stubFail = (): ZipVerificationRenderFailure => ({
+    serialCode: "",
+    reasons: [],
+  });
+  return {
+    schemaVersion: 1,
+    generatedAt: new Date().toISOString(),
+    totalInputProducts: verified + failed,
+    items: Array.from({ length: verified }, stubItem),
+    warnings: Array.from({ length: warnings }, stubWarn),
+    renderFailures: Array.from({ length: failed }, stubFail),
+  };
+}
+
 export function mergeZipVerificationSummaries(
   parts: ZipVerificationSummary[]
 ): ZipVerificationSummary | null {

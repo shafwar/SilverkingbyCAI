@@ -30,6 +30,7 @@ import { SERTICARD_VARIANTS } from "@/utils/serticard-templates";
 import { templateSelectToApiBody } from "@/utils/serticard-template-select";
 import {
   mergeZipVerificationSummaries,
+  zipVerificationSummaryFromHttpHeaders,
   type ZipVerificationSummary,
 } from "@/lib/serticard-zip-verification";
 
@@ -207,7 +208,7 @@ export function QrPreviewGrid() {
         },
         templateVariant: tpl.templateVariant,
         useCustomTemplate: tpl.useCustomTemplate,
-        includeRootKey: true,
+        includeRootKey: false,
       };
       if (tpl.cmsTemplateId != null && Number.isFinite(tpl.cmsTemplateId) && tpl.cmsTemplateId > 0) {
         body.cmsTemplateId = tpl.cmsTemplateId;
@@ -478,6 +479,8 @@ export function QrPreviewGrid() {
             }
           } else if (contentType?.startsWith("application/zip")) {
             // Direct ZIP download (fallback)
+            const hdrZipVerify = zipVerificationSummaryFromHttpHeaders(response.headers);
+            if (hdrZipVerify) zipVerificationBatches.push(hdrZipVerify);
             // Stream download with progress
             const contentLength = response.headers.get("content-length");
             const total = contentLength ? parseInt(contentLength, 10) : null;
@@ -598,14 +601,25 @@ export function QrPreviewGrid() {
               failed: mergedVerify.renderFailures.length,
             })
           : null;
-      toast.success("Download berhasil", {
-        description: [
-          `Berhasil mengunduh ${totalBatches} file ZIP (${allProducts.length} file QR total). Setiap ZIP berisi 100 file PDF (kecuali batch terakhir).`,
-          verifyLine,
-        ]
-          .filter(Boolean)
-          .join("\n"),
-      });
+      const baseDesc = `Berhasil mengunduh ${totalBatches} file ZIP (${allProducts.length} file QR total). Setiap ZIP berisi 100 file PDF (kecuali batch terakhir).`;
+      const failedPdf = mergedVerify?.renderFailures.length ?? 0;
+      const okPdf = mergedVerify?.items.length ?? 0;
+      if (mergedVerify && failedPdf > 0 && okPdf === 0) {
+        toast.error("ZIP diunduh tetapi tidak ada PDF yang lolos verifikasi buffer", {
+          description: [verifyLine, baseDesc].filter(Boolean).join("\n"),
+          duration: 12_000,
+        });
+      } else if (mergedVerify && failedPdf > 0) {
+        toast.warning("ZIP diunduh — sebagian PDF gagal verifikasi / tidak masuk ZIP", {
+          description: [verifyLine, baseDesc].filter(Boolean).join("\n"),
+          duration: 12_000,
+        });
+      } else {
+        toast.success("Download berhasil", {
+          description: [baseDesc, verifyLine].filter(Boolean).join("\n"),
+          duration: 8000,
+        });
+      }
     } catch (error: any) {
       // Check if error is due to abort
       if (error?.name === "AbortError" || abortController.signal.aborted) {
@@ -871,6 +885,8 @@ export function QrPreviewGrid() {
         }
       } else if (contentType?.startsWith("application/zip")) {
         setDownloadLabel("Mengunduh ZIP (verifikasi per item ada di SERTICARD-ZIP-VERIFICATION.json)…");
+        const hdrSel = zipVerificationSummaryFromHttpHeaders(response.headers);
+        if (hdrSel) zipVerificationForToast = hdrSel;
         // Direct ZIP download (fallback)
         // Stream download with progress
         const contentLength = response.headers.get("content-length");
@@ -955,9 +971,23 @@ export function QrPreviewGrid() {
               failed: zipVerificationForToast.renderFailures.length,
             })
           : undefined;
-      toast.success(t("downloadSelectedSuccess", { count: productsPayload.length }), {
-        ...(verifyDesc ? { description: verifyDesc } : {}),
-      });
+      const selFailed = zipVerificationForToast?.renderFailures.length ?? 0;
+      const selOk = zipVerificationForToast?.items.length ?? 0;
+      if (zipVerificationForToast && selFailed > 0 && selOk === 0) {
+        toast.error("ZIP diunduh tetapi tidak ada PDF yang lolos verifikasi", {
+          description: verifyDesc,
+          duration: 12_000,
+        });
+      } else if (zipVerificationForToast && selFailed > 0) {
+        toast.warning("ZIP diunduh — sebagian PDF gagal verifikasi", {
+          description: verifyDesc,
+          duration: 12_000,
+        });
+      } else {
+        toast.success(t("downloadSelectedSuccess", { count: productsPayload.length }), {
+          ...(verifyDesc ? { description: verifyDesc } : {}),
+        });
+      }
     } catch (error: any) {
       // Check if error is due to abort
       if (error?.name === "AbortError" || abortController.signal.aborted) {

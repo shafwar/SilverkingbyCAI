@@ -9,7 +9,7 @@ import { PDFDocument } from "pdf-lib";
 import { createHash } from "crypto";
 import { loadSerticardTemplates, isAffirmativeCustomFlag } from "@/lib/load-serticard-templates";
 import { getSerticardConfig, getFontSizeMultipliers } from "@/lib/serticard-config";
-import { getCanvasPdfSansFamily, getCanvasPdfMonoFamily } from "@/lib/serticard-canvas-font";
+import { normalizeRootKeyForPill } from "@/lib/serticard-rootkey-display";
 import { composeSerticardSpreadPngBuffers } from "@/lib/serticard-compose-spread-png";
 import {
   buildZipVerificationManifest,
@@ -436,13 +436,20 @@ export async function POST(request: NextRequest) {
       });
       return NextResponse.json(outcome.json);
     }
+    const zipHeaders: Record<string, string> = {
+      "Content-Type": "application/zip",
+      "Content-Disposition": `attachment; filename="${outcome.zip.filename}"`,
+      "Cache-Control": "no-cache",
+    };
+    const vz = outcome.verification;
+    if (vz) {
+      zipHeaders["X-Serticard-Verified-Count"] = String(vz.items.length);
+      zipHeaders["X-Serticard-Warning-Count"] = String(vz.warnings.length);
+      zipHeaders["X-Serticard-Failed-Count"] = String(vz.renderFailures.length);
+    }
     return new NextResponse(new Uint8Array(outcome.zip.buffer), {
       status: 200,
-      headers: {
-        "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="${outcome.zip.filename}"`,
-        "Cache-Control": "no-cache",
-      },
+      headers: zipHeaders,
     });
   } catch (error: any) {
     const errorMessage = error?.message || String(error);
@@ -490,6 +497,8 @@ type ZipGenOpts = {
 type ZipOutcome = {
   json?: Record<string, unknown>;
   zip: { buffer: Buffer; filename: string };
+  /** Present when returning raw ZIP bytes so clients can read verification counts from response headers. */
+  verification?: ZipVerificationSummary;
 };
 
 type ZipChunkContext = {
@@ -573,7 +582,6 @@ async function buildOneZipChunk(
     canvasMod,
     frontTemplateImage,
     backTemplateImage,
-    fontConfig,
     sizeMultipliers,
     internalBaseUrl,
     isGramRequest,
@@ -583,8 +591,6 @@ async function buildOneZipChunk(
     useCustom,
     includeRootKey,
   } = ctx;
-  const sansFamily = getCanvasPdfSansFamily(fontConfig.fontFamily);
-  const monoFamily = getCanvasPdfMonoFamily();
     const zip = new JSZip();
     let successCount = 0;
     let failCount = 0;
@@ -622,7 +628,7 @@ async function buildOneZipChunk(
               ? String(product.rootKey).trim()
               : null;
           if (fromPayload) {
-            rootKeyForPill = fromPayload.toUpperCase();
+            rootKeyForPill = normalizeRootKeyForPill(fromPayload);
           } else if (productIsGram) {
             let gramItem = await prisma.gramProductItem.findFirst({
               where: {
@@ -641,7 +647,7 @@ async function buildOneZipChunk(
               });
             }
             if (gramItem?.rootKey?.trim()) {
-              rootKeyForPill = gramItem.rootKey.trim().toUpperCase();
+              rootKeyForPill = normalizeRootKeyForPill(gramItem.rootKey.trim());
             }
           }
         }
@@ -663,8 +669,6 @@ async function buildOneZipChunk(
           productName,
           productSerialCode,
           sizeMultipliers,
-          sansFamily,
-          monoFamily,
           templateVariant,
           useCustomTemplate: useCustom,
           cmsTemplateId: cmsTemplateId ?? null,
@@ -1206,7 +1210,7 @@ async function executeZipGeneration(
 
   // Fallback: return ZIP buffer when R2 not available or upload failed
   await persistZipRenderIssuesSafe(opts, zipVerification);
-  return { zip: { buffer: zipBuffer, filename } };
+  return { zip: { buffer: zipBuffer, filename }, verification: zipVerification };
 }
 
 async function processZipJobInBackground(jobId: number): Promise<void> {

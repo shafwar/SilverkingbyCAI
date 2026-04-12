@@ -4,8 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { PDFDocument } from "pdf-lib";
 import { loadSerticardTemplates, isAffirmativeCustomFlag } from "@/lib/load-serticard-templates";
 import { getSerticardConfig, getFontSizeMultipliers } from "@/lib/serticard-config";
-import { getCanvasPdfSansFamily, getCanvasPdfMonoFamily } from "@/lib/serticard-canvas-font";
 import { composeSerticardSpreadPngBuffers } from "@/lib/serticard-compose-spread-png";
+import { normalizeRootKeyForPill } from "@/lib/serticard-rootkey-display";
 
 /**
  * Generate a SINGLE Serticard PDF (front + back) for one QR code.
@@ -19,7 +19,7 @@ import { composeSerticardSpreadPngBuffers } from "@/lib/serticard-compose-spread
  *   "product": { "id", "name", "serialCode", "weight", "isGram?", "rootKey?" },
  *   "templateVariant": string,
  *   "useCustomTemplate": boolean,
- *   "includeRootKey": boolean  // if false, PDF output hanya judul + serial (no root key)
+ *   "includeRootKey": boolean  // default false: single PDF tanpa pill root key (ZIP bulk bisa true)
  * }
  */
 export async function POST(request: NextRequest) {
@@ -88,12 +88,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Resolve rootKey: when includeRootKey is false, output PDF hanya judul + id (no root key), like previous system
-    const includeRootKey = body?.includeRootKey !== false;
-    let rootKeyValue: string | null =
+    /** Single PDF: pill root key hanya jika client explicitly `includeRootKey: true` (bulk ZIP tetap bisa kirim true). */
+    const includeRootKey = body?.includeRootKey === true;
+    let rootKeyValue: string | null = normalizeRootKeyForPill(
       product.rootKey != null && String(product.rootKey).trim() !== ""
         ? String(product.rootKey).trim()
-        : null;
+        : null
+    );
     if (includeRootKey && !rootKeyValue && isGram) {
       const gramItem = await prisma.gramProductItem.findFirst({
         where: {
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
         },
         select: { rootKey: true },
       });
-      if (gramItem?.rootKey?.trim()) rootKeyValue = gramItem.rootKey.trim();
+      if (gramItem?.rootKey?.trim()) rootKeyValue = normalizeRootKeyForPill(gramItem.rootKey.trim());
     }
 
     console.log("[QR Single PDF] Processing:", {
@@ -128,8 +129,6 @@ export async function POST(request: NextRequest) {
     const sizeMultipliers = getFontSizeMultipliers(
       fontConfig.fontSizePreset === "KECIL" ? "KECIL" : "BESAR"
     );
-    const sansFamily = getCanvasPdfSansFamily(fontConfig.fontFamily);
-    const monoFamily = getCanvasPdfMonoFamily();
 
     // --- Fetch QR-only image for this serial/uniq code ---
     const baseUrl =
@@ -153,9 +152,7 @@ export async function POST(request: NextRequest) {
     const qrImage = await canvasMod.loadImage(qrBuffer);
 
     const rootKeyForBack =
-      includeRootKey && rootKeyValue != null && rootKeyValue.length > 0
-        ? rootKeyValue.toUpperCase()
-        : null;
+      includeRootKey && rootKeyValue != null && rootKeyValue.length > 0 ? rootKeyValue : null;
 
     const { frontBuffer, backBuffer } = composeSerticardSpreadPngBuffers({
       canvasMod,
@@ -165,8 +162,6 @@ export async function POST(request: NextRequest) {
       productName,
       productSerialCode,
       sizeMultipliers,
-      sansFamily,
-      monoFamily,
       templateVariant,
       useCustomTemplate: useCustomRequested,
       cmsTemplateId: useCmsTemplate ? cmsTemplateId! : null,

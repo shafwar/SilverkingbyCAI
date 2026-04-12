@@ -24,6 +24,12 @@ import { SERTICARD_VARIANTS } from "@/utils/serticard-templates";
 import { templateSelectToApiBody } from "@/utils/serticard-template-select";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
+import { toast } from "sonner";
+import {
+  mergeZipVerificationSummaries,
+  zipVerificationSummaryFromHttpHeaders,
+  type ZipVerificationSummary,
+} from "@/lib/serticard-zip-verification";
 
 const ZIP_CHUNK_SIZE = 80;
 
@@ -383,7 +389,7 @@ export function QrPreviewGridGram({ batches }: Props) {
         throw new Error("Unique code is empty");
       }
 
-      const includeRootKey = options?.includeRootKey !== false;
+      const includeRootKey = options?.includeRootKey === true;
       const tpl = templateSelectToApiBody(templateValue);
       const body = {
         product: {
@@ -673,6 +679,7 @@ export function QrPreviewGridGram({ batches }: Props) {
       }
       const totalChunks = chunks.length;
       const blobs: Blob[] = [];
+      const zipVerifyParts: ZipVerificationSummary[] = [];
       for (let i = 0; i < chunks.length; i++) {
         setZipProgress({
           percent: Math.round(((i + 0.5) / totalChunks) * 100),
@@ -698,6 +705,8 @@ export function QrPreviewGridGram({ batches }: Props) {
           const text = await response.text();
           throw new Error(parseErrorResponse(text, response.status));
         }
+        const hdrSum = zipVerificationSummaryFromHttpHeaders(response.headers);
+        if (hdrSum) zipVerifyParts.push(hdrSum);
         const blob = await response.blob();
         if (!(await isZipBlob(blob))) {
           throw new Error(
@@ -732,6 +741,32 @@ export function QrPreviewGridGram({ batches }: Props) {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
+      const mergedV = mergeZipVerificationSummaries(zipVerifyParts);
+      if (mergedV) {
+        const ok = mergedV.items.length;
+        const fail = mergedV.renderFailures.length;
+        const warn = mergedV.warnings.length;
+        if (fail > 0 && ok === 0) {
+          toast.error("ZIP selesai tetapi tidak ada PDF yang lolos verifikasi buffer", {
+            description: `Gagal: ${fail} · Peringatan: ${warn}. Buka SERTICARD-ZIP-VERIFICATION.json di dalam ZIP.`,
+            duration: 14_000,
+          });
+        } else if (fail > 0) {
+          toast.warning("ZIP diunduh — sebagian PDF gagal verifikasi / tidak masuk ZIP", {
+            description: `Lulus: ${ok} · Gagal: ${fail} · Peringatan: ${warn}. Lihat JSON verifikasi di dalam ZIP.`,
+            duration: 12_000,
+          });
+        } else if (warn > 0) {
+          toast.message("ZIP diunduh", {
+            description: `${ok} PDF terverifikasi · ${warn} peringatan (mis. root key).`,
+            duration: 8000,
+          });
+        } else if (ok > 0) {
+          toast.success(`ZIP Serticard: ${ok} PDF terverifikasi`, { duration: 6000 });
+        }
+      } else {
+        toast.success(`ZIP Serticard batch (${products.length} item) diunduh`, { duration: 5000 });
+      }
     } catch (error) {
       console.error("[GramPreview] handleDownloadBatchSerticardsZip error:", error);
       alert(
@@ -1786,9 +1821,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                             <motion.button
                               type="button"
                               onClick={() =>
-                                handleDownloadSingle(product, selectedSingleTemplateId, {
-                                  includeRootKey: true,
-                                })
+                                handleDownloadSingle(product, selectedSingleTemplateId)
                               }
                               disabled={isLoading}
                               className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFD700]/30 bg-[#FFD700]/10 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/20 disabled:opacity-50"

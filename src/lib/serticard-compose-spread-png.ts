@@ -1,4 +1,10 @@
 import { drawSerticardRootKeyPill } from "@/lib/serticard-draw-rootkey";
+import { normalizeRootKeyForPill } from "@/lib/serticard-rootkey-display";
+import {
+  ensureSerticardPdfCanvasFontsRegistered,
+  SERTICARD_CANVAS_MONO_FAMILY,
+  SERTICARD_CANVAS_SANS_FAMILY,
+} from "@/lib/serticard-register-canvas-fonts";
 
 export type SerticardSpreadSizeMultipliers = {
   nameMultiplier: number;
@@ -12,6 +18,7 @@ export type SerticardSpreadSizeMultipliers = {
 export function composeSerticardSpreadPngBuffers(options: {
   canvasMod: {
     createCanvas: (w: number, h: number) => any;
+    registerFont?: (path: string, meta: { family: string }) => void;
   };
   frontTemplateImage: any;
   backTemplateImage: any;
@@ -19,8 +26,10 @@ export function composeSerticardSpreadPngBuffers(options: {
   productName: string;
   productSerialCode: string;
   sizeMultipliers: SerticardSpreadSizeMultipliers;
-  sansFamily: string;
-  monoFamily: string;
+  /** @deprecated Ignored; bundled LucidaSans + SFMono are registered for reliable server rendering. */
+  sansFamily?: string;
+  /** @deprecated Ignored; see sansFamily. */
+  monoFamily?: string;
   templateVariant: string;
   useCustomTemplate: boolean;
   cmsTemplateId: number | null;
@@ -33,13 +42,15 @@ export function composeSerticardSpreadPngBuffers(options: {
     backTemplateImage,
     qrImage,
     sizeMultipliers,
-    sansFamily,
-    monoFamily,
     templateVariant,
     useCustomTemplate,
     cmsTemplateId,
     rootKeyForBack,
   } = options;
+
+  ensureSerticardPdfCanvasFontsRegistered(canvasMod);
+  const sansFamily = SERTICARD_CANVAS_SANS_FAMILY;
+  const monoFamily = SERTICARD_CANVAS_MONO_FAMILY;
 
   const displayProductName =
     options.productName && options.productName.trim().length > 0
@@ -97,12 +108,15 @@ export function composeSerticardSpreadPngBuffers(options: {
   const backCtx = backCanvas.getContext("2d");
   backCtx.drawImage(backTemplateImage, 0, 0);
 
-  const pillKey =
-    rootKeyForBack != null && rootKeyForBack.trim().length > 0
-      ? rootKeyForBack.trim().toUpperCase()
-      : null;
+  const pillKey = normalizeRootKeyForPill(rootKeyForBack);
   if (pillKey) {
-    drawSerticardRootKeyPill(backCtx, backTemplateImage.width, backTemplateImage.height, pillKey);
+    drawSerticardRootKeyPill(
+      backCtx,
+      backTemplateImage.width,
+      backTemplateImage.height,
+      pillKey,
+      monoFamily
+    );
   }
 
   const backBuffer = backCanvas.toBuffer("image/png") as Buffer;

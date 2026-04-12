@@ -1,8 +1,7 @@
-import { getCanvasPdfMonoFamily } from "@/lib/serticard-canvas-font";
-
 /**
  * Root key on BACK panel: larger bold pill, readable on dark or busy templates.
  * `backCtx` is node-canvas or browser 2D context (typed loosely for compatibility).
+ * Pass `monoFamily` from server PDF pipeline (registered OTF) so digits render on Linux.
  */
 export function drawSerticardRootKeyPill(
   backCtx: {
@@ -26,9 +25,10 @@ export function drawSerticardRootKeyPill(
   },
   backW: number,
   backH: number,
-  label: string
+  label: string,
+  monoFamily: string = "Courier New"
 ): void {
-  const mono = getCanvasPdfMonoFamily();
+  const mono = monoFamily;
   const padX = Math.round(backW * 0.07);
   const padY = Math.round(backH * 0.07);
   const x = padX;
