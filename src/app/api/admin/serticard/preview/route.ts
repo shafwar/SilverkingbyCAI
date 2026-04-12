@@ -41,7 +41,11 @@ export async function GET(request: Request) {
     const buffer = Buffer.from(await body.transformToByteArray());
     const contentType = key.endsWith(".png") ? "image/png" : "image/jpeg";
     return new NextResponse(buffer, {
-      headers: { "Content-Type": contentType, "Cache-Control": "private, max-age=60" },
+      headers: {
+        "Content-Type": contentType,
+        "Cache-Control": "private, no-store, max-age=0, must-revalidate",
+        Pragma: "no-cache",
+      },
     });
   } catch (e) {
     console.error("[Serticard Preview]", e);

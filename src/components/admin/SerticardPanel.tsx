@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Upload, Loader2, ImageIcon, Tag } from "lucide-react";
+import { Upload, Loader2, ImageIcon, Tag, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import clsx from "clsx";
 import { useTranslations } from "next-intl";
@@ -47,9 +47,9 @@ export function SerticardPanel() {
   const t = useTranslations("admin.serticard");
   const [config, setConfig] = useState<Config | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<"front" | "back" | "all" | null>(null);
   const [frontPreview, setFrontPreview] = useState<string | null>(null);
   const [backPreview, setBackPreview] = useState<string | null>(null);
 
@@ -106,10 +106,8 @@ export function SerticardPanel() {
             }
           : c
       );
-      if (side === "front") setFrontPreview(URL.createObjectURL(file));
-      else setBackPreview(URL.createObjectURL(file));
       toast.success(side === "front" ? t("uploadFrontOk") : t("uploadBackOk"));
-      fetchConfig();
+      await fetchConfig();
       notifyConfigUpdated();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Gagal mengunggah template");
@@ -149,8 +147,46 @@ export function SerticardPanel() {
     }
   };
 
+  const handleDeleteSide = async (side: "front" | "back") => {
+    const ok =
+      typeof window !== "undefined" &&
+      window.confirm(side === "front" ? t("deleteFrontConfirm") : t("deleteBackConfirm"));
+    if (!ok) return;
+    setDeleting(side);
+    try {
+      const res = await fetch("/api/admin/serticard/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          [side === "front" ? "deleteCustomFront" : "deleteCustomBack"]: true,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      setConfig((c) =>
+        c
+          ? {
+              ...c,
+              customFrontR2Key: data.customFrontR2Key ?? null,
+              customBackR2Key: data.customBackR2Key ?? null,
+              customTemplateDropdownLabel: data.customTemplateDropdownLabel ?? c.customTemplateDropdownLabel,
+            }
+          : c
+      );
+      toast.success(side === "front" ? t("deleteFrontOk") : t("deleteBackOk"));
+      await fetchConfig();
+      notifyConfigUpdated();
+    } catch {
+      toast.error(t("deleteSideFailedToast"));
+    } finally {
+      setDeleting(null);
+    }
+  };
+
   const handleClearCustom = async () => {
-    setSaving(true);
+    const ok = typeof window !== "undefined" && window.confirm(t("deleteAllConfirm"));
+    if (!ok) return;
+    setDeleting("all");
     try {
       const res = await fetch("/api/admin/serticard/config", {
         method: "PUT",
@@ -173,12 +209,12 @@ export function SerticardPanel() {
       setFrontPreview(null);
       setBackPreview(null);
       toast.success(t("resetTemplatesToast"));
-      fetchConfig();
+      await fetchConfig();
       notifyConfigUpdated();
     } catch {
       toast.error(t("resetTemplatesFailedToast"));
     } finally {
-      setSaving(false);
+      setDeleting(null);
     }
   };
 
@@ -232,6 +268,17 @@ export function SerticardPanel() {
               ) : (
                 <span className="text-xs text-white/35">{t("noCustomYet")}</span>
               )}
+              {config.customFrontR2Key && (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteSide("front")}
+                  disabled={!!uploading || !!deleting}
+                  className="mt-2 inline-flex w-full max-w-[220px] touch-manipulation items-center justify-center gap-1.5 rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-200/95 transition hover:bg-red-500/15 disabled:opacity-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                  {deleting === "front" ? t("deleting") : t("deleteFront")}
+                </button>
+              )}
               <label className="mt-3 inline-flex min-h-[40px] w-full max-w-[220px] cursor-pointer touch-manipulation items-center justify-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3.5 py-2 text-xs font-medium text-white/90 transition hover:border-luxury-gold/30 hover:bg-white/[0.1] sm:text-sm">
                 <Upload className="h-3.5 w-3.5 shrink-0 text-luxury-gold/65" />
                 {uploading === "front" ? t("uploading") : t("upload")}
@@ -240,10 +287,15 @@ export function SerticardPanel() {
                   accept="image/png,image/jpeg,image/jpg"
                   className="hidden"
                   onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleUpload("front", f);
+                    const input = e.target;
+                    const f = input.files?.[0];
+                    if (f) {
+                      void handleUpload("front", f).finally(() => {
+                        input.value = "";
+                      });
+                    }
                   }}
-                  disabled={!!uploading}
+                  disabled={!!uploading || !!deleting}
                 />
               </label>
             </div>
@@ -263,6 +315,17 @@ export function SerticardPanel() {
               ) : (
                 <span className="text-xs text-white/35">{t("noCustomYet")}</span>
               )}
+              {config.customBackR2Key && (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteSide("back")}
+                  disabled={!!uploading || !!deleting}
+                  className="mt-2 inline-flex w-full max-w-[220px] touch-manipulation items-center justify-center gap-1.5 rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-200/95 transition hover:bg-red-500/15 disabled:opacity-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                  {deleting === "back" ? t("deleting") : t("deleteBack")}
+                </button>
+              )}
               <label className="mt-3 inline-flex min-h-[40px] w-full max-w-[220px] cursor-pointer touch-manipulation items-center justify-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3.5 py-2 text-xs font-medium text-white/90 transition hover:border-luxury-gold/30 hover:bg-white/[0.1] sm:text-sm">
                 <Upload className="h-3.5 w-3.5 shrink-0 text-luxury-gold/65" />
                 {uploading === "back" ? t("uploading") : t("upload")}
@@ -271,10 +334,15 @@ export function SerticardPanel() {
                   accept="image/png,image/jpeg,image/jpg"
                   className="hidden"
                   onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleUpload("back", f);
+                    const input = e.target;
+                    const f = input.files?.[0];
+                    if (f) {
+                      void handleUpload("back", f).finally(() => {
+                        input.value = "";
+                      });
+                    }
                   }}
-                  disabled={!!uploading}
+                  disabled={!!uploading || !!deleting}
                 />
               </label>
             </div>
@@ -282,16 +350,22 @@ export function SerticardPanel() {
         </div>
 
         {(config.customFrontR2Key || config.customBackR2Key) && (
-          <div className="flex flex-col gap-1 border-t border-white/[0.06] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div className="flex flex-col gap-3 border-t border-white/[0.06] px-4 py-3.5 sm:px-5">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-white/45 mb-1.5">
+                {t("manageTemplatesTitle")}
+              </p>
+              <p className={`text-xs sm:text-[13px] ${helperTextClass}`}>{t("resetHint")}</p>
+            </div>
             <button
               type="button"
               onClick={handleClearCustom}
-              disabled={saving}
-              className="self-start text-xs font-medium text-amber-400/95 transition hover:text-amber-300 disabled:opacity-50 sm:text-sm"
+              disabled={!!uploading || !!deleting}
+              className="inline-flex min-h-[44px] w-full touch-manipulation items-center justify-center gap-2 rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-2.5 text-sm font-semibold text-amber-100 transition hover:bg-amber-500/15 disabled:opacity-50 sm:w-auto sm:self-start"
             >
-              {saving ? t("resetting") : t("resetToDefault")}
+              <Trash2 className="h-4 w-4 shrink-0 opacity-90" />
+              {deleting === "all" ? t("resetting") : t("resetToDefault")}
             </button>
-            <p className={`max-w-xl text-xs sm:text-[13px] ${helperTextClass}`}>{t("resetHint")}</p>
           </div>
         )}
       </motion.div>
