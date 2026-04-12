@@ -3,7 +3,6 @@
 import { ReactNode, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
-import clsx from "clsx";
 import { ModalPortal } from "@/components/ui/ModalPortal";
 
 type ModalProps = {
@@ -11,11 +10,9 @@ type ModalProps = {
   onClose: () => void;
   title?: string;
   children: ReactNode;
-  /** Wider panel for image-heavy dialogs (e.g. CMS spread preview). */
-  size?: "default" | "wide";
 };
 
-export function Modal({ open, onClose, title, children, size = "default" }: ModalProps) {
+export function Modal({ open, onClose, title, children }: ModalProps) {
   useEffect(() => {
     if (!open) return;
     const handler = (event: KeyboardEvent) => {
@@ -47,10 +44,7 @@ export function Modal({ open, onClose, title, children, size = "default" }: Moda
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.3 }}
-              className={clsx(
-                "relative mx-4 w-full max-h-[calc(100dvh-32px)] overflow-y-auto rounded-3xl border border-white/10 bg-gradient-to-br from-black to-[#0a0a0a] p-4 shadow-2xl sm:p-6 md:p-8",
-                size === "wide" ? "max-w-5xl" : "max-w-2xl"
-              )}
+              className="relative w-full max-w-2xl max-h-[calc(100dvh-32px)] overflow-y-auto rounded-3xl border border-white/10 bg-gradient-to-br from-black to-[#0a0a0a] p-4 sm:p-6 md:p-8 shadow-2xl mx-4"
             >
               <button
                 className="absolute right-4 top-4 rounded-full border border-white/10 p-2 text-white/60 transition hover:border-white/30 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD700]"

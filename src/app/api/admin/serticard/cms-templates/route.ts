@@ -32,12 +32,7 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
       select: { id: true, name: true, r2Key: true, createdAt: true },
     });
-    return NextResponse.json({
-      ok: true,
-      count: items.length,
-      templates: items,
-      fetchedAt: new Date().toISOString(),
-    });
+    return NextResponse.json({ templates: items });
   } catch (e) {
     console.error("[Serticard CMS] GET list error:", e);
     return NextResponse.json({ error: "Failed to list templates" }, { status: 500 });
