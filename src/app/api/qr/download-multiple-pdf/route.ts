@@ -726,10 +726,10 @@ async function executeZipGeneration(
   console.log(`[QR Multiple] Will combine QR + template in canvas, then generate PDF with pdf-lib`);
   console.log(`[QR Multiple] Template variant: ${templateVariant}`);
 
-  // Pre-load BOTH templates — CMS spread, custom pair, or built-in variant
+  // Pre-load BOTH templates — CMS spread, custom pair only if useCustom, else built-in variant
   const { front: frontTemplateImage, back: backTemplateImage } = await loadSerticardTemplates(
-    cmsTemplateId != null ? "01" : useCustom ? undefined : templateVariant,
-    cmsTemplateId != null ? { cmsTemplateId } : undefined
+    templateVariant,
+    cmsTemplateId != null ? { cmsTemplateId } : { useCustomTemplate: useCustom }
   );
   const fontConfig = await getSerticardConfig();
   const sizeMultipliers = getFontSizeMultipliers(

@@ -32,6 +32,11 @@ export type LoadedTemplates = {
 export type LoadSerticardTemplatesOptions = {
   /** CMS row id: single spread image in R2, split left = front (QR), right = back */
   cmsTemplateId?: number | null;
+  /**
+   * When true and both admin custom files exist in R2, load that pair.
+   * When false/omitted, use built-in variant (01, 03, …) even if custom files exist — same as pre-regression behavior.
+   */
+  useCustomTemplate?: boolean;
 };
 
 /** Split one horizontal spread into two panels (same pipeline as paired front/back files). */
@@ -67,8 +72,9 @@ async function loadImageFromR2(key: string): Promise<any> {
 
 /**
  * Load front and back serticard templates.
- * 1. If custom templates are set in SerticardConfig, load those from R2
- * 2. Else load based on variant (01, 03, etc)
+ * 1. If options.cmsTemplateId set — CMS spread from R2
+ * 2. Else if options.useCustomTemplate === true and admin pair exists in R2 — custom pair
+ * 3. Else built-in variant (01, 03, …) from local / R2
  */
 export async function loadSerticardTemplates(
   variantId?: string,
@@ -92,19 +98,27 @@ export async function loadSerticardTemplates(
     }
   }
 
+  const wantsCustom = options?.useCustomTemplate === true;
   const config = await getSerticardConfig();
-  const useCustom =
-    config.customFrontR2Key &&
-    config.customBackR2Key &&
-    (await fileExistsInR2(config.customFrontR2Key)) &&
-    (await fileExistsInR2(config.customBackR2Key));
+  const customAvailable =
+    Boolean(config.customFrontR2Key) &&
+    Boolean(config.customBackR2Key) &&
+    (await fileExistsInR2(config.customFrontR2Key!)) &&
+    (await fileExistsInR2(config.customBackR2Key!));
 
-  if (useCustom) {
+  if (wantsCustom && customAvailable) {
     const [front, back] = await Promise.all([
       loadImageFromR2(config.customFrontR2Key!),
       loadImageFromR2(config.customBackR2Key!),
     ]);
     return { front, back };
+  }
+
+  if (wantsCustom && !customAvailable) {
+    console.warn(
+      "[Serticard] useCustomTemplate requested but custom front/back missing in R2; falling back to variant:",
+      variantId
+    );
   }
 
   const vid = variantId && isValidSerticardVariant(variantId) ? variantId : DEFAULT_SERTICARD_VARIANT;

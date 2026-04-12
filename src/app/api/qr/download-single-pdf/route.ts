@@ -108,10 +108,10 @@ export async function POST(request: NextRequest) {
       hasRootKey: !!rootKeyValue,
     });
 
-    // --- Load Serticard templates (CMS spread, custom pair, or variant) ---
+    // --- Load Serticard templates (CMS spread, custom pair only if requested, else built-in variant) ---
     const { front: frontTemplateImage, back: backTemplateImage } = await loadSerticardTemplates(
-      useCmsTemplate ? "01" : useCustom ? undefined : templateVariant,
-      useCmsTemplate ? { cmsTemplateId: cmsTemplateId! } : undefined
+      templateVariant,
+      useCmsTemplate ? { cmsTemplateId: cmsTemplateId! } : { useCustomTemplate: useCustom }
     );
     const fontConfig = await getSerticardConfig();
     const sizeMultipliers = getFontSizeMultipliers(
