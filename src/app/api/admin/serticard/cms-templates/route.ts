@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     const nameRaw = formData.get("name");
     const name =
       typeof nameRaw === "string" && nameRaw.trim().length > 0
-        ? nameRaw.trim().slice(0, 120)
+        ? nameRaw.trim().slice(0, 191)
         : "Untitled";
 
     if (!file || file.size === 0) {
