@@ -10,12 +10,14 @@ import {
   Trash2,
   Pencil,
   Layers,
-  Calendar,
+  CalendarDays,
   AlertTriangle,
+  ExternalLink,
+  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import clsx from "clsx";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Modal } from "@/components/admin/Modal";
 
 type Config = {
@@ -57,6 +59,36 @@ type ConfirmKind =
   | "deleteAll"
   | { kind: "cmsDelete"; id: number; name: string };
 
+function formatCmsTableDate(iso: string, locale: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString(locale === "id" ? "id-ID" : "en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function CmsTableSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-transparent p-1">
+      <div className="rounded-xl bg-black/40 p-4">
+        <div className="mb-4 h-10 animate-pulse rounded-lg bg-white/[0.06]" />
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="mb-3 flex gap-4 last:mb-0">
+            <div className="h-12 w-14 shrink-0 animate-pulse rounded-lg bg-white/[0.06]" />
+            <div className="h-12 w-24 shrink-0 animate-pulse rounded-lg bg-white/[0.06]" />
+            <div className="h-12 flex-1 animate-pulse rounded-lg bg-white/[0.05]" />
+            <div className="h-12 w-20 shrink-0 animate-pulse rounded-lg bg-white/[0.06]" />
+            <div className="h-12 w-24 shrink-0 animate-pulse rounded-lg bg-white/[0.06]" />
+            <div className="h-12 w-24 shrink-0 animate-pulse rounded-lg bg-white/[0.06]" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function FieldLabel({ children, dense }: { children: React.ReactNode; dense?: boolean }) {
   return (
     <span
@@ -74,6 +106,7 @@ function FieldLabel({ children, dense }: { children: React.ReactNode; dense?: bo
 
 export function SerticardPanel() {
   const t = useTranslations("admin.serticard");
+  const locale = useLocale();
   const [config, setConfig] = useState<Config | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
@@ -93,6 +126,9 @@ export function SerticardPanel() {
   const [editCmsName, setEditCmsName] = useState("");
   const [editCmsSaving, setEditCmsSaving] = useState(false);
   const [cmsDeleting, setCmsDeleting] = useState(false);
+  const [cmsListError, setCmsListError] = useState<string | null>(null);
+  const [cmsFetchedAt, setCmsFetchedAt] = useState<string | null>(null);
+  const [previewCms, setPreviewCms] = useState<{ id: number; name: string } | null>(null);
 
   const fetchConfig = useCallback(async () => {
     try {
@@ -116,14 +152,27 @@ export function SerticardPanel() {
   }, [t]);
 
   const fetchCmsTemplates = useCallback(async () => {
+    setCmsLoading(true);
+    setCmsListError(null);
     try {
       const res = await fetch("/api/admin/serticard/cms-templates");
-      if (!res.ok) throw new Error("list failed");
-      const data = (await res.json()) as { templates?: CmsTemplateRow[] };
+      const data = (await res.json()) as {
+        ok?: boolean;
+        templates?: CmsTemplateRow[];
+        count?: number;
+        fetchedAt?: string;
+        error?: string;
+      };
+      if (!res.ok) {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
       setCmsTemplates(Array.isArray(data.templates) ? data.templates : []);
-    } catch {
-      toast.error(t("cmsListFailedToast"));
+      setCmsFetchedAt(typeof data.fetchedAt === "string" ? data.fetchedAt : new Date().toISOString());
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : t("cmsListFailedToast");
+      setCmsListError(msg);
       setCmsTemplates([]);
+      setCmsFetchedAt(null);
     } finally {
       setCmsLoading(false);
     }
@@ -246,6 +295,7 @@ export function SerticardPanel() {
       const res = await fetch(`/api/admin/serticard/cms-templates/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("delete failed");
       toast.success(t("cmsDeleteOk"));
+      setPreviewCms((p) => (p?.id === id ? null : p));
       await fetchCmsTemplates();
       notifyConfigUpdated();
     } catch {
@@ -337,6 +387,7 @@ export function SerticardPanel() {
       toast.success(t("cmsRenameOk"));
       setEditCmsOpen(false);
       setEditCmsId(null);
+      setPreviewCms((p) => (p?.id === editCmsId ? { ...p, name: trimmed } : p));
       await fetchCmsTemplates();
       notifyConfigUpdated();
     } catch {
@@ -532,98 +583,226 @@ export function SerticardPanel() {
           </div>
         </div>
 
-        <div className="border-b border-white/[0.06] p-4 sm:p-5">
-          <FieldLabel dense>{t("cmsUploadNameLabel")}</FieldLabel>
-          <input
-            type="text"
-            value={cmsSpreadName}
-            onChange={(e) => setCmsSpreadName(e.target.value)}
-            placeholder={t("cmsUploadNamePlaceholder")}
-            className={inputClass}
-            maxLength={120}
-            disabled={cmsUploading}
-          />
+        <div className="border-b border-white/[0.06] px-4 py-4 sm:px-5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+            <div className="min-w-0 flex-1">
+              <FieldLabel dense>{t("cmsUploadNameLabel")}</FieldLabel>
+              <input
+                type="text"
+                value={cmsSpreadName}
+                onChange={(e) => setCmsSpreadName(e.target.value)}
+                placeholder={t("cmsUploadNamePlaceholder")}
+                className={inputClass}
+                maxLength={191}
+                disabled={cmsUploading}
+              />
+            </div>
+            <label className="inline-flex min-h-[48px] w-full shrink-0 cursor-pointer touch-manipulation items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#e8c547] to-[#c9a227] px-5 py-2.5 text-sm font-semibold text-black shadow-[0_0_20px_-6px_rgba(232,197,71,0.4)] transition hover:brightness-105 disabled:opacity-50 lg:w-auto lg:min-w-[200px]">
+              {cmsUploading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4" strokeWidth={2.5} />
+              )}
+              {cmsUploading ? t("cmsUploading") : t("cmsAddSpread")}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/jpg"
+                className="hidden"
+                disabled={cmsUploading}
+                onChange={(e) => {
+                  const input = e.target;
+                  const f = input.files?.[0];
+                  if (f) {
+                    void handleCmsUpload(f).finally(() => {
+                      input.value = "";
+                    });
+                  }
+                }}
+              />
+            </label>
+          </div>
           <p className={`mt-2 ${helperTextClass}`}>{t("cmsUploadNameHelp")}</p>
-          <label className="mt-4 flex min-h-[48px] w-full max-w-md cursor-pointer touch-manipulation items-center justify-center gap-2 rounded-xl border border-dashed border-luxury-gold/25 bg-luxury-gold/[0.06] px-4 py-3 text-sm font-semibold text-luxury-gold/95 transition hover:border-luxury-gold/40 hover:bg-luxury-gold/10 disabled:opacity-50">
-            {cmsUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-            {cmsUploading ? t("cmsUploading") : t("cmsPickSpread")}
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/jpg"
-              className="hidden"
-              disabled={cmsUploading}
-              onChange={(e) => {
-                const input = e.target;
-                const f = input.files?.[0];
-                if (f) {
-                  void handleCmsUpload(f).finally(() => {
-                    input.value = "";
-                  });
-                }
-              }}
-            />
-          </label>
         </div>
 
+        {!cmsLoading && cmsListError && (
+          <div className="mx-4 my-4 flex flex-col gap-3 rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-4 sm:mx-5">
+            <p className="text-sm font-medium text-red-200/95">{t("cmsListErrorTitle")}</p>
+            <p className="font-mono text-xs text-red-200/70 break-all">{cmsListError}</p>
+            <button
+              type="button"
+              onClick={() => void fetchCmsTemplates()}
+              className="self-start rounded-lg border border-red-400/35 bg-red-500/15 px-4 py-2 text-xs font-semibold text-red-100 transition hover:bg-red-500/25"
+            >
+              {t("cmsRetry")}
+            </button>
+          </div>
+        )}
+
+        {!cmsLoading && !cmsListError && cmsFetchedAt && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-white/[0.05] px-4 py-2.5 sm:px-5">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[11px] font-medium text-white/85">
+              <span className="h-1.5 w-1.5 rounded-full bg-luxury-gold" aria-hidden />
+              {t("cmsStatsTotal", { count: cmsTemplates.length })}
+            </span>
+            <span className="text-[11px] text-emerald-400/90">{t("cmsStatusLive")}</span>
+            <span className="text-[11px] text-white/35">·</span>
+            <span className="text-[11px] text-white/45">
+              {t("cmsSyncedAt", {
+                time: new Date(cmsFetchedAt).toLocaleTimeString(locale === "id" ? "id-ID" : "en-GB", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+              })}
+            </span>
+          </div>
+        )}
+
         <div className="p-4 sm:p-5">
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-white/45">{t("cmsListTitle")}</p>
           {cmsLoading ? (
-            <div className="flex justify-center py-10">
-              <Loader2 className="h-7 w-7 animate-spin text-white/40" />
+            <CmsTableSkeleton />
+          ) : cmsListError ? null : cmsTemplates.length === 0 ? (
+            <div className="relative overflow-hidden rounded-2xl border border-white/[0.09] bg-gradient-to-br from-white/[0.05] via-black/40 to-black/80 px-6 py-14 text-center sm:px-10 sm:py-16">
+              <div
+                className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-luxury-gold/[0.06] blur-3xl"
+                aria-hidden
+              />
+              <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-luxury-gold/90">
+                <Layers className="h-7 w-7" strokeWidth={1.5} />
+              </span>
+              <p className="text-base font-semibold tracking-tight text-white">{t("cmsEmptyTitle")}</p>
+              <p className={`mx-auto mt-2 max-w-md text-sm ${helperTextClass}`}>{t("cmsEmptySubtitle")}</p>
             </div>
-          ) : cmsTemplates.length === 0 ? (
-            <p className={`rounded-lg border border-white/8 bg-black/30 px-4 py-8 text-center text-sm ${helperTextClass}`}>
-              {t("cmsEmpty")}
-            </p>
           ) : (
-            <ul className="space-y-3">
-              {cmsTemplates.map((row) => (
-                <li
-                  key={row.id}
-                  className="flex flex-col gap-3 rounded-xl border border-white/[0.08] bg-black/30 p-3 sm:flex-row sm:items-center sm:gap-4 sm:p-4"
-                >
-                  <div className="flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-black/50 sm:h-24 sm:w-36">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={cmsPreviewUrl(row.id)}
-                      alt=""
-                      className="h-20 max-h-[5rem] w-full max-w-[9rem] object-contain sm:h-full sm:max-h-none sm:w-full"
-                    />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-white/95">{row.name}</p>
-                    <p className="mt-1 flex items-center gap-1.5 text-xs text-white/45">
-                      <Calendar className="h-3.5 w-3.5 shrink-0" />
-                      {new Date(row.createdAt).toLocaleString(undefined, {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                      })}
-                    </p>
-                    <p className={`mt-1 font-mono text-[10px] text-white/30 truncate`}>{row.r2Key}</p>
-                  </div>
-                  <div className="flex shrink-0 flex-wrap gap-2 sm:flex-col sm:items-stretch">
-                    <button
-                      type="button"
-                      onClick={() => openEditCms(row)}
-                      disabled={!!deleting || cmsDeleting}
-                      className="inline-flex min-h-[40px] flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-white/[0.06] px-3 py-2 text-xs font-semibold text-white/90 transition hover:bg-white/10 disabled:opacity-50 sm:flex-none"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                      {t("cmsEdit")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDialog({ kind: "cmsDelete", id: row.id, name: row.name })}
-                      disabled={!!deleting || cmsDeleting}
-                      className="inline-flex min-h-[40px] flex-1 items-center justify-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-100 transition hover:bg-red-500/18 disabled:opacity-50 sm:flex-none"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      {t("cmsDelete")}
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.035] to-transparent shadow-[0_24px_48px_-32px_rgba(0,0,0,0.9)]">
+              <div className="h-px w-full bg-gradient-to-r from-transparent via-luxury-gold/25 to-transparent" aria-hidden />
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[860px] text-left text-[13px]">
+                  <thead>
+                    <tr className="border-b border-white/[0.07] bg-black/50">
+                      <th
+                        scope="col"
+                        className="w-16 px-3 py-3.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40 sm:px-4"
+                      >
+                        {t("cmsColThumb")}
+                      </th>
+                      <th
+                        scope="col"
+                        className="whitespace-nowrap px-3 py-3.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40 sm:px-4"
+                      >
+                        <span className="inline-flex items-center gap-1.5">
+                          <CalendarDays className="h-3.5 w-3.5 text-white/30" aria-hidden />
+                          {t("cmsColDate")}
+                        </span>
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-3 py-3.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40 sm:px-4"
+                      >
+                        {t("cmsColTitle")}
+                      </th>
+                      <th
+                        scope="col"
+                        className="whitespace-nowrap px-3 py-3.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40 sm:px-4"
+                      >
+                        {t("cmsColStatus")}
+                      </th>
+                      <th
+                        scope="col"
+                        className="whitespace-nowrap px-3 py-3.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40 sm:px-4"
+                      >
+                        {t("cmsColDropdown")}
+                      </th>
+                      <th
+                        scope="col"
+                        className="whitespace-nowrap px-3 py-3.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40 sm:px-4"
+                      >
+                        {t("cmsColPreview")}
+                      </th>
+                      <th
+                        scope="col"
+                        className="whitespace-nowrap px-3 py-3.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40 sm:px-4"
+                      >
+                        {t("cmsColActions")}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.05]">
+                    {cmsTemplates.map((row, i) => (
+                      <tr
+                        key={row.id}
+                        className={clsx(
+                          "group transition-colors duration-150",
+                          "border-l-2 border-l-transparent hover:border-l-luxury-gold/40 hover:bg-white/[0.03]",
+                          i % 2 === 1 ? "bg-black/15" : "bg-transparent"
+                        )}
+                      >
+                        <td className="px-3 py-3 sm:px-4">
+                          <div className="flex h-11 w-14 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-black/50">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={cmsPreviewUrl(row.id)}
+                              alt=""
+                              className="max-h-10 max-w-[3.5rem] object-contain"
+                            />
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-3 tabular-nums text-white/75 sm:px-4">
+                          {formatCmsTableDate(row.createdAt, locale)}
+                        </td>
+                        <td className="max-w-[min(280px,32vw)] px-3 py-3 sm:px-4">
+                          <p className="truncate font-medium leading-snug text-white">{row.name}</p>
+                          <p className="mt-1 truncate font-mono text-[11px] leading-snug text-white/35">{row.r2Key}</p>
+                        </td>
+                        <td className="px-3 py-3 sm:px-4">
+                          <span className="inline-flex items-center rounded-full border border-emerald-400/20 bg-emerald-500/[0.12] px-2.5 py-1 text-[11px] font-semibold tracking-wide text-emerald-300/95">
+                            {t("cmsRowLive")}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 sm:px-4">
+                          <code className="rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] text-luxury-gold/90">
+                            cms:{row.id}
+                          </code>
+                        </td>
+                        <td className="px-3 py-3 sm:px-4">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewCms({ id: row.id, name: row.name })}
+                            className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] py-1.5 pl-2.5 pr-3 text-[11px] font-medium text-luxury-gold/95 transition hover:border-luxury-gold/25 hover:bg-luxury-gold/[0.08]"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                            <span className="min-w-0 truncate">{t("cmsOpenPreview")}</span>
+                          </button>
+                        </td>
+                        <td className="px-3 py-3 text-right sm:px-4">
+                          <div className="inline-flex items-center gap-0.5 rounded-xl border border-white/[0.06] bg-black/30 p-0.5">
+                            <button
+                              type="button"
+                              onClick={() => openEditCms(row)}
+                              disabled={!!deleting || cmsDeleting}
+                              className="inline-flex rounded-lg p-2 text-white/55 transition hover:bg-white/10 hover:text-white disabled:opacity-35"
+                              aria-label={t("cmsEdit")}
+                              title={t("cmsEdit")}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDialog({ kind: "cmsDelete", id: row.id, name: row.name })}
+                              disabled={!!deleting || cmsDeleting}
+                              className="inline-flex rounded-lg p-2 text-white/55 transition hover:bg-red-500/15 hover:text-red-300 disabled:opacity-35"
+                              aria-label={t("cmsDelete")}
+                              title={t("cmsDelete")}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
         </div>
       </motion.div>
@@ -760,6 +939,38 @@ export function SerticardPanel() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        open={previewCms !== null}
+        onClose={() => setPreviewCms(null)}
+        title={previewCms ? previewCms.name : t("cmsPreviewModalTitle")}
+        size="wide"
+      >
+        {previewCms && (
+          <div className="space-y-3">
+            <p className={`text-sm ${helperTextClass}`}>
+              {t("cmsPreviewModalHint", { id: previewCms.id })}
+            </p>
+            <div className="max-h-[min(72vh,600px)] w-full overflow-auto rounded-xl border border-white/10 bg-black/50 p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={cmsPreviewUrl(previewCms.id)}
+                alt=""
+                className="mx-auto block h-auto max-h-[min(68vh,560px)] w-auto max-w-none object-contain"
+              />
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setPreviewCms(null)}
+                className="min-h-[44px] rounded-xl border border-white/15 px-5 py-2.5 text-sm font-semibold text-white/85 transition hover:bg-white/5"
+              >
+                {t("cmsPreviewClose")}
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
