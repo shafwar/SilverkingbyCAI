@@ -7,7 +7,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { PDFDocument } from "pdf-lib";
 import { createHash } from "crypto";
-import { loadSerticardTemplates } from "@/lib/load-serticard-templates";
+import { loadSerticardTemplates, isAffirmativeCustomFlag } from "@/lib/load-serticard-templates";
 import { getSerticardConfig, getFontSizeMultipliers } from "@/lib/serticard-config";
 
 /** Request dengan product count di atas ini diproses di background (hindari timeout 524). */
@@ -88,8 +88,13 @@ export async function POST(request: NextRequest) {
       templateVariant: templateVariantParam,
       useCustomTemplate,
     } = body;
-    const templateVariant = templateVariantParam ?? "01";
-    const useCustom = useCustomTemplate === true;
+    const rawVariant =
+      templateVariantParam != null && templateVariantParam !== ""
+        ? String(templateVariantParam)
+        : "01";
+    const templateVariant = rawVariant === "custom" ? "01" : rawVariant;
+    const useCustom =
+      isAffirmativeCustomFlag(useCustomTemplate) || rawVariant === "custom";
     const rawCms = body?.cmsTemplateId;
     const cmsParsed =
       rawCms != null && rawCms !== "" ? Math.floor(Number(rawCms)) : null;
@@ -534,6 +539,7 @@ async function buildOneZipChunk(
     hasMultipleWeights,
     templateVariant,
     cmsTemplateId,
+    useCustom,
   } = ctx;
     const zip = new JSZip();
     let successCount = 0;
@@ -580,7 +586,9 @@ async function buildOneZipChunk(
       frontCtx!.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
         const nameOffset = Math.round(frontTemplateImage.height * 0.038);
         const serialOffset = Math.round(frontTemplateImage.height * 0.038);
-        const isDarkTemplate = templateVariant !== "01" && cmsTemplateId == null;
+        // Dark artwork: non-01 built-ins, or admin custom pair (often burgundy/dark like variant 01 art).
+        const isDarkTemplate =
+          cmsTemplateId == null && (useCustom || templateVariant !== "01");
         const textColor = isDarkTemplate ? "#ffffff" : "#111111";
         const nameFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.nameMultiplier);
         const nameY = qrY - nameOffset;
@@ -1095,7 +1103,7 @@ async function processZipJobInBackground(jobId: number): Promise<void> {
     }>;
     productTitle?: string;
     templateVariant?: string;
-    useCustomTemplate?: boolean;
+    useCustomTemplate?: unknown;
     cmsTemplateId?: number | null;
     batchNumber?: number;
     batchId?: number;
@@ -1136,10 +1144,18 @@ async function processZipJobInBackground(jobId: number): Promise<void> {
     return Number.isFinite(n) && n > 0 ? n : null;
   })();
 
+  const rawJobVariant =
+    payload.templateVariant != null && String(payload.templateVariant) !== ""
+      ? String(payload.templateVariant)
+      : "01";
+  const templateVariantJob = rawJobVariant === "custom" ? "01" : rawJobVariant;
+  const useCustomJob =
+    isAffirmativeCustomFlag(payload.useCustomTemplate) || rawJobVariant === "custom";
+
   const zipOpts: ZipGenOpts = {
     bodyProductTitle: payload.productTitle,
-    templateVariant: payload.templateVariant ?? "01",
-    useCustom: payload.useCustomTemplate === true,
+    templateVariant: templateVariantJob,
+    useCustom: useCustomJob,
     cmsTemplateId: cmsTemplateIdJob,
     batchNumber: payload.batchNumber ?? payload.batchId ?? Math.floor(Date.now() / 1000),
     isGramRequest: validProducts.some((p) => p.isGram),

@@ -1060,7 +1060,19 @@ export function QrPreviewGrid() {
     if (!data?.products) return;
 
     const selectedProducts = data.products.filter((p) => selectedItems.has(p.id));
-    const serialCodes = selectedProducts.map((p) => p.serialCode);
+    const productsPayload = selectedProducts
+      .map((p) => ({
+        id: p.id,
+        name: (p.name || "").trim(),
+        serialCode: (p.serialCode || "").trim(),
+        weight: p.weight ?? 0,
+      }))
+      .filter((p) => p.name.length > 0 && p.serialCode.length > 0);
+
+    if (productsPayload.length === 0) {
+      toast.error(t("downloadSelectedFailed"));
+      return;
+    }
 
     setIsDownloadingSelected(true);
     setDownloadPercent(0);
@@ -1079,7 +1091,7 @@ export function QrPreviewGrid() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          serialCodes,
+          products: productsPayload,
           ...(() => {
             const tpl = templateSelectToApiBody(selectedTemplateVariant);
             return {
@@ -1126,70 +1138,117 @@ export function QrPreviewGrid() {
       const contentType = response.headers.get("Content-Type");
 
       if (contentType?.includes("application/json")) {
-        // Response is JSON with R2 download URL
-        const result = await response.json();
-        if (result.success && result.downloadUrl) {
+        let result = (await response.json()) as Record<string, any>;
+        if (result.jobId != null && result.status === "pending") {
+          setDownloadLabel("ZIP sedang diproses di server...");
+          const jobId = result.jobId as number;
+          const maxAttempts = 240;
+          let completed = false;
+          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            if (abortController.signal.aborted) throw new Error("Download cancelled");
+            await new Promise((r) => setTimeout(r, 2000));
+            const jobRes = await fetch(`/api/qr/download-job/${jobId}`, {
+              signal: abortController.signal,
+            });
+            if (!jobRes.ok) {
+              const err = (await jobRes.json().catch(() => ({}))) as { error?: string };
+              throw new Error(err.error || "Gagal memeriksa status ZIP");
+            }
+            const jobData = (await jobRes.json()) as {
+              status: string;
+              result?: Record<string, any>;
+              errorMessage?: string;
+              progressPercent?: number;
+              progressMessage?: string | null;
+            };
+            if (jobData.progressMessage || jobData.progressPercent != null) {
+              setDownloadLabel(
+                (jobData.progressMessage?.slice(0, 72) as string) ||
+                  `Memproses… ${jobData.progressPercent ?? 0}%`
+              );
+            }
+            if (jobData.status === "FAILED") {
+              throw new Error(jobData.errorMessage || "ZIP gagal diproses");
+            }
+            if (jobData.status === "COMPLETED" && jobData.result) {
+              result = { ...jobData.result, success: true };
+              completed = true;
+              break;
+            }
+          }
+          if (!completed) {
+            throw new Error("Timeout: ZIP belum selesai. Kurangi jumlah item atau coba lagi.");
+          }
+        }
+
+        const primaryUrl = (result.downloadUrl || result.download_url) as string | undefined;
+        const downloads = Array.isArray(result.downloads) ? result.downloads : [];
+
+        const downloadOneZipFromUrl = async (zipUrl: string, filenameHint: string) => {
           setDownloadLabel(`Mengunduh dari R2...`);
           setDownloadPercent(50);
-
-          console.log(`[Download] Downloading from R2: ${result.downloadUrl}`);
-
-          // Download from R2 URL with progress tracking
-          const r2Response = await fetch(result.downloadUrl, {
-            signal: abortController.signal,
-          });
+          console.log(`[Download] Downloading from R2: ${zipUrl}`);
+          const r2Response = await fetch(zipUrl, { signal: abortController.signal });
           if (!r2Response.ok) {
             throw new Error(`Gagal mengunduh dari R2. Status: ${r2Response.status}`);
           }
-
-          // Track download progress from R2
           const r2ContentLength = r2Response.headers.get("content-length");
           const r2Total = r2ContentLength ? parseInt(r2ContentLength, 10) : null;
           let r2Loaded = 0;
-
           const r2Reader = r2Response.body?.getReader();
           if (!r2Reader) {
             throw new Error(`Stream download tidak tersedia dari R2`);
           }
-
           const r2Chunks: BlobPart[] = [];
           while (true) {
-            // Check for abort during download
-            if (abortController.signal.aborted) {
-              throw new Error("Download cancelled");
-            }
+            if (abortController.signal.aborted) throw new Error("Download cancelled");
             const { done, value } = await r2Reader.read();
             if (done) break;
-
             if (value) {
               r2Chunks.push(value);
               r2Loaded += value.length;
-
-              // Update progress
               if (r2Total) {
                 const r2Progress = Math.round((r2Loaded / r2Total) * 100);
-                const overallProgress = Math.round(50 + r2Progress / 2); // 50-100%
-                setDownloadPercent(overallProgress);
+                setDownloadPercent(Math.round(50 + r2Progress / 2));
                 setDownloadLabel(`Mengunduh dari R2... ${r2Progress}%`);
               }
             }
           }
-
           const r2Blob = new Blob(r2Chunks, { type: "application/zip" });
           const url = window.URL.createObjectURL(r2Blob);
           const link = document.createElement("a");
           link.href = url;
           link.download =
-            result.filename ||
-            `Silver-King-Selected-QR-Codes-${serialCodes.length}-${new Date().toISOString().split("T")[0]}.zip`;
+            filenameHint ||
+            (result.filename as string) ||
+            `Silver-King-Selected-QR-Codes-${productsPayload.length}-${new Date().toISOString().split("T")[0]}.zip`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
           window.URL.revokeObjectURL(url);
+          console.log(`[Download] Downloaded from R2 successfully: ${zipUrl}`);
+        };
 
-          console.log(`[Download] Downloaded from R2 successfully: ${result.downloadUrl}`);
+        if (result.success && downloads.length > 0) {
+          for (let di = 0; di < downloads.length; di++) {
+            const d = downloads[di] as { download_url?: string; downloadUrl?: string };
+            const u = d.download_url || d.downloadUrl;
+            if (!u) continue;
+            setDownloadLabel(`Mengunduh dari R2… (${di + 1}/${downloads.length})`);
+            setDownloadPercent(Math.round(((di + 0.5) / Math.max(1, downloads.length)) * 100));
+            await downloadOneZipFromUrl(
+              u,
+              `Silver-King-Selected-part-${di + 1}-of-${downloads.length}.zip`
+            );
+            if (di < downloads.length - 1) await new Promise((r) => setTimeout(r, 400));
+          }
+        } else if (result.success && primaryUrl) {
+          await downloadOneZipFromUrl(
+            primaryUrl,
+            `Silver-King-Selected-QR-Codes-${productsPayload.length}-${new Date().toISOString().split("T")[0]}.zip`
+          );
         } else {
-          throw new Error(result.error || `Gagal mendapatkan URL download`);
+          throw new Error((result.error as string) || `Gagal mendapatkan URL download`);
         }
       } else if (contentType?.startsWith("application/zip")) {
         // Direct ZIP download (fallback)
@@ -1236,7 +1295,7 @@ export function QrPreviewGrid() {
         link.href = url;
 
         const contentDisposition = response.headers.get("Content-Disposition");
-        let filename = `Silver-King-Selected-QR-Codes-${serialCodes.length}-${new Date().toISOString().split("T")[0]}.zip`;
+        let filename = `Silver-King-Selected-QR-Codes-${productsPayload.length}-${new Date().toISOString().split("T")[0]}.zip`;
         if (contentDisposition) {
           const filenameMatch = contentDisposition.match(/filename=?"?([^\s"]+)"?/);
           if (filenameMatch) {
@@ -1265,7 +1324,7 @@ export function QrPreviewGrid() {
         setIsDownloadMinimized(false);
       }, 2000);
 
-      toast.success(t("downloadSelectedSuccess", { count: serialCodes.length }));
+      toast.success(t("downloadSelectedSuccess", { count: productsPayload.length }));
     } catch (error: any) {
       // Check if error is due to abort
       if (error?.name === "AbortError" || abortController.signal.aborted) {

@@ -33,11 +33,21 @@ export type LoadSerticardTemplatesOptions = {
   /** CMS row id: single spread image in R2, split left = front (QR), right = back */
   cmsTemplateId?: number | null;
   /**
-   * When true and both admin custom files exist in R2, load that pair.
-   * When false/omitted, use built-in variant (01, 03, …) even if custom files exist — same as pre-regression behavior.
+   * When truthy and both admin custom files exist in R2, load that pair.
+   * When false/omitted, use built-in variant (01, 03, …) even if custom files exist.
    */
-  useCustomTemplate?: boolean;
+  useCustomTemplate?: boolean | string | number | null;
 };
+
+/** JSON / job payloads occasionally send "true" / 1 — treat like boolean true */
+export function isAffirmativeCustomFlag(v: unknown): boolean {
+  if (v === true || v === 1) return true;
+  if (typeof v === "string") {
+    const s = v.trim().toLowerCase();
+    return s === "true" || s === "1" || s === "yes";
+  }
+  return false;
+}
 
 /** Split one horizontal spread into two panels (same pipeline as paired front/back files). */
 function splitSpreadToFrontBack(fullImage: any, canvasMod: any): LoadedTemplates {
@@ -98,25 +108,35 @@ export async function loadSerticardTemplates(
     }
   }
 
-  const wantsCustom = options?.useCustomTemplate === true;
-  const config = await getSerticardConfig();
-  const customAvailable =
-    Boolean(config.customFrontR2Key) &&
-    Boolean(config.customBackR2Key) &&
-    (await fileExistsInR2(config.customFrontR2Key!)) &&
-    (await fileExistsInR2(config.customBackR2Key!));
+  const wantsCustom = isAffirmativeCustomFlag(options?.useCustomTemplate);
 
-  if (wantsCustom && customAvailable) {
-    const [front, back] = await Promise.all([
-      loadImageFromR2(config.customFrontR2Key!),
-      loadImageFromR2(config.customBackR2Key!),
-    ]);
-    return { front, back };
-  }
+  if (wantsCustom) {
+    const config = await getSerticardConfig();
+    let customAvailable = false;
+    try {
+      customAvailable =
+        Boolean(config.customFrontR2Key) &&
+        Boolean(config.customBackR2Key) &&
+        (await fileExistsInR2(config.customFrontR2Key!)) &&
+        (await fileExistsInR2(config.customBackR2Key!));
+    } catch (e) {
+      console.warn(
+        "[Serticard] R2 check for custom templates failed; falling back to built-in variant:",
+        e instanceof Error ? e.message : e
+      );
+      customAvailable = false;
+    }
 
-  if (wantsCustom && !customAvailable) {
+    if (customAvailable) {
+      const [front, back] = await Promise.all([
+        loadImageFromR2(config.customFrontR2Key!),
+        loadImageFromR2(config.customBackR2Key!),
+      ]);
+      return { front, back };
+    }
+
     console.warn(
-      "[Serticard] useCustomTemplate requested but custom front/back missing in R2; falling back to variant:",
+      "[Serticard] Custom template requested but pair missing or R2 unreachable; using variant:",
       variantId
     );
   }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PDFDocument } from "pdf-lib";
-import { loadSerticardTemplates } from "@/lib/load-serticard-templates";
+import { loadSerticardTemplates, isAffirmativeCustomFlag } from "@/lib/load-serticard-templates";
 import { getSerticardConfig, getFontSizeMultipliers } from "@/lib/serticard-config";
 
 /**
@@ -59,8 +59,8 @@ export async function POST(request: NextRequest) {
     const productName = String(product.name).trim();
     const productSerialCode = String(product.serialCode).trim().toUpperCase();
     const isGram = Boolean(product.isGram);
-    const templateVariant = body?.templateVariant ?? "01";
-    const useCustom = body?.useCustomTemplate === true;
+    const rawVariant = body?.templateVariant != null ? String(body.templateVariant) : "01";
+    const templateVariant = rawVariant === "custom" ? "01" : rawVariant;
     const rawCms = body?.cmsTemplateId;
     const cmsTemplateId =
       rawCms != null && rawCms !== ""
@@ -109,9 +109,13 @@ export async function POST(request: NextRequest) {
     });
 
     // --- Load Serticard templates (CMS spread, custom pair only if requested, else built-in variant) ---
+    const useCustomRequested =
+      isAffirmativeCustomFlag(body?.useCustomTemplate) || rawVariant === "custom";
     const { front: frontTemplateImage, back: backTemplateImage } = await loadSerticardTemplates(
       templateVariant,
-      useCmsTemplate ? { cmsTemplateId: cmsTemplateId! } : { useCustomTemplate: useCustom }
+      useCmsTemplate
+        ? { cmsTemplateId: cmsTemplateId! }
+        : { useCustomTemplate: useCustomRequested }
     );
     const fontConfig = await getSerticardConfig();
     const sizeMultipliers = getFontSizeMultipliers(
@@ -156,7 +160,8 @@ export async function POST(request: NextRequest) {
 
     const nameOffset = Math.round(frontTemplateImage.height * 0.038);
     const serialOffset = Math.round(frontTemplateImage.height * 0.038);
-    const isDarkTemplate = !useCmsTemplate && templateVariant !== "01";
+    const isDarkTemplate =
+      !useCmsTemplate && (useCustomRequested || templateVariant !== "01");
     const textColor = isDarkTemplate ? "#ffffff" : "#111111";
 
     const nameFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.nameMultiplier);
