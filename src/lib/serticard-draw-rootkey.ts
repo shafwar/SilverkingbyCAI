@@ -1,5 +1,5 @@
 /**
- * Root key on BACK panel: larger bold pill, readable on dark or busy templates.
+ * Root key on BACK panel: bold pill centered along the bottom safe band (readable on busy templates).
  * `backCtx` is node-canvas or browser 2D context (typed loosely for compatibility).
  * Pass `monoFamily` from server PDF pipeline (registered OTF) so digits render on Linux.
  */
@@ -29,15 +29,17 @@ export function drawSerticardRootKeyPill(
   monoFamily: string = "Courier New"
 ): void {
   const mono = monoFamily;
-  const padX = Math.round(backW * 0.07);
-  const padY = Math.round(backH * 0.07);
-  const x = padX;
-  const y = backH - padY;
+  /** Side safe inset so the pill never hugs the spine / outer trim awkwardly. */
+  const marginX = Math.round(backW * 0.055);
+  /** Slightly more inset from bottom so it sits inside the inner frame line on templates. */
+  const marginY = Math.round(backH * 0.072);
+  const anchorX = backW / 2;
+  const anchorY = backH - marginY;
   const fontSize = Math.max(22, Math.min(40, Math.floor(backW * 0.062)));
   const font = `700 ${fontSize}px ${mono}`;
   backCtx.save();
   backCtx.font = font;
-  backCtx.textAlign = "left";
+  backCtx.textAlign = "center";
   backCtx.textBaseline = "alphabetic";
 
   const metrics = backCtx.measureText(label);
@@ -45,8 +47,13 @@ export function drawSerticardRootKeyPill(
   const padW = fontSize * 0.65;
   const boxW = Math.ceil(metrics.width + padW * 2);
   const boxH = Math.ceil(fontSize + padH * 2);
-  const boxX = x - padW;
-  const boxY = y - boxH + Math.floor(fontSize * 0.15);
+  let boxX = Math.round(anchorX - boxW / 2);
+  const minX = marginX;
+  const maxX = backW - marginX - boxW;
+  if (boxX < minX) boxX = minX;
+  if (boxX > maxX) boxX = Math.max(minX, maxX);
+  const textX = boxX + boxW / 2;
+  const boxY = anchorY - boxH + Math.floor(fontSize * 0.15);
   const r = Math.ceil(fontSize * 0.35);
 
   backCtx.fillStyle = "rgba(0,0,0,0.62)";
@@ -59,8 +66,8 @@ export function drawSerticardRootKeyPill(
   backCtx.closePath();
   backCtx.fill();
 
-  const tx = x;
-  const ty = y;
+  const tx = textX;
+  const ty = anchorY;
   backCtx.lineJoin = "round";
   backCtx.lineWidth = Math.max(2, Math.ceil(fontSize * 0.08));
   backCtx.strokeStyle = "rgba(0,0,0,0.55)";

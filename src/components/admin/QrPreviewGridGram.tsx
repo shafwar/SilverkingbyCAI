@@ -77,6 +77,29 @@ function withZipDownloadCacheBust(url: string, bustMs: number): string {
   }
 }
 
+function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+    const id = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(id);
+      signal.removeEventListener("abort", onAbort);
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    signal.addEventListener("abort", onAbort);
+  });
+}
+
+function isAbortError(e: unknown): boolean {
+  return e instanceof DOMException && e.name === "AbortError";
+}
+
 type GramPreviewBatch = {
   batchId: number;
   name: string;
@@ -162,6 +185,41 @@ export function QrPreviewGridGram({ batches }: Props) {
   const [selectedSingleTemplateId, setSelectedSingleTemplateId] = useState<string>("01");
   /** Increment saat tombol segarkan modal / buka ulang agar zip-ready di-fetch ulang dari server. */
   const [zipReadyRefreshNonce, setZipReadyRefreshNonce] = useState(0);
+  /** Membatalkan fetch ZIP (modal kartu + modal serial) saat user memilih batal. */
+  const zipCompileAbortRef = useRef<AbortController | null>(null);
+  const zipAbortReasonRef = useRef<"cancel" | "refresh" | null>(null);
+
+  const confirmCancelZipCompile = () => {
+    if (
+      !window.confirm(
+        "Apakah Anda yakin ingin membatalkan? Proses ZIP di sini akan dihentikan dan tidak akan dilanjutkan."
+      )
+    ) {
+      return;
+    }
+    zipAbortReasonRef.current = "cancel";
+    zipCompileAbortRef.current?.abort();
+    zipCompileAbortRef.current = null;
+    setDownloadingZipBatchId(null);
+    setIsDownloadingBatchZip(false);
+    setZipProgress(null);
+  };
+
+  /** Segarkan: kosongkan daftar siap unduh, hentikan ZIP yang sedang jalan, ambil ulang dari server. */
+  const handleModalZipRefresh = () => {
+    if (zipCompileAbortRef.current) {
+      zipAbortReasonRef.current = "refresh";
+      zipCompileAbortRef.current.abort();
+    }
+    zipCompileAbortRef.current = null;
+    setDownloadingZipBatchId(null);
+    setIsDownloadingBatchZip(false);
+    setZipProgress(null);
+    setZipDownloadResult(null);
+    setZipR2Status({});
+    setZipReadyRefreshNonce((n) => n + 1);
+    router.refresh();
+  };
 
   useEffect(() => {
     setSelectedZipTemplateId((v) => (typeof v === "string" && v.startsWith("cms:") ? "01" : v));
@@ -686,9 +744,15 @@ export function QrPreviewGridGram({ batches }: Props) {
       isGram: true,
       rootKey: item.rootKey ?? null,
     }));
+    let compileAc: AbortController | null = null;
     try {
       setIsDownloadingBatchZip(true);
       setZipProgress({ percent: 0, label: "Mempersiapkan..." });
+      zipCompileAbortRef.current?.abort();
+      compileAc = new AbortController();
+      zipCompileAbortRef.current = compileAc;
+      const signal = compileAc.signal;
+
       const chunks: Array<{
         id: number;
         name: string;
@@ -718,6 +782,7 @@ export function QrPreviewGridGram({ batches }: Props) {
             includeRootKey: true,
             ...(tpl.cmsTemplateId != null ? { cmsTemplateId: tpl.cmsTemplateId } : {}),
           }),
+          signal,
         });
         if (!response.ok) {
           const text = await response.text();
@@ -791,11 +856,23 @@ export function QrPreviewGridGram({ batches }: Props) {
         toast.success(`ZIP Serticard batch (${products.length} item) diunduh`, { duration: 5000 });
       }
     } catch (error) {
+      if (isAbortError(error)) {
+        if (zipAbortReasonRef.current === "refresh") {
+          toast.message("Memuat ulang daftar ZIP dari server…");
+        } else {
+          toast.message("Proses ZIP dibatalkan.");
+        }
+        zipAbortReasonRef.current = null;
+        return;
+      }
       console.error("[GramPreview] handleDownloadBatchSerticardsZip error:", error);
       alert(
         error instanceof Error ? error.message : "Gagal mengunduh ZIP Serticard. Silakan coba lagi."
       );
     } finally {
+      if (compileAc != null && zipCompileAbortRef.current === compileAc) {
+        zipCompileAbortRef.current = null;
+      }
       setIsDownloadingBatchZip(false);
       setZipProgress(null);
     }
@@ -808,11 +885,17 @@ export function QrPreviewGridGram({ batches }: Props) {
     itemCount: number
   ) => {
     const tpl = templateSelectToApiBody(selectedZipTemplateId);
+    let compileAc: AbortController | null = null;
     try {
       setZipDownloadResult(null);
       setDownloadingZipBatchId(batchId);
       setZipProgress({ percent: 0, label: "Mengambil data batch..." });
-      const res = await fetch(`/api/gram-products/batch/${batchId}?includeItems=true`);
+      zipCompileAbortRef.current?.abort();
+      compileAc = new AbortController();
+      zipCompileAbortRef.current = compileAc;
+      const signal = compileAc.signal;
+
+      const res = await fetch(`/api/gram-products/batch/${batchId}?includeItems=true`, { signal });
       if (!res.ok) throw new Error("Gagal mengambil data item batch");
       const data = await res.json();
       const items = data.items ?? [];
@@ -847,8 +930,10 @@ export function QrPreviewGridGram({ batches }: Props) {
             includeRootKey: true,
             ...(tpl.cmsTemplateId != null ? { cmsTemplateId: tpl.cmsTemplateId } : {}),
           }),
+          signal,
         });
       } catch (networkErr) {
+        if (isAbortError(networkErr)) throw networkErr;
         throw new Error("Koneksi gagal. Periksa jaringan dan coba lagi.");
       }
       if (!response.ok) {
@@ -910,11 +995,11 @@ export function QrPreviewGridGram({ batches }: Props) {
           const fetchJobStatus = async (): Promise<Response> => {
             let lastBody: { code?: string; error?: string } = {};
             for (let retry = 0; retry <= 2; retry++) {
-              const res = await fetch(`/api/qr/download-job/${json.jobId}`);
+              const res = await fetch(`/api/qr/download-job/${json.jobId}`, { signal });
               if (res.ok) return res;
               lastBody = (await res.json().catch(() => ({}))) as { code?: string; error?: string };
               if (retry < 2 && res.status >= 500) {
-                await new Promise((r) => setTimeout(r, 1000));
+                await sleep(1000, signal);
                 continue;
               }
               break;
@@ -1010,7 +1095,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                 : `Memeriksa status... (${attempts}/${maxAttempts})`);
             setZipProgress({ percent: progressPct, label: progressLabel });
             if (attempts < maxAttempts) {
-              await new Promise((r) => setTimeout(r, intervalMs));
+              await sleep(intervalMs, signal);
             }
           }
           throw new Error(
@@ -1036,11 +1121,23 @@ export function QrPreviewGridGram({ batches }: Props) {
       window.URL.revokeObjectURL(url);
       setDownloadDropdownOpen(null);
     } catch (error) {
+      if (isAbortError(error)) {
+        if (zipAbortReasonRef.current === "refresh") {
+          toast.message("Memuat ulang daftar ZIP dari server…");
+        } else {
+          toast.message("Proses ZIP dibatalkan.");
+        }
+        zipAbortReasonRef.current = null;
+        return;
+      }
       console.error("[GramPreview] handleDownloadBatchAsZipFromCard error:", error);
       alert(
         error instanceof Error ? error.message : "Gagal mengunduh ZIP Serticard. Silakan coba lagi."
       );
     } finally {
+      if (compileAc != null && zipCompileAbortRef.current === compileAc) {
+        zipCompileAbortRef.current = null;
+      }
       setDownloadingZipBatchId(null);
       setZipProgress(null);
     }
@@ -1443,11 +1540,23 @@ export function QrPreviewGridGram({ batches }: Props) {
                 </motion.button>
               </div>
               {isDownloadingBatchZip && zipProgress && (
-                <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
-                  <div
-                    className="h-full bg-[#FFD700]/70 rounded-full transition-all duration-300"
-                    style={{ width: `${zipProgress.percent}%` }}
-                  />
+                <div className="space-y-2">
+                  <div className="relative h-2 w-full rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      className="h-full bg-[#FFD700]/70 rounded-full transition-all duration-300"
+                      style={{ width: `${zipProgress.percent}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={confirmCancelZipCompile}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/5 px-2.5 py-1.5 text-[10px] font-medium text-white/70 hover:border-red-400/40 hover:bg-red-500/15 hover:text-red-200 transition"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      Batalkan ZIP
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -1589,13 +1698,10 @@ export function QrPreviewGridGram({ batches }: Props) {
                           </div>
                           <button
                             type="button"
-                            onClick={() => {
-                              setZipReadyRefreshNonce((n) => n + 1);
-                              router.refresh();
-                            }}
+                            onClick={handleModalZipRefresh}
                             className="shrink-0 p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition"
                             aria-label="Segarkan data"
-                            title="Segarkan link ZIP & data dari server"
+                            title="Hapus daftar siap unduh, hentikan ZIP yang sedang berjalan, ambil cache terbaru dari server"
                           >
                             <RefreshCw className="h-5 w-5" />
                           </button>
@@ -1805,8 +1911,17 @@ export function QrPreviewGridGram({ batches }: Props) {
                               </select>
                             </div>
                             {isZipLoading && (
-                              <div className="mb-3 rounded-xl border border-[#FFD700]/20 bg-[#FFD700]/5 px-3 py-2.5">
-                                <div className="flex items-center justify-between gap-2 mb-1.5">
+                              <div className="relative mb-3 rounded-xl border border-[#FFD700]/20 bg-[#FFD700]/5 px-3 py-2.5 pr-10">
+                                <button
+                                  type="button"
+                                  onClick={confirmCancelZipCompile}
+                                  className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-lg border border-white/20 bg-black/40 text-white/80 hover:bg-red-500/20 hover:text-red-200 hover:border-red-400/40 transition"
+                                  aria-label="Batalkan pembuatan ZIP"
+                                  title="Batalkan"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                                <div className="flex items-center justify-between gap-2 mb-1.5 pr-1">
                                   <span className="text-[11px] font-medium text-[#FFD700]/90 truncate">
                                     {zipProgress?.label ?? "Membuat ZIP..."}
                                   </span>
