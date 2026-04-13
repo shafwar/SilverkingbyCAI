@@ -32,13 +32,12 @@ export function drawSerticardRootKeyPill(
   const marginX = Math.round(backW * 0.065);
   /** Jarak dari bingkai bawah template. */
   const marginY = Math.round(backH * 0.068);
-  const baselineY = backH - marginY;
   const fontSize = Math.max(22, Math.min(40, Math.floor(backW * 0.062)));
   const font = `700 ${fontSize}px ${mono}`;
   backCtx.save();
   backCtx.font = font;
   backCtx.textAlign = "left";
-  backCtx.textBaseline = "alphabetic";
+  backCtx.textBaseline = "middle";
 
   const metrics = backCtx.measureText(label);
   const padH = fontSize * 0.55;
@@ -46,7 +45,8 @@ export function drawSerticardRootKeyPill(
   const boxW = Math.ceil(metrics.width + padW * 2);
   const boxH = Math.ceil(fontSize + padH * 2);
   const boxX = marginX;
-  const boxY = baselineY - boxH + Math.floor(fontSize * 0.15);
+  const boxBottom = backH - marginY;
+  const boxY = Math.round(boxBottom - boxH);
   const r = Math.ceil(fontSize * 0.32);
 
   /* Pill abu-abu cetak (bukan hitam pekat) — dekat referensi desain “light gray” chip */
@@ -61,7 +61,8 @@ export function drawSerticardRootKeyPill(
   backCtx.fill();
 
   const tx = boxX + padW;
-  const ty = baselineY;
+  /** Tengah vertikal kotak — huruf tidak “nempel” ke bawah seperti baseline alphabetic. */
+  const ty = boxY + boxH / 2;
   backCtx.lineJoin = "round";
   backCtx.lineWidth = Math.max(1, Math.ceil(fontSize * 0.045));
   backCtx.strokeStyle = "rgba(255,255,255,0.28)";
