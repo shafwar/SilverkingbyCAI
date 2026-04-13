@@ -1,7 +1,6 @@
 /**
- * Root key on BACK panel: bold pill centered along the bottom safe band (readable on busy templates).
- * `backCtx` is node-canvas or browser 2D context (typed loosely for compatibility).
- * Pass `monoFamily` from server PDF pipeline (registered OTF) so digits render on Linux.
+ * Root key on BACK panel: pill di kiri bawah (sejajar area logo/judul di template),
+ * agar konsisten di semua output PDF/ZIP. `monoFamily` dari pipeline server (font terdaftar).
  */
 export function drawSerticardRootKeyPill(
   backCtx: {
@@ -29,17 +28,16 @@ export function drawSerticardRootKeyPill(
   monoFamily: string = "Courier New"
 ): void {
   const mono = monoFamily;
-  /** Side safe inset so the pill never hugs the spine / outer trim awkwardly. */
-  const marginX = Math.round(backW * 0.055);
-  /** Slightly more inset from bottom so it sits inside the inner frame line on templates. */
-  const marginY = Math.round(backH * 0.072);
-  const anchorX = backW / 2;
-  const anchorY = backH - marginY;
+  /** Inset kiri: selaras kolom teks/logo di serticard (bukan di tengah). */
+  const marginX = Math.round(backW * 0.065);
+  /** Jarak dari bingkai bawah template. */
+  const marginY = Math.round(backH * 0.068);
+  const baselineY = backH - marginY;
   const fontSize = Math.max(22, Math.min(40, Math.floor(backW * 0.062)));
   const font = `700 ${fontSize}px ${mono}`;
   backCtx.save();
   backCtx.font = font;
-  backCtx.textAlign = "center";
+  backCtx.textAlign = "left";
   backCtx.textBaseline = "alphabetic";
 
   const metrics = backCtx.measureText(label);
@@ -47,16 +45,12 @@ export function drawSerticardRootKeyPill(
   const padW = fontSize * 0.65;
   const boxW = Math.ceil(metrics.width + padW * 2);
   const boxH = Math.ceil(fontSize + padH * 2);
-  let boxX = Math.round(anchorX - boxW / 2);
-  const minX = marginX;
-  const maxX = backW - marginX - boxW;
-  if (boxX < minX) boxX = minX;
-  if (boxX > maxX) boxX = Math.max(minX, maxX);
-  const textX = boxX + boxW / 2;
-  const boxY = anchorY - boxH + Math.floor(fontSize * 0.15);
-  const r = Math.ceil(fontSize * 0.35);
+  const boxX = marginX;
+  const boxY = baselineY - boxH + Math.floor(fontSize * 0.15);
+  const r = Math.ceil(fontSize * 0.32);
 
-  backCtx.fillStyle = "rgba(0,0,0,0.62)";
+  /* Pill abu-abu cetak (bukan hitam pekat) — dekat referensi desain “light gray” chip */
+  backCtx.fillStyle = "rgba(148, 154, 164, 0.94)";
   backCtx.beginPath();
   backCtx.moveTo(boxX + r, boxY);
   backCtx.arcTo(boxX + boxW, boxY, boxX + boxW, boxY + boxH, r);
@@ -66,11 +60,11 @@ export function drawSerticardRootKeyPill(
   backCtx.closePath();
   backCtx.fill();
 
-  const tx = textX;
-  const ty = anchorY;
+  const tx = boxX + padW;
+  const ty = baselineY;
   backCtx.lineJoin = "round";
-  backCtx.lineWidth = Math.max(2, Math.ceil(fontSize * 0.08));
-  backCtx.strokeStyle = "rgba(0,0,0,0.55)";
+  backCtx.lineWidth = Math.max(1, Math.ceil(fontSize * 0.045));
+  backCtx.strokeStyle = "rgba(255,255,255,0.28)";
   backCtx.fillStyle = "#ffffff";
   backCtx.strokeText(label, tx, ty);
   backCtx.fillText(label, tx, ty);
