@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
     };
   }
 
-  return NextResponse.json({
+  const res = NextResponse.json({
     cacheKey,
     items: items.map((it) => ({
       ...it,
@@ -122,5 +122,7 @@ export async function GET(request: NextRequest) {
       lastDownloadedAt: auditByKey[it.r2Key]?.lastDownloadedAt ?? null,
     })),
   });
+  res.headers.set("Cache-Control", "private, no-store, max-age=0, must-revalidate");
+  return res;
 }
 

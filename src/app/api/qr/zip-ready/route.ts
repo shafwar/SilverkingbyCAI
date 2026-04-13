@@ -20,7 +20,9 @@ function buildGramBatchCacheKey(
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session || (session.user as any).role !== "ADMIN") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const u = NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    u.headers.set("Cache-Control", "private, no-store, max-age=0");
+    return u;
   }
 
   const { searchParams } = new URL(request.url);
@@ -34,15 +36,22 @@ export async function GET(request: NextRequest) {
 
   const batchId = batchIdStr ? Number(batchIdStr) : NaN;
   if (!Number.isFinite(batchId) || batchId <= 0) {
-    return NextResponse.json({ error: "Invalid batchId" }, { status: 400 });
+    const inv = NextResponse.json({ error: "Invalid batchId" }, { status: 400 });
+    inv.headers.set("Cache-Control", "private, no-store, max-age=0");
+    return inv;
   }
 
   const cacheKey = buildGramBatchCacheKey(batchId, templateVariant, useCustom, cmsTemplateId);
+  const noCacheJson = (body: Record<string, unknown>, status = 200) => {
+    const res = NextResponse.json(body, { status });
+    res.headers.set("Cache-Control", "private, no-store, max-age=0, must-revalidate");
+    return res;
+  };
 
   // 1) Cek cache formal
   const cached = await prisma.qrZipDownloadCache.findUnique({ where: { cacheKey } });
   if (cached) {
-    return NextResponse.json({
+    return noCacheJson({
       success: true,
       cached: true,
       cacheKey,
@@ -70,7 +79,7 @@ export async function GET(request: NextRequest) {
         hitCount: 1,
       },
     });
-    return NextResponse.json({
+    return noCacheJson({
       success: true,
       cached: true,
       cacheKey,
@@ -84,7 +93,7 @@ export async function GET(request: NextRequest) {
     orderBy: { createdAt: "desc" },
   });
   if (pendingJob) {
-    return NextResponse.json({
+    return noCacheJson({
       success: false,
       cached: false,
       cacheKey,
@@ -93,7 +102,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  return NextResponse.json({
+  return noCacheJson({
     success: false,
     cached: false,
     cacheKey,
