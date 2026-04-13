@@ -19,6 +19,7 @@ import {
   FileText,
   CheckCircle2,
   ChevronDown,
+  Trash2,
 } from "lucide-react";
 import { SERTICARD_VARIANTS } from "@/utils/serticard-templates";
 import { templateSelectToApiBody } from "@/utils/serticard-template-select";
@@ -185,9 +186,20 @@ export function QrPreviewGridGram({ batches }: Props) {
   const [selectedSingleTemplateId, setSelectedSingleTemplateId] = useState<string>("01");
   /** Increment saat tombol segarkan modal / buka ulang agar zip-ready di-fetch ulang dari server. */
   const [zipReadyRefreshNonce, setZipReadyRefreshNonce] = useState(0);
+  const [zipReadyListFetching, setZipReadyListFetching] = useState(false);
+  const [zipPurgeBusy, setZipPurgeBusy] = useState(false);
   /** Membatalkan fetch ZIP (modal kartu + modal serial) saat user memilih batal. */
   const zipCompileAbortRef = useRef<AbortController | null>(null);
   const zipAbortReasonRef = useRef<"cancel" | "refresh" | null>(null);
+
+  const abortZipCompileWithoutConfirm = (reason: "cancel" | "refresh") => {
+    zipAbortReasonRef.current = reason;
+    zipCompileAbortRef.current?.abort();
+    zipCompileAbortRef.current = null;
+    setDownloadingZipBatchId(null);
+    setIsDownloadingBatchZip(false);
+    setZipProgress(null);
+  };
 
   const confirmCancelZipCompile = () => {
     if (
@@ -197,28 +209,71 @@ export function QrPreviewGridGram({ batches }: Props) {
     ) {
       return;
     }
-    zipAbortReasonRef.current = "cancel";
-    zipCompileAbortRef.current?.abort();
-    zipCompileAbortRef.current = null;
-    setDownloadingZipBatchId(null);
-    setIsDownloadingBatchZip(false);
-    setZipProgress(null);
+    abortZipCompileWithoutConfirm("cancel");
   };
 
   /** Segarkan: kosongkan daftar siap unduh, hentikan ZIP yang sedang jalan, ambil ulang dari server. */
   const handleModalZipRefresh = () => {
     if (zipCompileAbortRef.current) {
-      zipAbortReasonRef.current = "refresh";
-      zipCompileAbortRef.current.abort();
+      abortZipCompileWithoutConfirm("refresh");
     }
-    zipCompileAbortRef.current = null;
-    setDownloadingZipBatchId(null);
-    setIsDownloadingBatchZip(false);
-    setZipProgress(null);
     setZipDownloadResult(null);
     setZipR2Status({});
     setZipReadyRefreshNonce((n) => n + 1);
     router.refresh();
+  };
+
+  /** Hapus ZIP di R2 + cache DB untuk signature ini (admin mulai dari awal). */
+  const handleModalZipPurge = async () => {
+    const ck = zipDownloadResult?.cacheKey;
+    if (!ck) {
+      toast.error("Tidak ada cache ZIP untuk dihapus.");
+      return;
+    }
+    if (
+      !window.confirm(
+        "Hapus semua file ZIP terkait di penyimpanan (R2), kosongkan cache server, dan reset riwayat unduhan untuk kombinasi batch + template ini? Anda harus membuat ZIP ulang setelah ini."
+      )
+    ) {
+      return;
+    }
+    setZipPurgeBusy(true);
+    try {
+      const res = await fetch("/api/qr/zip-storage-purge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cacheKey: ck }),
+      });
+      const text = await res.text();
+      let json: { ok?: boolean; message?: string; error?: string; r2DeleteErrors?: string[] } = {};
+      try {
+        json = text ? (JSON.parse(text) as typeof json) : {};
+      } catch {
+        // ignore
+      }
+      if (!res.ok) {
+        toast.error(json.message || json.error || `Gagal menghapus (${res.status}).`);
+        return;
+      }
+      if (Array.isArray(json.r2DeleteErrors) && json.r2DeleteErrors.length > 0) {
+        toast.message(
+          "Cache dihapus. Sebagian file R2 mungkin gagal dihapus; cek log server atau coba lagi."
+        );
+      } else {
+        toast.success(json.message || "ZIP di R2 dan cache berhasil dikosongkan.");
+      }
+      if (zipCompileAbortRef.current) {
+        abortZipCompileWithoutConfirm("refresh");
+      }
+      setZipDownloadResult(null);
+      setZipR2Status({});
+      setZipReadyRefreshNonce((n) => n + 1);
+      router.refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal menghapus ZIP.");
+    } finally {
+      setZipPurgeBusy(false);
+    }
   };
 
   useEffect(() => {
@@ -307,13 +362,14 @@ export function QrPreviewGridGram({ batches }: Props) {
     setZipR2Status({});
 
     let cancelled = false;
+    setZipReadyListFetching(true);
     (async () => {
       try {
         const tpl = templateSelectToApiBody(selectedZipTemplateId);
         const cmsQ =
           tpl.cmsTemplateId != null ? `&cmsTemplateId=${encodeURIComponent(String(tpl.cmsTemplateId))}` : "";
         const res = await fetch(
-          `/api/qr/zip-ready?batchId=${batch.batchId}&templateVariant=${encodeURIComponent(String(tpl.templateVariant))}&useCustom=${tpl.useCustomTemplate ? "1" : "0"}${cmsQ}`,
+          `/api/qr/zip-ready?batchId=${batch.batchId}&templateVariant=${encodeURIComponent(String(tpl.templateVariant))}&useCustom=${tpl.useCustomTemplate ? "1" : "0"}${cmsQ}&_nonce=${encodeURIComponent(String(zipReadyRefreshNonce))}`,
           { cache: "no-store" }
         );
         if (!res.ok) return;
@@ -353,11 +409,14 @@ export function QrPreviewGridGram({ batches }: Props) {
         });
       } catch {
         // ignore
+      } finally {
+        if (!cancelled) setZipReadyListFetching(false);
       }
     })();
 
     return () => {
       cancelled = true;
+      setZipReadyListFetching(false);
     };
   }, [downloadDropdownOpen, batches, selectedZipTemplateId, zipReadyRefreshNonce]);
 
@@ -1644,6 +1703,21 @@ export function QrPreviewGridGram({ batches }: Props) {
                 transition={{ duration: 0.2 }}
                 className="fixed inset-0 z-[9998] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
                 onClick={() => {
+                  const b = activeDownloadBatch;
+                  if (
+                    b != null &&
+                    isDownloadingBatchZip &&
+                    downloadingZipBatchId === b.batchId
+                  ) {
+                    if (
+                      !window.confirm(
+                        "ZIP masih disiapkan. Batalkan proses dan tutup modal?"
+                      )
+                    ) {
+                      return;
+                    }
+                    abortZipCompileWithoutConfirm("cancel");
+                  }
                   setDownloadDropdownOpen(null);
                   setZipDownloadResult(null);
                   setZipProgress(null);
@@ -1696,27 +1770,64 @@ export function QrPreviewGridGram({ batches }: Props) {
                               <p className="text-xs text-white/55 mt-0.5 truncate">{batch.name}</p>
                             </div>
                           </div>
-                          <button
-                            type="button"
-                            onClick={handleModalZipRefresh}
-                            className="shrink-0 p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition"
-                            aria-label="Segarkan data"
-                            title="Hapus daftar siap unduh, hentikan ZIP yang sedang berjalan, ambil cache terbaru dari server"
-                          >
-                            <RefreshCw className="h-5 w-5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDownloadDropdownOpen(null);
-                              setZipDownloadResult(null);
-                              setZipProgress(null);
-                            }}
-                            className="shrink-0 p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition"
-                            aria-label="Tutup"
-                          >
-                            <X className="h-5 w-5" />
-                          </button>
+                          <div className="flex shrink-0 items-center gap-0.5">
+                            <button
+                              type="button"
+                              onClick={handleModalZipRefresh}
+                              disabled={zipPurgeBusy || zipReadyListFetching}
+                              className="shrink-0 p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition disabled:opacity-40 disabled:pointer-events-none"
+                              aria-label="Segarkan data"
+                              title="Ambil ulang daftar ZIP dari server (hentikan ZIP yang sedang berjalan jika ada)"
+                            >
+                              <RefreshCw
+                                className={`h-5 w-5 ${zipReadyListFetching ? "animate-spin" : ""}`}
+                              />
+                            </button>
+                            {zipDownloadResult?.cacheKey &&
+                              (zipDownloadResult.downloads?.length ||
+                                zipDownloadResult.download_url) && (
+                                <button
+                                  type="button"
+                                  onClick={() => void handleModalZipPurge()}
+                                  disabled={
+                                    zipPurgeBusy ||
+                                    zipReadyListFetching ||
+                                    isZipLoading ||
+                                    isDownloadingBatchZip
+                                  }
+                                  className="shrink-0 p-2 rounded-lg text-white/60 hover:text-red-300 hover:bg-red-500/15 transition disabled:opacity-40 disabled:pointer-events-none"
+                                  aria-label="Hapus ZIP di server dan cache"
+                                  title="Hapus semua file ZIP terkait di R2, kosongkan cache, dan reset riwayat unduhan"
+                                >
+                                  <Trash2 className="h-5 w-5" />
+                                </button>
+                              )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (
+                                  isDownloadingBatchZip &&
+                                  downloadingZipBatchId === batch.batchId
+                                ) {
+                                  if (
+                                    !window.confirm(
+                                      "ZIP masih disiapkan. Batalkan proses dan tutup modal?"
+                                    )
+                                  ) {
+                                    return;
+                                  }
+                                  abortZipCompileWithoutConfirm("cancel");
+                                }
+                                setDownloadDropdownOpen(null);
+                                setZipDownloadResult(null);
+                                setZipProgress(null);
+                              }}
+                              className="shrink-0 p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition"
+                              aria-label="Tutup"
+                            >
+                              <X className="h-5 w-5" />
+                            </button>
+                          </div>
                         </div>
 
                         <div className="flex-1 overflow-y-auto min-h-0 p-4 space-y-4 scrollbar-show">

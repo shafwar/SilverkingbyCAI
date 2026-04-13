@@ -1,16 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-function buildGramBatchCacheKey(
-  batchId: number,
-  templateVariant: string,
-  useCustom: boolean,
-  cmsTemplateId: number
-) {
-  const gram = 1;
-  return `gram-batch:${batchId}:tpl:${templateVariant}:custom:${useCustom ? 1 : 0}:cms:${cmsTemplateId}:gram:${gram}`;
-}
+import { gramBatchZipCacheKeyCandidates } from "@/lib/qr-zip-gram-cache-keys";
 
 /**
  * GET /api/qr/zip-ready?batchId=...&templateVariant=...&useCustom=0|1&cmsTemplateId=optional
@@ -41,39 +32,49 @@ export async function GET(request: NextRequest) {
     return inv;
   }
 
-  const cacheKey = buildGramBatchCacheKey(batchId, templateVariant, useCustom, cmsTemplateId);
+  const cacheKeyCandidates = gramBatchZipCacheKeyCandidates(
+    batchId,
+    templateVariant,
+    useCustom,
+    cmsTemplateId
+  );
+  const defaultCacheKey = cacheKeyCandidates[0]!;
   const noCacheJson = (body: Record<string, unknown>, status = 200) => {
     const res = NextResponse.json(body, { status });
     res.headers.set("Cache-Control", "private, no-store, max-age=0, must-revalidate");
     return res;
   };
 
-  // 1) Cek cache formal
-  const cached = await prisma.qrZipDownloadCache.findUnique({ where: { cacheKey } });
+  // 1) Cek cache formal (semua varian kunci gram + rootkey flag)
+  const cached = await prisma.qrZipDownloadCache.findFirst({
+    where: { cacheKey: { in: cacheKeyCandidates } },
+    orderBy: { updatedAt: "desc" },
+  });
   if (cached) {
     return noCacheJson({
       success: true,
       cached: true,
-      cacheKey,
+      cacheKey: cached.cacheKey,
       ...(cached.result as any),
     });
   }
 
   // 2) Fallback: mungkin ada job lama yang sudah COMPLETED tapi cache belum terisi
   const completedJob = await prisma.qrZipDownloadJob.findFirst({
-    where: { cacheKey, status: "COMPLETED" },
+    where: { cacheKey: { in: cacheKeyCandidates }, status: "COMPLETED" },
     orderBy: { updatedAt: "desc" },
   });
   if (completedJob?.result) {
+    const resolvedKey = completedJob.cacheKey ?? defaultCacheKey;
     await prisma.qrZipDownloadCache.upsert({
-      where: { cacheKey },
+      where: { cacheKey: resolvedKey },
       update: {
         result: completedJob.result as any,
         lastAccessedAt: new Date(),
         hitCount: { increment: 1 },
       },
       create: {
-        cacheKey,
+        cacheKey: resolvedKey,
         result: completedJob.result as any,
         lastAccessedAt: new Date(),
         hitCount: 1,
@@ -82,21 +83,21 @@ export async function GET(request: NextRequest) {
     return noCacheJson({
       success: true,
       cached: true,
-      cacheKey,
+      cacheKey: resolvedKey,
       ...(completedJob.result as any),
     });
   }
 
   // 3) Kalau ada job tapi belum selesai -> kasih status agar UI bisa tahu masih diproses
   const pendingJob = await prisma.qrZipDownloadJob.findFirst({
-    where: { cacheKey },
+    where: { cacheKey: { in: cacheKeyCandidates } },
     orderBy: { createdAt: "desc" },
   });
   if (pendingJob) {
     return noCacheJson({
       success: false,
       cached: false,
-      cacheKey,
+      cacheKey: pendingJob.cacheKey ?? defaultCacheKey,
       status: pendingJob.status,
       message: "ZIP masih diproses untuk batch ini.",
     });
@@ -105,7 +106,7 @@ export async function GET(request: NextRequest) {
   return noCacheJson({
     success: false,
     cached: false,
-    cacheKey,
+    cacheKey: defaultCacheKey,
     status: "NOT_FOUND",
     message: "Belum ada ZIP yang dihasilkan untuk batch ini.",
   });
