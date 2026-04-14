@@ -371,6 +371,8 @@ export default function WhatWeDoPageClient() {
     loading: sectionsLoading,
     refetch: refetchPageSections,
   } = usePageSections("what-we-do");
+  /** Set sekali setelah fetch sections pertama — hindari glimpse video fallback; refetch CMS tidak memutus src. */
+  const [cmsSectionsInitialHydrated, setCmsSectionsInitialHydrated] = useState(false);
   const { data: pageMediaWhatWeDo } = usePageMedia("what-we-do");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
   const heroMediaUrl =
@@ -400,9 +402,16 @@ export default function WhatWeDoPageClient() {
     return () => link.remove();
   }, [firstCraftIsImage, firstCraftMediaUrl]);
 
+  useEffect(() => {
+    if (!sectionsLoading) setCmsSectionsInitialHydrated(true);
+  }, [sectionsLoading]);
+
   // Ensure what-we-do hero video autoplays reliably on all devices
   useReliableVideoAutoplay(videoRef, { mode: "background" });
   useReliableVideoAutoplay(footerVideoRef, { mode: "background" });
+
+  const suspendHeroVideoUntilCms =
+    sectionsLoading && !cmsSectionsInitialHydrated;
 
   const featureItems = useMemo(
     () => [
@@ -588,6 +597,8 @@ export default function WhatWeDoPageClient() {
               version={pageSections.hero?.version}
               posterUrl={pageMediaWhatWeDo?.heroImageUrl ?? null}
               forcePoster={!shouldLoadHeroVideo}
+              /** Jangan pasang src sampai fetch sections pertama selesai — hindari decode sekejap video fallback lalu URL CMS. */
+              suspendSrc={suspendHeroVideoUntilCms}
               posterPriority
               optimizeGpu
               lightVideoFade
@@ -598,6 +609,8 @@ export default function WhatWeDoPageClient() {
                 objectPosition: "center center",
                 width: "100%",
                 height: "100%",
+                transform: "translateZ(0)",
+                WebkitTransform: "translateZ(0)",
                 pointerEvents: "none",
                 outline: "none",
                 WebkitTapHighlightColor: "transparent",
@@ -611,6 +624,11 @@ export default function WhatWeDoPageClient() {
               preload="auto"
               disablePictureInPicture
               disableRemotePlayback
+              onContextMenu={(e) => e.preventDefault()}
+              onPlay={(e) => {
+                const video = e.currentTarget;
+                if (video.paused) video.play().catch(() => {});
+              }}
             />
           ) : (
             <ImageLoadGuard
@@ -806,6 +824,7 @@ export default function WhatWeDoPageClient() {
               version={pageSections.section_footer_video?.version}
               posterUrl={pageMediaWhatWeDo?.heroImageUrl ?? null}
               forcePoster={!shouldLoadHeroVideo}
+              suspendSrc={suspendHeroVideoUntilCms}
               lazyAttach
               deferAttachUntilIdle
               idleAttachTimeoutMs={640}
