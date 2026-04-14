@@ -226,16 +226,16 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
       const isExternal = (item as any).isExternal;
 
       const linkClassName = clsx(
-        "flex items-center gap-2 rounded-full px-3 sm:px-3.5 py-2 sm:py-2.5 text-[11px] sm:text-xs transition touch-manipulation",
+        "flex items-center gap-2.5 rounded-full px-3.5 py-2.5 text-xs tracking-wide transition touch-manipulation sm:gap-3 sm:px-4 sm:py-3 sm:text-[13px] sm:leading-snug",
         orientation === "col" ? "w-full justify-start" : "justify-center",
         active
-          ? "bg-white/10 text-white font-medium"
-          : "text-white/70 hover:text-white hover:bg-white/5"
+          ? "bg-white/[0.12] font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] ring-1 ring-[#FFD700]/50"
+          : "font-medium text-white/75 hover:bg-white/[0.08] hover:text-white"
       );
 
       const iconClassName = clsx(
-        "h-3.5 w-3.5 sm:h-4 sm:w-4",
-        active ? "text-[#FFD700]" : "text-white/50"
+        "h-4 w-4 shrink-0 sm:h-[18px] sm:w-[18px]",
+        active ? "text-[#FFD700]" : "text-white/55"
       );
 
       // For mobile menu, use button with navigation handler
@@ -315,21 +315,21 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         initial={{ opacity: 0, y: -10 }}
         animate={
           isNavHidden && !mobileOpen
-            ? { y: -80, opacity: 0.98 }
+            ? { y: -100, opacity: 0.98 }
             : { y: 0, opacity: mobileOpen ? 0 : 1 }
         }
         transition={{ duration: 0.25, ease: "easeInOut" }}
         className={clsx(
-          "fixed inset-x-0 top-0 z-40 bg-black/80 backdrop-blur-2xl transition-all duration-300",
-          mobileOpen ? "border-b-0" : "border-b border-white/5"
+          "fixed inset-x-0 top-0 z-40 border-b border-white/[0.07] bg-black/90 backdrop-blur-2xl transition-all duration-300 shadow-[0_8px_32px_rgba(0,0,0,0.45)]",
+          mobileOpen ? "border-b-0 shadow-none" : ""
         )}
       >
         <div className="pt-[env(safe-area-inset-top,0px)]">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between py-2.5 pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] sm:py-3 sm:pl-5 sm:pr-5 md:px-6">
+        <div className="mx-auto flex min-h-[3.25rem] max-w-[1600px] items-center justify-between gap-3 py-3 pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] sm:min-h-[3.75rem] sm:gap-4 sm:py-4 sm:pl-6 sm:pr-6 md:px-8">
           <Link
             href="/admin"
             prefetch={true}
-            className="flex items-center group"
+            className="flex shrink-0 items-center group"
             onMouseEnter={() => {
               try {
                 router.prefetch("/admin");
@@ -338,7 +338,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
               }
             }}
           >
-            <div className="relative h-7 w-7 sm:h-8 sm:w-8 transition-transform duration-300 group-hover:scale-110">
+            <div className="relative h-8 w-8 sm:h-9 sm:w-9 transition-transform duration-300 group-hover:scale-110">
               <Image
                 src={getR2UrlClient("/images/cai-logo.png")}
                 alt="CAI Logo - Silver King by CAI"
@@ -352,14 +352,16 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
               />
             </div>
           </Link>
-          <div className="hidden items-center gap-1 sm:gap-1.5 lg:flex">{renderLinks("row")}</div>
-          <div className="flex items-center gap-2 sm:gap-2.5">
+          <div className="hidden min-w-0 flex-1 flex-wrap items-center justify-center gap-2 px-2 sm:gap-2.5 md:gap-3 lg:flex lg:px-5">
+            {renderLinks("row")}
+          </div>
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <div className="hidden sm:block">
               <LanguageSwitcher />
             </div>
             <button
               onClick={handleSignOut}
-              className="hidden rounded-full border border-white/15 bg-[#FFD700]/20 px-2.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-medium text-white transition hover:border-[#FFD700]/50 sm:inline-flex"
+              className="hidden rounded-full border border-white/20 bg-[#FFD700]/15 px-3 py-2 text-xs font-semibold tracking-wide text-white transition hover:border-[#FFD700]/55 hover:bg-[#FFD700]/25 sm:inline-flex"
             >
               {safeT(t, "logout", "Logout")}
             </button>
@@ -469,7 +471,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         )}
       </AnimatePresence>
 
-      <main className="mx-auto max-w-[1400px] min-w-0 pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] pb-[max(2rem,env(safe-area-inset-bottom,0px))] pt-[calc(3.25rem+env(safe-area-inset-top,0px))] sm:pl-5 sm:pr-5 sm:pb-[max(2.5rem,env(safe-area-inset-bottom,0px))] sm:pt-[calc(3.5rem+env(safe-area-inset-top,0px))] md:px-6 md:pb-[max(3rem,env(safe-area-inset-bottom,0px))] md:pt-[calc(3.5rem+env(safe-area-inset-top,0px))] lg:pt-[calc(3.5rem+env(safe-area-inset-top,0px))]">
+      <main className="mx-auto max-w-[1600px] min-w-0 pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] pb-[max(2rem,env(safe-area-inset-bottom,0px))] pt-[calc(4.25rem+env(safe-area-inset-top,0px))] sm:pl-6 sm:pr-6 sm:pb-[max(2.5rem,env(safe-area-inset-bottom,0px))] sm:pt-[calc(4.75rem+env(safe-area-inset-top,0px))] md:px-8 md:pb-[max(3rem,env(safe-area-inset-bottom,0px))] md:pt-[calc(5rem+env(safe-area-inset-top,0px))] lg:pt-[calc(5rem+env(safe-area-inset-top,0px))]">
         {children}
       </main>
 
