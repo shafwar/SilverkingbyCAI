@@ -182,7 +182,8 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
 
     const effectiveAttach = inView && idleReady && !suspendSrc;
 
-    useEffect(() => {
+    /** Sebelum paint: reset opacity supaya tidak ada 1 frame video baru dengan ready=true (sisa decode URL lama). */
+    useLayoutEffect(() => {
       setReady(false);
       setFadeComplete(false);
       if (fadeTimerRef.current !== null) {

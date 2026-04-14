@@ -371,8 +371,6 @@ export default function WhatWeDoPageClient() {
     loading: sectionsLoading,
     refetch: refetchPageSections,
   } = usePageSections("what-we-do");
-  /** Set sekali setelah fetch sections pertama — hindari glimpse video fallback; refetch CMS tidak memutus src. */
-  const [cmsSectionsInitialHydrated, setCmsSectionsInitialHydrated] = useState(false);
   const { data: pageMediaWhatWeDo } = usePageMedia("what-we-do");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
   const heroMediaUrl =
@@ -385,6 +383,12 @@ export default function WhatWeDoPageClient() {
 
   const heroVideoPlayUrl = useMemo(() => proxiedHeroVideoSrc(heroMediaUrl), [heroMediaUrl]);
   const footerVideoPlayUrl = useMemo(() => proxiedHeroVideoSrc(footerMediaUrl), [footerMediaUrl]);
+
+  /** Setelah fetch page-sections pertama selesai: hindari hero/footer memutar fallback lalu tiba-tiba ganti URL CMS (flicker). Saat refetch, tetap tampilkan video (jangan unmount). */
+  const [hasHydratedPageSections, setHasHydratedPageSections] = useState(false);
+  useEffect(() => {
+    if (!sectionsLoading) setHasHydratedPageSections(true);
+  }, [sectionsLoading]);
 
   // Preload first craft card image when it's an image (flexible replace)
   const firstCraftIsImage =
@@ -402,16 +406,9 @@ export default function WhatWeDoPageClient() {
     return () => link.remove();
   }, [firstCraftIsImage, firstCraftMediaUrl]);
 
-  useEffect(() => {
-    if (!sectionsLoading) setCmsSectionsInitialHydrated(true);
-  }, [sectionsLoading]);
-
   // Ensure what-we-do hero video autoplays reliably on all devices
   useReliableVideoAutoplay(videoRef, { mode: "background" });
   useReliableVideoAutoplay(footerVideoRef, { mode: "background" });
-
-  const suspendHeroVideoUntilCms =
-    sectionsLoading && !cmsSectionsInitialHydrated;
 
   const featureItems = useMemo(
     () => [
@@ -590,47 +587,50 @@ export default function WhatWeDoPageClient() {
           <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
 
           {heroMediaType === "VIDEO" ? (
-            <VideoLoadGuard
-              key={`wwd-hero-${heroVideoPlayUrl}-${pageSections.hero?.version ?? 0}`}
-              ref={videoRef}
-              url={heroVideoPlayUrl}
-              version={pageSections.hero?.version}
-              posterUrl={pageMediaWhatWeDo?.heroImageUrl ?? null}
-              forcePoster={!shouldLoadHeroVideo}
-              /** Jangan pasang src sampai fetch sections pertama selesai — hindari decode sekejap video fallback lalu URL CMS. */
-              suspendSrc={suspendHeroVideoUntilCms}
-              posterPriority
-              optimizeGpu
-              lightVideoFade
-              containerClassName="absolute inset-0 w-screen h-screen z-10"
-              className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
-              style={{
-                objectFit: "cover",
-                objectPosition: "center center",
-                width: "100%",
-                height: "100%",
-                transform: "translateZ(0)",
-                WebkitTransform: "translateZ(0)",
-                pointerEvents: "none",
-                outline: "none",
-                WebkitTapHighlightColor: "transparent",
-                WebkitTouchCallout: "none",
-                userSelect: "none",
-              }}
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="auto"
-              disablePictureInPicture
-              disableRemotePlayback
-              onContextMenu={(e) => e.preventDefault()}
-              onPlay={(e) => {
-                const video = e.currentTarget;
-                if (video.paused) video.play().catch(() => {});
-              }}
-            />
-          ) : (
+            hasHydratedPageSections && heroVideoPlayUrl ? (
+              <VideoLoadGuard
+                key={`wwd-hero-${heroVideoPlayUrl}-${pageSections.hero?.version ?? 0}`}
+                ref={videoRef}
+                url={heroVideoPlayUrl}
+                version={pageSections.hero?.version}
+                posterUrl={pageMediaWhatWeDo?.heroImageUrl ?? null}
+                forcePoster={!shouldLoadHeroVideo}
+                posterPriority
+                optimizeGpu
+                lightVideoFade
+                containerClassName="absolute inset-0 w-screen h-screen z-10"
+                className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+                style={{
+                  objectFit: "cover",
+                  objectPosition: "center center",
+                  width: "100%",
+                  height: "100%",
+                  pointerEvents: "none",
+                  outline: "none",
+                  WebkitTapHighlightColor: "transparent",
+                  WebkitTouchCallout: "none",
+                  userSelect: "none",
+                }}
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="auto"
+                disablePictureInPicture
+                disableRemotePlayback
+                onContextMenu={(e) => e.preventDefault()}
+                onPlay={(e) => {
+                  const video = e.currentTarget;
+                  if (video.paused) video.play().catch(() => {});
+                }}
+              />
+            ) : (
+              <div
+                className="absolute inset-0 z-10 bg-luxury-black pointer-events-none"
+                aria-hidden
+              />
+            )
+          ) : hasHydratedPageSections ? (
             <ImageLoadGuard
               url={heroMediaUrl}
               version={pageSections.hero?.version}
@@ -645,6 +645,11 @@ export default function WhatWeDoPageClient() {
               }}
               alt=""
               priority
+            />
+          ) : (
+            <div
+              className="absolute inset-0 z-10 bg-luxury-black pointer-events-none"
+              aria-hidden
             />
           )}
         </div>
@@ -817,42 +822,47 @@ export default function WhatWeDoPageClient() {
         {/* Footer background – no media until section data loaded (prevents flash of wrong asset) */}
         <div className="absolute inset-0 z-0 overflow-hidden">
           {footerMediaType === "VIDEO" ? (
-            <VideoLoadGuard
-              key={`wwd-footer-${footerVideoPlayUrl}-${pageSections.section_footer_video?.version ?? 0}`}
-              ref={footerVideoRef}
-              url={footerVideoPlayUrl}
-              version={pageSections.section_footer_video?.version}
-              posterUrl={pageMediaWhatWeDo?.heroImageUrl ?? null}
-              forcePoster={!shouldLoadHeroVideo}
-              suspendSrc={suspendHeroVideoUntilCms}
-              lazyAttach
-              deferAttachUntilIdle
-              idleAttachTimeoutMs={640}
-              optimizeGpu
-              containerClassName="absolute inset-0 w-full h-full z-10"
-              className="absolute inset-0 w-full h-full object-cover"
-              style={{
-                objectFit: "cover",
-                objectPosition: "center center",
-                width: "100%",
-                height: "100%",
-                transform: "scale(1)",
-                transformOrigin: "center center",
-              }}
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="none"
-              disablePictureInPicture
-              disableRemotePlayback
-              onContextMenu={(e) => e.preventDefault()}
-              onPlay={(e) => {
-                const v = e.currentTarget;
-                if (v.paused) v.play().catch(() => {});
-              }}
-            />
-          ) : (
+            hasHydratedPageSections && footerVideoPlayUrl ? (
+              <VideoLoadGuard
+                key={`wwd-footer-${footerVideoPlayUrl}-${pageSections.section_footer_video?.version ?? 0}`}
+                ref={footerVideoRef}
+                url={footerVideoPlayUrl}
+                version={pageSections.section_footer_video?.version}
+                posterUrl={pageMediaWhatWeDo?.heroImageUrl ?? null}
+                forcePoster={!shouldLoadHeroVideo}
+                posterPriority
+                optimizeGpu
+                lightVideoFade
+                containerClassName="absolute inset-0 w-full h-full z-10"
+                className="absolute inset-0 w-full h-full object-cover"
+                style={{
+                  objectFit: "cover",
+                  objectPosition: "center center",
+                  width: "100%",
+                  height: "100%",
+                  transform: "scale(1)",
+                  transformOrigin: "center center",
+                }}
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="auto"
+                disablePictureInPicture
+                disableRemotePlayback
+                onContextMenu={(e) => e.preventDefault()}
+                onPlay={(e) => {
+                  const v = e.currentTarget;
+                  if (v.paused) v.play().catch(() => {});
+                }}
+              />
+            ) : (
+              <div
+                className="absolute inset-0 z-10 bg-luxury-black pointer-events-none"
+                aria-hidden
+              />
+            )
+          ) : hasHydratedPageSections ? (
             <ImageLoadGuard
               url={footerMediaUrl}
               version={pageSections.section_footer_video?.version}
@@ -865,6 +875,11 @@ export default function WhatWeDoPageClient() {
                 height: "100%",
               }}
               alt=""
+            />
+          ) : (
+            <div
+              className="absolute inset-0 z-10 bg-luxury-black pointer-events-none"
+              aria-hidden
             />
           )}
           <div className="absolute top-3 right-3 z-20 pointer-events-auto rounded-xl border border-white/15 bg-black/60 px-2 py-1.5 shadow-lg backdrop-blur-sm">
