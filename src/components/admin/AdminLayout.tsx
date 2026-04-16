@@ -226,7 +226,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
       const isExternal = (item as any).isExternal;
 
       const linkClassName = clsx(
-        "flex items-center gap-2.5 rounded-full px-3.5 py-2.5 text-xs tracking-wide transition touch-manipulation sm:gap-3 sm:px-4 sm:py-3 sm:text-[13px] sm:leading-snug",
+        "flex items-center gap-2 rounded-full px-3 py-2 text-xs tracking-wide transition touch-manipulation sm:gap-2.5 sm:px-3.5 sm:py-2.5 sm:text-[13px] sm:leading-snug whitespace-nowrap",
         orientation === "col" ? "w-full justify-start" : "justify-center",
         active
           ? "bg-white/[0.12] font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] ring-1 ring-[#FFD700]/50"
@@ -325,55 +325,65 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         )}
       >
         <div className="pt-[env(safe-area-inset-top,0px)]">
-        <div className="mx-auto flex min-h-[3.25rem] max-w-[1600px] items-center justify-between gap-3 py-3 pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] sm:min-h-[3.75rem] sm:gap-4 sm:py-4 sm:pl-6 sm:pr-6 md:px-8">
-          <Link
-            href="/admin"
-            prefetch={true}
-            className="flex shrink-0 items-center group"
-            onMouseEnter={() => {
-              try {
-                router.prefetch("/admin");
-              } catch (e) {
-                // Silently fail
-              }
-            }}
-          >
-            <div className="relative h-8 w-8 sm:h-9 sm:w-9 transition-transform duration-300 group-hover:scale-110">
-              <Image
-                src={getR2UrlClient("/images/cai-logo.png")}
-                alt="CAI Logo - Silver King by CAI"
-                fill
-                className="object-contain"
-                style={{
-                  filter: "brightness(0) invert(1) drop-shadow(0 0 8px rgba(255, 255, 255, 0.2))",
+          <div className="mx-auto flex min-h-[4rem] max-w-[1800px] items-center px-4 sm:px-6 md:px-8 lg:px-10">
+            {/* Logo - Left */}
+            <div className="flex w-[120px] shrink-0 items-center sm:w-[160px]">
+              <Link
+                href="/admin"
+                prefetch={true}
+                className="flex items-center group"
+                onMouseEnter={() => {
+                  try {
+                    router.prefetch("/admin");
+                  } catch (e) {
+                    // Silently fail
+                  }
                 }}
-                priority
-                unoptimized
-              />
+              >
+                <div className="relative h-8 w-8 sm:h-9 sm:w-9 transition-transform duration-300 group-hover:scale-110">
+                  <Image
+                    src={getR2UrlClient("/images/cai-logo.png")}
+                    alt="CAI Logo - Silver King by CAI"
+                    fill
+                    className="object-contain"
+                    style={{
+                      filter:
+                        "brightness(0) invert(1) drop-shadow(0 0 8px rgba(255, 255, 255, 0.2))",
+                    }}
+                    priority
+                    unoptimized
+                  />
+                </div>
+              </Link>
             </div>
-          </Link>
-          <div className="hidden min-w-0 flex-1 flex-wrap items-center justify-center gap-2 px-2 sm:gap-2.5 md:gap-3 lg:flex lg:px-5">
-            {renderLinks("row")}
-          </div>
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <div className="hidden sm:block">
-              <LanguageSwitcher />
+
+            {/* Navigation Links - Center (Scrollable on small desktop) */}
+            <div className="hidden flex-1 items-center justify-center overflow-x-auto lg:flex scrollbar-hide">
+              <div className="flex items-center gap-1 px-4">
+                {renderLinks("row")}
+              </div>
             </div>
-            <button
-              onClick={handleSignOut}
-              className="hidden rounded-full border border-white/20 bg-[#FFD700]/15 px-3 py-2 text-xs font-semibold tracking-wide text-white transition hover:border-[#FFD700]/55 hover:bg-[#FFD700]/25 sm:inline-flex"
-            >
-              {safeT(t, "logout", "Logout")}
-            </button>
-            <button
-              onClick={() => setMobileOpen((prev) => !prev)}
-              className="rounded-full border border-white/15 p-2 text-white lg:hidden touch-manipulation"
-              aria-label="Toggle navigation"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
+
+            {/* Actions - Right */}
+            <div className="flex w-[120px] shrink-0 items-center justify-end gap-2 sm:w-[180px] sm:gap-3">
+              <div className="hidden sm:block">
+                <LanguageSwitcher />
+              </div>
+              <button
+                onClick={handleSignOut}
+                className="hidden rounded-full border border-white/20 bg-[#FFD700]/15 px-3.5 py-2 text-xs font-semibold tracking-wide text-white transition hover:border-[#FFD700]/55 hover:bg-[#FFD700]/25 sm:inline-flex"
+              >
+                {safeT(t, "logout", "Logout")}
+              </button>
+              <button
+                onClick={() => setMobileOpen((prev) => !prev)}
+                className="rounded-full border border-white/15 p-2 text-white lg:hidden touch-manipulation"
+                aria-label="Toggle navigation"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+            </div>
           </div>
-        </div>
         </div>
       </motion.nav>
 
@@ -471,7 +481,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         )}
       </AnimatePresence>
 
-      <main className="mx-auto max-w-[1600px] min-w-0 pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] pb-[max(2rem,env(safe-area-inset-bottom,0px))] pt-[calc(4.25rem+env(safe-area-inset-top,0px))] sm:pl-6 sm:pr-6 sm:pb-[max(2.5rem,env(safe-area-inset-bottom,0px))] sm:pt-[calc(4.75rem+env(safe-area-inset-top,0px))] md:px-8 md:pb-[max(3rem,env(safe-area-inset-bottom,0px))] md:pt-[calc(5rem+env(safe-area-inset-top,0px))] lg:pt-[calc(5rem+env(safe-area-inset-top,0px))]">
+      <main className="mx-auto max-w-[1800px] min-w-0 pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] pb-[max(2rem,env(safe-area-inset-bottom,0px))] pt-[calc(4.5rem+env(safe-area-inset-top,0px))] sm:pl-6 sm:pr-6 sm:pb-[max(2.5rem,env(safe-area-inset-bottom,0px))] sm:pt-[calc(5rem+env(safe-area-inset-top,0px))] md:px-8 md:pb-[max(3rem,env(safe-area-inset-bottom,0px))] md:pt-[calc(5.5rem+env(safe-area-inset-top,0px))] lg:pt-[calc(5.5rem+env(safe-area-inset-top,0px))]">
         {children}
       </main>
 
