@@ -1,12 +1,20 @@
 "use client";
 
-import { useLocale } from 'next-intl';
-import { usePathname, useRouter } from '@/i18n/routing';
-import { Globe, Loader2 } from 'lucide-react';
-import { useState, useTransition, useEffect } from 'react';
-import { routing } from '@/i18n/routing';
+import { useLocale } from "next-intl";
+import { usePathname, useRouter } from "@/i18n/routing";
+import { Globe, Loader2 } from "lucide-react";
+import { useState, useTransition, useEffect } from "react";
+import { routing } from "@/i18n/routing";
+import clsx from "clsx";
 
-export default function LanguageSwitcher() {
+export type LanguageSwitcherVariant = "default" | "adminNav";
+
+type LanguageSwitcherProps = {
+  /** adminNav: tinggi & pill selaras tombol logout di navbar admin */
+  variant?: LanguageSwitcherVariant;
+};
+
+export default function LanguageSwitcher({ variant = "default" }: LanguageSwitcherProps) {
   const locale = useLocale();
   const pathname = usePathname(); // This returns path WITHOUT locale prefix (e.g., '/' or '/what-we-do')
   const router = useRouter();
@@ -142,29 +150,51 @@ export default function LanguageSwitcher() {
     });
   };
 
+  const triggerClass = clsx(
+    "font-sans disabled:cursor-not-allowed disabled:opacity-50",
+    variant === "adminNav"
+      ? "inline-flex h-10 min-h-10 shrink-0 items-center justify-center gap-2 rounded-full border border-white/20 bg-white/[0.07] px-3.5 text-xs font-semibold text-white shadow-none transition-colors duration-200 hover:bg-white/[0.12]"
+      : "flex items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-all duration-200 hover:bg-white/15 hover:text-white md:rounded-md md:border-transparent md:bg-white/5 md:px-3 md:py-1.5 md:text-xs md:font-medium md:shadow-none md:hover:bg-white/10"
+  );
+
+  const iconClassTrigger =
+    variant === "adminNav" ? "h-3.5 w-3.5 shrink-0" : "h-4 w-4 md:h-3.5 md:w-3.5";
+
   return (
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
         disabled={isPending}
-        className="font-sans flex items-center justify-center gap-2 px-4 py-2.5 md:px-3 md:py-1.5 rounded-lg md:rounded-md bg-white/10 hover:bg-white/15 md:bg-white/5 md:hover:bg-white/10 text-white hover:text-white transition-all duration-200 text-sm md:text-xs font-semibold md:font-medium disabled:opacity-50 disabled:cursor-not-allowed border border-white/20 md:border-transparent shadow-lg md:shadow-none"
+        className={triggerClass}
         aria-label="Switch language"
+        type="button"
       >
         {isPending ? (
-          <Loader2 className="w-4 h-4 md:w-3.5 md:h-3.5 animate-spin" />
+          <Loader2 className={clsx(iconClassTrigger, "animate-spin")} />
         ) : (
-          <Globe className="w-4 h-4 md:w-3.5 md:h-3.5" />
+          <Globe className={iconClassTrigger} />
         )}
-        <span className="font-sans font-semibold">{switchingTo ? languages.find(l => l.code === switchingTo)?.name || currentLanguage.name : currentLanguage.name}</span>
+        <span className="font-sans leading-none font-semibold">
+          {switchingTo
+            ? languages.find((l) => l.code === switchingTo)?.name || currentLanguage.name
+            : currentLanguage.name}
+        </span>
       </button>
 
       {isOpen && !isPending && (
         <>
           <div
-            className="fixed inset-0 z-40"
+            className={clsx("fixed inset-0", variant === "adminNav" ? "z-[55]" : "z-40")}
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 top-full mt-2 w-28 md:w-24 bg-black/95 backdrop-blur-sm border border-white/20 md:border-white/10 rounded-lg shadow-xl z-[60] overflow-hidden">
+          <div
+            className={clsx(
+              "absolute right-0 top-full mt-2 w-28 overflow-hidden rounded-lg border bg-black/95 shadow-xl backdrop-blur-sm",
+              variant === "adminNav"
+                ? "z-[70] border-white/20"
+                : "z-[60] border-white/20 md:w-24 md:border-white/10"
+            )}
+          >
             {languages.map((lang) => (
               <button
                 key={lang.code}

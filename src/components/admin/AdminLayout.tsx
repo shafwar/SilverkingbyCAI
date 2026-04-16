@@ -226,17 +226,19 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
       const isExternal = (item as any).isExternal;
 
       const linkClassName = clsx(
-        "flex items-center gap-2 rounded-full px-3 py-2 text-xs tracking-wide transition touch-manipulation sm:gap-2.5 sm:px-3.5 sm:py-2.5 sm:text-[13px] sm:leading-snug whitespace-nowrap",
+        "inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-transparent px-3.5 text-[13px] font-medium leading-none tracking-wide transition touch-manipulation sm:gap-2.5 sm:px-4 whitespace-nowrap",
         orientation === "col" ? "w-full justify-start" : "justify-center",
         active
-          ? "bg-white/[0.12] font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] ring-1 ring-[#FFD700]/50"
-          : "font-medium text-white/75 hover:bg-white/[0.08] hover:text-white"
+          ? "border-[#FFD700]/35 bg-white/[0.12] font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] ring-1 ring-[#FFD700]/45"
+          : "text-white/80 hover:border-white/10 hover:bg-white/[0.08] hover:text-white"
       );
 
       const iconClassName = clsx(
-        "h-4 w-4 shrink-0 sm:h-[18px] sm:w-[18px]",
-        active ? "text-[#FFD700]" : "text-white/55"
+        "h-[17px] w-[17px] shrink-0 sm:h-[18px] sm:w-[18px]",
+        active ? "text-[#FFD700]" : "text-white/60"
       );
+
+      const labelEl = <span className="leading-none">{item.label}</span>;
 
       // For mobile menu, use button with navigation handler
       if (isMobile) {
@@ -256,8 +258,8 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
               }
             }}
           >
-            <Icon className={iconClassName} />
-            {item.label}
+            <Icon className={iconClassName} aria-hidden />
+            {labelEl}
           </button>
         );
       }
@@ -282,8 +284,8 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
               }
             }}
           >
-            <Icon className={iconClassName} />
-            {item.label}
+            <Icon className={iconClassName} aria-hidden />
+            {labelEl}
           </a>
         );
       }
@@ -303,8 +305,8 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
             }
           }}
         >
-          <Icon className={iconClassName} />
-          {item.label}
+          <Icon className={iconClassName} aria-hidden />
+          {labelEl}
         </Link>
       );
     });
@@ -325,13 +327,13 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         )}
       >
         <div className="pt-[env(safe-area-inset-top,0px)]">
-          <div className="mx-auto flex min-h-[4rem] max-w-[1800px] items-center px-4 sm:px-6 md:px-8 lg:px-10">
+          <div className="mx-auto flex min-h-[4.25rem] max-w-[1800px] items-stretch px-4 sm:px-6 md:px-8 lg:px-10">
             {/* Logo - Left */}
-            <div className="flex w-[120px] shrink-0 items-center sm:w-[160px]">
+            <div className="flex w-[128px] shrink-0 items-center border-r border-[#FFD700]/20 pr-4 sm:w-[152px] sm:pr-5">
               <Link
                 href="/admin"
                 prefetch={true}
-                className="flex items-center group"
+                className="group flex items-center"
                 onMouseEnter={() => {
                   try {
                     router.prefetch("/admin");
@@ -357,21 +359,22 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
               </Link>
             </div>
 
-            {/* Navigation Links - Center (Scrollable on small desktop) */}
-            <div className="hidden flex-1 items-center justify-center overflow-x-auto lg:flex scrollbar-hide">
-              <div className="flex items-center gap-1 px-4">
+            {/* Navigation Links - Center (scroll horizontal bila perlu; semua item satu baris) */}
+            <div className="hidden min-h-[4.25rem] min-w-0 flex-1 items-center justify-center overflow-x-auto overflow-y-visible py-2 lg:flex scrollbar-hide">
+              <div className="flex flex-nowrap items-center justify-center gap-2 px-3 sm:gap-2.5 sm:px-4">
                 {renderLinks("row")}
               </div>
             </div>
 
             {/* Actions - Right */}
-            <div className="flex w-[120px] shrink-0 items-center justify-end gap-2 sm:w-[180px] sm:gap-3">
+            <div className="flex min-h-[4.25rem] min-w-[200px] shrink-0 items-center justify-end gap-2.5 border-l border-white/10 pl-4 sm:min-w-[220px] sm:gap-3 sm:pl-5">
               <div className="hidden sm:block">
-                <LanguageSwitcher />
+                <LanguageSwitcher variant="adminNav" />
               </div>
               <button
+                type="button"
                 onClick={handleSignOut}
-                className="hidden rounded-full border border-white/20 bg-[#FFD700]/15 px-3.5 py-2 text-xs font-semibold tracking-wide text-white transition hover:border-[#FFD700]/55 hover:bg-[#FFD700]/25 sm:inline-flex"
+                className="hidden h-10 min-h-10 shrink-0 items-center justify-center rounded-full border border-[#FFD700]/40 bg-[#FFD700]/14 px-4 text-xs font-semibold tracking-wide text-white transition hover:border-[#FFD700]/60 hover:bg-[#FFD700]/24 sm:inline-flex"
               >
                 {safeT(t, "logout", "Logout")}
               </button>
