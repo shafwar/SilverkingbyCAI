@@ -99,6 +99,9 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
     [t, tDashboard, safeT, locale]
   );
 
+  /** Desktop: dua baris seimbang supaya semua link muat tanpa scroll horizontal */
+  const desktopNavSplitIndex = Math.ceil(navItems.length / 2);
+
   // Aggressive prefetching for all admin routes on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -219,122 +222,122 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
     }
   };
 
-  const renderLinks = (orientation: "row" | "col", isMobile: boolean = false) =>
-    navItems.map((item) => {
-      const Icon = item.icon;
-      const active = pathname === item.href;
-      const isExternal = (item as any).isExternal;
-      const isDesktopRow = orientation === "row" && !isMobile;
+  const renderNavItem = (
+    item: (typeof navItems)[number],
+    orientation: "row" | "col",
+    isMobile: boolean
+  ) => {
+    const Icon = item.icon;
+    const active = pathname === item.href;
+    const isExternal = (item as { isExternal?: boolean }).isExternal;
 
-      const linkClassName = clsx(
-        "inline-flex shrink-0 items-center rounded-full border border-transparent font-medium leading-none tracking-wide transition touch-manipulation whitespace-nowrap",
-        orientation === "col"
-          ? "h-11 w-full justify-start gap-2.5 px-4 text-sm"
-          : "h-10 min-h-10 justify-center gap-2 px-2.5 text-[12px] xl:px-3.5 xl:text-[13px]",
-        active
-          ? "bg-white/[0.1] font-semibold text-white ring-1 ring-inset ring-[#FFD700]/55 shadow-none"
-          : "text-white/70 hover:border-white/10 hover:bg-white/[0.07] hover:text-white"
-      );
+    const linkClassName = clsx(
+      "inline-flex shrink-0 items-center rounded-full border border-transparent leading-none tracking-wide transition touch-manipulation whitespace-nowrap",
+      orientation === "col"
+        ? "h-11 w-full justify-start gap-3 px-4 text-sm font-medium"
+        : "h-9 justify-center gap-1.5 px-2.5 text-[12px] font-medium sm:gap-2 sm:px-3",
+      active
+        ? "border-[#FFD700]/35 bg-white/[0.12] font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] ring-1 ring-[#FFD700]/45"
+        : "text-white/80 hover:border-white/10 hover:bg-white/[0.08] hover:text-white"
+    );
 
-      const iconClassName = clsx(
-        "shrink-0",
-        isDesktopRow ? "h-4 w-4" : "h-5 w-5",
-        active ? "text-[#FFD700]" : "text-white/55"
-      );
+    const iconClassName = clsx(
+      "shrink-0",
+      orientation === "col" ? "h-5 w-5" : "h-3.5 w-3.5 sm:h-4 sm:w-4",
+      active ? "text-[#FFD700]" : "text-white/60"
+    );
 
-      const labelEl = <span className="leading-none">{item.label}</span>;
+    const labelEl = <span className="leading-none">{item.label}</span>;
 
-      // For mobile menu, use button with navigation handler
-      if (isMobile) {
-        return (
-          <button
-            key={item.href}
-            onClick={() => handleMenuLinkClick(item.href, isExternal)}
-            className={linkClassName}
-            onMouseEnter={() => {
-              // Prefetch on hover even in mobile menu for faster navigation
-              if (!isExternal) {
-                try {
-                  router.prefetch(item.href);
-                } catch (e) {
-                  // Silently fail
-                }
-              }
-            }}
-          >
-            <Icon className={iconClassName} aria-hidden />
-            {labelEl}
-          </button>
-        );
-      }
-
-      // For desktop, use Link with prefetch or <a>
-      if (isExternal) {
-        return (
-          <a
-            key={item.href}
-            href={item.href}
-            className={linkClassName}
-            onMouseEnter={() => {
-              // Prefetch on hover for external links
-              try {
-                const prefetchLink = document.createElement("link");
-                prefetchLink.rel = "prefetch";
-                prefetchLink.as = "document";
-                prefetchLink.href = item.href;
-                document.head.appendChild(prefetchLink);
-              } catch (e) {
-                // Silently fail
-              }
-            }}
-          >
-            <Icon className={iconClassName} aria-hidden />
-            {labelEl}
-          </a>
-        );
-      }
-
+    if (isMobile) {
       return (
-        <Link
+        <button
           key={item.href}
-          href={item.href}
-          prefetch={true}
+          type="button"
+          onClick={() => handleMenuLinkClick(item.href, isExternal)}
           className={linkClassName}
           onMouseEnter={() => {
-            // Aggressive hover prefetching for instant navigation
-            try {
-              router.prefetch(item.href);
-            } catch (e) {
-              // Silently fail
+            if (!isExternal) {
+              try {
+                router.prefetch(item.href);
+              } catch {
+                // ignore
+              }
             }
           }}
         >
           <Icon className={iconClassName} aria-hidden />
           {labelEl}
-        </Link>
+        </button>
       );
-    });
+    }
+
+    if (isExternal) {
+      return (
+        <a
+          key={item.href}
+          href={item.href}
+          className={linkClassName}
+          onMouseEnter={() => {
+            try {
+              const prefetchLink = document.createElement("link");
+              prefetchLink.rel = "prefetch";
+              prefetchLink.as = "document";
+              prefetchLink.href = item.href;
+              document.head.appendChild(prefetchLink);
+            } catch {
+              // ignore
+            }
+          }}
+        >
+          <Icon className={iconClassName} aria-hidden />
+          {labelEl}
+        </a>
+      );
+    }
+
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        prefetch={true}
+        className={linkClassName}
+        onMouseEnter={() => {
+          try {
+            router.prefetch(item.href);
+          } catch {
+            // ignore
+          }
+        }}
+      >
+        <Icon className={iconClassName} aria-hidden />
+        {labelEl}
+      </Link>
+    );
+  };
+
+  const renderLinks = (orientation: "row" | "col", isMobile: boolean = false) =>
+    navItems.map((item) => renderNavItem(item, orientation, isMobile));
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-black text-white supports-[height:100dvh]:min-h-[100dvh]">
+    <div className="min-h-screen overflow-x-hidden bg-black text-white supports-[height:100dvh]:min-h-[100dvh]">
       <motion.nav
         initial={{ opacity: 0, y: -10 }}
         animate={
           isNavHidden && !mobileOpen
-            ? { y: -100, opacity: 0.98 }
+            ? { y: -120, opacity: 0.98 }
             : { y: 0, opacity: mobileOpen ? 0 : 1 }
         }
         transition={{ duration: 0.25, ease: "easeInOut" }}
         className={clsx(
-          "fixed inset-x-0 top-0 z-40 overflow-x-clip border-b border-white/[0.07] bg-black/90 backdrop-blur-2xl transition-all duration-300 shadow-[0_8px_32px_rgba(0,0,0,0.45)]",
+          "fixed inset-x-0 top-0 z-40 border-b border-white/[0.07] bg-black/90 backdrop-blur-2xl transition-all duration-300 shadow-[0_8px_32px_rgba(0,0,0,0.45)]",
           mobileOpen ? "border-b-0 shadow-none" : ""
         )}
       >
         <div className="pt-[env(safe-area-inset-top,0px)]">
-          {/* Mobile: flex justify-between. Desktop lg+: grid 3 kolom — link cluster benar-benar di tengah area konten */}
-          <div className="mx-auto flex min-h-[3.5rem] w-full max-w-[1920px] items-center justify-between gap-3 px-3 py-2 sm:min-h-[3.75rem] sm:px-4 lg:grid lg:min-h-[4rem] lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center lg:gap-0 lg:px-6 lg:py-2.5 xl:px-8">
+          <div className="mx-auto flex min-h-[5rem] max-w-[1800px] items-stretch px-3 sm:px-4 md:px-6 lg:px-8">
             {/* Logo - Left */}
-            <div className="flex shrink-0 items-center border-r border-[#FFD700]/25 pr-3 sm:pr-4">
+            <div className="flex w-14 shrink-0 items-center border-r border-[#FFD700]/20 pr-3 sm:w-16 sm:pr-4">
               <Link
                 href="/admin"
                 prefetch={true}
@@ -364,25 +367,29 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
               </Link>
             </div>
 
-            {/* Navigation Links - Center column (simetris vs logo & aksi) */}
-            <div className="hidden min-w-0 items-center justify-center lg:flex">
-              <nav
-                className="flex max-w-full flex-nowrap items-center justify-center gap-x-2 px-2 xl:gap-x-2.5"
-                aria-label="Admin"
-              >
-                {renderLinks("row")}
-              </nav>
+            {/* Navigation: dua baris, tanpa scroll — semua on frame */}
+            <div className="hidden min-w-0 flex-1 flex-col items-center justify-center gap-y-1 overflow-x-hidden py-1.5 lg:flex">
+              <div className="flex max-w-full flex-wrap items-center justify-center gap-x-1 gap-y-0.5 px-1 sm:gap-x-1.5">
+                {navItems
+                  .slice(0, desktopNavSplitIndex)
+                  .map((item) => renderNavItem(item, "row", false))}
+              </div>
+              <div className="flex max-w-full flex-wrap items-center justify-center gap-x-1 gap-y-0.5 px-1 sm:gap-x-1.5">
+                {navItems
+                  .slice(desktopNavSplitIndex)
+                  .map((item) => renderNavItem(item, "row", false))}
+              </div>
             </div>
 
             {/* Actions - Right */}
-            <div className="flex shrink-0 items-center justify-end gap-2 border-l border-white/10 pl-3 sm:gap-2.5 sm:pl-4">
+            <div className="flex min-w-[168px] shrink-0 items-center justify-end gap-2 border-l border-white/10 pl-3 sm:min-w-[176px] sm:gap-2.5 sm:pl-4">
               <div className="hidden sm:block">
                 <LanguageSwitcher variant="adminNav" />
               </div>
               <button
                 type="button"
                 onClick={handleSignOut}
-                className="hidden h-10 min-h-10 shrink-0 items-center justify-center rounded-full border border-white/18 bg-white/[0.06] px-3.5 text-xs font-semibold tracking-wide text-white/95 transition hover:border-white/28 hover:bg-white/[0.11] sm:inline-flex"
+                className="hidden h-9 min-h-9 shrink-0 items-center justify-center rounded-full border border-[#FFD700]/40 bg-[#FFD700]/14 px-3 text-[12px] font-semibold tracking-wide text-white transition hover:border-[#FFD700]/60 hover:bg-[#FFD700]/24 sm:inline-flex"
               >
                 {safeT(t, "logout", "Logout")}
               </button>
@@ -492,7 +499,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         )}
       </AnimatePresence>
 
-      <main className="mx-auto max-w-[1920px] min-w-0 pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] pb-[max(2rem,env(safe-area-inset-bottom,0px))] pt-[calc(4.5rem+env(safe-area-inset-top,0px))] sm:pl-6 sm:pr-6 sm:pb-[max(2.5rem,env(safe-area-inset-bottom,0px))] sm:pt-[calc(5rem+env(safe-area-inset-top,0px))] md:px-8 md:pb-[max(3rem,env(safe-area-inset-bottom,0px))] md:pt-[calc(5.5rem+env(safe-area-inset-top,0px))] lg:pt-[calc(5.5rem+env(safe-area-inset-top,0px))]">
+      <main className="mx-auto max-w-[1800px] min-w-0 pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] pb-[max(2rem,env(safe-area-inset-bottom,0px))] pt-[calc(4.5rem+env(safe-area-inset-top,0px))] sm:pl-6 sm:pr-6 sm:pb-[max(2.5rem,env(safe-area-inset-bottom,0px))] sm:pt-[calc(5rem+env(safe-area-inset-top,0px))] md:px-8 md:pb-[max(3rem,env(safe-area-inset-bottom,0px))] md:pt-[calc(5.5rem+env(safe-area-inset-top,0px))] lg:pt-[calc(6.25rem+env(safe-area-inset-top,0px))]">
         {children}
       </main>
 
