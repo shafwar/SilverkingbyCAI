@@ -230,18 +230,16 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         "inline-flex shrink-0 items-center rounded-full border border-transparent font-medium leading-none tracking-wide transition touch-manipulation whitespace-nowrap",
         orientation === "col"
           ? "h-11 w-full justify-start gap-2.5 px-4 text-sm"
-          : "h-9 justify-center gap-1 px-1.5 text-[11px] sm:gap-1.5 sm:px-2 md:gap-2 md:px-2 md:text-[12px] lg:px-2.5 xl:h-10 xl:gap-2 xl:px-3 xl:text-[12px] 2xl:px-3.5 2xl:text-[13px]",
+          : "h-10 min-h-10 justify-center gap-2 px-2.5 text-[12px] xl:px-3.5 xl:text-[13px]",
         active
-          ? "border-[#FFD700]/35 bg-white/[0.12] font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] ring-1 ring-[#FFD700]/45"
-          : "text-white/80 hover:border-white/10 hover:bg-white/[0.08] hover:text-white"
+          ? "bg-white/[0.1] font-semibold text-white ring-1 ring-inset ring-[#FFD700]/55 shadow-none"
+          : "text-white/70 hover:border-white/10 hover:bg-white/[0.07] hover:text-white"
       );
 
       const iconClassName = clsx(
         "shrink-0",
-        isDesktopRow
-          ? "h-3.5 w-3.5 md:h-[15px] md:w-[15px] xl:h-[17px] xl:w-[17px] 2xl:h-[18px] 2xl:w-[18px]"
-          : "h-5 w-5",
-        active ? "text-[#FFD700]" : "text-white/60"
+        isDesktopRow ? "h-4 w-4" : "h-5 w-5",
+        active ? "text-[#FFD700]" : "text-white/55"
       );
 
       const labelEl = <span className="leading-none">{item.label}</span>;
@@ -333,9 +331,10 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         )}
       >
         <div className="pt-[env(safe-area-inset-top,0px)]">
-          <div className="mx-auto flex min-h-[4.25rem] w-full max-w-[1920px] items-stretch px-3 sm:px-4 md:px-5 lg:px-6 xl:px-8">
+          {/* Mobile: flex justify-between. Desktop lg+: grid 3 kolom — link cluster benar-benar di tengah area konten */}
+          <div className="mx-auto flex min-h-[3.5rem] w-full max-w-[1920px] items-center justify-between gap-3 px-3 py-2 sm:min-h-[3.75rem] sm:px-4 lg:grid lg:min-h-[4rem] lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center lg:gap-0 lg:px-6 lg:py-2.5 xl:px-8">
             {/* Logo - Left */}
-            <div className="flex w-[96px] shrink-0 items-center border-r border-[#FFD700]/20 pr-3 sm:w-[108px] md:w-[118px] md:pr-3.5">
+            <div className="flex shrink-0 items-center border-r border-[#FFD700]/25 pr-3 sm:pr-4">
               <Link
                 href="/admin"
                 prefetch={true}
@@ -365,22 +364,25 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
               </Link>
             </div>
 
-            {/* Navigation Links - Center: satu baris, tanpa scroll horizontal — ukuran adaptif lebar layar */}
-            <div className="hidden min-h-[4.25rem] min-w-0 flex-1 items-center justify-center overflow-visible py-2 lg:flex">
-              <div className="flex w-full min-w-0 flex-nowrap items-center justify-center gap-x-1 px-0.5 sm:gap-x-1.5 md:gap-x-2 xl:gap-x-2.5">
+            {/* Navigation Links - Center column (simetris vs logo & aksi) */}
+            <div className="hidden min-w-0 items-center justify-center lg:flex">
+              <nav
+                className="flex max-w-full flex-nowrap items-center justify-center gap-x-2 px-2 xl:gap-x-2.5"
+                aria-label="Admin"
+              >
                 {renderLinks("row")}
-              </div>
+              </nav>
             </div>
 
             {/* Actions - Right */}
-            <div className="flex min-h-[4.25rem] w-[168px] shrink-0 items-center justify-end gap-2 border-l border-white/10 pl-3 sm:w-[178px] sm:gap-2 sm:pl-3.5 md:w-[188px]">
+            <div className="flex shrink-0 items-center justify-end gap-2 border-l border-white/10 pl-3 sm:gap-2.5 sm:pl-4">
               <div className="hidden sm:block">
                 <LanguageSwitcher variant="adminNav" />
               </div>
               <button
                 type="button"
                 onClick={handleSignOut}
-                className="hidden h-9 min-h-9 shrink-0 items-center justify-center rounded-full border border-[#FFD700]/40 bg-[#FFD700]/14 px-2.5 text-[11px] font-semibold tracking-wide text-white transition hover:border-[#FFD700]/60 hover:bg-[#FFD700]/24 sm:inline-flex md:px-3 xl:h-10 xl:min-h-10 xl:px-3.5 xl:text-xs"
+                className="hidden h-10 min-h-10 shrink-0 items-center justify-center rounded-full border border-white/18 bg-white/[0.06] px-3.5 text-xs font-semibold tracking-wide text-white/95 transition hover:border-white/28 hover:bg-white/[0.11] sm:inline-flex"
               >
                 {safeT(t, "logout", "Logout")}
               </button>

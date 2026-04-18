@@ -153,12 +153,12 @@ export default function LanguageSwitcher({ variant = "default" }: LanguageSwitch
   const triggerClass = clsx(
     "font-sans disabled:cursor-not-allowed disabled:opacity-50",
     variant === "adminNav"
-      ? "inline-flex h-9 min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border border-white/20 bg-white/[0.07] px-2.5 text-[11px] font-semibold text-white shadow-none transition-colors duration-200 hover:bg-white/[0.12] xl:h-10 xl:min-h-10 xl:gap-2 xl:px-3.5 xl:text-xs"
+      ? "inline-flex h-10 min-h-10 shrink-0 items-center justify-center gap-2 rounded-full border border-white/18 bg-white/[0.06] px-3.5 text-xs font-semibold text-white/95 shadow-none transition-colors duration-200 hover:border-white/28 hover:bg-white/[0.11]"
       : "flex items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-all duration-200 hover:bg-white/15 hover:text-white md:rounded-md md:border-transparent md:bg-white/5 md:px-3 md:py-1.5 md:text-xs md:font-medium md:shadow-none md:hover:bg-white/10"
   );
 
   const iconClassTrigger =
-    variant === "adminNav" ? "h-3 w-3 shrink-0 xl:h-3.5 xl:w-3.5" : "h-4 w-4 md:h-3.5 md:w-3.5";
+    variant === "adminNav" ? "h-3.5 w-3.5 shrink-0" : "h-4 w-4 md:h-3.5 md:w-3.5";
 
   return (
     <div className="relative">
