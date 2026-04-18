@@ -224,17 +224,23 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
       const Icon = item.icon;
       const active = pathname === item.href;
       const isExternal = (item as any).isExternal;
+      const isDesktopRow = orientation === "row" && !isMobile;
 
       const linkClassName = clsx(
-        "inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-transparent px-3.5 text-[13px] font-medium leading-none tracking-wide transition touch-manipulation sm:gap-2.5 sm:px-4 whitespace-nowrap",
-        orientation === "col" ? "w-full justify-start" : "justify-center",
+        "inline-flex shrink-0 items-center rounded-full border border-transparent font-medium leading-none tracking-wide transition touch-manipulation whitespace-nowrap",
+        orientation === "col"
+          ? "h-11 w-full justify-start gap-2.5 px-4 text-sm"
+          : "h-9 justify-center gap-1 px-1.5 text-[11px] sm:gap-1.5 sm:px-2 md:gap-2 md:px-2 md:text-[12px] lg:px-2.5 xl:h-10 xl:gap-2 xl:px-3 xl:text-[12px] 2xl:px-3.5 2xl:text-[13px]",
         active
           ? "border-[#FFD700]/35 bg-white/[0.12] font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] ring-1 ring-[#FFD700]/45"
           : "text-white/80 hover:border-white/10 hover:bg-white/[0.08] hover:text-white"
       );
 
       const iconClassName = clsx(
-        "h-[17px] w-[17px] shrink-0 sm:h-[18px] sm:w-[18px]",
+        "shrink-0",
+        isDesktopRow
+          ? "h-3.5 w-3.5 md:h-[15px] md:w-[15px] xl:h-[17px] xl:w-[17px] 2xl:h-[18px] 2xl:w-[18px]"
+          : "h-5 w-5",
         active ? "text-[#FFD700]" : "text-white/60"
       );
 
@@ -312,7 +318,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
     });
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-black text-white supports-[height:100dvh]:min-h-[100dvh]">
+    <div className="min-h-screen overflow-x-clip bg-black text-white supports-[height:100dvh]:min-h-[100dvh]">
       <motion.nav
         initial={{ opacity: 0, y: -10 }}
         animate={
@@ -322,14 +328,14 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         }
         transition={{ duration: 0.25, ease: "easeInOut" }}
         className={clsx(
-          "fixed inset-x-0 top-0 z-40 border-b border-white/[0.07] bg-black/90 backdrop-blur-2xl transition-all duration-300 shadow-[0_8px_32px_rgba(0,0,0,0.45)]",
+          "fixed inset-x-0 top-0 z-40 overflow-x-clip border-b border-white/[0.07] bg-black/90 backdrop-blur-2xl transition-all duration-300 shadow-[0_8px_32px_rgba(0,0,0,0.45)]",
           mobileOpen ? "border-b-0 shadow-none" : ""
         )}
       >
         <div className="pt-[env(safe-area-inset-top,0px)]">
-          <div className="mx-auto flex min-h-[4.25rem] max-w-[1800px] items-stretch px-4 sm:px-6 md:px-8 lg:px-10">
+          <div className="mx-auto flex min-h-[4.25rem] w-full max-w-[1920px] items-stretch px-3 sm:px-4 md:px-5 lg:px-6 xl:px-8">
             {/* Logo - Left */}
-            <div className="flex w-[128px] shrink-0 items-center border-r border-[#FFD700]/20 pr-4 sm:w-[152px] sm:pr-5">
+            <div className="flex w-[96px] shrink-0 items-center border-r border-[#FFD700]/20 pr-3 sm:w-[108px] md:w-[118px] md:pr-3.5">
               <Link
                 href="/admin"
                 prefetch={true}
@@ -359,22 +365,22 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
               </Link>
             </div>
 
-            {/* Navigation Links - Center (scroll horizontal bila perlu; semua item satu baris) */}
-            <div className="hidden min-h-[4.25rem] min-w-0 flex-1 items-center justify-center overflow-x-auto overflow-y-visible py-2 lg:flex scrollbar-hide">
-              <div className="flex flex-nowrap items-center justify-center gap-2 px-3 sm:gap-2.5 sm:px-4">
+            {/* Navigation Links - Center: satu baris, tanpa scroll horizontal — ukuran adaptif lebar layar */}
+            <div className="hidden min-h-[4.25rem] min-w-0 flex-1 items-center justify-center overflow-visible py-2 lg:flex">
+              <div className="flex w-full min-w-0 flex-nowrap items-center justify-center gap-x-1 px-0.5 sm:gap-x-1.5 md:gap-x-2 xl:gap-x-2.5">
                 {renderLinks("row")}
               </div>
             </div>
 
             {/* Actions - Right */}
-            <div className="flex min-h-[4.25rem] min-w-[200px] shrink-0 items-center justify-end gap-2.5 border-l border-white/10 pl-4 sm:min-w-[220px] sm:gap-3 sm:pl-5">
+            <div className="flex min-h-[4.25rem] w-[168px] shrink-0 items-center justify-end gap-2 border-l border-white/10 pl-3 sm:w-[178px] sm:gap-2 sm:pl-3.5 md:w-[188px]">
               <div className="hidden sm:block">
                 <LanguageSwitcher variant="adminNav" />
               </div>
               <button
                 type="button"
                 onClick={handleSignOut}
-                className="hidden h-10 min-h-10 shrink-0 items-center justify-center rounded-full border border-[#FFD700]/40 bg-[#FFD700]/14 px-4 text-xs font-semibold tracking-wide text-white transition hover:border-[#FFD700]/60 hover:bg-[#FFD700]/24 sm:inline-flex"
+                className="hidden h-9 min-h-9 shrink-0 items-center justify-center rounded-full border border-[#FFD700]/40 bg-[#FFD700]/14 px-2.5 text-[11px] font-semibold tracking-wide text-white transition hover:border-[#FFD700]/60 hover:bg-[#FFD700]/24 sm:inline-flex md:px-3 xl:h-10 xl:min-h-10 xl:px-3.5 xl:text-xs"
               >
                 {safeT(t, "logout", "Logout")}
               </button>
@@ -484,7 +490,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         )}
       </AnimatePresence>
 
-      <main className="mx-auto max-w-[1800px] min-w-0 pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] pb-[max(2rem,env(safe-area-inset-bottom,0px))] pt-[calc(4.5rem+env(safe-area-inset-top,0px))] sm:pl-6 sm:pr-6 sm:pb-[max(2.5rem,env(safe-area-inset-bottom,0px))] sm:pt-[calc(5rem+env(safe-area-inset-top,0px))] md:px-8 md:pb-[max(3rem,env(safe-area-inset-bottom,0px))] md:pt-[calc(5.5rem+env(safe-area-inset-top,0px))] lg:pt-[calc(5.5rem+env(safe-area-inset-top,0px))]">
+      <main className="mx-auto max-w-[1920px] min-w-0 pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] pb-[max(2rem,env(safe-area-inset-bottom,0px))] pt-[calc(4.5rem+env(safe-area-inset-top,0px))] sm:pl-6 sm:pr-6 sm:pb-[max(2.5rem,env(safe-area-inset-bottom,0px))] sm:pt-[calc(5rem+env(safe-area-inset-top,0px))] md:px-8 md:pb-[max(3rem,env(safe-area-inset-bottom,0px))] md:pt-[calc(5.5rem+env(safe-area-inset-top,0px))] lg:pt-[calc(5.5rem+env(safe-area-inset-top,0px))]">
         {children}
       </main>
 
