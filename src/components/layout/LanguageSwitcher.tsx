@@ -153,7 +153,7 @@ export default function LanguageSwitcher({ variant = "default" }: LanguageSwitch
   const triggerClass = clsx(
     "font-sans disabled:cursor-not-allowed disabled:opacity-50",
     variant === "adminNav"
-      ? "inline-flex h-9 min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border border-white/20 bg-white/[0.07] px-3 text-[12px] font-semibold text-white shadow-none transition-colors duration-200 hover:bg-white/[0.12]"
+      ? "inline-flex h-10 min-h-10 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/[0.07] px-3 text-[13px] font-semibold text-white shadow-none transition-colors duration-200 hover:bg-white/[0.12]"
       : "flex items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-all duration-200 hover:bg-white/15 hover:text-white md:rounded-md md:border-transparent md:bg-white/5 md:px-3 md:py-1.5 md:text-xs md:font-medium md:shadow-none md:hover:bg-white/10"
   );
 

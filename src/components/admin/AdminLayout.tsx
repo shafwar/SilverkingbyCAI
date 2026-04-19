@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState, useMemo, useEffect, useRef } from "react";
+import { ReactNode, useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -38,14 +38,11 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
   // Always call hooks unconditionally
   const t = useTranslations("admin");
   const tDashboard = useTranslations("admin.dashboard");
-  const tExport = useTranslations("admin.export");
   const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [isNavHidden, setIsNavHidden] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const lastScrollYRef = useRef(0);
 
   // Get download state from context
   const { downloadState, cancelDownload, setIsDownloadMinimized } = useDownload();
@@ -98,9 +95,6 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
     ],
     [t, tDashboard, safeT, locale]
   );
-
-  /** Desktop: dua baris seimbang supaya semua link muat tanpa scroll horizontal */
-  const desktopNavSplitIndex = Math.ceil(navItems.length / 2);
 
   // Aggressive prefetching for all admin routes on mount
   useEffect(() => {
@@ -158,30 +152,6 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
     };
   }, [mobileOpen]);
 
-  // Dynamic navbar behavior based on scroll direction
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (mobileOpen) return; // Don't hide navbar when menu is open
-
-    const handleScroll = () => {
-      const currentY = window.scrollY || 0;
-      const lastY = lastScrollYRef.current;
-
-      // Jika scroll ke bawah dan sudah lewat beberapa px dari atas, sembunyikan navbar
-      if (currentY > lastY && currentY > 80) {
-        setIsNavHidden(true);
-      } else {
-        // Jika scroll ke atas, tampilkan kembali navbar
-        setIsNavHidden(false);
-      }
-
-      lastScrollYRef.current = currentY;
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [mobileOpen]);
-
   const handleSignOut = async () => {
     await signOut({ redirect: false });
     // Redirect to homepage after logout
@@ -224,7 +194,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
 
   const renderNavItem = (
     item: (typeof navItems)[number],
-    orientation: "row" | "col",
+    mode: "sidebar" | "col",
     isMobile: boolean
   ) => {
     const Icon = item.icon;
@@ -232,22 +202,32 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
     const isExternal = (item as { isExternal?: boolean }).isExternal;
 
     const linkClassName = clsx(
-      "inline-flex shrink-0 items-center rounded-full border border-transparent leading-none tracking-wide transition touch-manipulation whitespace-nowrap",
-      orientation === "col"
-        ? "h-11 w-full justify-start gap-3 px-4 text-sm font-medium"
-        : "h-9 justify-center gap-1.5 px-2.5 text-[12px] font-medium sm:gap-2 sm:px-3",
+      "flex w-full min-w-0 items-center border border-transparent text-left transition touch-manipulation",
+      mode === "sidebar" &&
+        "gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium leading-snug tracking-wide",
+      mode === "col" &&
+        "h-11 shrink-0 gap-3 rounded-full px-4 text-sm font-medium leading-none tracking-wide whitespace-nowrap",
       active
-        ? "border-[#FFD700]/35 bg-white/[0.12] font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] ring-1 ring-[#FFD700]/45"
-        : "text-white/80 hover:border-white/10 hover:bg-white/[0.08] hover:text-white"
+        ? "border-[#FFD700]/30 bg-white/[0.1] font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] ring-1 ring-[#FFD700]/35"
+        : "text-white/75 hover:border-white/10 hover:bg-white/[0.06] hover:text-white"
     );
 
     const iconClassName = clsx(
       "shrink-0",
-      orientation === "col" ? "h-5 w-5" : "h-3.5 w-3.5 sm:h-4 sm:w-4",
-      active ? "text-[#FFD700]" : "text-white/60"
+      mode === "col" ? "h-5 w-5" : "h-[18px] w-[18px]",
+      active ? "text-[#FFD700]" : "text-white/55"
     );
 
-    const labelEl = <span className="leading-none">{item.label}</span>;
+    const labelEl = (
+      <span
+        className={clsx(
+          "leading-snug",
+          mode === "sidebar" && "min-w-0 flex-1 truncate"
+        )}
+      >
+        {item.label}
+      </span>
+    );
 
     if (isMobile) {
       return (
@@ -316,94 +296,117 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
     );
   };
 
-  const renderLinks = (orientation: "row" | "col", isMobile: boolean = false) =>
-    navItems.map((item) => renderNavItem(item, orientation, isMobile));
+  const renderLinks = (mode: "sidebar" | "col", isMobile: boolean) =>
+    navItems.map((item) => renderNavItem(item, mode, isMobile));
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-black text-white supports-[height:100dvh]:min-h-[100dvh]">
-      <motion.nav
-        initial={{ opacity: 0, y: -10 }}
-        animate={
-          isNavHidden && !mobileOpen
-            ? { y: -120, opacity: 0.98 }
-            : { y: 0, opacity: mobileOpen ? 0 : 1 }
-        }
-        transition={{ duration: 0.25, ease: "easeInOut" }}
-        className={clsx(
-          "fixed inset-x-0 top-0 z-40 border-b border-white/[0.07] bg-black/90 backdrop-blur-2xl transition-all duration-300 shadow-[0_8px_32px_rgba(0,0,0,0.45)]",
-          mobileOpen ? "border-b-0 shadow-none" : ""
-        )}
+      {/* Mobile: bar atas ringkas */}
+      <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-white/[0.08] bg-black/95 px-4 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl lg:hidden">
+        <Link
+          href="/admin"
+          prefetch={true}
+          className="group flex items-center gap-2"
+          onMouseEnter={() => {
+            try {
+              router.prefetch("/admin");
+            } catch {
+              // ignore
+            }
+          }}
+        >
+          <div className="relative h-9 w-9 shrink-0 transition-transform duration-300 group-hover:scale-105">
+            <Image
+              src={getR2UrlClient("/images/cai-logo.png")}
+              alt="CAI Logo - Silver King by CAI"
+              fill
+              className="object-contain"
+              style={{
+                filter: "brightness(0) invert(1) drop-shadow(0 0 8px rgba(255, 255, 255, 0.2))",
+              }}
+              priority
+              unoptimized
+            />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/45">
+              Silver King
+            </p>
+            <p className="truncate text-sm font-semibold text-white">Command</p>
+          </div>
+        </Link>
+        <button
+          type="button"
+          onClick={() => setMobileOpen((prev) => !prev)}
+          className="rounded-xl border border-white/15 p-2.5 text-white touch-manipulation hover:bg-white/10"
+          aria-label="Buka menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+      </header>
+
+      {/* Desktop: sidebar kiri */}
+      <aside
+        className="fixed bottom-0 left-0 top-0 z-30 hidden w-[260px] flex-col border-r border-white/[0.08] bg-[#060606] pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] lg:flex"
+        aria-label="Navigasi admin"
       >
-        <div className="pt-[env(safe-area-inset-top,0px)]">
-          <div className="mx-auto flex min-h-[5rem] max-w-[1800px] items-stretch px-3 sm:px-4 md:px-6 lg:px-8">
-            {/* Logo - Left */}
-            <div className="flex w-14 shrink-0 items-center border-r border-[#FFD700]/20 pr-3 sm:w-16 sm:pr-4">
-              <Link
-                href="/admin"
-                prefetch={true}
-                className="group flex items-center"
-                onMouseEnter={() => {
-                  try {
-                    router.prefetch("/admin");
-                  } catch (e) {
-                    // Silently fail
-                  }
-                }}
-              >
-                <div className="relative h-8 w-8 sm:h-9 sm:w-9 transition-transform duration-300 group-hover:scale-110">
-                  <Image
-                    src={getR2UrlClient("/images/cai-logo.png")}
-                    alt="CAI Logo - Silver King by CAI"
-                    fill
-                    className="object-contain"
-                    style={{
-                      filter:
-                        "brightness(0) invert(1) drop-shadow(0 0 8px rgba(255, 255, 255, 0.2))",
-                    }}
-                    priority
-                    unoptimized
-                  />
-                </div>
-              </Link>
-            </div>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="shrink-0 border-b border-white/[0.06] px-4 py-5">
+            <Link
+              href="/admin"
+              prefetch={true}
+              className="group flex items-center gap-3"
+              onMouseEnter={() => {
+                try {
+                  router.prefetch("/admin");
+                } catch {
+                  // ignore
+                }
+              }}
+            >
+              <div className="relative h-10 w-10 shrink-0 transition-transform duration-300 group-hover:scale-105">
+                <Image
+                  src={getR2UrlClient("/images/cai-logo.png")}
+                  alt="CAI Logo - Silver King by CAI"
+                  fill
+                  className="object-contain"
+                  style={{
+                    filter:
+                      "brightness(0) invert(1) drop-shadow(0 0 8px rgba(255, 255, 255, 0.2))",
+                  }}
+                  priority
+                  unoptimized
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">
+                  Silver King
+                </p>
+                <p className="truncate text-sm font-semibold text-white">Command</p>
+              </div>
+            </Link>
+          </div>
 
-            {/* Navigation: dua baris, tanpa scroll — semua on frame */}
-            <div className="hidden min-w-0 flex-1 flex-col items-center justify-center gap-y-1 overflow-x-hidden py-1.5 lg:flex">
-              <div className="flex max-w-full flex-wrap items-center justify-center gap-x-1 gap-y-0.5 px-1 sm:gap-x-1.5">
-                {navItems
-                  .slice(0, desktopNavSplitIndex)
-                  .map((item) => renderNavItem(item, "row", false))}
-              </div>
-              <div className="flex max-w-full flex-wrap items-center justify-center gap-x-1 gap-y-0.5 px-1 sm:gap-x-1.5">
-                {navItems
-                  .slice(desktopNavSplitIndex)
-                  .map((item) => renderNavItem(item, "row", false))}
-              </div>
-            </div>
+          <nav
+            className="min-h-0 flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden px-3 py-3"
+            aria-label="Menu admin"
+          >
+            {renderLinks("sidebar", false)}
+          </nav>
 
-            {/* Actions - Right */}
-            <div className="flex min-w-[168px] shrink-0 items-center justify-end gap-2 border-l border-white/10 pl-3 sm:min-w-[176px] sm:gap-2.5 sm:pl-4">
-              <div className="hidden sm:block">
-                <LanguageSwitcher variant="adminNav" />
-              </div>
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="hidden h-9 min-h-9 shrink-0 items-center justify-center rounded-full border border-[#FFD700]/40 bg-[#FFD700]/14 px-3 text-[12px] font-semibold tracking-wide text-white transition hover:border-[#FFD700]/60 hover:bg-[#FFD700]/24 sm:inline-flex"
-              >
-                {safeT(t, "logout", "Logout")}
-              </button>
-              <button
-                onClick={() => setMobileOpen((prev) => !prev)}
-                className="rounded-full border border-white/15 p-2 text-white lg:hidden touch-manipulation"
-                aria-label="Toggle navigation"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
-            </div>
+          <div className="shrink-0 space-y-2 border-t border-white/[0.06] px-3 py-4">
+            <LanguageSwitcher variant="adminNav" />
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#FFD700]/40 bg-[#FFD700]/12 text-[13px] font-semibold text-white transition hover:border-[#FFD700]/55 hover:bg-[#FFD700]/22"
+            >
+              <LogOut className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+              {safeT(t, "logout", "Logout")}
+            </button>
           </div>
         </div>
-      </motion.nav>
+      </aside>
 
       {/* Full Screen Mobile Menu Overlay */}
       <AnimatePresence>
@@ -499,7 +502,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         )}
       </AnimatePresence>
 
-      <main className="mx-auto max-w-[1800px] min-w-0 pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] pb-[max(2rem,env(safe-area-inset-bottom,0px))] pt-[calc(4.5rem+env(safe-area-inset-top,0px))] sm:pl-6 sm:pr-6 sm:pb-[max(2.5rem,env(safe-area-inset-bottom,0px))] sm:pt-[calc(5rem+env(safe-area-inset-top,0px))] md:px-8 md:pb-[max(3rem,env(safe-area-inset-bottom,0px))] md:pt-[calc(5.5rem+env(safe-area-inset-top,0px))] lg:pt-[calc(6.25rem+env(safe-area-inset-top,0px))]">
+      <main className="mx-auto max-w-[1800px] min-w-0 px-4 pb-[max(2rem,env(safe-area-inset-bottom,0px))] pt-[calc(3.5rem+env(safe-area-inset-top,0px))] pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] sm:px-5 sm:pb-[max(2.5rem,env(safe-area-inset-bottom,0px))] md:px-8 md:pb-[max(3rem,env(safe-area-inset-bottom,0px))] lg:ml-[260px] lg:pl-8 lg:pr-10 lg:pt-8 lg:pb-10">
         {children}
       </main>
 
