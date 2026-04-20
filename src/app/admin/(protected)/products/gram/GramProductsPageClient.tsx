@@ -41,8 +41,8 @@ export function GramProductsPageClient({ batches: initialBatches }: { batches: G
   const batches = data?.batches ?? initialBatches;
 
   return (
-    <div className="space-y-4 sm:space-y-6 h-[calc(100vh-8rem)] flex flex-col">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 flex-shrink-0">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
         <div>
           <p className="text-[10px] sm:text-xs uppercase tracking-[0.4em] sm:tracking-[0.5em] text-white/60">
             {t("inventory")} – Page 2
@@ -73,7 +73,7 @@ export function GramProductsPageClient({ batches: initialBatches }: { batches: G
           </Link>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto pr-2 scrollbar-admin">
+      <div className="min-w-0 pr-2">
         {isLoading && !data ? (
           <LoadingSkeleton className="h-64 w-full" />
         ) : error ? (

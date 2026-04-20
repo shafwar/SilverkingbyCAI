@@ -20,9 +20,9 @@ export function QrPreviewLayout({ children }: QrPreviewLayoutProps) {
     (pathname === "/admin/qr-preview" || pathname.endsWith("/qr-preview"));
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] flex-col overflow-hidden bg-gradient-to-b from-white/[0.02] to-transparent">
+    <div className="flex flex-col bg-gradient-to-b from-white/[0.02] to-black/[0.15]">
       {/* Header: section title + nav tabs */}
-      <header className="flex-shrink-0 border-b border-white/[0.08] bg-black/30 backdrop-blur-md">
+      <header className="shrink-0 border-b border-white/[0.08] bg-black/30 backdrop-blur-md">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-5 py-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-0.5">
@@ -84,8 +84,8 @@ export function QrPreviewLayout({ children }: QrPreviewLayoutProps) {
         </div>
       </header>
 
-      {/* Content */}
-      <div className="min-h-0 flex-1 overflow-y-auto scrollbar-admin">
+      {/* Content flows with the page (no fixed viewport height inside padded main). */}
+      <div className="w-full min-w-0">
         <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
           {!isZipIssues ? <ZipIssuesBanner /> : null}
           {children}

@@ -392,7 +392,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
             }
           }}
         >
-          <div className="relative h-9 w-9 shrink-0 transition-transform duration-300 group-hover:scale-105">
+          <div className="relative h-9 w-9 shrink-0 transition-transform duration-200 ease-out group-hover:scale-105">
             <Image
               src={getR2UrlClient("/images/cai-logo.png")}
               alt="CAI Logo - Silver King by CAI"
@@ -425,7 +425,8 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
       {/* Desktop: sidebar kiri */}
       <aside
         className={clsx(
-          "fixed inset-y-0 left-0 z-30 hidden h-[100dvh] max-h-[100dvh] flex-col overflow-x-hidden border-r border-white/[0.08] bg-[#060606] pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] transition-[width] duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] will-change-[width] lg:flex",
+          "fixed inset-y-0 left-0 z-30 hidden h-[100dvh] max-h-[100dvh] flex-col overflow-x-hidden border-r border-white/[0.08] bg-[#060606] pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] lg:flex lg:[contain:layout] motion-reduce:transition-none",
+          "transition-[width] duration-200 ease-out",
           sidebarCollapsed ? "w-[76px]" : "w-[260px]"
         )}
         aria-label="Navigasi admin"
@@ -460,7 +461,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
                 }}
                 title={sidebarCollapsed ? "Dashboard" : undefined}
               >
-                <div className="relative h-10 w-10 shrink-0 transition-transform duration-300 group-hover:scale-105">
+                <div className="relative h-10 w-10 shrink-0 transition-transform duration-200 ease-out group-hover:scale-105">
                   <Image
                     src={getR2UrlClient("/images/cai-logo.png")}
                     alt="CAI Logo - Silver King by CAI"
@@ -493,7 +494,8 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
               >
                 <ChevronLeft
                   className={clsx(
-                    "h-4 w-4 transition-transform duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)]",
+                    "h-4 w-4 motion-reduce:transition-none motion-reduce:duration-0",
+                    "transition-transform duration-200 ease-out",
                     sidebarCollapsed && "rotate-180"
                   )}
                   aria-hidden
@@ -547,11 +549,10 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "-100%", opacity: 0 }}
             transition={{
-              duration: 0.4,
-              ease: [0.25, 0.1, 0.25, 1], // Custom easing for premium feel
+              duration: 0.28,
+              ease: [0.25, 0.1, 0.25, 1],
             }}
             className="fixed inset-0 z-[101] bg-black lg:hidden overflow-y-auto overflow-x-hidden overscroll-y-contain pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]"
-            style={{ willChange: "transform" }}
           >
             {/* Menu Header */}
             <div className="flex items-center justify-between px-4 sm:px-5 md:px-6 py-4 sm:py-5 border-b border-white/[0.03]">
@@ -636,7 +637,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
       <main
         className={clsx(
           "mx-auto max-w-[1800px] min-w-0 px-4 pb-[max(2rem,env(safe-area-inset-bottom,0px))] pt-[calc(3.5rem+env(safe-area-inset-top,0px))] pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] sm:px-5 sm:pb-[max(2.5rem,env(safe-area-inset-bottom,0px))] md:px-8 md:pb-[max(3rem,env(safe-area-inset-bottom,0px))] lg:pl-8 lg:pr-10 lg:pt-8 lg:pb-10",
-          "transition-[margin-left] duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] will-change-[margin-left]",
+          "motion-reduce:transition-none transition-[margin-left] duration-200 ease-out",
           sidebarCollapsed ? "lg:ml-[76px]" : "lg:ml-[260px]"
         )}
       >

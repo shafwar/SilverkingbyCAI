@@ -126,10 +126,7 @@ function DetailHeaderTitleBlock({
   );
 }
 
-/**
- * Shared admin page shell: header strip + scrollable content.
- * Matches QrPreviewLayout structure for consistency across Dashboard, Products, Logs, etc.
- */
+/** Shared admin page shell: header strip + main content (document scroll; no fixed 100vh shell). */
 export function AdminPageLayout({
   eyebrow = "Admin",
   title,
@@ -151,15 +148,10 @@ export function AdminPageLayout({
   const detailHeader = Boolean(leading);
   const quietHeader = detailHeader && detailHeaderStyle === "quiet";
 
-  const heightShell = detachedFromNav
-    ? "h-[calc(100vh-3.25rem-env(safe-area-inset-top,0px)-0.75rem)] supports-[height:100svh]:h-[calc(100svh-3.25rem-env(safe-area-inset-top,0px)-0.75rem)] supports-[height:100dvh]:h-[calc(100dvh-3.25rem-env(safe-area-inset-top,0px)-0.75rem)] sm:h-[calc(100vh-3.5rem-env(safe-area-inset-top,0px)-1rem)] sm:supports-[height:100svh]:h-[calc(100svh-3.5rem-env(safe-area-inset-top,0px)-1rem)] sm:supports-[height:100dvh]:h-[calc(100dvh-3.5rem-env(safe-area-inset-top,0px)-1rem)]"
-    : "h-[calc(100vh-3.25rem-env(safe-area-inset-top,0px))] supports-[height:100svh]:h-[calc(100svh-3.25rem-env(safe-area-inset-top,0px))] supports-[height:100dvh]:h-[calc(100dvh-3.25rem-env(safe-area-inset-top,0px))] sm:h-[calc(100vh-3.5rem-env(safe-area-inset-top,0px))] sm:supports-[height:100svh]:h-[calc(100svh-3.5rem-env(safe-area-inset-top,0px))] sm:supports-[height:100dvh]:h-[calc(100dvh-3.5rem-env(safe-area-inset-top,0px))]";
-
   return (
     <div
       className={clsx(
-        "flex min-h-0 flex-col overflow-hidden bg-gradient-to-b from-white/[0.02] to-transparent",
-        heightShell,
+        "flex flex-col bg-gradient-to-b from-white/[0.02] to-transparent",
         detachedFromNav && "pt-3 sm:pt-4"
       )}
     >
@@ -269,7 +261,7 @@ export function AdminPageLayout({
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto scrollbar-admin">
+      <div className="w-full min-w-0">
         <div
           className={`${shellX} ${noContentPadding ? "" : "py-5 sm:py-6"} pb-[max(1.25rem,env(safe-area-inset-bottom))]`}
         >
