@@ -38,8 +38,8 @@ export default function LanguageSwitcher({
   const otherLocale = locale === "en" ? "id" : "en";
   const adminToggleAria =
     locale === "en" ? tAdmin("languageToggleAriaToId") : tAdmin("languageToggleAriaToEn");
-  const adminToggleLine =
-    locale === "en" ? tAdmin("languageToggleLineEn") : tAdmin("languageToggleLineId");
+  const adminToggleTooltip =
+    locale === "en" ? tAdmin("languageToggleTooltipToId") : tAdmin("languageToggleTooltipToEn");
 
   // OPTIMIZED: ULTRA-AGGRESSIVE prefetch for BOTH locales (current + other)
   // Uses multiple strategies to ensure routes are cached for instant navigation
@@ -167,7 +167,7 @@ export default function LanguageSwitcher({
     variant === "adminNav" &&
       (adminNavCollapsed
         ? "inline-flex h-10 w-10 min-h-10 min-w-10 shrink-0 items-center justify-center gap-0 rounded-xl border border-white/20 bg-white/[0.07] p-0 text-[13px] font-semibold text-white shadow-none transition-colors duration-200 hover:bg-white/[0.12]"
-        : "inline-flex min-h-[2.75rem] w-full shrink-0 items-center justify-start gap-2 rounded-xl border border-white/20 bg-white/[0.07] px-3 py-2 text-left text-[13px] font-semibold text-white shadow-none transition-colors duration-200 hover:bg-white/[0.12]"),
+        : "inline-flex h-10 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/[0.07] px-3 text-[13px] font-semibold text-white shadow-none transition-colors duration-200 hover:bg-white/[0.12]"),
     variant !== "adminNav" &&
       "flex items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-all duration-200 hover:bg-white/15 hover:text-white md:rounded-md md:border-transparent md:bg-white/5 md:px-3 md:py-1.5 md:text-xs md:font-medium md:shadow-none md:hover:bg-white/10"
   );
@@ -191,7 +191,7 @@ export default function LanguageSwitcher({
         disabled={isPending}
         className={triggerClass}
         aria-label={isAdminNav ? adminToggleAria : "Switch language"}
-        title={isAdminNav ? `${tAdmin("languageToggleEyebrow")}: ${adminToggleLine}` : undefined}
+        title={isAdminNav ? adminToggleTooltip : undefined}
         type="button"
       >
         {isPending ? (
@@ -201,13 +201,8 @@ export default function LanguageSwitcher({
         )}
         {isAdminNav ? (
           !adminNavCollapsed && (
-            <span className="flex min-w-0 flex-1 flex-col gap-0.5 leading-tight">
-              <span className="text-[9px] font-semibold uppercase tracking-wide text-white/45">
-                {tAdmin("languageToggleEyebrow")}
-              </span>
-              <span className="whitespace-normal text-left text-[12px] font-semibold text-white">
-                {adminToggleLine}
-              </span>
+            <span className="font-sans text-[13px] font-semibold tabular-nums leading-none tracking-wide text-white">
+              {currentLanguage.name}
             </span>
           )
         ) : (
