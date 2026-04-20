@@ -377,7 +377,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
     ));
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-black text-white supports-[height:100dvh]:min-h-[100dvh]">
+    <div className="flex min-h-screen flex-col overflow-x-hidden bg-black text-white supports-[height:100dvh]:min-h-[100dvh] lg:h-[100dvh] lg:max-h-[100dvh] lg:min-h-0 lg:overflow-hidden">
       {/* Mobile: bar atas ringkas */}
       <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-white/[0.08] bg-black/95 px-4 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl lg:hidden">
         <Link
@@ -422,17 +422,103 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         </button>
       </header>
 
-      {/* Desktop: sidebar kiri */}
-      <aside
-        className={clsx(
-          "fixed inset-y-0 left-0 z-30 hidden h-[100dvh] max-h-[100dvh] flex-col overflow-x-hidden border-r border-white/[0.08] bg-[#060606] pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] lg:flex lg:[contain:layout] motion-reduce:transition-none",
-          "transition-[width] duration-200 ease-out",
-          sidebarCollapsed ? "w-[76px]" : "w-[260px]"
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            initial={{ y: "-100%", opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: "-100%", opacity: 0 }}
+            transition={{
+              duration: 0.28,
+              ease: [0.25, 0.1, 0.25, 1],
+            }}
+            className="fixed inset-0 z-[101] bg-black lg:hidden overflow-y-auto overflow-x-hidden overscroll-y-contain pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]"
+          >
+            <div className="flex items-center justify-between px-4 sm:px-5 md:px-6 py-4 sm:py-5 border-b border-white/[0.03]">
+              <Link
+                href="/admin"
+                prefetch={true}
+                className="flex items-center group"
+                onClick={handleCloseMenu}
+                onMouseEnter={() => {
+                  try {
+                    router.prefetch("/admin");
+                  } catch (e) {
+                    // Silently fail
+                  }
+                }}
+              >
+                <div className="relative h-7 w-7 sm:h-8 sm:w-8 transition-transform duration-300 group-hover:scale-110">
+                  <Image
+                    src={getR2UrlClient("/images/cai-logo.png")}
+                    alt="CAI Logo - Silver King by CAI"
+                    fill
+                    className="object-contain"
+                    style={{
+                      filter:
+                        "brightness(0) invert(1) drop-shadow(0 0 8px rgba(255, 255, 255, 0.2))",
+                    }}
+                    priority
+                    unoptimized
+                  />
+                </div>
+              </Link>
+              <button
+                onClick={handleCloseMenu}
+                className="rounded-full border border-white/15 p-2 text-white touch-manipulation hover:bg-white/10 transition-colors"
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="px-4 sm:px-5 md:px-6 py-6 sm:py-8">
+              <div className="flex flex-col gap-4 sm:gap-5 pb-6 sm:pb-8 border-b border-white/[0.03]">
+                {renderMobileNavSections()}
+              </div>
+
+              <div className="mt-6 sm:mt-8 space-y-4 sm:space-y-5">
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[10px] sm:text-xs text-white/50 uppercase tracking-wider">
+                      {safeT(t, "languageToggleEyebrow", "Admin interface language")}
+                    </span>
+                  </div>
+                  <div className="relative z-10 min-h-[44px]">
+                    <LanguageSwitcher variant="adminNav" />
+                  </div>
+                </div>
+
+                <div className="h-px bg-white/[0.03]" />
+
+                <button
+                  onClick={() => {
+                    handleCloseMenu();
+                    setTimeout(() => handleSignOut(), 400);
+                  }}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/5 hover:bg-white/10 px-4 py-3 sm:py-3.5 text-xs sm:text-sm font-medium text-white transition-all duration-200 hover:border-[#FFD700]/40 touch-manipulation active:scale-[0.98]"
+                >
+                  <LogOut className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  {safeT(t, "logout", "Logout")}
+                </button>
+              </div>
+            </div>
+          </motion.div>
         )}
-        aria-label="Navigasi admin"
-        data-collapsed={sidebarCollapsed ? "true" : "false"}
-      >
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      </AnimatePresence>
+
+      {/* lg: sidebar + main share viewport height; only main scrolls — sidebar never moves with page scroll */}
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <aside
+          className={clsx(
+            "hidden shrink-0 flex-col overflow-x-hidden border-r border-white/[0.08] bg-[#060606] pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] lg:flex lg:h-full lg:shrink-0 motion-reduce:transition-none",
+            "transition-[width] duration-200 ease-out",
+            sidebarCollapsed ? "lg:w-[76px]" : "lg:w-[260px]"
+          )}
+          aria-label="Navigasi admin"
+          data-collapsed={sidebarCollapsed ? "true" : "false"}
+        >
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div
             className={clsx(
               "shrink-0 border-b border-white/[0.06] py-5",
@@ -541,108 +627,15 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         </div>
       </aside>
 
-      {/* Full Screen Mobile Menu Overlay */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ y: "-100%", opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: "-100%", opacity: 0 }}
-            transition={{
-              duration: 0.28,
-              ease: [0.25, 0.1, 0.25, 1],
-            }}
-            className="fixed inset-0 z-[101] bg-black lg:hidden overflow-y-auto overflow-x-hidden overscroll-y-contain pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]"
-          >
-            {/* Menu Header */}
-            <div className="flex items-center justify-between px-4 sm:px-5 md:px-6 py-4 sm:py-5 border-b border-white/[0.03]">
-              <Link
-                href="/admin"
-                prefetch={true}
-                className="flex items-center group"
-                onClick={handleCloseMenu}
-                onMouseEnter={() => {
-                  try {
-                    router.prefetch("/admin");
-                  } catch (e) {
-                    // Silently fail
-                  }
-                }}
-              >
-                <div className="relative h-7 w-7 sm:h-8 sm:w-8 transition-transform duration-300 group-hover:scale-110">
-                  <Image
-                    src={getR2UrlClient("/images/cai-logo.png")}
-                    alt="CAI Logo - Silver King by CAI"
-                    fill
-                    className="object-contain"
-                    style={{
-                      filter:
-                        "brightness(0) invert(1) drop-shadow(0 0 8px rgba(255, 255, 255, 0.2))",
-                    }}
-                    priority
-                    unoptimized
-                  />
-                </div>
-              </Link>
-              <button
-                onClick={handleCloseMenu}
-                className="rounded-full border border-white/15 p-2 text-white touch-manipulation hover:bg-white/10 transition-colors"
-                aria-label="Close menu"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Menu Content */}
-            <div className="px-4 sm:px-5 md:px-6 py-6 sm:py-8">
-              {/* Navigation Links */}
-              <div className="flex flex-col gap-4 sm:gap-5 pb-6 sm:pb-8 border-b border-white/[0.03]">
-                {renderMobileNavSections()}
-              </div>
-
-              {/* Bottom Actions Section */}
-              <div className="mt-6 sm:mt-8 space-y-4 sm:space-y-5">
-                {/* Language Switcher */}
-                <div className="relative">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-[10px] sm:text-xs text-white/50 uppercase tracking-wider">
-                      {safeT(t, "languageToggleEyebrow", "Admin interface language")}
-                    </span>
-                  </div>
-                  <div className="relative z-10 min-h-[44px]">
-                    <LanguageSwitcher variant="adminNav" />
-                  </div>
-                </div>
-
-                {/* Divider */}
-                <div className="h-px bg-white/[0.03]" />
-
-                {/* Logout Button */}
-                <button
-                  onClick={() => {
-                    handleCloseMenu();
-                    setTimeout(() => handleSignOut(), 400);
-                  }}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/5 hover:bg-white/10 px-4 py-3 sm:py-3.5 text-xs sm:text-sm font-medium text-white transition-all duration-200 hover:border-[#FFD700]/40 touch-manipulation active:scale-[0.98]"
-                >
-                  <LogOut className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  {safeT(t, "logout", "Logout")}
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <main
         className={clsx(
-          "mx-auto max-w-[1800px] min-w-0 px-4 pb-[max(2rem,env(safe-area-inset-bottom,0px))] pt-[calc(3.5rem+env(safe-area-inset-top,0px))] pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] sm:px-5 sm:pb-[max(2.5rem,env(safe-area-inset-bottom,0px))] md:px-8 md:pb-[max(3rem,env(safe-area-inset-bottom,0px))] lg:pl-8 lg:pr-10 lg:pt-8 lg:pb-10",
-          "motion-reduce:transition-none transition-[margin-left] duration-200 ease-out",
-          sidebarCollapsed ? "lg:ml-[76px]" : "lg:ml-[260px]"
+          "mx-auto w-full max-w-[1800px] min-w-0 flex-1 min-h-0 overflow-y-auto overscroll-y-contain",
+          "px-4 pb-[max(2rem,env(safe-area-inset-bottom,0px))] pt-[calc(3.5rem+env(safe-area-inset-top,0px))] pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] sm:px-5 sm:pb-[max(2.5rem,env(safe-area-inset-bottom,0px))] md:px-8 md:pb-[max(3rem,env(safe-area-inset-bottom,0px))] lg:px-8 lg:pt-8 lg:pb-10"
         )}
       >
         {children}
       </main>
+      </div>
 
       <Toaster
         position="top-center"
