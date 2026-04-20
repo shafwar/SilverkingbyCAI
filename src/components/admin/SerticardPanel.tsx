@@ -531,7 +531,7 @@ export function SerticardPanel() {
                 <p className={`mt-1 max-w-2xl text-xs sm:text-[13px] ${helperTextClass}`}>{t("resetHint")}</p>
               </div>
             </div>
-            <button
+          <button
               type="button"
               onClick={() => setConfirmDialog("deleteAll")}
               disabled={!!uploading || !!deleting}
@@ -539,7 +539,7 @@ export function SerticardPanel() {
             >
               <Trash2 className="h-4 w-4 shrink-0 opacity-90" />
               {deleting === "all" && confirmDialog === "deleteAll" ? t("resetting") : t("resetToDefault")}
-            </button>
+          </button>
           </div>
         )}
       </motion.div>
@@ -837,12 +837,12 @@ export function SerticardPanel() {
           <label className="flex min-h-[48px] w-full cursor-pointer touch-manipulation items-center justify-center gap-2 rounded-xl border border-dashed border-luxury-gold/25 bg-luxury-gold/[0.06] px-4 py-3 text-sm font-semibold text-luxury-gold/95 transition hover:border-luxury-gold/40 hover:bg-luxury-gold/10 disabled:opacity-50">
             {cmsUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" aria-hidden />}
             {cmsUploading ? t("cmsUploading") : t("cmsPickSpread")}
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/jpg"
-              className="hidden"
-              disabled={cmsUploading}
-              onChange={(e) => {
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/jpg"
+                className="hidden"
+                disabled={cmsUploading}
+                onChange={(e) => {
                 const input = e.target;
                 const f = input.files?.[0];
                 if (f) {
@@ -850,10 +850,10 @@ export function SerticardPanel() {
                     input.value = "";
                   });
                 }
-              }}
-            />
-          </label>
-        </div>
+                }}
+              />
+            </label>
+          </div>
       </Modal>
 
       {/* Edit CMS template name */}
@@ -870,10 +870,10 @@ export function SerticardPanel() {
               autoFocus
               disabled={editCmsSaving}
             />
-          </div>
+        </div>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <button
-              type="button"
+                  <button
+                    type="button"
               className="min-h-[44px] rounded-xl border border-white/15 px-5 py-2.5 text-sm font-semibold text-white/85"
               onClick={() => !editCmsSaving && setEditCmsOpen(false)}
               disabled={editCmsSaving}
@@ -886,8 +886,8 @@ export function SerticardPanel() {
               className="min-h-[44px] rounded-xl bg-gradient-to-r from-[#e8c547] to-[#c9a227] px-6 py-2.5 text-sm font-semibold text-black disabled:opacity-50"
             >
               {editCmsSaving ? t("savingSettings") : t("cmsSaveName")}
-            </button>
-          </div>
+                  </button>
+        </div>
         </form>
       </Modal>
     </div>

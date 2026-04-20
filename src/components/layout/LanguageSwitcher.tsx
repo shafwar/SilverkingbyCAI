@@ -1,6 +1,6 @@
 "use client";
 
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/routing";
 import { Globe, Loader2 } from "lucide-react";
 import { useState, useTransition, useEffect } from "react";
@@ -12,12 +12,18 @@ export type LanguageSwitcherVariant = "default" | "adminNav";
 type LanguageSwitcherProps = {
   /** adminNav: tinggi & pill selaras tombol logout di navbar admin */
   variant?: LanguageSwitcherVariant;
+  /** adminNav saja: hanya ikon (sidebar admin diciutkan) */
+  adminNavCollapsed?: boolean;
 };
 
-export default function LanguageSwitcher({ variant = "default" }: LanguageSwitcherProps) {
+export default function LanguageSwitcher({
+  variant = "default",
+  adminNavCollapsed = false,
+}: LanguageSwitcherProps) {
   const locale = useLocale();
   const pathname = usePathname(); // This returns path WITHOUT locale prefix (e.g., '/' or '/what-we-do')
   const router = useRouter();
+  const tAdmin = useTranslations("admin");
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [switchingTo, setSwitchingTo] = useState<string | null>(null);
@@ -28,6 +34,12 @@ export default function LanguageSwitcher({ variant = "default" }: LanguageSwitch
   ];
 
   const currentLanguage = languages.find((lang) => lang.code === locale) || languages[0];
+  const isAdminNav = variant === "adminNav";
+  const otherLocale = locale === "en" ? "id" : "en";
+  const adminToggleAria =
+    locale === "en" ? tAdmin("languageToggleAriaToId") : tAdmin("languageToggleAriaToEn");
+  const adminToggleLine =
+    locale === "en" ? tAdmin("languageToggleLineEn") : tAdmin("languageToggleLineId");
 
   // OPTIMIZED: ULTRA-AGGRESSIVE prefetch for BOTH locales (current + other)
   // Uses multiple strategies to ensure routes are cached for instant navigation
@@ -152,48 +164,69 @@ export default function LanguageSwitcher({ variant = "default" }: LanguageSwitch
 
   const triggerClass = clsx(
     "font-sans disabled:cursor-not-allowed disabled:opacity-50",
-    variant === "adminNav"
-      ? "inline-flex h-10 min-h-10 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/[0.07] px-3 text-[13px] font-semibold text-white shadow-none transition-colors duration-200 hover:bg-white/[0.12]"
-      : "flex items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-all duration-200 hover:bg-white/15 hover:text-white md:rounded-md md:border-transparent md:bg-white/5 md:px-3 md:py-1.5 md:text-xs md:font-medium md:shadow-none md:hover:bg-white/10"
+    variant === "adminNav" &&
+      (adminNavCollapsed
+        ? "inline-flex h-10 w-10 min-h-10 min-w-10 shrink-0 items-center justify-center gap-0 rounded-xl border border-white/20 bg-white/[0.07] p-0 text-[13px] font-semibold text-white shadow-none transition-colors duration-200 hover:bg-white/[0.12]"
+        : "inline-flex min-h-[2.75rem] w-full shrink-0 items-center justify-start gap-2 rounded-xl border border-white/20 bg-white/[0.07] px-3 py-2 text-left text-[13px] font-semibold text-white shadow-none transition-colors duration-200 hover:bg-white/[0.12]"),
+    variant !== "adminNav" &&
+      "flex items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-all duration-200 hover:bg-white/15 hover:text-white md:rounded-md md:border-transparent md:bg-white/5 md:px-3 md:py-1.5 md:text-xs md:font-medium md:shadow-none md:hover:bg-white/10"
   );
 
   const iconClassTrigger =
-    variant === "adminNav" ? "h-3.5 w-3.5 shrink-0" : "h-4 w-4 md:h-3.5 md:w-3.5";
+    variant === "adminNav" ? "h-4 w-4 shrink-0" : "h-4 w-4 md:h-3.5 md:w-3.5";
+
+  const handlePrimaryClick = () => {
+    if (isPending) return;
+    if (isAdminNav) {
+      switchLanguage(otherLocale);
+      return;
+    }
+    setIsOpen((o) => !o);
+  };
 
   return (
-    <div className="relative">
+    <div className={clsx("relative", isAdminNav && !adminNavCollapsed && "w-full")}>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handlePrimaryClick}
         disabled={isPending}
         className={triggerClass}
-        aria-label="Switch language"
+        aria-label={isAdminNav ? adminToggleAria : "Switch language"}
+        title={isAdminNav ? `${tAdmin("languageToggleEyebrow")}: ${adminToggleLine}` : undefined}
         type="button"
       >
         {isPending ? (
-          <Loader2 className={clsx(iconClassTrigger, "animate-spin")} />
+          <Loader2 className={clsx(iconClassTrigger, "animate-spin", isAdminNav && "shrink-0")} />
         ) : (
-          <Globe className={iconClassTrigger} />
+          <Globe className={clsx(iconClassTrigger, isAdminNav && "shrink-0")} />
         )}
-        <span className="font-sans leading-none font-semibold">
-          {switchingTo
-            ? languages.find((l) => l.code === switchingTo)?.name || currentLanguage.name
-            : currentLanguage.name}
-        </span>
+        {isAdminNav ? (
+          !adminNavCollapsed && (
+            <span className="flex min-w-0 flex-1 flex-col gap-0.5 leading-tight">
+              <span className="text-[9px] font-semibold uppercase tracking-wide text-white/45">
+                {tAdmin("languageToggleEyebrow")}
+              </span>
+              <span className="whitespace-normal text-left text-[12px] font-semibold text-white">
+                {adminToggleLine}
+              </span>
+            </span>
+          )
+        ) : (
+          <span className="font-sans leading-none font-semibold">
+            {switchingTo
+              ? languages.find((l) => l.code === switchingTo)?.name || currentLanguage.name
+              : currentLanguage.name}
+          </span>
+        )}
       </button>
 
-      {isOpen && !isPending && (
+      {!isAdminNav && isOpen && !isPending && (
         <>
           <div
-            className={clsx("fixed inset-0", variant === "adminNav" ? "z-[55]" : "z-40")}
+            className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           />
           <div
-            className={clsx(
-              "absolute right-0 top-full mt-2 w-28 overflow-hidden rounded-lg border bg-black/95 shadow-xl backdrop-blur-sm",
-              variant === "adminNav"
-                ? "z-[70] border-white/20"
-                : "z-[60] border-white/20 md:w-24 md:border-white/10"
-            )}
+            className="absolute right-0 top-full z-[60] mt-2 w-28 overflow-hidden rounded-lg border border-white/20 bg-black/95 shadow-xl backdrop-blur-sm md:w-24 md:border-white/10"
           >
             {languages.map((lang) => (
               <button

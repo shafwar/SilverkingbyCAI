@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState, useMemo, useEffect } from "react";
+import { ReactNode, useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -11,6 +11,7 @@ import { Toaster } from "sonner";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { DownloadCard } from "./DownloadCard";
 import { useDownload } from "@/contexts/DownloadContext";
+import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
   PackageSearch,
@@ -25,6 +26,7 @@ import {
   BookOpen,
   LayoutTemplate,
   AlertTriangle,
+  ChevronLeft,
 } from "lucide-react";
 import clsx from "clsx";
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
@@ -33,6 +35,17 @@ type AdminLayoutProps = {
   children: ReactNode;
   email?: string | null;
 };
+
+const ADMIN_SIDEBAR_COLLAPSED_KEY = "sk-admin-sidebar-collapsed";
+
+type AdminNavLinkItem = {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  isExternal?: boolean;
+};
+
+type AdminNavSection = { title: string; items: AdminNavLinkItem[] };
 
 export function AdminLayout({ children, email }: AdminLayoutProps) {
   // Always call hooks unconditionally
@@ -43,6 +56,28 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      setSidebarCollapsed(localStorage.getItem(ADMIN_SIDEBAR_COLLAPSED_KEY) === "1");
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const toggleAdminSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(ADMIN_SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
 
   // Get download state from context
   const { downloadState, cancelDownload, setIsDownloadMinimized } = useDownload();
@@ -67,31 +102,40 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
     []
   );
 
-  // Memoize navItems untuk memastikan re-render saat translations berubah
-  const navItems = useMemo(
+  const navSections: AdminNavSection[] = useMemo(
     () => [
-      { label: safeT(tDashboard, "label", "Dashboard"), href: "/admin", icon: LayoutDashboard },
-      { label: safeT(t, "products", "Products"), href: "/admin/products", icon: PackageSearch },
-      { label: "CMS Products", href: `/${locale}/products`, icon: Edit3, isExternal: true },
-      { label: safeT(t, "qrPreview", "QR Preview"), href: "/admin/qr-preview", icon: QrCode },
       {
-        label: safeT(t, "zipIssuesNav", "ZIP issues"),
-        href: "/admin/qr-preview/zip-issues",
-        icon: AlertTriangle,
+        title: safeT(t, "sidebarSectionPrimary", "Products & verification"),
+        items: [
+          { label: safeT(tDashboard, "label", "Dashboard"), href: "/admin", icon: LayoutDashboard },
+          { label: safeT(t, "products", "Products"), href: "/admin/products", icon: PackageSearch },
+          { label: "CMS Products", href: `/${locale}/products`, icon: Edit3, isExternal: true },
+          { label: safeT(t, "qrPreview", "QR Preview"), href: "/admin/qr-preview", icon: QrCode },
+          {
+            label: safeT(t, "zipIssuesNav", "ZIP issues"),
+            href: "/admin/qr-preview/zip-issues",
+            icon: AlertTriangle,
+          },
+          {
+            label: safeT(t, "serticardNav", "Serticard"),
+            href: "/admin/serticard",
+            icon: LayoutTemplate,
+          },
+        ],
       },
       {
-        label: safeT(t, "serticardNav", "Serticard"),
-        href: "/admin/serticard",
-        icon: LayoutTemplate,
+        title: safeT(t, "sidebarSectionSecondary", "Intelligence & content"),
+        items: [
+          { label: safeT(t, "logs", "Logs"), href: "/admin/logs", icon: ActivitySquare },
+          { label: safeT(t, "analyticsLabel", "Analytics"), href: "/admin/analytics", icon: BarChart3 },
+          {
+            label: safeT(t, "feedback.label", "Feedback"),
+            href: "/admin/feedback",
+            icon: MessageSquare,
+          },
+          { label: safeT(t, "journalNav", "Journal"), href: "/admin/journal", icon: BookOpen },
+        ],
       },
-      { label: safeT(t, "logs", "Logs"), href: "/admin/logs", icon: ActivitySquare },
-      { label: safeT(t, "analyticsLabel", "Analytics"), href: "/admin/analytics", icon: BarChart3 },
-      {
-        label: safeT(t, "feedback.label", "Feedback"),
-        href: "/admin/feedback",
-        icon: MessageSquare,
-      },
-      { label: safeT(t, "journalNav", "Journal"), href: "/admin/journal", icon: BookOpen },
     ],
     [t, tDashboard, safeT, locale]
   );
@@ -192,19 +236,18 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
     }
   };
 
-  const renderNavItem = (
-    item: (typeof navItems)[number],
-    mode: "sidebar" | "col",
-    isMobile: boolean
-  ) => {
+  const renderNavItem = (item: AdminNavLinkItem, mode: "sidebar" | "col", isMobile: boolean) => {
     const Icon = item.icon;
     const active = pathname === item.href;
     const isExternal = (item as { isExternal?: boolean }).isExternal;
 
     const linkClassName = clsx(
-      "flex w-full min-w-0 items-center border border-transparent text-left transition touch-manipulation",
+      "flex w-full min-w-0 items-center border border-transparent text-left transition-[background-color,border-color,color,box-shadow,ring-width] duration-200 touch-manipulation",
       mode === "sidebar" &&
-        "gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium leading-snug tracking-wide",
+        clsx(
+          "gap-3 rounded-xl py-2.5 text-[13px] font-medium leading-snug tracking-wide",
+          sidebarCollapsed ? "justify-center px-2" : "px-3"
+        ),
       mode === "col" &&
         "h-11 shrink-0 gap-3 rounded-full px-4 text-sm font-medium leading-none tracking-wide whitespace-nowrap",
       active
@@ -222,12 +265,16 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
       <span
         className={clsx(
           "leading-snug",
-          mode === "sidebar" && "min-w-0 flex-1 truncate"
+          mode === "sidebar" && !sidebarCollapsed && "min-w-0 flex-1 truncate",
+          mode === "sidebar" && sidebarCollapsed && "sr-only"
         )}
       >
         {item.label}
       </span>
     );
+
+    const collapsedSidebarTitle =
+      mode === "sidebar" && sidebarCollapsed && !isMobile ? item.label : undefined;
 
     if (isMobile) {
       return (
@@ -236,6 +283,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
           type="button"
           onClick={() => handleMenuLinkClick(item.href, isExternal)}
           className={linkClassName}
+          title={collapsedSidebarTitle}
           onMouseEnter={() => {
             if (!isExternal) {
               try {
@@ -258,6 +306,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
           key={item.href}
           href={item.href}
           className={linkClassName}
+          title={collapsedSidebarTitle}
           onMouseEnter={() => {
             try {
               const prefetchLink = document.createElement("link");
@@ -282,6 +331,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         href={item.href}
         prefetch={true}
         className={linkClassName}
+        title={collapsedSidebarTitle}
         onMouseEnter={() => {
           try {
             router.prefetch(item.href);
@@ -296,8 +346,35 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
     );
   };
 
-  const renderLinks = (mode: "sidebar" | "col", isMobile: boolean) =>
-    navItems.map((item) => renderNavItem(item, mode, isMobile));
+  const renderSidebarNav = () =>
+    navSections.map((section, sIdx) => (
+      <div
+        key={section.title}
+        className={clsx(
+          sIdx > 0 &&
+            (sidebarCollapsed ? "mt-1.5" : "mt-2 border-t border-white/[0.06] pt-2")
+        )}
+      >
+        {!sidebarCollapsed && (
+          <p className="mb-1.5 truncate px-3 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/38">
+            {section.title}
+          </p>
+        )}
+        <div className="space-y-0.5">
+          {section.items.map((item) => renderNavItem(item, "sidebar", false))}
+        </div>
+      </div>
+    ));
+
+  const renderMobileNavSections = () =>
+    navSections.map((section) => (
+      <div key={section.title} className="flex flex-col gap-1.5 sm:gap-2">
+        <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">
+          {section.title}
+        </p>
+        {section.items.map((item) => renderNavItem(item, "col", true))}
+      </div>
+    ));
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-black text-white supports-[height:100dvh]:min-h-[100dvh]">
@@ -347,62 +424,116 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
 
       {/* Desktop: sidebar kiri */}
       <aside
-        className="fixed bottom-0 left-0 top-0 z-30 hidden w-[260px] flex-col border-r border-white/[0.08] bg-[#060606] pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] lg:flex"
+        className={clsx(
+          "fixed inset-y-0 left-0 z-30 hidden h-[100dvh] max-h-[100dvh] flex-col overflow-x-hidden border-r border-white/[0.08] bg-[#060606] pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] transition-[width] duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] will-change-[width] lg:flex",
+          sidebarCollapsed ? "w-[76px]" : "w-[260px]"
+        )}
         aria-label="Navigasi admin"
+        data-collapsed={sidebarCollapsed ? "true" : "false"}
       >
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="shrink-0 border-b border-white/[0.06] px-4 py-5">
-            <Link
-              href="/admin"
-              prefetch={true}
-              className="group flex items-center gap-3"
-              onMouseEnter={() => {
-                try {
-                  router.prefetch("/admin");
-                } catch {
-                  // ignore
-                }
-              }}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div
+            className={clsx(
+              "shrink-0 border-b border-white/[0.06] py-5",
+              sidebarCollapsed ? "px-2" : "px-4"
+            )}
+          >
+            <div
+              className={clsx(
+                "flex items-center",
+                sidebarCollapsed ? "flex-col gap-3" : "gap-2"
+              )}
             >
-              <div className="relative h-10 w-10 shrink-0 transition-transform duration-300 group-hover:scale-105">
-                <Image
-                  src={getR2UrlClient("/images/cai-logo.png")}
-                  alt="CAI Logo - Silver King by CAI"
-                  fill
-                  className="object-contain"
-                  style={{
-                    filter:
-                      "brightness(0) invert(1) drop-shadow(0 0 8px rgba(255, 255, 255, 0.2))",
-                  }}
-                  priority
-                  unoptimized
+              <Link
+                href="/admin"
+                prefetch={true}
+                className={clsx(
+                  "group flex min-w-0 items-center transition-opacity",
+                  sidebarCollapsed ? "justify-center" : "min-w-0 flex-1 gap-3"
+                )}
+                onMouseEnter={() => {
+                  try {
+                    router.prefetch("/admin");
+                  } catch {
+                    // ignore
+                  }
+                }}
+                title={sidebarCollapsed ? "Dashboard" : undefined}
+              >
+                <div className="relative h-10 w-10 shrink-0 transition-transform duration-300 group-hover:scale-105">
+                  <Image
+                    src={getR2UrlClient("/images/cai-logo.png")}
+                    alt="CAI Logo - Silver King by CAI"
+                    fill
+                    className="object-contain"
+                    style={{
+                      filter:
+                        "brightness(0) invert(1) drop-shadow(0 0 8px rgba(255, 255, 255, 0.2))",
+                    }}
+                    priority
+                    unoptimized
+                  />
+                </div>
+                {!sidebarCollapsed && (
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">
+                      Silver King
+                    </p>
+                    <p className="truncate text-sm font-semibold text-white">Command</p>
+                  </div>
+                )}
+              </Link>
+              <button
+                type="button"
+                onClick={toggleAdminSidebar}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/15 text-white/80 transition-colors duration-200 hover:bg-white/10 hover:text-white"
+                aria-expanded={!sidebarCollapsed}
+                aria-controls="admin-sidebar-nav"
+                aria-label={sidebarCollapsed ? "Perluas sidebar" : "Ciutkan sidebar"}
+              >
+                <ChevronLeft
+                  className={clsx(
+                    "h-4 w-4 transition-transform duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)]",
+                    sidebarCollapsed && "rotate-180"
+                  )}
+                  aria-hidden
                 />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">
-                  Silver King
-                </p>
-                <p className="truncate text-sm font-semibold text-white">Command</p>
-              </div>
-            </Link>
+              </button>
+            </div>
           </div>
 
           <nav
-            className="min-h-0 flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden px-3 py-3"
+            id="admin-sidebar-nav"
+            className={clsx(
+              "min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain py-2 [scrollbar-color:rgba(255,255,255,0.22)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:hover:bg-white/30 [&::-webkit-scrollbar-track]:bg-transparent",
+              sidebarCollapsed ? "px-2" : "px-3"
+            )}
             aria-label="Menu admin"
           >
-            {renderLinks("sidebar", false)}
+            {renderSidebarNav()}
           </nav>
 
-          <div className="shrink-0 space-y-2 border-t border-white/[0.06] px-3 py-4">
-            <LanguageSwitcher variant="adminNav" />
+          <div
+            className={clsx(
+              "shrink-0 space-y-2 border-t border-white/[0.06] py-4",
+              sidebarCollapsed ? "px-2" : "px-3"
+            )}
+          >
+            <div className={sidebarCollapsed ? "flex justify-center" : undefined}>
+              <LanguageSwitcher variant="adminNav" adminNavCollapsed={sidebarCollapsed} />
+            </div>
             <button
               type="button"
               onClick={handleSignOut}
-              className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#FFD700]/40 bg-[#FFD700]/12 text-[13px] font-semibold text-white transition hover:border-[#FFD700]/55 hover:bg-[#FFD700]/22"
+              className={clsx(
+                "flex h-10 items-center justify-center gap-2 rounded-xl border border-[#FFD700]/40 bg-[#FFD700]/12 text-[13px] font-semibold text-white transition-colors duration-200 hover:border-[#FFD700]/55 hover:bg-[#FFD700]/22",
+                sidebarCollapsed ? "mx-auto h-10 w-10 min-w-10 shrink-0 px-0" : "w-full"
+              )}
+              title={sidebarCollapsed ? safeT(t, "logout", "Logout") : undefined}
+              aria-label={safeT(t, "logout", "Logout")}
             >
               <LogOut className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
-              {safeT(t, "logout", "Logout")}
+              {!sidebarCollapsed && <span>{safeT(t, "logout", "Logout")}</span>}
             </button>
           </div>
         </div>
@@ -464,8 +595,8 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
             {/* Menu Content */}
             <div className="px-4 sm:px-5 md:px-6 py-6 sm:py-8">
               {/* Navigation Links */}
-              <div className="flex flex-col gap-1.5 sm:gap-2 pb-6 sm:pb-8 border-b border-white/[0.03]">
-                {renderLinks("col", true)}
+              <div className="flex flex-col gap-4 sm:gap-5 pb-6 sm:pb-8 border-b border-white/[0.03]">
+                {renderMobileNavSections()}
               </div>
 
               {/* Bottom Actions Section */}
@@ -474,11 +605,11 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
                 <div className="relative">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-[10px] sm:text-xs text-white/50 uppercase tracking-wider">
-                      Language
+                      {safeT(t, "languageToggleEyebrow", "Admin interface language")}
                     </span>
                   </div>
                   <div className="relative z-10 min-h-[44px]">
-                    <LanguageSwitcher />
+                    <LanguageSwitcher variant="adminNav" />
                   </div>
                 </div>
 
@@ -502,7 +633,13 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         )}
       </AnimatePresence>
 
-      <main className="mx-auto max-w-[1800px] min-w-0 px-4 pb-[max(2rem,env(safe-area-inset-bottom,0px))] pt-[calc(3.5rem+env(safe-area-inset-top,0px))] pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] sm:px-5 sm:pb-[max(2.5rem,env(safe-area-inset-bottom,0px))] md:px-8 md:pb-[max(3rem,env(safe-area-inset-bottom,0px))] lg:ml-[260px] lg:pl-8 lg:pr-10 lg:pt-8 lg:pb-10">
+      <main
+        className={clsx(
+          "mx-auto max-w-[1800px] min-w-0 px-4 pb-[max(2rem,env(safe-area-inset-bottom,0px))] pt-[calc(3.5rem+env(safe-area-inset-top,0px))] pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] sm:px-5 sm:pb-[max(2.5rem,env(safe-area-inset-bottom,0px))] md:px-8 md:pb-[max(3rem,env(safe-area-inset-bottom,0px))] lg:pl-8 lg:pr-10 lg:pt-8 lg:pb-10",
+          "transition-[margin-left] duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] will-change-[margin-left]",
+          sidebarCollapsed ? "lg:ml-[76px]" : "lg:ml-[260px]"
+        )}
+      >
         {children}
       </main>
 
