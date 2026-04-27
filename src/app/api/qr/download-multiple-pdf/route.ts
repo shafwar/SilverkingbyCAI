@@ -10,7 +10,10 @@ import { createHash } from "crypto";
 import { loadSerticardTemplates, isAffirmativeCustomFlag } from "@/lib/load-serticard-templates";
 import { getSerticardConfig, getFontSizeMultipliers } from "@/lib/serticard-config";
 import { normalizeRootKeyForPill } from "@/lib/serticard-rootkey-display";
-import { composeSerticardSpreadPngBuffers } from "@/lib/serticard-compose-spread-png";
+import {
+  composeSerticardSpreadPngBuffers,
+  getSerticardPdfPanelSize,
+} from "@/lib/serticard-compose-spread-png";
 import {
   buildZipVerificationManifest,
   createZipVerificationSummary,
@@ -506,6 +509,8 @@ type ZipChunkContext = {
   // Loaded via dynamic canvas import at runtime (avoid build-time native binding requirement).
   frontTemplateImage: any;
   backTemplateImage: any;
+  panelWidth: number;
+  panelHeight: number;
   fontConfig: Awaited<ReturnType<typeof getSerticardConfig>>;
   sizeMultipliers: ReturnType<typeof getFontSizeMultipliers>;
   internalBaseUrl: string;
@@ -582,6 +587,8 @@ async function buildOneZipChunk(
     canvasMod,
     frontTemplateImage,
     backTemplateImage,
+    panelWidth,
+    panelHeight,
     sizeMultipliers,
     internalBaseUrl,
     isGramRequest,
@@ -674,8 +681,6 @@ async function buildOneZipChunk(
           cmsTemplateId: cmsTemplateId ?? null,
           rootKeyForBack: rootKeyForPill,
         });
-        const panelWidth = Math.max(frontTemplateImage.width, backTemplateImage.width);
-        const panelHeight = Math.max(frontTemplateImage.height, backTemplateImage.height);
         const gap = 0;
         const pageWidth = panelWidth * 2 + gap;
         const pageHeight = panelHeight;
@@ -832,9 +837,14 @@ async function executeZipGeneration(
     fontConfig.fontSizePreset === "KECIL" ? "KECIL" : "BESAR"
   );
 
+  const { panelWidth, panelHeight } = getSerticardPdfPanelSize(
+    frontTemplateImage,
+    backTemplateImage
+  );
   console.log(`[QR Multiple] Both templates loaded successfully:`, {
     front: `${frontTemplateImage.width}x${frontTemplateImage.height}`,
     back: `${backTemplateImage.width}x${backTemplateImage.height}`,
+    pdfPanel: `${panelWidth}x${panelHeight}`,
   });
 
   // Get base URL for internal API calls
@@ -846,6 +856,8 @@ async function executeZipGeneration(
     canvasMod: CANVAS_MOD,
     frontTemplateImage,
     backTemplateImage,
+    panelWidth,
+    panelHeight,
     fontConfig,
     sizeMultipliers,
     internalBaseUrl,

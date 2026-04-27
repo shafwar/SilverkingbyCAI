@@ -47,6 +47,7 @@ export async function PUT(request: Request) {
       deleteCustomFront,
       deleteCustomBack,
       customTemplateDropdownLabel,
+      customPairTitle,
     } = body;
     const updates: Record<string, unknown> = {};
     const current = await getSerticardConfig();
@@ -66,6 +67,7 @@ export async function PUT(request: Request) {
       updates.customFrontR2Key = null;
       updates.customBackR2Key = null;
       updates.customTemplateDropdownLabel = null;
+      updates.customPairTitle = null;
     } else {
       if (deleteCustomFront === true) {
         await safeDeleteR2(current.customFrontR2Key);
@@ -91,6 +93,14 @@ export async function PUT(request: Request) {
         updates.customTemplateDropdownLabel = trimmed.length > 0 ? trimmed : null;
       }
     }
+    if ("customPairTitle" in body && clearCustomTemplates !== true) {
+      if (customPairTitle === null || customPairTitle === "") {
+        updates.customPairTitle = null;
+      } else if (typeof customPairTitle === "string") {
+        const trimmed = customPairTitle.trim().slice(0, 191);
+        updates.customPairTitle = trimmed.length > 0 ? trimmed : null;
+      }
+    }
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(await getSerticardConfig());
     }
@@ -100,6 +110,7 @@ export async function PUT(request: Request) {
         fontSizePreset?: string;
         customFrontR2Key?: null;
         customBackR2Key?: null;
+        customPairTitle?: string | null;
         customTemplateDropdownLabel?: string | null;
       }
     );

@@ -4,7 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { PDFDocument } from "pdf-lib";
 import { loadSerticardTemplates, isAffirmativeCustomFlag } from "@/lib/load-serticard-templates";
 import { getSerticardConfig, getFontSizeMultipliers } from "@/lib/serticard-config";
-import { composeSerticardSpreadPngBuffers } from "@/lib/serticard-compose-spread-png";
+import {
+  composeSerticardSpreadPngBuffers,
+  getSerticardPdfPanelSize,
+} from "@/lib/serticard-compose-spread-png";
 import { normalizeRootKeyForPill } from "@/lib/serticard-rootkey-display";
 
 /**
@@ -175,10 +178,11 @@ export async function POST(request: NextRequest) {
     });
 
     // --- Build single PDF with front+back side-by-side - UNIFIED DIMENSIONS for 100% balance ---
-    // Serticard 01-02 have matching dimensions; 03-18 have mismatched front/back sizes.
-    // Use same panel size for both so left & right are identical (like 01-02).
-    const panelWidth = Math.max(frontTemplateImage.width, backTemplateImage.width);
-    const panelHeight = Math.max(frontTemplateImage.height, backTemplateImage.height);
+    // Must match export upscale in compose (not raw template pixel size) or PDF would downscale HD PNGs.
+    const { panelWidth, panelHeight } = getSerticardPdfPanelSize(
+      frontTemplateImage,
+      backTemplateImage
+    );
     const gap = 0;
     const pageWidth = panelWidth * 2 + gap;
     const pageHeight = panelHeight;

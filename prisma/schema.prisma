@@ -206,6 +206,8 @@ model SerticardConfig {
   id                          Int       @id @default(1)
   customFrontR2Key            String?   // e.g. templates/serticard-custom-front.png
   customBackR2Key             String?   // e.g. templates/serticard-custom-back.png
+  /// Display title for the custom pair (admin UI + batch template list)
+  customPairTitle             String?   @db.VarChar(191)
   customTemplateDropdownLabel String?   @db.VarChar(191) // optional label for "custom" in QR Preview template select
   fontFamily                  String    @default("Arial")   // Arial | Lucida Sans | Times New Roman | SF Mono
   fontSizePreset              String    @default("BESAR")   // BESAR | KECIL
