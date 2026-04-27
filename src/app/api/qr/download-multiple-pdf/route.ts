@@ -23,6 +23,7 @@ import {
 import {
   persistInvalidZipProductsAsIssues,
   persistSerticardZipRenderIssuesFromVerification,
+  persistSerticardZipRootKeyWarningsAsIssues,
 } from "@/lib/serticard-zip-issue-persist";
 
 /** Request dengan product count di atas ini diproses di background (hindari timeout 524). */
@@ -665,6 +666,11 @@ async function buildOneZipChunk(
             serialCode: productSerialCode,
             message:
               "Root key tidak ada di payload atau database; PDF tetap berisi nama & serial, belakang tanpa pill root key.",
+            productId: product.id,
+            productName: product.name,
+            weight: product.weight,
+            isGram: productIsGram,
+            rootKey: product.rootKey != null ? String(product.rootKey) : null,
           });
         }
 
@@ -778,6 +784,14 @@ async function buildOneZipChunk(
 async function persistZipRenderIssuesSafe(opts: ZipGenOpts, verification: ZipVerificationSummary) {
   try {
     await persistSerticardZipRenderIssuesFromVerification({
+      jobId: opts.jobId ?? null,
+      verification,
+      templateVariant: opts.templateVariant,
+      useCustomTemplate: opts.useCustom,
+      cmsTemplateId: opts.cmsTemplateId ?? null,
+      includeRootKey: opts.includeRootKey !== false,
+    });
+    await persistSerticardZipRootKeyWarningsAsIssues({
       jobId: opts.jobId ?? null,
       verification,
       templateVariant: opts.templateVariant,

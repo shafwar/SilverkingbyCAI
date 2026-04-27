@@ -24,6 +24,12 @@ export type ZipVerificationWarning = {
   code: string;
   serialCode: string;
   message: string;
+  /** Set for ROOT_KEY_MISSING so ZIP issues can retry with full product context */
+  productId?: number;
+  productName?: string | null;
+  weight?: number;
+  isGram?: boolean;
+  rootKey?: string | null;
 };
 
 export type ZipVerificationRenderFailure = {

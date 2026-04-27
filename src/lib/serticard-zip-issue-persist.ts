@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import type { ZipVerificationSummary } from "@/lib/serticard-zip-verification";
+import type { ZipVerificationSummary, ZipVerificationWarning } from "@/lib/serticard-zip-verification";
 
 type TemplateMeta = {
   templateVariant: string;
@@ -35,6 +35,45 @@ export async function persistSerticardZipRenderIssuesFromVerification(args: {
     useCustomTemplate: Boolean(args.useCustomTemplate),
     cmsTemplateId:
       args.cmsTemplateId != null && Number.isFinite(args.cmsTemplateId) ? Math.floor(args.cmsTemplateId) : null,
+    includeRootKey: args.includeRootKey !== false,
+  }));
+
+  await prisma.serticardZipRenderIssue.createMany({ data });
+}
+
+/** When ZIP expects root key on Gram items but none was found, verification only had a warning — persist for admin ZIP issues UI. */
+export async function persistSerticardZipRootKeyWarningsAsIssues(args: {
+  jobId?: number | null;
+  verification: ZipVerificationSummary;
+} & TemplateMeta): Promise<void> {
+  if (args.includeRootKey === false) return;
+
+  const warnings = args.verification.warnings.filter(
+    (w: ZipVerificationWarning) => w.code === "ROOT_KEY_MISSING"
+  );
+  if (!warnings.length) return;
+
+  const data = warnings.map((w) => ({
+    jobId: args.jobId ?? null,
+    source: "MISSING_ROOT_KEY",
+    serialCode: String(w.serialCode || "UNKNOWN").slice(0, 191),
+    productName:
+      w.productName != null && String(w.productName).trim() !== ""
+        ? String(w.productName).trim().slice(0, 500)
+        : null,
+    productId:
+      w.productId != null && Number.isFinite(Number(w.productId)) ? Math.floor(Number(w.productId)) : null,
+    weight: typeof w.weight === "number" && !Number.isNaN(w.weight) ? w.weight : 0,
+    isGram: w.isGram === true,
+    rootKey:
+      w.rootKey != null && String(w.rootKey).trim() !== "" ? String(w.rootKey).trim().slice(0, 255) : null,
+    reasons: ["ROOT_KEY_MISSING"] as Prisma.InputJsonValue,
+    templateVariant: String(args.templateVariant || "01").slice(0, 32),
+    useCustomTemplate: Boolean(args.useCustomTemplate),
+    cmsTemplateId:
+      args.cmsTemplateId != null && Number.isFinite(args.cmsTemplateId)
+        ? Math.floor(args.cmsTemplateId)
+        : null,
     includeRootKey: args.includeRootKey !== false,
   }));
 

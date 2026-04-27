@@ -976,6 +976,7 @@
       "saveSettings": "Simpan pengaturan",
       "savingSettings": "Menyimpan…",
       "settingsSavedToast": "Pengaturan tersimpan.",
+      "settingsSavedFreshToast": "Tersimpan. Form dikosongkan — serticard yang tersimpan tampil di tabel di bawah.",
       "settingsSaveFailedToast": "Gagal menyimpan pengaturan"
     },
     "qrPreviewDetail": {

@@ -972,6 +972,7 @@
       "saveSettings": "Save settings",
       "savingSettings": "Saving…",
       "settingsSavedToast": "Settings saved.",
+      "settingsSavedFreshToast": "Saved successfully. Form cleared — your stored serticard appears in the table below.",
       "settingsSaveFailedToast": "Failed to save settings"
     },
     "qrPreviewDetail": {

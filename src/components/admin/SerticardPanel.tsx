@@ -15,8 +15,8 @@ type Config = {
   customTemplateDropdownLabel: string | null;
 };
 
-function getPreviewUrl(side: "front" | "back"): string {
-  return `/api/admin/serticard/preview?side=${side}&t=${Date.now()}`;
+function previewApiUrl(side: "front" | "back", cacheKey: number): string {
+  return `/api/admin/serticard/preview?side=${side}&t=${cacheKey}`;
 }
 
 const shellClass =
@@ -54,8 +54,11 @@ export function SerticardPanel() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<"front" | "back" | "all" | null>(null);
-  const [frontPreview, setFrontPreview] = useState<string | null>(null);
-  const [backPreview, setBackPreview] = useState<string | null>(null);
+  /** Upload-area previews (hidden after successful Save so the form looks fresh; table uses config + thumbEpoch). */
+  const [draftShowFront, setDraftShowFront] = useState(false);
+  const [draftShowBack, setDraftShowBack] = useState(false);
+  /** Bust cache for preview images after save/upload/delete so table thumbs stay in sync with R2. */
+  const [thumbEpoch, setThumbEpoch] = useState(0);
   const [templateDropdownName, setTemplateDropdownName] = useState("");
   const [pairTitle, setPairTitle] = useState("");
   const [confirmDialog, setConfirmDialog] = useState<ConfirmKind>(null);
@@ -74,8 +77,9 @@ export function SerticardPanel() {
       });
       setTemplateDropdownName(data.customTemplateDropdownLabel ?? "");
       setPairTitle(data.customPairTitle ?? "");
-      setFrontPreview(data.customFrontR2Key ? getPreviewUrl("front") : null);
-      setBackPreview(data.customBackR2Key ? getPreviewUrl("back") : null);
+      setDraftShowFront(!!data.customFrontR2Key);
+      setDraftShowBack(!!data.customBackR2Key);
+      setThumbEpoch(Date.now());
     } catch {
       toast.error(t("configLoadFailedToast"));
       setConfig(null);
@@ -182,8 +186,8 @@ export function SerticardPanel() {
       );
       setTemplateDropdownName("");
       setPairTitle("");
-      setFrontPreview(null);
-      setBackPreview(null);
+      setDraftShowFront(false);
+      setDraftShowBack(false);
       toast.success(t("resetTemplatesToast"));
       await fetchConfig();
       notifyConfigUpdated();
@@ -218,9 +222,12 @@ export function SerticardPanel() {
             }
           : c
       );
-      setTemplateDropdownName(data.customTemplateDropdownLabel ?? "");
-      setPairTitle(data.customPairTitle ?? "");
-      toast.success(t("settingsSavedToast"));
+      setPairTitle("");
+      setTemplateDropdownName("");
+      setDraftShowFront(false);
+      setDraftShowBack(false);
+      setThumbEpoch(Date.now());
+      toast.success(t("settingsSavedFreshToast"));
       notifyConfigUpdated();
     } catch {
       toast.error(t("settingsSaveFailedToast"));
@@ -297,10 +304,10 @@ export function SerticardPanel() {
             <p className="text-[13px] font-semibold text-white/88 sm:text-sm">{t("frontFieldLabel")}</p>
             <p className={`mt-1.5 ${helperTextClass}`}>{t("frontHint")}</p>
             <div className="mt-4 flex min-h-[180px] w-full flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-white/12 bg-black/35 px-3 py-5">
-              {frontPreview ? (
+              {draftShowFront && config.customFrontR2Key ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={frontPreview}
+                  src={previewApiUrl("front", thumbEpoch)}
                   alt=""
                   className="max-h-44 w-full max-w-[220px] rounded-md object-contain ring-1 ring-white/10"
                 />
@@ -344,10 +351,10 @@ export function SerticardPanel() {
             <p className="text-[13px] font-semibold text-white/88 sm:text-sm">{t("backFieldLabel")}</p>
             <p className={`mt-1.5 ${helperTextClass}`}>{t("backHint")}</p>
             <div className="mt-4 flex min-h-[180px] w-full flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-white/12 bg-black/35 px-3 py-5">
-              {backPreview ? (
+              {draftShowBack && config.customBackR2Key ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={backPreview}
+                  src={previewApiUrl("back", thumbEpoch)}
                   alt=""
                   className="max-h-44 w-full max-w-[220px] rounded-md object-contain ring-1 ring-white/10"
                 />
@@ -515,10 +522,10 @@ export function SerticardPanel() {
                         <p className="font-medium leading-snug text-white">{displayTitle}</p>
                       </td>
                       <td className="px-4 py-4 align-middle sm:px-5">
-                        {frontPreview ? (
+                        {config.customFrontR2Key ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={frontPreview}
+                            src={previewApiUrl("front", thumbEpoch)}
                             alt=""
                             className="h-16 w-auto max-w-[100px] rounded-md object-contain ring-1 ring-white/10"
                           />
@@ -527,10 +534,10 @@ export function SerticardPanel() {
                         )}
                       </td>
                       <td className="px-4 py-4 align-middle sm:px-5">
-                        {backPreview ? (
+                        {config.customBackR2Key ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={backPreview}
+                            src={previewApiUrl("back", thumbEpoch)}
                             alt=""
                             className="h-16 w-auto max-w-[100px] rounded-md object-contain ring-1 ring-white/10"
                           />
