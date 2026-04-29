@@ -272,7 +272,7 @@ export default function AboutPageClient() {
             loop
             muted
             playsInline
-            preload="metadata"
+            preload="auto"
             disablePictureInPicture
             disableRemotePlayback
             onContextMenu={(e) => e.preventDefault()}

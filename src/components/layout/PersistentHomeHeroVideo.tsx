@@ -197,7 +197,7 @@ export function PersistentHomeHeroVideo() {
       loop
       muted
       playsInline
-      preload="metadata"
+      preload="auto"
       disablePictureInPicture
       disableRemotePlayback
       onContextMenu={(e) => e.preventDefault()}

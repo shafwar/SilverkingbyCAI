@@ -183,7 +183,7 @@ function HeroScrollDrivenVideoLayer({
             loop
             muted
             playsInline
-            preload="metadata"
+            preload="auto"
             disablePictureInPicture
             disableRemotePlayback
             className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"

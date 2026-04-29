@@ -30,7 +30,7 @@ const helperTextClass = "text-[0.8125rem] leading-relaxed text-white/48 sm:text-
 const uploadColClass =
   "flex min-h-0 min-w-0 flex-1 basis-0 flex-col rounded-xl border border-white/[0.06] bg-black/25 p-4 sm:p-5";
 
-type ConfirmKind = null | "deleteFront" | "deleteBack" | "deleteAll";
+type ConfirmKind = null | "deletePersisted";
 
 function FieldLabel({ children, dense }: { children: React.ReactNode; dense?: boolean }) {
   return (
@@ -75,10 +75,16 @@ export function SerticardPanel() {
         customPairTitle: data.customPairTitle ?? null,
         customTemplateDropdownLabel: data.customTemplateDropdownLabel ?? null,
       });
-      setTemplateDropdownName(data.customTemplateDropdownLabel ?? "");
-      setPairTitle(data.customPairTitle ?? "");
-      setDraftShowFront(!!data.customFrontR2Key);
-      setDraftShowBack(!!data.customBackR2Key);
+      /**
+       * IMPORTANT UX:
+       * Form input is intentionally draft-only and should stay empty on page revisit,
+       * even when server already has saved custom pair data.
+       * Persisted data is shown in "Saved custom pair" table below.
+       */
+      setTemplateDropdownName("");
+      setPairTitle("");
+      setDraftShowFront(false);
+      setDraftShowBack(false);
       setThumbEpoch(Date.now());
     } catch {
       toast.error(t("configLoadFailedToast"));
@@ -118,8 +124,12 @@ export function SerticardPanel() {
             }
           : c
       );
+      if (side === "front") setDraftShowFront(true);
+      if (side === "back") setDraftShowBack(true);
       toast.success(side === "front" ? t("uploadFrontOk") : t("uploadBackOk"));
       await fetchConfig();
+      if (side === "front") setDraftShowFront(true);
+      if (side === "back") setDraftShowBack(true);
       notifyConfigUpdated();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t("uploadFailedToast"));
@@ -128,42 +138,15 @@ export function SerticardPanel() {
     }
   };
 
-  const runDeleteSide = async (side: "front" | "back") => {
-    setDeleting(side);
-    try {
-      const res = await fetch("/api/admin/serticard/config", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          [side === "front" ? "deleteCustomFront" : "deleteCustomBack"]: true,
-        }),
-      });
-      if (!res.ok) throw new Error("Failed");
-      const data = await res.json();
-      setConfig((c) =>
-        c
-          ? {
-              ...c,
-              customFrontR2Key: data.customFrontR2Key ?? null,
-              customBackR2Key: data.customBackR2Key ?? null,
-              customPairTitle: data.customPairTitle ?? c.customPairTitle,
-              customTemplateDropdownLabel:
-                data.customTemplateDropdownLabel ?? c.customTemplateDropdownLabel,
-            }
-          : c
-      );
-      toast.success(side === "front" ? t("deleteFrontOk") : t("deleteBackOk"));
-      await fetchConfig();
-      notifyConfigUpdated();
-    } catch {
-      toast.error(t("deleteSideFailedToast"));
-    } finally {
-      setDeleting(null);
-      setConfirmDialog(null);
-    }
+  const clearFormState = () => {
+    setTemplateDropdownName("");
+    setPairTitle("");
+    setDraftShowFront(false);
+    setDraftShowBack(false);
+    toast.success(t("formResetOnlyToast"));
   };
 
-  const runClearAll = async () => {
+  const runDeletePersisted = async () => {
     setDeleting("all");
     try {
       const res = await fetch("/api/admin/serticard/config", {
@@ -241,7 +224,7 @@ export function SerticardPanel() {
     requestAnimationFrame(() => pairTitleInputRef.current?.focus());
   };
 
-  const customPairReady = Boolean(config?.customFrontR2Key && config?.customBackR2Key);
+  const customPairReady = Boolean(draftShowFront && draftShowBack);
   const hasPairData = Boolean(
     config?.customFrontR2Key ||
       config?.customBackR2Key ||
@@ -314,10 +297,10 @@ export function SerticardPanel() {
               ) : (
                 <span className="text-xs text-white/35">{t("noCustomYet")}</span>
               )}
-              {config.customFrontR2Key && (
+              {config.customFrontR2Key && draftShowFront && (
                 <button
                   type="button"
-                  onClick={() => setConfirmDialog("deleteFront")}
+                  onClick={() => setDraftShowFront(false)}
                   disabled={!!uploading || !!deleting}
                   className="mt-3 inline-flex w-full max-w-[240px] touch-manipulation items-center justify-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-xs font-semibold text-red-100 transition hover:bg-red-500/18 disabled:opacity-50"
                 >
@@ -361,10 +344,10 @@ export function SerticardPanel() {
               ) : (
                 <span className="text-xs text-white/35">{t("noCustomYet")}</span>
               )}
-              {config.customBackR2Key && (
+              {config.customBackR2Key && draftShowBack && (
                 <button
                   type="button"
-                  onClick={() => setConfirmDialog("deleteBack")}
+                  onClick={() => setDraftShowBack(false)}
                   disabled={!!uploading || !!deleting}
                   className="mt-3 inline-flex w-full max-w-[240px] touch-manipulation items-center justify-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-xs font-semibold text-red-100 transition hover:bg-red-500/18 disabled:opacity-50"
                 >
@@ -437,7 +420,7 @@ export function SerticardPanel() {
           </div>
         </form>
 
-        {(config.customFrontR2Key || config.customBackR2Key) && (
+        {(draftShowFront || draftShowBack || pairTitle.trim() || templateDropdownName.trim()) && (
           <div className="flex flex-col gap-3 border-t border-white/[0.06] px-4 py-4 sm:px-5">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
@@ -449,12 +432,12 @@ export function SerticardPanel() {
             </div>
             <button
               type="button"
-              onClick={() => setConfirmDialog("deleteAll")}
+              onClick={clearFormState}
               disabled={!!uploading || !!deleting}
               className="inline-flex min-h-[44px] w-full touch-manipulation items-center justify-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/12 px-4 py-2.5 text-sm font-semibold text-amber-50 transition hover:bg-amber-500/20 disabled:opacity-50 sm:w-auto sm:self-start"
             >
               <Trash2 className="h-4 w-4 shrink-0 opacity-90" />
-              {deleting === "all" && confirmDialog === "deleteAll" ? t("resetting") : t("resetToDefault")}
+              {t("clearFormOnly")}
             </button>
           </div>
         )}
@@ -559,7 +542,7 @@ export function SerticardPanel() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => setConfirmDialog("deleteAll")}
+                            onClick={() => setConfirmDialog("deletePersisted")}
                             disabled={!!deleting}
                             className="inline-flex rounded-lg p-2 text-white/55 transition hover:bg-red-500/15 hover:text-red-300 disabled:pointer-events-none disabled:opacity-35"
                             aria-label={t("managementDeleteAria")}
@@ -586,9 +569,7 @@ export function SerticardPanel() {
         <div className="flex gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-100/95">
           <AlertTriangle className="h-5 w-5 shrink-0 text-amber-400/90" />
           <p className="leading-relaxed">
-            {confirmDialog === "deleteFront" && t("deleteFrontConfirm")}
-            {confirmDialog === "deleteBack" && t("deleteBackConfirm")}
-            {confirmDialog === "deleteAll" && t("deleteAllConfirm")}
+            {confirmDialog === "deletePersisted" && t("deleteAllConfirm")}
           </p>
         </div>
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -605,9 +586,7 @@ export function SerticardPanel() {
             disabled={!!deleting}
             className="min-h-[44px] rounded-xl bg-red-600/90 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-50"
             onClick={() => {
-              if (confirmDialog === "deleteFront") void runDeleteSide("front");
-              else if (confirmDialog === "deleteBack") void runDeleteSide("back");
-              else if (confirmDialog === "deleteAll") void runClearAll();
+              if (confirmDialog === "deletePersisted") void runDeletePersisted();
             }}
           >
             {deleting ? <Loader2 className="mx-auto h-5 w-5 animate-spin" /> : t("confirmDelete")}

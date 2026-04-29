@@ -8,6 +8,8 @@ type VideoGuardProps = Omit<React.ComponentPropsWithoutRef<"video">, "src"> & {
   url: string;
   version?: number;
   containerClassName?: string;
+  /** Hint browser fetch scheduling (Chrome). Defaults to high when posterPriority. */
+  videoFetchPriority?: "high" | "low" | "auto";
   /** When true, do not load video (e.g. slow connection); render poster placeholder instead */
   forcePoster?: boolean;
   /** When true, never attach video src (poster / gradient only) — e.g. prefers-reduced-motion */
@@ -69,12 +71,18 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
       optimizeGpu = false,
       lightVideoFade = false,
       snapVideoOpacity = false,
+      videoFetchPriority,
       ...restVideoProps
     },
     ref
   ) {
     const rawVideo = restVideoProps as React.ComponentPropsWithoutRef<"video">;
-    const { style: videoStyleProp, ...videoProps } = rawVideo;
+    const {
+      style: videoStyleProp,
+      onProgress: onProgressProp,
+      preload: preloadProp,
+      ...videoProps
+    } = rawVideo;
     const [ready, setReady] = useState(false);
     const [fadeComplete, setFadeComplete] = useState(false);
     const fadeTimerRef = useRef<number | null>(null);
@@ -191,6 +199,9 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
       }
     }, [src, effectiveAttach]);
 
+    const resolvedFetchPriority =
+      videoFetchPriority ?? (posterPriority ? ("high" as const) : undefined);
+
     const markReady = () => {
       setReady(true);
       if (!optimizeGpu) return;
@@ -208,9 +219,17 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
       const w = globalThis as Window & typeof globalThis;
       const t = w.setTimeout(() => {
         setReady((prev) => (prev ? prev : true));
-      }, 3200);
+      }, 2600);
       return () => w.clearTimeout(t);
     }, [effectiveAttach, src]);
+
+    const handleProgress = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+      onProgressProp?.(e);
+      /** First decodable frames arrive earlier than loadeddata on slow networks — removes long “black” waits */
+      if (e.currentTarget.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        markReady();
+      }
+    };
 
     if (forcePoster) {
       return (
@@ -303,7 +322,9 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
           onLoadedMetadata={markReady}
           onCanPlay={markReady}
           onPlaying={markReady}
+          onProgress={handleProgress}
           {...videoProps}
+          {...(resolvedFetchPriority ? { fetchPriority: resolvedFetchPriority } : {})}
           style={{
             ...style,
             ...videoStyleProp,
@@ -323,7 +344,7 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
               : {}),
           }}
           preload={
-            effectiveAttach ? (videoProps.preload ?? "metadata") : "none"
+            effectiveAttach ? (preloadProp ?? "auto") : "none"
           }
         />
       </div>

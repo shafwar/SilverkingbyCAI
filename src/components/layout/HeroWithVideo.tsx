@@ -78,7 +78,7 @@ export default function HeroWithVideo({
     <section className="relative h-screen w-full overflow-hidden">
       {/* Background Video — skip on mobile or slow connection to keep page light */}
       <div className="absolute inset-0 z-0">
-        {!isMobile && shouldLoadVideo && !videoError ? (
+        {shouldLoadVideo && !videoError ? (
           <VideoLoadGuard
             ref={videoRef}
             url={currentVideoSrc}
@@ -118,7 +118,7 @@ export default function HeroWithVideo({
         ) : null}
 
         {/* Fallback Image (shown on mobile, slow connection, or if video fails) */}
-        {(isMobile || !shouldLoadVideo || videoError) && (
+        {(!shouldLoadVideo || videoError) && (
           <div
             className="w-full h-full bg-cover bg-center"
             style={{ backgroundImage: `url(${r2FallbackImage})` }}
