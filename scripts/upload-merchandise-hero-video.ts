@@ -2,9 +2,12 @@
 /**
  * Upload compressed merchandise hero MP4 + WebP poster to R2 (same keys as getR2UrlClient paths).
  *
+ * Regenerate assets locally (15s 1080p loop, HD CRF22): `npm run merchandise:build-hero-video`
+ * Then bump `MERCH_HERO_VIDEO_ASSET_VERSION` in MerchandisePageClient when replacing files on R2.
+ *
  * Prereqs: .env.local with R2_* (same as other upload scripts); files must exist under public/.
  *
- * Usage: pnpm exec ts-node -r dotenv/config --project tsconfig.scripts.json scripts/upload-merchandise-hero-video.ts
+ * Usage: npm run merchandise:upload-hero-video
  */
 
 import * as dotenv from "dotenv";

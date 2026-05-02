@@ -109,7 +109,7 @@ const FALLBACK_IMAGE_PATHS: Record<MerchandiseCategory, string[]> = {
 };
 
 /** Bump after replacing MP4/WebP on R2 so clients flush decoder/cache-bust via VideoLoadGuard. */
-const MERCH_HERO_VIDEO_ASSET_VERSION = 1;
+const MERCH_HERO_VIDEO_ASSET_VERSION = 2;
 
 /** Centered product copy: larger type, subtle gradient, no box. Optional second colors line. */
 function DetailBlockCentered({
@@ -483,8 +483,8 @@ export default function MerchandisePageClient() {
       />
       <Navbar />
 
-      {/* Hero: compressed MP4 + WebP poster (R2 via proxiedHeroVideoSrc); seam cover below */}
-      <section className="relative min-h-[70vh] overflow-hidden pt-20 isolate">
+      {/* Hero: full-viewport (100dvh), 15s loop MP4 + WebP poster; R2 via proxiedHeroVideoSrc */}
+      <section className="relative isolate min-h-[100dvh] overflow-hidden">
         <div
           className="absolute inset-0 overflow-hidden"
           style={{ transform: "translateZ(0)", WebkitBackfaceVisibility: "hidden" }}
@@ -525,7 +525,7 @@ export default function MerchandisePageClient() {
           className="absolute bottom-0 left-0 right-0 z-[1] h-[3px] bg-luxury-black pointer-events-none"
           aria-hidden
         />
-        <div className="relative z-10 flex min-h-[70vh] flex-col items-center justify-center px-6 pb-20 text-center font-[family-name:var(--font-merch)]">
+        <div className="relative z-10 flex min-h-[100dvh] flex-col items-center justify-center px-6 pb-[max(5rem,env(safe-area-inset-bottom))] pt-[max(5rem,env(safe-area-inset-top))] text-center font-[family-name:var(--font-merch)]">
           <motion.h1
             className="text-4xl font-semibold tracking-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.5)] md:text-5xl lg:text-6xl xl:text-7xl"
             initial={{ opacity: 0, y: 28 }}
