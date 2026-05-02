@@ -24,6 +24,16 @@ const PAGE_TO_PUBLIC_PATH: Record<string, string> = {
   journal: "videos/hero/Jurnal Silverking.mp4",
 };
 
+const MERCH_HERO_PUBLIC_REL = "videos/hero/merchandise-hero.mp4";
+
+function isMerchandiseHeroKey(key: string): boolean {
+  const decoded = decodeURIComponent(key).trim();
+  return (
+    decoded === "static/videos/hero/merchandise-hero.mp4" ||
+    decoded.endsWith("/merchandise-hero.mp4")
+  );
+}
+
 const CACHE_HEADER = "public, max-age=3600";
 
 function getContentTypeFromExt(filePath: string): string {
@@ -159,6 +169,14 @@ export async function GET(request: NextRequest) {
   if (keyParam) {
     const r2Res = await serveR2Key(keyParam, request);
     if (r2Res) return r2Res;
+
+    if (isMerchandiseHeroKey(keyParam)) {
+      const publicPath = path.join(process.cwd(), "public", MERCH_HERO_PUBLIC_REL);
+      if (fs.existsSync(publicPath)) {
+        const buffer = fs.readFileSync(publicPath);
+        return responseFromBuffer(buffer, "video/mp4", request);
+      }
+    }
 
     const isJournalFallback =
       keyParam.includes("Jurnal Silverking.mp4") || keyParam.includes("Jurnal%20Silverking.mp4");

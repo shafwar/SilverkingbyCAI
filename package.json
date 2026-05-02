@@ -24,6 +24,7 @@
     "r2:upload-serticards": "ts-node -r dotenv/config --project tsconfig.scripts.json scripts/upload-all-serticard-templates.ts",
     "r2:ensure-hero": "ts-node -r dotenv/config --project tsconfig.scripts.json scripts/ensure-distributor-hero-r2.ts",
     "merchandise:compress-upload": "ts-node -r dotenv/config --project tsconfig.scripts.json scripts/compress-and-upload-merchandise.ts",
+    "merchandise:upload-hero-video": "ts-node -r dotenv/config --project tsconfig.scripts.json scripts/upload-merchandise-hero-video.ts",
     "merchandise:seed": "ts-node -r dotenv/config --project tsconfig.scripts.json scripts/seed-merchandise.ts",
     "compress:images": "ts-node --project tsconfig.scripts.json scripts/compress-public-images.ts",
     "compress:videos": "ts-node --project tsconfig.scripts.json scripts/compress-public-videos.ts"

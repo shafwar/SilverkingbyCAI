@@ -11,6 +11,7 @@ import Image from "next/image";
 import { Plus, Pencil, Trash2, X, Phone } from "lucide-react";
 import { ModalPortal } from "@/components/ui/ModalPortal";
 import { getR2UrlClient } from "@/utils/r2-url";
+import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { VideoLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
@@ -107,6 +108,9 @@ const FALLBACK_IMAGE_PATHS: Record<MerchandiseCategory, string[]> = {
   ],
 };
 
+/** Bump after replacing MP4/WebP on R2 so clients flush decoder/cache-bust via VideoLoadGuard. */
+const MERCH_HERO_VIDEO_ASSET_VERSION = 1;
+
 /** Centered product copy: larger type, subtle gradient, no box. Optional second colors line. */
 function DetailBlockCentered({
   tagline,
@@ -189,6 +193,7 @@ export default function MerchandisePageClient() {
   const pageRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
   const footerVideoRef = useRef<HTMLVideoElement | null>(null);
+  const heroVideoRef = useRef<HTMLVideoElement | null>(null);
   const [byCategory, setByCategory] = useState<Record<string, MerchandiseItemType[]>>({
     polo: [],
     knitware: [],
@@ -204,32 +209,20 @@ export default function MerchandisePageClient() {
   const addCategoryRef = useRef<MerchandiseCategory | null>(null);
   const addFileInputRef = useRef<HTMLInputElement>(null);
   const [isMounted, setIsMounted] = useState(false);
-  const [heroIndex, setHeroIndex] = useState(0);
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
-  /** Hero images: second image first (polo close-up / “ss kedua”), then rest of flow. */
-  const heroImageUrls = useMemo(() => {
-    const fromApi: string[] = [];
-    CATEGORY_ORDER.forEach((cat) => {
-      (byCategory[cat] ?? []).forEach((item) => fromApi.push(item.imageUrl));
-    });
-    const raw =
-      fromApi.length > 0
-        ? fromApi.map(resolveImageUrl)
-        : CATEGORY_ORDER.flatMap((cat) => FALLBACK_IMAGE_PATHS[cat].map((p) => getR2UrlClient(p)));
-    if (raw.length < 2) return raw;
-    return [raw[1], raw[0], ...raw.slice(2)];
-  }, [byCategory]);
-
-  /** Hero image carousel: transition every 6 seconds */
-  const HERO_INTERVAL_MS = 6000;
-  useEffect(() => {
-    if (heroImageUrls.length <= 1) return;
-    const t = setInterval(() => {
-      setHeroIndex((i) => (i + 1) % heroImageUrls.length);
-    }, HERO_INTERVAL_MS);
-    return () => clearInterval(t);
-  }, [heroImageUrls.length]);
+  const merchHeroMediaUrl = useMemo(
+    () => getR2UrlClient("/videos/hero/merchandise-hero.mp4"),
+    []
+  );
+  const merchHeroPosterUrl = useMemo(
+    () => getR2UrlClient("/images/merchandise/merch-hero-poster.webp"),
+    []
+  );
+  const merchHeroVideoPlayUrl = useMemo(
+    () => proxiedHeroVideoSrc(merchHeroMediaUrl),
+    [merchHeroMediaUrl]
+  );
 
   useEffect(() => {
     setIsMounted(true);
@@ -318,6 +311,10 @@ export default function MerchandisePageClient() {
     return () => ctx.revert();
   }, [isMounted, byCategory]);
 
+  useReliableVideoAutoplay(heroVideoRef, {
+    mode: "background",
+    reattachKey: merchHeroVideoPlayUrl,
+  });
   useReliableVideoAutoplay(footerVideoRef, { mode: "background" });
 
   const openAdd = (category: MerchandiseCategory) => {
@@ -486,49 +483,43 @@ export default function MerchandisePageClient() {
       />
       <Navbar />
 
-      {/* Hero: extend layer + seam cover to prevent flickering line at bottom (mobile/desktop) */}
+      {/* Hero: compressed MP4 + WebP poster (R2 via proxiedHeroVideoSrc); seam cover below */}
       <section className="relative min-h-[70vh] overflow-hidden pt-20 isolate">
-        {heroImageUrls.length > 0 && (
-          <div
-            className="absolute inset-0 overflow-hidden"
-            style={{ transform: "translateZ(0)", WebkitBackfaceVisibility: "hidden" }}
-          >
-            <AnimatePresence initial={false}>
-              <motion.div
-                key={heroIndex}
-                className="absolute inset-0 origin-center"
-                style={{
-                  backfaceVisibility: "hidden",
-                  willChange: "transform",
-                  transform: "translateZ(0)",
-                  WebkitBackfaceVisibility: "hidden",
-                }}
-                initial={{ opacity: 0, scale: 1.02 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.02 }}
-                transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <motion.div
-                  className="absolute inset-0 origin-center overflow-hidden"
-                  style={{ backfaceVisibility: "hidden", transform: "translateZ(0)" }}
-                  animate={{ scale: 1.05 }}
-                  transition={{ duration: 6, ease: "linear" }}
-                >
-                  <Image
-                    src={heroImageUrls[heroIndex]}
-                    alt=""
-                    fill
-                    className="object-cover"
-                    sizes="100vw"
-                    priority
-                    unoptimized={heroImageUrls[heroIndex]?.startsWith("http")}
-                  />
-                </motion.div>
-                <div className="absolute inset-0 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-luxury-black/40" />
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        )}
+        <div
+          className="absolute inset-0 overflow-hidden"
+          style={{ transform: "translateZ(0)", WebkitBackfaceVisibility: "hidden" }}
+        >
+          <VideoLoadGuard
+            key={`merch-hero-${merchHeroVideoPlayUrl}-${MERCH_HERO_VIDEO_ASSET_VERSION}`}
+            ref={heroVideoRef}
+            url={merchHeroVideoPlayUrl}
+            version={MERCH_HERO_VIDEO_ASSET_VERSION}
+            posterUrl={merchHeroPosterUrl}
+            posterVersion={MERCH_HERO_VIDEO_ASSET_VERSION}
+            forcePoster={!shouldLoadHeroVideo}
+            posterPriority
+            lcpFriendlyPoster
+            optimizeGpu
+            lightVideoFade
+            containerClassName="absolute inset-0 h-full w-full"
+            className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
+            style={{
+              pointerEvents: "none",
+              outline: "none",
+              WebkitTapHighlightColor: "transparent",
+              userSelect: "none",
+            }}
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+            disablePictureInPicture
+            disableRemotePlayback
+            onContextMenu={(e) => e.preventDefault()}
+          />
+          <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-luxury-black via-luxury-black/60 to-luxury-black/40" />
+        </div>
         {/* Seam cover: hides subpixel line at hero bottom (flicker fix) */}
         <div
           className="absolute bottom-0 left-0 right-0 z-[1] h-[3px] bg-luxury-black pointer-events-none"
