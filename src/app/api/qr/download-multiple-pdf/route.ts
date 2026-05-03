@@ -25,6 +25,7 @@ import {
   persistSerticardZipRenderIssuesFromVerification,
   persistSerticardZipRootKeyWarningsAsIssues,
 } from "@/lib/serticard-zip-issue-persist";
+import { getQrOnlyPngBufferForZip } from "@/lib/serticard-qr-only-buffer";
 
 /** Request dengan product count di atas ini diproses di background (hindari timeout 524). */
 const ZIP_JOB_THRESHOLD = 25;
@@ -514,7 +515,6 @@ type ZipChunkContext = {
   panelHeight: number;
   fontConfig: Awaited<ReturnType<typeof getSerticardConfig>>;
   sizeMultipliers: ReturnType<typeof getFontSizeMultipliers>;
-  internalBaseUrl: string;
   bodyProductTitle?: string;
   batchNumber: number;
   isGramRequest: boolean;
@@ -591,7 +591,6 @@ async function buildOneZipChunk(
     panelWidth,
     panelHeight,
     sizeMultipliers,
-    internalBaseUrl,
     isGramRequest,
     hasMultipleWeights,
     templateVariant,
@@ -619,14 +618,11 @@ async function buildOneZipChunk(
           continue;
         }
         const productIsGram = (product as any).isGram === true || isGramRequest;
-        const qrBase = productIsGram ? "/api/qr-gram" : "/api/qr";
-        const qrUrl = `${internalBaseUrl}${qrBase}/${encodeURIComponent(productSerialCode)}/qr-only`;
-        const qrResponse = await fetch(qrUrl);
-        if (!qrResponse.ok) {
-        failCount++;
-        continue;
+        const qrBuffer = await getQrOnlyPngBufferForZip(productSerialCode, productIsGram);
+        if (!qrBuffer?.length) {
+          failCount++;
+          continue;
         }
-        const qrBuffer = Buffer.from(await qrResponse.arrayBuffer());
         const qrImage = await canvasMod.loadImage(qrBuffer);
 
         let rootKeyForPill: string | null = null;
@@ -861,11 +857,6 @@ async function executeZipGeneration(
     pdfPanel: `${panelWidth}x${panelHeight}`,
   });
 
-  // Get base URL for internal API calls
-  const baseUrl =
-    process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const internalBaseUrl = baseUrl.replace(/\/$/, "");
-
   const ctx: ZipChunkContext = {
     canvasMod: CANVAS_MOD,
     frontTemplateImage,
@@ -874,7 +865,6 @@ async function executeZipGeneration(
     panelHeight,
     fontConfig,
     sizeMultipliers,
-    internalBaseUrl,
     bodyProductTitle,
     batchNumber,
     isGramRequest,
@@ -1020,6 +1010,12 @@ async function executeZipGeneration(
           verification: zipVerification,
         });
       }
+    }
+    if (downloads.length === 0) {
+      await persistZipRenderIssuesSafe(opts, zipVerification);
+      throw new Error(
+        "No PDFs could be generated for this ZIP (QR or verification failed for every item). Check items and template, then retry."
+      );
     }
     if (jobId) await updateJobProgress(jobId, 100, "Semua batch selesai. Verifikasi ringkasan di JSON & tiap ZIP.");
     console.log(`[QR Multiple] Chunked upload done: ${downloads.length} ZIPs, ${validProducts.length} total files`);

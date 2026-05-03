@@ -39,8 +39,9 @@ function parseErrorResponse(text: string, status: number): string {
   if (text.trimStart().startsWith("<"))
     return "Server sibuk atau terjadi kesalahan. Silakan coba lagi nanti.";
   try {
-    const j = JSON.parse(text) as { error?: string };
-    if (j && typeof j.error === "string") return j.error;
+    const j = JSON.parse(text) as { error?: string; message?: string };
+    if (j && typeof j.message === "string" && j.message.trim()) return j.message.trim();
+    if (j && typeof j.error === "string" && j.error.trim()) return j.error.trim();
   } catch {
     // ignore
   }
@@ -1555,6 +1556,16 @@ export function QrPreviewGridGram({ batches }: Props) {
       <Modal
         open={Boolean(selectedBatch)}
         onClose={() => {
+          if (isDownloadingBatchZip && zipCompileAbortRef.current) {
+            if (
+              !window.confirm(
+                "ZIP masih diproses. Batalkan unduhan dan tutup daftar serial?"
+              )
+            ) {
+              return;
+            }
+            abortZipCompileWithoutConfirm("cancel");
+          }
           setSelectedBatch(null);
           setBatchItems([]);
         }}
@@ -1703,12 +1714,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                 transition={{ duration: 0.2 }}
                 className="fixed inset-0 z-[9998] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
                 onClick={() => {
-                  const b = activeDownloadBatch;
-                  if (
-                    b != null &&
-                    isDownloadingBatchZip &&
-                    downloadingZipBatchId === b.batchId
-                  ) {
+                  if (isDownloadingBatchZip && zipCompileAbortRef.current) {
                     if (
                       !window.confirm(
                         "ZIP masih disiapkan. Batalkan proses dan tutup modal?"
@@ -1805,10 +1811,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                             <button
                               type="button"
                               onClick={() => {
-                                if (
-                                  isDownloadingBatchZip &&
-                                  downloadingZipBatchId === batch.batchId
-                                ) {
+                                if (isDownloadingBatchZip && zipCompileAbortRef.current) {
                                   if (
                                     !window.confirm(
                                       "ZIP masih disiapkan. Batalkan proses dan tutup modal?"

@@ -36,6 +36,9 @@ type ConfirmDialog = null | "deletePersisted" | "deleteFront" | "deleteBack";
 /** QR Preview → tab “Batch Gram” (same route as sidebar Batch per gramasi). */
 const QR_PREVIEW_BATCH_GRAM_HREF = "/admin/qr-preview/page2";
 
+/** After Save settings: hide upload-zone previews so “truth” is only in Saved custom pair; cleared on upload/delete/edit. */
+const SERTICARD_UPLOAD_ZONE_HIDDEN_KEY = "sk_serticard_hide_upload_previews";
+
 function FieldLabel({ children, dense }: { children: React.ReactNode; dense?: boolean }) {
   return (
     <span
@@ -64,6 +67,7 @@ export function SerticardPanel() {
   const [pairTitle, setPairTitle] = useState("");
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog>(null);
   const pairTitleInputRef = useRef<HTMLInputElement>(null);
+  const [suppressUploadPairPreviews, setSuppressUploadPairPreviews] = useState(false);
 
   const fetchConfig = useCallback(async () => {
     try {
@@ -80,6 +84,9 @@ export function SerticardPanel() {
       setTemplateDropdownName("");
       setPairTitle("");
       setThumbEpoch(Date.now());
+      if (typeof window !== "undefined") {
+        setSuppressUploadPairPreviews(sessionStorage.getItem(SERTICARD_UPLOAD_ZONE_HIDDEN_KEY) === "1");
+      }
     } catch {
       toast.error(t("configLoadFailedToast"));
       setConfig(null);
@@ -111,6 +118,7 @@ export function SerticardPanel() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Upload failed");
+      if (typeof window !== "undefined") sessionStorage.removeItem(SERTICARD_UPLOAD_ZONE_HIDDEN_KEY);
       setThumbEpoch(Date.now());
       toast.success(side === "front" ? t("uploadFrontOk") : t("uploadBackOk"));
       await fetchConfig();
@@ -131,6 +139,7 @@ export function SerticardPanel() {
   const runDeleteOneSide = async (side: "front" | "back") => {
     setDeleting(side);
     try {
+      if (typeof window !== "undefined") sessionStorage.removeItem(SERTICARD_UPLOAD_ZONE_HIDDEN_KEY);
       const body = side === "front" ? { deleteCustomFront: true } : { deleteCustomBack: true };
       const res = await fetch("/api/admin/serticard/config", {
         method: "PUT",
@@ -153,6 +162,7 @@ export function SerticardPanel() {
   const runDeletePersisted = async () => {
     setDeleting("all");
     try {
+      if (typeof window !== "undefined") sessionStorage.removeItem(SERTICARD_UPLOAD_ZONE_HIDDEN_KEY);
       const res = await fetch("/api/admin/serticard/config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -210,6 +220,8 @@ export function SerticardPanel() {
       setPairTitle("");
       setTemplateDropdownName("");
       setThumbEpoch(Date.now());
+      if (typeof window !== "undefined") sessionStorage.setItem(SERTICARD_UPLOAD_ZONE_HIDDEN_KEY, "1");
+      setSuppressUploadPairPreviews(true);
       toast.success(t("settingsSavedRedirectToast"));
       notifyConfigUpdated();
       router.push(QR_PREVIEW_BATCH_GRAM_HREF);
@@ -221,11 +233,15 @@ export function SerticardPanel() {
   };
 
   const handleEditPair = () => {
+    if (typeof window !== "undefined") sessionStorage.removeItem(SERTICARD_UPLOAD_ZONE_HIDDEN_KEY);
+    setSuppressUploadPairPreviews(false);
     pairTitleInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     requestAnimationFrame(() => pairTitleInputRef.current?.focus());
   };
 
   const customPairReady = Boolean(config?.customFrontR2Key && config?.customBackR2Key);
+  const showFrontInUploadZone = Boolean(config.customFrontR2Key && !suppressUploadPairPreviews);
+  const showBackInUploadZone = Boolean(config.customBackR2Key && !suppressUploadPairPreviews);
   const hasPairData = Boolean(
     config?.customFrontR2Key ||
       config?.customBackR2Key ||
@@ -315,7 +331,7 @@ export function SerticardPanel() {
             </div>
             <div className="flex flex-1 flex-col rounded-xl border border-dashed border-white/[0.1] bg-black/40 p-4 sm:p-5">
               <div className="flex min-h-[200px] flex-1 flex-col items-center justify-center gap-3">
-                {config.customFrontR2Key ? (
+                {showFrontInUploadZone ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={previewApiUrl("front", thumbEpoch)}
@@ -327,7 +343,7 @@ export function SerticardPanel() {
                 )}
               </div>
               <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-center">
-                {config.customFrontR2Key && (
+                {showFrontInUploadZone && (
                   <button
                     type="button"
                     onClick={() => setConfirmDialog("deleteFront")}
@@ -376,7 +392,7 @@ export function SerticardPanel() {
             </div>
             <div className="flex flex-1 flex-col rounded-xl border border-dashed border-white/[0.1] bg-black/40 p-4 sm:p-5">
               <div className="flex min-h-[200px] flex-1 flex-col items-center justify-center gap-3">
-                {config.customBackR2Key ? (
+                {showBackInUploadZone ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={previewApiUrl("back", thumbEpoch)}
@@ -388,7 +404,7 @@ export function SerticardPanel() {
                 )}
               </div>
               <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-center">
-                {config.customBackR2Key && (
+                {showBackInUploadZone && (
                   <button
                     type="button"
                     onClick={() => setConfirmDialog("deleteBack")}

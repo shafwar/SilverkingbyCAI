@@ -9,6 +9,7 @@ import {
   getSerticardPdfPanelSize,
 } from "@/lib/serticard-compose-spread-png";
 import { normalizeRootKeyForPill } from "@/lib/serticard-rootkey-display";
+import { getQrOnlyPngBufferForZip } from "@/lib/serticard-qr-only-buffer";
 
 /**
  * Generate a SINGLE Serticard PDF (front + back) for one QR code.
@@ -133,25 +134,16 @@ export async function POST(request: NextRequest) {
       fontConfig.fontSizePreset === "KECIL" ? "KECIL" : "BESAR"
     );
 
-    // --- Fetch QR-only image for this serial/uniq code ---
-    const baseUrl =
-      process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const internalBaseUrl = baseUrl.replace(/\/$/, "");
-
-    const qrBase = isGram ? "/api/qr-gram" : "/api/qr";
-    const qrUrl = `${internalBaseUrl}${qrBase}/${encodeURIComponent(productSerialCode)}/qr-only`;
-    const qrResponse = await fetch(qrUrl);
-    if (!qrResponse.ok) {
-      const text = await qrResponse.text().catch(() => "");
+    const qrBuffer = await getQrOnlyPngBufferForZip(productSerialCode, isGram);
+    if (!qrBuffer?.length) {
       return NextResponse.json(
         {
-          error: "Failed to fetch QR-only image",
-          details: text || `Status ${qrResponse.status}`,
+          error: "Failed to generate QR-only image",
+          details: "Product or gram item not found for this code",
         },
-        { status: 500 }
+        { status: 404 }
       );
     }
-    const qrBuffer = Buffer.from(await qrResponse.arrayBuffer());
     const qrImage = await canvasMod.loadImage(qrBuffer);
 
     const rootKeyForBack =
