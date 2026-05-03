@@ -240,8 +240,8 @@ export function SerticardPanel() {
   };
 
   const customPairReady = Boolean(config?.customFrontR2Key && config?.customBackR2Key);
-  const showFrontInUploadZone = Boolean(config.customFrontR2Key && !suppressUploadPairPreviews);
-  const showBackInUploadZone = Boolean(config.customBackR2Key && !suppressUploadPairPreviews);
+  const showFrontInUploadZone = Boolean(config?.customFrontR2Key && !suppressUploadPairPreviews);
+  const showBackInUploadZone = Boolean(config?.customBackR2Key && !suppressUploadPairPreviews);
   const hasPairData = Boolean(
     config?.customFrontR2Key ||
       config?.customBackR2Key ||
