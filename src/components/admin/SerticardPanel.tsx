@@ -27,10 +27,10 @@ const inputClass =
 
 const helperTextClass = "text-[0.8125rem] leading-relaxed text-white/48 sm:text-sm sm:text-white/50";
 
-const uploadColClass =
-  "flex min-h-0 min-w-0 flex-1 basis-0 flex-col rounded-xl border border-white/[0.06] bg-black/25 p-4 sm:p-5";
+const stepBadgeClass =
+  "inline-flex h-6 min-w-[1.5rem] shrink-0 items-center justify-center rounded-md border border-luxury-gold/35 bg-luxury-gold/10 px-1.5 text-[10px] font-bold tabular-nums text-luxury-gold/95";
 
-type ConfirmKind = null | "deletePersisted";
+type ConfirmDialog = null | "deletePersisted" | "deleteFront" | "deleteBack";
 
 function FieldLabel({ children, dense }: { children: React.ReactNode; dense?: boolean }) {
   return (
@@ -52,16 +52,12 @@ export function SerticardPanel() {
   const [config, setConfig] = useState<Config | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
-  const [uploading, setUploading] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<"front" | "back" | null>(null);
   const [deleting, setDeleting] = useState<"front" | "back" | "all" | null>(null);
-  /** Upload-area previews (hidden after successful Save so the form looks fresh; table uses config + thumbEpoch). */
-  const [draftShowFront, setDraftShowFront] = useState(false);
-  const [draftShowBack, setDraftShowBack] = useState(false);
-  /** Bust cache for preview images after save/upload/delete so table thumbs stay in sync with R2. */
   const [thumbEpoch, setThumbEpoch] = useState(0);
   const [templateDropdownName, setTemplateDropdownName] = useState("");
   const [pairTitle, setPairTitle] = useState("");
-  const [confirmDialog, setConfirmDialog] = useState<ConfirmKind>(null);
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog>(null);
   const pairTitleInputRef = useRef<HTMLInputElement>(null);
 
   const fetchConfig = useCallback(async () => {
@@ -75,16 +71,9 @@ export function SerticardPanel() {
         customPairTitle: data.customPairTitle ?? null,
         customTemplateDropdownLabel: data.customTemplateDropdownLabel ?? null,
       });
-      /**
-       * IMPORTANT UX:
-       * Form input is intentionally draft-only and should stay empty on page revisit,
-       * even when server already has saved custom pair data.
-       * Persisted data is shown in "Saved custom pair" table below.
-       */
+      /** Draft text fields stay empty on load; previews follow server keys only. */
       setTemplateDropdownName("");
       setPairTitle("");
-      setDraftShowFront(false);
-      setDraftShowBack(false);
       setThumbEpoch(Date.now());
     } catch {
       toast.error(t("configLoadFailedToast"));
@@ -104,6 +93,8 @@ export function SerticardPanel() {
     }
   };
 
+  const busy = !!uploading || deleting !== null;
+
   const handleUpload = async (side: "front" | "back", file: File) => {
     setUploading(side);
     try {
@@ -115,21 +106,9 @@ export function SerticardPanel() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Upload failed");
-      setConfig((c) =>
-        c && data.config
-          ? {
-              ...c,
-              customFrontR2Key: data.config.customFrontR2Key ?? c.customFrontR2Key,
-              customBackR2Key: data.config.customBackR2Key ?? c.customBackR2Key,
-            }
-          : c
-      );
-      if (side === "front") setDraftShowFront(true);
-      if (side === "back") setDraftShowBack(true);
+      setThumbEpoch(Date.now());
       toast.success(side === "front" ? t("uploadFrontOk") : t("uploadBackOk"));
       await fetchConfig();
-      if (side === "front") setDraftShowFront(true);
-      if (side === "back") setDraftShowBack(true);
       notifyConfigUpdated();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t("uploadFailedToast"));
@@ -141,9 +120,29 @@ export function SerticardPanel() {
   const clearFormState = () => {
     setTemplateDropdownName("");
     setPairTitle("");
-    setDraftShowFront(false);
-    setDraftShowBack(false);
     toast.success(t("formResetOnlyToast"));
+  };
+
+  const runDeleteOneSide = async (side: "front" | "back") => {
+    setDeleting(side);
+    try {
+      const body = side === "front" ? { deleteCustomFront: true } : { deleteCustomBack: true };
+      const res = await fetch("/api/admin/serticard/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setThumbEpoch(Date.now());
+      toast.success(side === "front" ? t("deleteFrontOk") : t("deleteBackOk"));
+      await fetchConfig();
+      notifyConfigUpdated();
+    } catch {
+      toast.error(t("deleteSideFailedToast"));
+    } finally {
+      setDeleting(null);
+      setConfirmDialog(null);
+    }
   };
 
   const runDeletePersisted = async () => {
@@ -169,8 +168,6 @@ export function SerticardPanel() {
       );
       setTemplateDropdownName("");
       setPairTitle("");
-      setDraftShowFront(false);
-      setDraftShowBack(false);
       toast.success(t("resetTemplatesToast"));
       await fetchConfig();
       notifyConfigUpdated();
@@ -207,8 +204,6 @@ export function SerticardPanel() {
       );
       setPairTitle("");
       setTemplateDropdownName("");
-      setDraftShowFront(false);
-      setDraftShowBack(false);
       setThumbEpoch(Date.now());
       toast.success(t("settingsSavedFreshToast"));
       notifyConfigUpdated();
@@ -224,7 +219,7 @@ export function SerticardPanel() {
     requestAnimationFrame(() => pairTitleInputRef.current?.focus());
   };
 
-  const customPairReady = Boolean(draftShowFront && draftShowBack);
+  const customPairReady = Boolean(config?.customFrontR2Key && config?.customBackR2Key);
   const hasPairData = Boolean(
     config?.customFrontR2Key ||
       config?.customBackR2Key ||
@@ -253,133 +248,190 @@ export function SerticardPanel() {
     (config.customTemplateDropdownLabel && config.customTemplateDropdownLabel.trim()) ||
     t("managementUntitled");
 
+  const confirmModalBody =
+    confirmDialog === "deletePersisted"
+      ? t("deleteAllConfirm")
+      : confirmDialog === "deleteFront"
+        ? t("deleteFrontConfirm")
+        : confirmDialog === "deleteBack"
+          ? t("deleteBackConfirm")
+          : "";
+
+  const confirmModalAction = () => {
+    if (confirmDialog === "deletePersisted") void runDeletePersisted();
+    else if (confirmDialog === "deleteFront") void runDeleteOneSide("front");
+    else if (confirmDialog === "deleteBack") void runDeleteOneSide("back");
+  };
+
+  const deletingLabel =
+    deleting === "all" ? t("resetting") : deleting === "front" || deleting === "back" ? t("deleting") : null;
+
   return (
-    <div className="w-full min-w-0 space-y-6 sm:space-y-8 pb-10 sm:pb-12">
+    <div className="w-full min-w-0 max-w-5xl mx-auto space-y-8 sm:space-y-10 pb-10 sm:pb-12">
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.03 }}
         className={clsx(shellClass, "overflow-hidden")}
       >
-        <div className="border-b border-white/[0.06] px-4 py-3.5 sm:px-5 sm:py-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-luxury-gold/75">
-                <ImageIcon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+        <div className="border-b border-white/[0.06] px-4 py-4 sm:px-6 sm:py-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex min-w-0 gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-luxury-gold/80">
+                <ImageIcon className="h-5 w-5" strokeWidth={1.75} aria-hidden />
               </span>
-              <div className="min-w-0">
-                <h2 className="text-base font-semibold tracking-tight text-white/92 sm:text-[1.05rem]">
-                  {t("sectionUploadTitle")}
-                </h2>
-                <p className={`mt-0.5 text-xs sm:text-[13px] ${helperTextClass}`}>{t("sectionUploadSubtitle")}</p>
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={stepBadgeClass}>1</span>
+                  <h2 className="text-lg font-semibold tracking-tight text-white sm:text-xl">
+                    {t("sectionUploadTitle")}
+                  </h2>
+                </div>
+                <p className={`max-w-2xl text-sm ${helperTextClass}`}>{t("sectionUploadSubtitle")}</p>
               </div>
             </div>
             {customPairReady && (
-              <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-200/90">
+              <span className="shrink-0 rounded-full border border-emerald-500/35 bg-emerald-500/12 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-100/95">
                 {t("badgeActive")}
               </span>
             )}
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-col gap-4 p-4 sm:flex-row sm:gap-5 sm:p-5">
-          <div className={uploadColClass}>
-            <p className="text-[13px] font-semibold text-white/88 sm:text-sm">{t("frontFieldLabel")}</p>
-            <p className={`mt-1.5 ${helperTextClass}`}>{t("frontHint")}</p>
-            <div className="mt-4 flex min-h-[180px] w-full flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-white/12 bg-black/35 px-3 py-5">
-              {draftShowFront && config.customFrontR2Key ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={previewApiUrl("front", thumbEpoch)}
-                  alt=""
-                  className="max-h-44 w-full max-w-[220px] rounded-md object-contain ring-1 ring-white/10"
-                />
-              ) : (
-                <span className="text-xs text-white/35">{t("noCustomYet")}</span>
-              )}
-              {config.customFrontR2Key && draftShowFront && (
-                <button
-                  type="button"
-                  onClick={() => setDraftShowFront(false)}
-                  disabled={!!uploading || !!deleting}
-                  className="mt-3 inline-flex w-full max-w-[240px] touch-manipulation items-center justify-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-xs font-semibold text-red-100 transition hover:bg-red-500/18 disabled:opacity-50"
+        <div className="grid min-w-0 divide-y divide-white/[0.06] sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+          {/* Front column */}
+          <div className="flex min-h-0 min-w-0 flex-col p-4 sm:p-6">
+            <div className="mb-4 space-y-2">
+              <p className="text-sm font-semibold text-white sm:text-[0.9375rem]">{t("frontFieldLabel")}</p>
+              <p className={`text-sm leading-relaxed ${helperTextClass}`} title={t("frontHint")}>
+                {t("frontHint")}
+              </p>
+            </div>
+            <div className="flex flex-1 flex-col rounded-xl border border-dashed border-white/[0.1] bg-black/40 p-4 sm:p-5">
+              <div className="flex min-h-[200px] flex-1 flex-col items-center justify-center gap-3">
+                {config.customFrontR2Key ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={previewApiUrl("front", thumbEpoch)}
+                    alt=""
+                    className="max-h-52 w-full max-w-[260px] rounded-lg object-contain shadow-[0_0_0_1px_rgba(255,255,255,0.08)]"
+                  />
+                ) : (
+                  <p className="text-center text-sm text-white/40">{t("noCustomYet")}</p>
+                )}
+              </div>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-center">
+                {config.customFrontR2Key && (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDialog("deleteFront")}
+                    disabled={busy}
+                    className="inline-flex min-h-[44px] flex-1 touch-manipulation items-center justify-center gap-2 rounded-xl border border-white/12 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-white/85 transition hover:border-red-400/35 hover:bg-red-500/10 hover:text-red-100 disabled:opacity-45 sm:min-w-[140px] sm:flex-none"
+                  >
+                    <Trash2 className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                    {t("deleteFront")}
+                  </button>
+                )}
+                <label
+                  className={clsx(
+                    "inline-flex min-h-[44px] flex-1 cursor-pointer touch-manipulation items-center justify-center gap-2 rounded-xl border border-luxury-gold/30 bg-gradient-to-r from-[#e8c547]/90 to-[#c9a227]/90 px-4 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:brightness-105 disabled:pointer-events-none disabled:opacity-45 sm:min-w-[160px] sm:flex-none",
+                    busy && "pointer-events-none opacity-45"
+                  )}
                 >
-                  <Trash2 className="h-3.5 w-3.5 shrink-0" />
-                  {t("deleteFront")}
-                </button>
-              )}
-              <label className="mt-3 inline-flex min-h-[44px] w-full max-w-[240px] cursor-pointer touch-manipulation items-center justify-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3.5 py-2.5 text-xs font-semibold text-white/90 transition hover:border-luxury-gold/35 hover:bg-white/[0.1] sm:text-sm">
-                <Upload className="h-3.5 w-3.5 shrink-0 text-luxury-gold/65" />
-                {uploading === "front" ? t("uploading") : t("replaceUpload")}
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/jpg"
-                  className="hidden"
-                  onChange={(e) => {
-                    const input = e.target;
-                    const f = input.files?.[0];
-                    if (f) {
-                      void handleUpload("front", f).finally(() => {
-                        input.value = "";
-                      });
-                    }
-                  }}
-                  disabled={!!uploading || !!deleting}
-                />
-              </label>
+                  <Upload className="h-4 w-4 shrink-0" aria-hidden />
+                  {uploading === "front" ? t("uploading") : t("replaceUpload")}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const input = e.target;
+                      const f = input.files?.[0];
+                      if (f) {
+                        void handleUpload("front", f).finally(() => {
+                          input.value = "";
+                        });
+                      }
+                    }}
+                    disabled={busy}
+                  />
+                </label>
+              </div>
             </div>
           </div>
 
-          <div className={uploadColClass}>
-            <p className="text-[13px] font-semibold text-white/88 sm:text-sm">{t("backFieldLabel")}</p>
-            <p className={`mt-1.5 ${helperTextClass}`}>{t("backHint")}</p>
-            <div className="mt-4 flex min-h-[180px] w-full flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-white/12 bg-black/35 px-3 py-5">
-              {draftShowBack && config.customBackR2Key ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={previewApiUrl("back", thumbEpoch)}
-                  alt=""
-                  className="max-h-44 w-full max-w-[220px] rounded-md object-contain ring-1 ring-white/10"
-                />
-              ) : (
-                <span className="text-xs text-white/35">{t("noCustomYet")}</span>
-              )}
-              {config.customBackR2Key && draftShowBack && (
-                <button
-                  type="button"
-                  onClick={() => setDraftShowBack(false)}
-                  disabled={!!uploading || !!deleting}
-                  className="mt-3 inline-flex w-full max-w-[240px] touch-manipulation items-center justify-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-xs font-semibold text-red-100 transition hover:bg-red-500/18 disabled:opacity-50"
+          {/* Back column */}
+          <div className="flex min-h-0 min-w-0 flex-col p-4 sm:p-6 sm:pl-6">
+            <div className="mb-4 space-y-2">
+              <p className="text-sm font-semibold text-white sm:text-[0.9375rem]">{t("backFieldLabel")}</p>
+              <p className={`text-sm leading-relaxed ${helperTextClass}`} title={t("backHint")}>
+                {t("backHint")}
+              </p>
+            </div>
+            <div className="flex flex-1 flex-col rounded-xl border border-dashed border-white/[0.1] bg-black/40 p-4 sm:p-5">
+              <div className="flex min-h-[200px] flex-1 flex-col items-center justify-center gap-3">
+                {config.customBackR2Key ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={previewApiUrl("back", thumbEpoch)}
+                    alt=""
+                    className="max-h-52 w-full max-w-[260px] rounded-lg object-contain shadow-[0_0_0_1px_rgba(255,255,255,0.08)]"
+                  />
+                ) : (
+                  <p className="text-center text-sm text-white/40">{t("noCustomYet")}</p>
+                )}
+              </div>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-center">
+                {config.customBackR2Key && (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDialog("deleteBack")}
+                    disabled={busy}
+                    className="inline-flex min-h-[44px] flex-1 touch-manipulation items-center justify-center gap-2 rounded-xl border border-white/12 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-white/85 transition hover:border-red-400/35 hover:bg-red-500/10 hover:text-red-100 disabled:opacity-45 sm:min-w-[140px] sm:flex-none"
+                  >
+                    <Trash2 className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                    {t("deleteBack")}
+                  </button>
+                )}
+                <label
+                  className={clsx(
+                    "inline-flex min-h-[44px] flex-1 cursor-pointer touch-manipulation items-center justify-center gap-2 rounded-xl border border-luxury-gold/30 bg-gradient-to-r from-[#e8c547]/90 to-[#c9a227]/90 px-4 py-2.5 text-sm font-semibold text-black shadow-sm transition hover:brightness-105 disabled:pointer-events-none disabled:opacity-45 sm:min-w-[160px] sm:flex-none",
+                    busy && "pointer-events-none opacity-45"
+                  )}
                 >
-                  <Trash2 className="h-3.5 w-3.5 shrink-0" />
-                  {t("deleteBack")}
-                </button>
-              )}
-              <label className="mt-3 inline-flex min-h-[44px] w-full max-w-[240px] cursor-pointer touch-manipulation items-center justify-center gap-2 rounded-lg border border-white/12 bg-white/[0.06] px-3.5 py-2.5 text-xs font-semibold text-white/90 transition hover:border-luxury-gold/35 hover:bg-white/[0.1] sm:text-sm">
-                <Upload className="h-3.5 w-3.5 shrink-0 text-luxury-gold/65" />
-                {uploading === "back" ? t("uploading") : t("replaceUpload")}
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/jpg"
-                  className="hidden"
-                  onChange={(e) => {
-                    const input = e.target;
-                    const f = input.files?.[0];
-                    if (f) {
-                      void handleUpload("back", f).finally(() => {
-                        input.value = "";
-                      });
-                    }
-                  }}
-                  disabled={!!uploading || !!deleting}
-                />
-              </label>
+                  <Upload className="h-4 w-4 shrink-0" aria-hidden />
+                  {uploading === "back" ? t("uploading") : t("replaceUpload")}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const input = e.target;
+                      const f = input.files?.[0];
+                      if (f) {
+                        void handleUpload("back", f).finally(() => {
+                          input.value = "";
+                        });
+                      }
+                    }}
+                    disabled={busy}
+                  />
+                </label>
+              </div>
             </div>
           </div>
         </div>
 
-        <form onSubmit={handleSaveSettings} className="border-t border-white/[0.06] px-4 py-4 sm:px-5">
-          <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">
+        <form onSubmit={handleSaveSettings} className="border-t border-white/[0.06] bg-black/20 px-4 py-5 sm:px-6">
+          <div className="mb-5 flex flex-wrap items-center gap-2.5">
+            <span className={stepBadgeClass}>2</span>
+            <p className="text-sm font-semibold leading-snug text-white/88 sm:text-base">
+              {t("pairTitleFieldLabel")}
+              <span className="mx-1.5 text-white/30">/</span>
+              {t("templateNameFieldLabel")}
+            </p>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2">
             <div className="min-w-0">
               <FieldLabel dense>{t("pairTitleFieldLabel")}</FieldLabel>
               <input
@@ -390,9 +442,9 @@ export function SerticardPanel() {
                 placeholder={t("pairTitlePlaceholder")}
                 className={inputClass}
                 maxLength={191}
-                disabled={!!uploading || !!deleting}
+                disabled={busy}
               />
-              <p className={`mt-2 ${helperTextClass}`}>{t("pairTitleHelp")}</p>
+              <p className={`mt-2 text-xs sm:text-[0.8125rem] ${helperTextClass}`}>{t("pairTitleHelp")}</p>
             </div>
             <div className="min-w-0">
               <FieldLabel dense>{t("templateNameFieldLabel")}</FieldLabel>
@@ -403,40 +455,33 @@ export function SerticardPanel() {
                 placeholder={t("templateNamePlaceholder")}
                 className={inputClass}
                 maxLength={191}
-                disabled={!!uploading || !!deleting}
+                disabled={busy}
               />
-              <p className={`mt-2 ${helperTextClass}`}>{t("templateNameHelp")}</p>
+              <p className={`mt-2 text-xs sm:text-[0.8125rem] ${helperTextClass}`}>{t("templateNameHelp")}</p>
             </div>
           </div>
-          <div className="mt-4 flex flex-col-reverse gap-3 border-t border-white/[0.06] pt-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className={`text-sm ${helperTextClass}`}>{t("saveFooterHintMerged")}</p>
+          <div className="mt-6 flex flex-col-reverse gap-4 border-t border-white/[0.06] pt-5 sm:flex-row sm:items-end sm:justify-between">
+            <p className={`max-w-xl text-sm ${helperTextClass}`}>{t("saveFooterHintMerged")}</p>
             <button
               type="submit"
-              disabled={savingSettings || !!uploading || !!deleting}
-              className="inline-flex min-h-[44px] w-full touch-manipulation items-center justify-center rounded-xl bg-gradient-to-r from-[#e8c547] to-[#c9a227] px-6 py-2.5 text-sm font-semibold text-black shadow-[0_0_24px_-6px_rgba(232,197,71,0.35)] transition hover:brightness-105 disabled:opacity-50 sm:w-auto sm:min-w-[160px]"
+              disabled={savingSettings || busy}
+              className="inline-flex min-h-[44px] w-full shrink-0 touch-manipulation items-center justify-center rounded-xl border border-white/10 bg-white/[0.08] px-8 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.12] disabled:opacity-50 sm:w-auto sm:min-w-[180px]"
             >
               {savingSettings ? t("savingSettings") : t("saveSettings")}
             </button>
           </div>
         </form>
 
-        {(draftShowFront || draftShowBack || pairTitle.trim() || templateDropdownName.trim()) && (
-          <div className="flex flex-col gap-3 border-t border-white/[0.06] px-4 py-4 sm:px-5">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-white/45">
-                  {t("manageTemplatesTitle")}
-                </p>
-                <p className={`mt-1 max-w-2xl text-xs sm:text-[13px] ${helperTextClass}`}>{t("resetHint")}</p>
-              </div>
-            </div>
+        {(pairTitle.trim() || templateDropdownName.trim()) && (
+          <div className="flex flex-col gap-3 border-t border-white/[0.06] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <p className={`text-sm ${helperTextClass}`}>{t("resetHint")}</p>
             <button
               type="button"
               onClick={clearFormState}
-              disabled={!!uploading || !!deleting}
-              className="inline-flex min-h-[44px] w-full touch-manipulation items-center justify-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/12 px-4 py-2.5 text-sm font-semibold text-amber-50 transition hover:bg-amber-500/20 disabled:opacity-50 sm:w-auto sm:self-start"
+              disabled={busy}
+              className="inline-flex min-h-[44px] w-full touch-manipulation items-center justify-center gap-2 rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-2.5 text-sm font-semibold text-amber-50 transition hover:bg-amber-500/18 disabled:opacity-50 sm:w-auto"
             >
-              <Trash2 className="h-4 w-4 shrink-0 opacity-90" />
+              <Trash2 className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
               {t("clearFormOnly")}
             </button>
           </div>
@@ -449,59 +494,61 @@ export function SerticardPanel() {
         transition={{ delay: 0.06 }}
         className={clsx(shellClass, "overflow-hidden")}
       >
-        <div className="border-b border-white/[0.06] px-4 py-3.5 sm:px-5 sm:py-4">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-luxury-gold/80 sm:h-9 sm:w-9">
-              <Tag className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={1.75} />
+        <div className="border-b border-white/[0.06] px-4 py-4 sm:px-6 sm:py-5">
+          <div className="flex gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-luxury-gold/80">
+              <Tag className="h-5 w-5" strokeWidth={1.75} aria-hidden />
             </span>
-            <div>
-              <h2 className="min-w-0 text-[0.9375rem] font-semibold leading-snug tracking-tight text-white/92 sm:text-base">
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold tracking-tight text-white sm:text-xl">
                 {t("managementSectionTitle")}
               </h2>
-              <p className={`mt-1 ${helperTextClass}`}>{t("managementSectionLead")}</p>
+              <p className={`mt-1 max-w-2xl text-sm ${helperTextClass}`}>{t("managementSectionLead")}</p>
             </div>
           </div>
         </div>
-        <div className="p-4 sm:p-5">
+        <div className="p-4 sm:p-6">
           {!hasPairData ? (
-            <p className={`rounded-xl border border-white/[0.06] bg-black/30 px-4 py-8 text-center text-sm ${helperTextClass}`}>
+            <p
+              className={`rounded-xl border border-white/[0.06] bg-black/30 px-5 py-10 text-center text-sm ${helperTextClass}`}
+            >
               {t("managementEmpty")}
             </p>
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.035] to-transparent">
+            <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-black/25">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[560px] text-left text-[13px]">
+                <table className="w-full min-w-[520px] text-left text-sm">
                   <thead>
-                    <tr className="border-b border-white/[0.07] bg-black/50">
+                    <tr className="border-b border-white/[0.07] bg-black/45">
                       <th
                         scope="col"
-                        className="px-4 py-3.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40 sm:px-5"
+                        className="px-4 py-3.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45 sm:px-5"
                       >
                         {t("managementColTitle")}
                       </th>
                       <th
                         scope="col"
-                        className="px-4 py-3.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40 sm:px-5"
+                        className="px-4 py-3.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45 sm:px-5"
                       >
                         {t("managementColFront")}
                       </th>
                       <th
                         scope="col"
-                        className="px-4 py-3.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40 sm:px-5"
+                        className="px-4 py-3.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45 sm:px-5"
                       >
                         {t("managementColBack")}
                       </th>
                       <th
                         scope="col"
-                        className="px-4 py-3.5 text-right text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40 sm:px-5"
+                        className="px-4 py-3.5 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45 sm:px-5"
                       >
                         {t("managementColActions")}
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr className="border-b border-white/[0.05] bg-black/20">
-                      <td className="max-w-[220px] px-4 py-4 align-middle sm:px-5">
+                    <tr className="border-b border-white/[0.05] bg-black/15">
+                      <td className="max-w-[200px] px-4 py-4 align-middle sm:px-5">
                         <p className="font-medium leading-snug text-white">{displayTitle}</p>
                       </td>
                       <td className="px-4 py-4 align-middle sm:px-5">
@@ -529,12 +576,12 @@ export function SerticardPanel() {
                         )}
                       </td>
                       <td className="px-4 py-4 text-right align-middle sm:px-5">
-                        <div className="inline-flex items-center gap-0.5 rounded-xl border border-white/[0.06] bg-black/30 p-0.5">
+                        <div className="inline-flex items-center gap-1 rounded-xl border border-white/[0.08] bg-black/35 p-1">
                           <button
                             type="button"
                             onClick={handleEditPair}
-                            disabled={!!deleting}
-                            className="inline-flex rounded-lg p-2 text-white/55 transition hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-35"
+                            disabled={deleting !== null}
+                            className="inline-flex rounded-lg p-2.5 text-white/60 transition hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-35"
                             aria-label={t("managementEditAria")}
                             title={t("managementEditAria")}
                           >
@@ -543,8 +590,8 @@ export function SerticardPanel() {
                           <button
                             type="button"
                             onClick={() => setConfirmDialog("deletePersisted")}
-                            disabled={!!deleting}
-                            className="inline-flex rounded-lg p-2 text-white/55 transition hover:bg-red-500/15 hover:text-red-300 disabled:pointer-events-none disabled:opacity-35"
+                            disabled={deleting !== null}
+                            className="inline-flex rounded-lg p-2.5 text-white/60 transition hover:bg-red-500/15 hover:text-red-200 disabled:pointer-events-none disabled:opacity-35"
                             aria-label={t("managementDeleteAria")}
                             title={t("managementDeleteAria")}
                           >
@@ -567,29 +614,32 @@ export function SerticardPanel() {
         title={t("confirmTitle")}
       >
         <div className="flex gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-100/95">
-          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-400/90" />
-          <p className="leading-relaxed">
-            {confirmDialog === "deletePersisted" && t("deleteAllConfirm")}
-          </p>
+          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-400/90" aria-hidden />
+          <p className="leading-relaxed">{confirmModalBody}</p>
         </div>
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             className="min-h-[44px] rounded-xl border border-white/15 px-5 py-2.5 text-sm font-semibold text-white/85 transition hover:bg-white/5"
             onClick={() => !deleting && setConfirmDialog(null)}
-            disabled={!!deleting}
+            disabled={deleting !== null}
           >
             {t("confirmCancel")}
           </button>
           <button
             type="button"
-            disabled={!!deleting}
+            disabled={deleting !== null}
             className="min-h-[44px] rounded-xl bg-red-600/90 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-50"
-            onClick={() => {
-              if (confirmDialog === "deletePersisted") void runDeletePersisted();
-            }}
+            onClick={confirmModalAction}
           >
-            {deleting ? <Loader2 className="mx-auto h-5 w-5 animate-spin" /> : t("confirmDelete")}
+            {deleting !== null ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                {deletingLabel}
+              </span>
+            ) : (
+              t("confirmDelete")
+            )}
           </button>
         </div>
       </Modal>

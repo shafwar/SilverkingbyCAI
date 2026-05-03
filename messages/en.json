@@ -885,7 +885,7 @@
       "configLoadErrorInline": "Could not load serticard configuration. Please refresh the page.",
       "uploadFailedToast": "Failed to upload template",
       "sectionUploadTitle": "Custom pair templates",
-      "sectionUploadSubtitle": "Used when ✨ Custom is selected in QR Preview. Upload front and back; replace or delete each side independently.",
+      "sectionUploadSubtitle": "Used when ✨ Custom is selected in QR Preview. Each file saves to the server as soon as its upload finishes. Upload front and back; you can replace or remove either side without affecting the other.",
       "badgeActive": "Ready",
       "replaceUpload": "Replace / upload",
       "frontFieldLabel": "Front",

@@ -889,7 +889,7 @@
       "configLoadErrorInline": "Tidak dapat memuat konfigurasi serticard. Silakan refresh halaman.",
       "uploadFailedToast": "Gagal mengunggah template",
       "sectionUploadTitle": "Template pasangan (Custom)",
-      "sectionUploadSubtitle": "Digunakan saat opsi ✨ Custom dipilih di Pratinjau QR. Unggah depan dan belakang; bisa diganti atau dihapus per sisi.",
+      "sectionUploadSubtitle": "Digunakan saat opsi ✨ Custom dipilih di Pratinjau QR. Setiap file langsung tersimpan di server setelah unggah selesai. Unggah depan dan belakang; sisi lain tidak ikut hilang saat Anda mengganti salah satu.",
       "badgeActive": "Siap pakai",
       "replaceUpload": "Ganti / unggah",
       "frontFieldLabel": "Depan",
