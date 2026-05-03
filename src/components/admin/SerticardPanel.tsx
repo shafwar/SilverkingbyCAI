@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Upload, Loader2, ImageIcon, Tag, Trash2, Pencil, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
@@ -32,6 +33,9 @@ const stepBadgeClass =
 
 type ConfirmDialog = null | "deletePersisted" | "deleteFront" | "deleteBack";
 
+/** QR Preview → tab “Batch Gram” (same route as sidebar Batch per gramasi). */
+const QR_PREVIEW_BATCH_GRAM_HREF = "/admin/qr-preview/page2";
+
 function FieldLabel({ children, dense }: { children: React.ReactNode; dense?: boolean }) {
   return (
     <span
@@ -48,6 +52,7 @@ function FieldLabel({ children, dense }: { children: React.ReactNode; dense?: bo
 }
 
 export function SerticardPanel() {
+  const router = useRouter();
   const t = useTranslations("admin.serticard");
   const [config, setConfig] = useState<Config | null>(null);
   const [loading, setLoading] = useState(true);
@@ -205,8 +210,9 @@ export function SerticardPanel() {
       setPairTitle("");
       setTemplateDropdownName("");
       setThumbEpoch(Date.now());
-      toast.success(t("settingsSavedFreshToast"));
+      toast.success(t("settingsSavedRedirectToast"));
       notifyConfigUpdated();
+      router.push(QR_PREVIEW_BATCH_GRAM_HREF);
     } catch {
       toast.error(t("settingsSaveFailedToast"));
     } finally {

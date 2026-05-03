@@ -18,6 +18,7 @@ import {
   buildZipVerificationManifest,
   createZipVerificationSummary,
   verifySerticardZipItemBuffers,
+  type ZipVerificationItem,
   type ZipVerificationSummary,
 } from "@/lib/serticard-zip-verification";
 import {
@@ -25,12 +26,42 @@ import {
   persistSerticardZipRenderIssuesFromVerification,
   persistSerticardZipRootKeyWarningsAsIssues,
 } from "@/lib/serticard-zip-issue-persist";
+import { getQrOnlyPngBufferForSerticardZip } from "@/lib/serticard-zip-qr-buffer";
 
 /** Request dengan product count di atas ini diproses di background (hindari timeout 524). */
 const ZIP_JOB_THRESHOLD = 25;
 
 /** Maksimal file per satu ZIP; jika lebih maka dipecah jadi beberapa ZIP (batch 1, 2, ...) agar cepat & aman dari timeout. */
 const ZIP_CHUNK_SIZE = 100;
+
+/** Render paralel per chunk (QR + canvas + pdf-lib). Sesuaikan via env pada host besar/kecil. */
+const ZIP_ITEM_CONCURRENCY_DEFAULT = 6;
+function zipItemConcurrency(): number {
+  const raw = process.env.SERTICARD_ZIP_ITEM_CONCURRENCY;
+  if (raw == null || raw.trim() === "") return ZIP_ITEM_CONCURRENCY_DEFAULT;
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n)) return ZIP_ITEM_CONCURRENCY_DEFAULT;
+  return Math.max(1, Math.min(16, n));
+}
+
+async function mapConcurrent<T, R>(
+  items: readonly T[],
+  concurrency: number,
+  fn: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  async function worker() {
+    while (true) {
+      const i = cursor++;
+      if (i >= items.length) break;
+      results[i] = await fn(items[i], i);
+    }
+  }
+  const workers = Math.max(1, Math.min(concurrency, items.length));
+  await Promise.all(Array.from({ length: workers }, () => worker()));
+  return results;
+}
 
 // Loaded dynamically at request-time to avoid build-time native bindings requirement.
 let CANVAS_MOD: any | null = null;
@@ -514,7 +545,6 @@ type ZipChunkContext = {
   panelHeight: number;
   fontConfig: Awaited<ReturnType<typeof getSerticardConfig>>;
   sizeMultipliers: ReturnType<typeof getFontSizeMultipliers>;
-  internalBaseUrl: string;
   bodyProductTitle?: string;
   batchNumber: number;
   isGramRequest: boolean;
@@ -578,6 +608,33 @@ async function updateJobPartialResult(
 }
 
 /** Build satu ZIP dari satu slice products; dipakai untuk single ZIP atau per chunk. */
+type ChunkWorkerResult =
+  | {
+      idx: number;
+      outcome: "success";
+      folderPath: string;
+      filename: string;
+      pdfBuffer: Buffer;
+      verificationItem: ZipVerificationItem;
+      product: ZipGenProduct;
+    }
+  | { idx: number; outcome: "skip_bad_input" }
+  | { idx: number; outcome: "fail_qr" }
+  | {
+      idx: number;
+      outcome: "fail_verify";
+      serialCode: string;
+      reasons: string[];
+      failureMeta: {
+        productId?: number;
+        productName?: string | null;
+        weight?: number;
+        isGram?: boolean;
+        rootKey?: string | null;
+      };
+    }
+  | { idx: number; outcome: "fail_throw"; message?: string };
+
 async function buildOneZipChunk(
   validProducts: ZipGenProduct[],
   ctx: ZipChunkContext,
@@ -591,7 +648,6 @@ async function buildOneZipChunk(
     panelWidth,
     panelHeight,
     sizeMultipliers,
-    internalBaseUrl,
     isGramRequest,
     hasMultipleWeights,
     templateVariant,
@@ -599,177 +655,231 @@ async function buildOneZipChunk(
     useCustom,
     includeRootKey,
   } = ctx;
-    const zip = new JSZip();
-    let successCount = 0;
-    let failCount = 0;
-  let firstProduct: ZipGenProduct | null = null;
+
+  const zip = new JSZip();
   const totalToProcess = validProducts.length;
   const logEvery = totalToProcess > 50 ? Math.max(1, Math.floor(totalToProcess / 10)) : 1;
+  const concurrency = zipItemConcurrency();
 
-  for (let idx = 0; idx < validProducts.length; idx++) {
-    const product = validProducts[idx];
-    const shouldLog = idx === 0 || idx === totalToProcess - 1 || (idx + 1) % logEvery === 0;
+  let progressCompleted = 0;
+  const bumpProgress = async () => {
+    progressCompleted++;
+    if (
+      onProgress &&
+      (progressCompleted % 5 === 0 ||
+        progressCompleted === totalToProcess ||
+        progressCompleted === 1)
+    ) {
+      await (onProgress(progressCompleted, totalToProcess) as Promise<void>);
+    }
+  };
+
+  const processOne = async (product: ZipGenProduct, idx: number): Promise<ChunkWorkerResult> => {
+    const shouldLog =
+      idx === 0 || idx === totalToProcess - 1 || (idx + 1) % logEvery === 0;
     try {
-        const productName = product.name ? String(product.name).trim() : "";
-        const productSerialCode = product.serialCode
-          ? String(product.serialCode).trim().toUpperCase()
-          : "";
+      const productName = product.name ? String(product.name).trim() : "";
+      const productSerialCode = product.serialCode
+        ? String(product.serialCode).trim().toUpperCase()
+        : "";
       if (!productName || productName === "0000" || !productSerialCode || productSerialCode === "0000") {
-          failCount++;
-          continue;
-        }
-        const productIsGram = (product as any).isGram === true || isGramRequest;
-        const qrBase = productIsGram ? "/api/qr-gram" : "/api/qr";
-        const qrUrl = `${internalBaseUrl}${qrBase}/${encodeURIComponent(productSerialCode)}/qr-only`;
-        const qrResponse = await fetch(qrUrl);
-        if (!qrResponse.ok) {
-        failCount++;
-        continue;
-        }
-        const qrBuffer = Buffer.from(await qrResponse.arrayBuffer());
-        const qrImage = await canvasMod.loadImage(qrBuffer);
+        await bumpProgress();
+        return { idx, outcome: "skip_bad_input" };
+      }
 
-        let rootKeyForPill: string | null = null;
-        if (includeRootKey) {
-          const fromPayload =
-            product.rootKey != null && String(product.rootKey).trim() !== ""
-              ? String(product.rootKey).trim()
-              : null;
-          if (fromPayload) {
-            rootKeyForPill = normalizeRootKeyForPill(fromPayload);
-          } else if (productIsGram) {
-            let gramItem = await prisma.gramProductItem.findFirst({
-              where: {
-                uniqCode: productSerialCode,
-                ...(product.id != null && Number.isFinite(Number(product.id))
-                  ? { id: Math.floor(Number(product.id)) }
-                  : {}),
-              },
+      const productIsGram = (product as { isGram?: boolean }).isGram === true || isGramRequest;
+
+      const qrBuffer = await getQrOnlyPngBufferForSerticardZip(productSerialCode, productIsGram);
+      if (!qrBuffer?.length) {
+        await bumpProgress();
+        return { idx, outcome: "fail_qr" };
+      }
+
+      const qrImage = await canvasMod.loadImage(qrBuffer);
+
+      let rootKeyForPill: string | null = null;
+      if (includeRootKey) {
+        const fromPayload =
+          product.rootKey != null && String(product.rootKey).trim() !== ""
+            ? String(product.rootKey).trim()
+            : null;
+        if (fromPayload) {
+          rootKeyForPill = normalizeRootKeyForPill(fromPayload);
+        } else if (productIsGram) {
+          let gramItem = await prisma.gramProductItem.findFirst({
+            where: {
+              uniqCode: productSerialCode,
+              ...(product.id != null && Number.isFinite(Number(product.id))
+                ? { id: Math.floor(Number(product.id)) }
+                : {}),
+            },
+            select: { rootKey: true },
+          });
+          if (!gramItem?.rootKey?.trim()) {
+            gramItem = await prisma.gramProductItem.findFirst({
+              where: { uniqCode: productSerialCode },
+              orderBy: { id: "asc" },
               select: { rootKey: true },
             });
-            if (!gramItem?.rootKey?.trim()) {
-              gramItem = await prisma.gramProductItem.findFirst({
-                where: { uniqCode: productSerialCode },
-                orderBy: { id: "asc" },
-                select: { rootKey: true },
-              });
-            }
-            if (gramItem?.rootKey?.trim()) {
-              rootKeyForPill = normalizeRootKeyForPill(gramItem.rootKey.trim());
-            }
+          }
+          if (gramItem?.rootKey?.trim()) {
+            rootKeyForPill = normalizeRootKeyForPill(gramItem.rootKey.trim());
           }
         }
+      }
 
-        if (includeRootKey && productIsGram && !rootKeyForPill) {
-          verification.warnings.push({
-            code: "ROOT_KEY_MISSING",
-            serialCode: productSerialCode,
-            message:
-              "Root key tidak ada di payload atau database; PDF tetap berisi nama & serial, belakang tanpa pill root key.",
-            productId: product.id,
-            productName: product.name,
-            weight: product.weight,
-            isGram: productIsGram,
-            rootKey: product.rootKey != null ? String(product.rootKey) : null,
-          });
-        }
-
-        const { frontBuffer, backBuffer } = composeSerticardSpreadPngBuffers({
-          canvasMod,
-          frontTemplateImage,
-          backTemplateImage,
-          qrImage,
-          productName,
-          productSerialCode,
-          sizeMultipliers,
-          templateVariant,
-          useCustomTemplate: useCustom,
-          cmsTemplateId: cmsTemplateId ?? null,
-          rootKeyForBack: rootKeyForPill,
+      if (includeRootKey && productIsGram && !rootKeyForPill) {
+        verification.warnings.push({
+          code: "ROOT_KEY_MISSING",
+          serialCode: productSerialCode,
+          message:
+            "Root key tidak ada di payload atau database; PDF tetap berisi nama & serial, belakang tanpa pill root key.",
+          productId: product.id,
+          productName: product.name,
+          weight: product.weight,
+          isGram: productIsGram,
+          rootKey: product.rootKey != null ? String(product.rootKey) : null,
         });
-        const gap = 0;
-        const pageWidth = panelWidth * 2 + gap;
-        const pageHeight = panelHeight;
-        const pdfDoc = await PDFDocument.create();
-        const page = pdfDoc.addPage([pageWidth, pageHeight]);
-        const frontPngImage = await pdfDoc.embedPng(frontBuffer);
-        const backPngImage = await pdfDoc.embedPng(backBuffer);
+      }
+
+      const { frontBuffer, backBuffer } = composeSerticardSpreadPngBuffers({
+        canvasMod,
+        frontTemplateImage,
+        backTemplateImage,
+        qrImage,
+        productName,
+        productSerialCode,
+        sizeMultipliers,
+        templateVariant,
+        useCustomTemplate: useCustom,
+        cmsTemplateId: cmsTemplateId ?? null,
+        rootKeyForBack: rootKeyForPill,
+      });
+      const gap = 0;
+      const pageWidth = panelWidth * 2 + gap;
+      const pageHeight = panelHeight;
+      const pdfDoc = await PDFDocument.create();
+      const page = pdfDoc.addPage([pageWidth, pageHeight]);
+      const frontPngImage = await pdfDoc.embedPng(frontBuffer);
+      const backPngImage = await pdfDoc.embedPng(backBuffer);
       page.drawImage(frontPngImage, { x: 0, y: 0, width: panelWidth, height: panelHeight });
-        page.drawImage(backPngImage, {
+      page.drawImage(backPngImage, {
         x: panelWidth + gap,
-          y: 0,
-          width: panelWidth,
-          height: panelHeight,
-        });
-        const pdfBytes = await pdfDoc.save();
-        const pdfBuffer = Buffer.from(pdfBytes);
+        y: 0,
+        width: panelWidth,
+        height: panelHeight,
+      });
+      const pdfBytes = await pdfDoc.save();
+      const pdfBuffer = Buffer.from(pdfBytes);
 
-        const bufferCheck = verifySerticardZipItemBuffers({
-          frontBuffer,
-          backBuffer,
-          pdfBuffer,
-          productName,
-          productSerialCode,
-        });
-        if (!bufferCheck.ok) {
-          failCount++;
-          verification.renderFailures.push({
-            serialCode: productSerialCode,
-            reasons: bufferCheck.reasons,
+      const bufferCheck = verifySerticardZipItemBuffers({
+        frontBuffer,
+        backBuffer,
+        pdfBuffer,
+        productName,
+        productSerialCode,
+      });
+      if (!bufferCheck.ok) {
+        await bumpProgress();
+        return {
+          idx,
+          outcome: "fail_verify",
+          serialCode: productSerialCode,
+          reasons: bufferCheck.reasons,
+          failureMeta: {
             productId: product.id,
             productName: product.name,
             weight: product.weight,
             isGram: productIsGram,
             rootKey: product.rootKey != null ? String(product.rootKey) : null,
-          });
-          const processed = idx + 1;
-          if (onProgress && (processed % 5 === 0 || processed === totalToProcess)) {
-            await (onProgress(processed, totalToProcess) as Promise<void>);
-          }
-          continue;
-        }
+          },
+        };
+      }
 
       const sanitizedName = (product.name ?? "")
         .toString()
-          .trim()
-          .replace(/\s+/g, "-")
-          .replace(/[^a-zA-Z0-9-]/g, "")
-          .replace(/-+/g, "-")
-          .replace(/^-|-$/g, "");
+        .trim()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-zA-Z0-9-]/g, "")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
       const rootKeyPart = rootKeyForPill
         ? rootKeyForPill.replace(/[^a-zA-Z0-9-]/g, "") || ""
         : "";
       const uniqueId = rootKeyPart ? `-${rootKeyPart}` : `-id${product.id}`;
       const filename = `QR-${productSerialCode}${uniqueId}${sanitizedName ? `-${sanitizedName}` : ""}.pdf`;
-        let folderPath = "";
-      if (hasMultipleWeights) folderPath = `${product.weight}gr/`;
-        zip.file(`${folderPath}${filename}`, pdfBuffer);
-        verification.items.push({
-          serialCode: productSerialCode,
-          productNameLen: productName.length,
-          serialLen: productSerialCode.length,
-          rootKeyRendered: !!rootKeyForPill,
-          frontPngBytes: frontBuffer.length,
-          backPngBytes: backBuffer.length,
-          pdfBytes: pdfBuffer.length,
-          checks: ["PNG_FRONT", "PNG_BACK", "PDF_HEADER", "PAYLOAD_OK"],
-        });
-        successCount++;
-      if (successCount === 1) firstProduct = product;
+      const folderPath = hasMultipleWeights ? `${product.weight}gr/` : "";
+
+      const verificationItem: ZipVerificationItem = {
+        serialCode: productSerialCode,
+        productNameLen: productName.length,
+        serialLen: productSerialCode.length,
+        rootKeyRendered: !!rootKeyForPill,
+        frontPngBytes: frontBuffer.length,
+        backPngBytes: backBuffer.length,
+        pdfBytes: pdfBuffer.length,
+        checks: ["PNG_FRONT", "PNG_BACK", "PDF_HEADER", "PAYLOAD_OK"],
+      };
+
       if (shouldLog) {
-        console.log(`[QR Multiple] Chunk progress ${idx + 1}/${totalToProcess} added (${successCount} ok)`);
+        console.log(`[QR Multiple] Chunk worker ${idx + 1}/${totalToProcess} ok`);
       }
-      const processed = idx + 1;
-      if (onProgress && (processed % 5 === 0 || processed === totalToProcess)) {
-        await (onProgress(processed, totalToProcess) as Promise<void>);
-      }
-    } catch (err: any) {
+      await bumpProgress();
+
+      return {
+        idx,
+        outcome: "success",
+        folderPath,
+        filename,
+        pdfBuffer,
+        verificationItem,
+        product,
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (shouldLog) console.error(`[QR Multiple] Chunk item ${idx + 1} failed:`, msg);
+      await bumpProgress();
+      return { idx, outcome: "fail_throw", message: msg };
+    }
+  };
+
+  const workerResults = await mapConcurrent(validProducts, concurrency, (item, idx) =>
+    processOne(item, idx)
+  );
+
+  workerResults.sort((a, b) => a.idx - b.idx);
+
+  let successCount = 0;
+  let failCount = 0;
+  let firstProduct: ZipGenProduct | null = null;
+
+  for (const r of workerResults) {
+    switch (r.outcome) {
+      case "skip_bad_input":
         failCount++;
-      if (shouldLog) console.error(`[QR Multiple] Chunk item ${idx + 1} failed:`, err?.message);
-      const processed = idx + 1;
-      if (onProgress && (processed % 5 === 0 || processed === totalToProcess)) {
-        await (onProgress(processed, totalToProcess) as Promise<void>);
-      }
+        break;
+      case "fail_qr":
+        failCount++;
+        break;
+      case "fail_verify":
+        failCount++;
+        verification.renderFailures.push({
+          serialCode: r.serialCode,
+          reasons: r.reasons,
+          ...r.failureMeta,
+        });
+        break;
+      case "fail_throw":
+        failCount++;
+        break;
+      case "success":
+        zip.file(`${r.folderPath}${r.filename}`, r.pdfBuffer);
+        verification.items.push(r.verificationItem);
+        successCount++;
+        if (!firstProduct) firstProduct = r.product;
+        break;
+      default:
+        break;
     }
   }
 
@@ -861,11 +971,6 @@ async function executeZipGeneration(
     pdfPanel: `${panelWidth}x${panelHeight}`,
   });
 
-  // Get base URL for internal API calls
-  const baseUrl =
-    process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const internalBaseUrl = baseUrl.replace(/\/$/, "");
-
   const ctx: ZipChunkContext = {
     canvasMod: CANVAS_MOD,
     frontTemplateImage,
@@ -874,7 +979,6 @@ async function executeZipGeneration(
     panelHeight,
     fontConfig,
     sizeMultipliers,
-    internalBaseUrl,
     bodyProductTitle,
     batchNumber,
     isGramRequest,

@@ -977,6 +977,7 @@
       "savingSettings": "Menyimpan…",
       "settingsSavedToast": "Pengaturan tersimpan.",
       "settingsSavedFreshToast": "Tersimpan. Form dikosongkan — serticard yang tersimpan tampil di tabel di bawah.",
+      "settingsSavedRedirectToast": "Pengaturan tersimpan. Membuka Batch Gram…",
       "clearFormOnly": "Kosongkan form saja",
       "formResetOnlyToast": "Form dikosongkan. Data tersimpan di backend tidak dihapus.",
       "settingsSaveFailedToast": "Gagal menyimpan pengaturan"

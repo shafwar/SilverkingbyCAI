@@ -973,6 +973,7 @@
       "savingSettings": "Saving…",
       "settingsSavedToast": "Settings saved.",
       "settingsSavedFreshToast": "Saved successfully. Form cleared — your stored serticard appears in the table below.",
+      "settingsSavedRedirectToast": "Settings saved. Opening Batch Gram…",
       "clearFormOnly": "Clear form only",
       "formResetOnlyToast": "Form cleared. Saved backend data remains unchanged.",
       "settingsSaveFailedToast": "Failed to save settings"
