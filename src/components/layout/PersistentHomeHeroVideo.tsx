@@ -91,6 +91,7 @@ export function PersistentHomeHeroVideo() {
   const splashComplete = useSplashComplete();
   const prefersReducedMotion = usePrefersReducedMotion();
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
+  /** Always fetch home CMS from layout mount — avoids delayed hero URL/poster vs SPA-from-inner-pages (video must match pre-change behavior). */
   const { sections, refetch } = usePageSections("home");
   const { data: pageMedia } = usePageMedia("home");
   const homeSectionsBridge = useMemo(() => ({ sections, refetch }), [sections, refetch]);

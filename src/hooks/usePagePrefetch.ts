@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useRouter } from "@/i18n/routing";
 import { useLocale } from "next-intl";
-import { routing } from "@/i18n/routing";
 import { getNetworkTier } from "@/utils/network-profile";
 
 /**
@@ -23,47 +22,10 @@ export function usePagePrefetch() {
     const routes = ["/", "/about", "/products", "/what-we-do", "/authenticity", "/contact"];
 
     const prefetchRoute = (path: string) => {
-      const fullPath =
-        locale === routing.defaultLocale ? path : `/${locale}${path === "/" ? "" : path}`;
-
-      // Strategy 1: Use router.prefetch (most efficient for Next.js)
       try {
         router.prefetch(path);
-      } catch (e) {
-        // Silently fail
-      }
-
-      // Strategy 2: Browser link prefetch (only if not already prefetched)
-      if (typeof window !== "undefined") {
-        const existingLink = document.querySelector(`link[rel="prefetch"][href="${fullPath}"]`);
-        if (!existingLink) {
-          try {
-            const link = document.createElement("link");
-            link.rel = "prefetch";
-            link.as = "document";
-            link.href = fullPath;
-            document.head.appendChild(link);
-          } catch (e) {
-            // Silently fail
-          }
-        }
-
-        // Strategy 3: Prefetch RSC payload (React Server Components)
-        const existingRscLink = document.querySelector(
-          `link[rel="prefetch"][href="${fullPath}?_rsc="]`
-        );
-        if (!existingRscLink) {
-          try {
-            const rscLink = document.createElement("link");
-            rscLink.rel = "prefetch";
-            rscLink.as = "fetch";
-            rscLink.href = `${fullPath}?_rsc=`;
-            rscLink.crossOrigin = "anonymous";
-            document.head.appendChild(rscLink);
-          } catch (e) {
-            // Silently fail
-          }
-        }
+      } catch {
+        /* ignore */
       }
     };
 
@@ -74,7 +36,7 @@ export function usePagePrefetch() {
           () => {
             setTimeout(() => prefetchRoute(route), delay);
           },
-          { timeout: 2000 }
+          { timeout: 3500 }
         );
       } else {
         // Fallback for browsers without requestIdleCallback
@@ -101,7 +63,7 @@ export function usePagePrefetch() {
           }
         }, 600);
       };
-      const delayed = window.setTimeout(start, 4500);
+      const delayed = window.setTimeout(start, 5200);
       return () => {
         cancelled = true;
         clearTimeout(delayed);
@@ -113,49 +75,18 @@ export function usePagePrefetch() {
       prefetchRoute("/");
       prefetchRoute("/about");
       routes.slice(2).forEach((route, index) => {
-        schedulePrefetch(route, (index + 1) * 550);
+        schedulePrefetch(route, (index + 1) * 900);
       });
     };
 
     if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-      requestIdleCallback(runInitialPrefetch, { timeout: 1400 });
+      requestIdleCallback(runInitialPrefetch, { timeout: 2800 });
     } else {
-      setTimeout(runInitialPrefetch, 450);
-    }
-
-    const handleLoad = () => {
-      if (cancelled) return;
-      if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-        requestIdleCallback(
-          () => {
-            if (cancelled) return;
-            routes.forEach((route) => {
-              prefetchRoute(route);
-            });
-          },
-          { timeout: 4000 }
-        );
-      } else {
-        setTimeout(() => {
-          if (cancelled) return;
-          routes.forEach((route) => {
-            prefetchRoute(route);
-          });
-        }, 1500);
-      }
-    };
-
-    if (typeof window !== "undefined") {
-      if (document.readyState === "complete") {
-        handleLoad();
-      } else {
-        window.addEventListener("load", handleLoad, { once: true });
-      }
+      setTimeout(runInitialPrefetch, 800);
     }
 
     return () => {
       cancelled = true;
-      window.removeEventListener("load", handleLoad);
     };
   }, [router, locale]);
 }

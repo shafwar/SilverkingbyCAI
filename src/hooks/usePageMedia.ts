@@ -12,12 +12,17 @@ export type PageMediaPayload = {
  * Read-only fetch of PageMedia (hero image / video URLs). Does not change CMS;
  * used for optional poster image when hero is video.
  */
-export function usePageMedia(page: string) {
+type UsePageMediaOptions = {
+  enabled?: boolean;
+};
+
+export function usePageMedia(page: string, options?: UsePageMediaOptions) {
+  const enabled = options?.enabled !== false;
   const [data, setData] = useState<PageMediaPayload | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refetch = useCallback(async () => {
-    if (!page) {
+    if (!enabled || !page) {
       setData(null);
       setLoading(false);
       return;
@@ -38,11 +43,11 @@ export function usePageMedia(page: string) {
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, enabled]);
 
   useEffect(() => {
     let cancelled = false;
-    if (!page) {
+    if (!enabled || !page) {
       setData(null);
       setLoading(false);
       return;
@@ -62,7 +67,7 @@ export function usePageMedia(page: string) {
     return () => {
       cancelled = true;
     };
-  }, [page]);
+  }, [page, enabled]);
 
   return { data, loading, refetch };
 }
