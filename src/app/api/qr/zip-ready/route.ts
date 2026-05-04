@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { gramBatchZipCacheKeyCandidates } from "@/lib/qr-zip-gram-cache-keys";
+import {
+  findLatestCompletedZipJobForGramKeys,
+  findLatestZipJobForGramKeys,
+} from "@/lib/qr-zip-job-gram-lookup";
 
 /**
  * GET /api/qr/zip-ready?batchId=...&templateVariant=...&useCustom=0|1&cmsTemplateId=optional
@@ -45,11 +49,14 @@ export async function GET(request: NextRequest) {
     return res;
   };
 
-  // 1) Cek cache formal (semua varian kunci gram + rootkey flag)
-  const cached = await prisma.qrZipDownloadCache.findFirst({
+  // 1) Cek cache formal (semua varian kunci gram + rootkey flag) — max few rows; pick newest in JS (no heavy DB sort)
+  const cacheRows = await prisma.qrZipDownloadCache.findMany({
     where: { cacheKey: { in: cacheKeyCandidates } },
-    orderBy: { updatedAt: "desc" },
   });
+  const cached =
+    cacheRows.length === 0
+      ? null
+      : cacheRows.reduce((best, r) => (!best || r.updatedAt > best.updatedAt ? r : best));
   if (cached) {
     return noCacheJson({
       success: true,
@@ -59,11 +66,8 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // 2) Fallback: mungkin ada job lama yang sudah COMPLETED tapi cache belum terisi
-  const completedJob = await prisma.qrZipDownloadJob.findFirst({
-    where: { cacheKey: { in: cacheKeyCandidates }, status: "COMPLETED" },
-    orderBy: { updatedAt: "desc" },
-  });
+  // 2) Fallback: mungkin ada job lama yang sudah COMPLETED tapi cache belum terisi (per-key queries → no IN+sort on huge job history)
+  const completedJob = await findLatestCompletedZipJobForGramKeys(cacheKeyCandidates);
   if (completedJob?.result) {
     const resolvedKey = completedJob.cacheKey ?? defaultCacheKey;
     await prisma.qrZipDownloadCache.upsert({
@@ -89,10 +93,7 @@ export async function GET(request: NextRequest) {
   }
 
   // 3) Kalau ada job tapi belum selesai -> kasih status agar UI bisa tahu masih diproses
-  const pendingJob = await prisma.qrZipDownloadJob.findFirst({
-    where: { cacheKey: { in: cacheKeyCandidates } },
-    orderBy: { createdAt: "desc" },
-  });
+  const pendingJob = await findLatestZipJobForGramKeys(cacheKeyCandidates);
   if (pendingJob) {
     return noCacheJson({
       success: false,

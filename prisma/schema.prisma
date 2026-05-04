@@ -342,6 +342,9 @@ model QrZipDownloadJob {
   @@index([status])
   @@index([cacheKey])
   @@index([createdAt])
+  /// ZIP-ready / zip-status: filter by cacheKey + status + ORDER BY updatedAt|createdAt without large filesorts
+  @@index([cacheKey, status, updatedAt])
+  @@index([cacheKey, status, createdAt])
 }
 
 /// Cache hasil ZIP yang sudah tersimpan di R2 agar request yang sama tidak render ulang.
