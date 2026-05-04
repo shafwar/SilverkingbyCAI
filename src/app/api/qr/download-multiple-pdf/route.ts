@@ -26,6 +26,7 @@ import {
   persistSerticardZipRootKeyWarningsAsIssues,
 } from "@/lib/serticard-zip-issue-persist";
 import { getQrOnlyPngBufferForZip } from "@/lib/serticard-qr-only-buffer";
+import { findLatestActiveZipJobForCacheKey } from "@/lib/qr-zip-job-gram-lookup";
 
 /** Request dengan product count di atas ini diproses di background (hindari timeout 524). */
 const ZIP_JOB_THRESHOLD = 25;
@@ -378,11 +379,8 @@ export async function POST(request: NextRequest) {
       Array.isArray(productsFromFrontend) &&
       productsFromFrontend.length > 0
     ) {
-      // Kalau sudah ada job untuk request yang sama, jangan render ulang.
-      const existingJob = await prisma.qrZipDownloadJob.findFirst({
-        where: { cacheKey, status: { in: ["PENDING", "PROCESSING"] } },
-        orderBy: { createdAt: "desc" },
-      });
+      // Kalau sudah ada job untuk request yang sama, jangan render ulang (ORDER BY id: no large sort; see qr-zip-job-gram-lookup).
+      const existingJob = await findLatestActiveZipJobForCacheKey(cacheKey);
       if (existingJob) {
         return NextResponse.json({
           jobId: existingJob.id,

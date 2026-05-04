@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
   if (!result) {
     const job = await prisma.qrZipDownloadJob.findFirst({
       where: { cacheKey, status: "COMPLETED" },
-      orderBy: { updatedAt: "desc" },
+      orderBy: { id: "desc" },
     });
     result = job?.result ?? null;
   }

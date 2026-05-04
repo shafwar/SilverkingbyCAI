@@ -2,10 +2,12 @@ import type { QrZipDownloadJob } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 /**
- * Avoid `WHERE cacheKey IN (...) ORDER BY ...` on QrZipDownloadJob: many historical rows
- * can share the same cacheKey, which forces large sorts (MySQL 1038 out of sort memory).
- * Instead: one indexed lookup per candidate key (small bounded sort per key).
+ * Avoid large MySQL filesorts (1038 out of sort memory) on QrZipDownloadJob:
+ * - Never use `cacheKey IN (...) ORDER BY createdAt|updatedAt` across huge history.
+ * - Prefer `ORDER BY id DESC`: InnoDB secondary index on cacheKey is ordered by PK id per key → cheap LIMIT 1.
  */
+
+/** Latest COMPLETED job per candidate cacheKey; pick newest row by primary key among keys. */
 export async function findLatestCompletedZipJobForGramKeys(
   cacheKeyCandidates: string[]
 ): Promise<QrZipDownloadJob | null> {
@@ -16,7 +18,7 @@ export async function findLatestCompletedZipJobForGramKeys(
     keys.map((cacheKey) =>
       prisma.qrZipDownloadJob.findFirst({
         where: { cacheKey, status: "COMPLETED" },
-        orderBy: { updatedAt: "desc" },
+        orderBy: { id: "desc" },
       })
     )
   );
@@ -24,12 +26,12 @@ export async function findLatestCompletedZipJobForGramKeys(
   let best: QrZipDownloadJob | null = null;
   for (const r of rows) {
     if (!r) continue;
-    if (!best || r.updatedAt > best.updatedAt) best = r;
+    if (!best || r.id > best.id) best = r;
   }
   return best;
 }
 
-/** Latest job row for any of the gram cache keys (any status), by createdAt. */
+/** Latest job row for any of the gram cache keys (any status), by primary key (newest row). */
 export async function findLatestZipJobForGramKeys(
   cacheKeyCandidates: string[]
 ): Promise<QrZipDownloadJob | null> {
@@ -40,7 +42,7 @@ export async function findLatestZipJobForGramKeys(
     keys.map((cacheKey) =>
       prisma.qrZipDownloadJob.findFirst({
         where: { cacheKey },
-        orderBy: { createdAt: "desc" },
+        orderBy: { id: "desc" },
       })
     )
   );
@@ -48,7 +50,31 @@ export async function findLatestZipJobForGramKeys(
   let best: QrZipDownloadJob | null = null;
   for (const r of rows) {
     if (!r) continue;
-    if (!best || r.createdAt > best.createdAt) best = r;
+    if (!best || r.id > best.id) best = r;
   }
   return best;
+}
+
+/**
+ * Latest PENDING or PROCESSING job for one cacheKey (background ZIP dedupe).
+ * Two equality queries + ORDER BY id — avoids `status IN (...) ORDER BY createdAt` filesort.
+ */
+export async function findLatestActiveZipJobForCacheKey(
+  cacheKey: string | null | undefined
+): Promise<QrZipDownloadJob | null> {
+  if (cacheKey == null || String(cacheKey).trim() === "") return null;
+  const key = String(cacheKey);
+  const [pending, processing] = await Promise.all([
+    prisma.qrZipDownloadJob.findFirst({
+      where: { cacheKey: key, status: "PENDING" },
+      orderBy: { id: "desc" },
+    }),
+    prisma.qrZipDownloadJob.findFirst({
+      where: { cacheKey: key, status: "PROCESSING" },
+      orderBy: { id: "desc" },
+    }),
+  ]);
+  if (!pending) return processing;
+  if (!processing) return pending;
+  return pending.id > processing.id ? pending : processing;
 }
