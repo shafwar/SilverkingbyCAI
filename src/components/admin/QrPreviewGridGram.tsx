@@ -1069,7 +1069,7 @@ export function QrPreviewGridGram({ batches }: Props) {
           setZipProgress(null);
           return;
         }
-        // Background job: persist task globally; polling + auto-download handled by ZipBackgroundFloating.
+        // Background job: persist task globally; polling + auto-download handled by ZipBackgroundRunner (DownloadCard).
         if (json.jobId != null && json.status === "pending") {
           const initialLabel =
             products.length > 500

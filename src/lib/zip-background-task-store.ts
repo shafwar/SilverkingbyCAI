@@ -8,6 +8,8 @@ export type ZipTaskDownload = {
   fileCount?: number;
   downloaded?: boolean;
   autoDownloadFailed?: boolean;
+  /** Set after user was notified (toast) so we do not spam. */
+  autoDownloadFailNotified?: boolean;
 };
 
 export type ZipBackgroundTask = {
@@ -24,6 +26,7 @@ export type ZipBackgroundTask = {
   downloads?: ZipTaskDownload[];
   singleDownloaded?: boolean;
   singleAutoDownloadFailed?: boolean;
+  singleAutoDownloadFailNotified?: boolean;
   lastError?: string;
   createdAt: number;
   updatedAt: number;
