@@ -31,6 +31,11 @@ import {
   zipVerificationSummaryFromHttpHeaders,
   type ZipVerificationSummary,
 } from "@/lib/serticard-zip-verification";
+import {
+  readZipBackgroundTask,
+  subscribeZipBackgroundTask,
+  writeZipBackgroundTask,
+} from "@/lib/zip-background-task-store";
 
 const ZIP_CHUNK_SIZE = 80;
 
@@ -77,25 +82,6 @@ function withZipDownloadCacheBust(url: string, bustMs: number): string {
     const sep = url.includes("?") ? "&" : "?";
     return `${url}${sep}_skcb=${encodeURIComponent(String(Math.floor(bustMs)))}`;
   }
-}
-
-function sleep(ms: number, signal: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal.aborted) {
-      reject(new DOMException("Aborted", "AbortError"));
-      return;
-    }
-    const id = setTimeout(() => {
-      signal.removeEventListener("abort", onAbort);
-      resolve();
-    }, ms);
-    const onAbort = () => {
-      clearTimeout(id);
-      signal.removeEventListener("abort", onAbort);
-      reject(new DOMException("Aborted", "AbortError"));
-    };
-    signal.addEventListener("abort", onAbort);
-  });
 }
 
 function isAbortError(e: unknown): boolean {
@@ -282,6 +268,45 @@ export function QrPreviewGridGram({ batches }: Props) {
     setSelectedSingleTemplateId((v) => (typeof v === "string" && v.startsWith("cms:") ? "01" : v));
   }, []);
 
+  // Reflect global background ZIP task in page UI when user is in Batch Gram.
+  useEffect(() => {
+    const sync = () => {
+      const task = readZipBackgroundTask();
+      if (!task) return;
+      setDownloadingZipBatchId(task.batchId);
+      setZipProgress({
+        percent: Math.round(task.progressPercent),
+        label: task.progressLabel || "ZIP diproses di background...",
+      });
+      if (task.status === "completed") {
+        setZipDownloadResult({
+          batchId: task.batchId,
+          product_title: task.batchName,
+          product_id: String(task.batchId),
+          rootkey: null,
+          ...(task.download_url ? { download_url: task.download_url } : {}),
+          total_files: task.totalFiles ?? 0,
+          cacheKey: task.cacheKey,
+          linkBustMs: Date.now(),
+          ...(Array.isArray(task.downloads) && task.downloads.length > 0
+            ? {
+                downloads: task.downloads.map((d) => ({
+                  ...d,
+                  fileCount: d.fileCount ?? 0,
+                  r2Key: d.r2Key,
+                })),
+              }
+            : {}),
+        });
+      }
+      if (task.status === "failed") {
+        setDownloadingZipBatchId(null);
+      }
+    };
+    sync();
+    return subscribeZipBackgroundTask(sync);
+  }, []);
+
   // Fetch serticard config to check for custom template
   const { data: fontConfig, mutate: mutateFontConfig } = useSWR<{
     customFrontR2Key: string | null;
@@ -427,9 +452,13 @@ export function QrPreviewGridGram({ batches }: Props) {
       const target = event.target as Node;
       if (downloadModalRef.current?.contains(target)) return;
       if (downloadDropdownRef.current?.contains(target)) return;
-        setDownloadDropdownOpen(null);
-      setZipDownloadResult(null);
-      setZipProgress(null);
+      setDownloadDropdownOpen(null);
+      const task = readZipBackgroundTask();
+      const isTaskRunning = task?.status === "pending" || task?.status === "processing";
+      if (!isTaskRunning) {
+        setZipDownloadResult(null);
+        setZipProgress(null);
+      }
     };
 
     if (downloadDropdownOpen !== null) {
@@ -1040,127 +1069,28 @@ export function QrPreviewGridGram({ batches }: Props) {
           setZipProgress(null);
           return;
         }
-        // Background job: polling sampai COMPLETED atau FAILED; tiap batch selesai langsung unduh ke komputer
+        // Background job: persist task globally; polling + auto-download handled by ZipBackgroundFloating.
         if (json.jobId != null && json.status === "pending") {
-          const isLargeBatch = products.length > 500;
-          setZipProgress({
-            percent: 35,
-            label: isLargeBatch
+          const initialLabel =
+            products.length > 500
               ? `ZIP ${products.length} file diproses di background (bisa 10–20 menit)...`
-              : "ZIP diproses di background. Memeriksa status...",
+              : "ZIP diproses di background. Anda bisa tutup modal dan lanjut kerja.";
+          writeZipBackgroundTask({
+            jobId: Number(json.jobId),
+            batchId,
+            batchName: name,
+            templateId: selectedZipTemplateId,
+            cacheKey: typeof json.cacheKey === "string" ? json.cacheKey : undefined,
+            status: "pending",
+            progressPercent: 35,
+            progressLabel: initialLabel,
+            totalFiles: products.length,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
           });
-          const maxAttempts = isLargeBatch ? 480 : 120;
-          const intervalMs = isLargeBatch ? 3000 : 2500;
-
-          const fetchJobStatus = async (): Promise<Response> => {
-            let lastBody: { code?: string; error?: string } = {};
-            for (let retry = 0; retry <= 2; retry++) {
-              const res = await fetch(`/api/qr/download-job/${json.jobId}`, { signal });
-              if (res.ok) return res;
-              lastBody = (await res.json().catch(() => ({}))) as { code?: string; error?: string };
-              if (retry < 2 && res.status >= 500) {
-                await sleep(1000, signal);
-                continue;
-              }
-              break;
-            }
-            const code = lastBody.code;
-            let msg = lastBody.error || "Gagal memeriksa status job.";
-            if (code === "UNAUTHORIZED") msg = "Sesi habis. Silakan login lagi.";
-            else if (code === "NOT_FOUND") msg = "Job tidak ditemukan.";
-            else if (code === "SCHEMA") msg = "Database perlu di-update (jalankan migration). Hubungi admin.";
-            throw new Error(msg);
-          };
-
-          for (let attempts = 1; attempts <= maxAttempts; attempts++) {
-            const statusRes = await fetchJobStatus();
-            const data = (await statusRes.json()) as {
-              status: string;
-              cacheKey?: string | null;
-              result?: {
-                download_url?: string;
-                downloadUrl?: string;
-                downloads?: Array<{
-                  download_url: string;
-                  batchIndex: number;
-                  totalBatches: number;
-                  fileCount?: number;
-                  product_title?: string;
-                  product_id?: string;
-                  rootkey?: string | null;
-                  r2Key?: string;
-                }>;
-                product_title?: string;
-                product_id?: string;
-                rootkey?: string | null;
-                total_files?: number;
-                fileCount?: number;
-              };
-              errorMessage?: string;
-              progressPercent?: number;
-              progressMessage?: string;
-            };
-
-            // Partial availability: tampilkan tombol download untuk batch yang sudah ready (tanpa auto-download)
-            const list = data.result?.downloads;
-            if (Array.isArray(list) && list.length > 0) {
-              setZipDownloadResult({
-                batchId,
-                product_title: (data.result?.product_title as any) ?? name,
-                product_id: (data.result?.product_id as any) ?? String(batchId),
-                rootkey: (data.result?.rootkey as any) ?? null,
-                total_files: (data.result?.total_files as any) ?? products.length,
-                cacheKey: typeof data.cacheKey === "string" ? data.cacheKey : undefined,
-                linkBustMs: Date.now(),
-                downloads: list.map((d) => ({
-                  ...d,
-                  r2Key:
-                    (typeof d.r2Key === "string" && d.r2Key.trim() !== "" ? d.r2Key : null) ??
-                    deriveR2KeyFromUrl(d.download_url) ??
-                    undefined,
-                  fileCount: d.fileCount ?? 0,
-                })),
-              });
-            }
-
-            if (data.status === "COMPLETED" && data.result) {
-              const r = data.result;
-              const downloadUrl = r.download_url ?? r.downloadUrl;
-              const downloads = r.downloads;
-              if (downloadUrl || (Array.isArray(downloads) && downloads.length > 0)) {
-                setZipDownloadResult({
-                  batchId,
-                  product_title: r.product_title ?? name,
-                  product_id: r.product_id ?? String(batchId),
-                  rootkey: r.rootkey ?? null,
-                  ...(downloadUrl ? { download_url: downloadUrl } : {}),
-                  total_files: r.total_files ?? r.fileCount ?? products.length,
-                  linkBustMs: Date.now(),
-                  ...(Array.isArray(downloads) && downloads.length > 0
-                    ? { downloads: downloads.map((d) => ({ ...d, fileCount: d.fileCount ?? 0 })) }
-                    : {}),
-                });
-              }
-              setZipProgress(null);
-              return;
-            }
-            if (data.status === "FAILED") {
-              throw new Error(data.errorMessage || "Pembuatan ZIP gagal");
-            }
-            const progressPct = data.progressPercent ?? Math.min(35 + Math.floor(attempts / (maxAttempts / 60)), 92);
-            const progressLabel =
-              data.progressMessage ??
-              (data.status === "PROCESSING"
-                ? "Membuat ZIP & mengunggah ke R2..."
-                : `Memeriksa status... (${attempts}/${maxAttempts})`);
-            setZipProgress({ percent: progressPct, label: progressLabel });
-            if (attempts < maxAttempts) {
-              await sleep(intervalMs, signal);
-            }
-          }
-          throw new Error(
-            "Timeout menunggu ZIP. Untuk batch sangat besar, coba lagi nanti atau hubungi admin."
-          );
+          setZipProgress({ percent: 35, label: initialLabel });
+          toast.message("ZIP berjalan di background. Progress ada di floating card.");
+          return;
         }
         throw new Error(json.error || json.message || "Response tidak valid");
       }
@@ -1725,8 +1655,12 @@ export function QrPreviewGridGram({ batches }: Props) {
                     abortZipCompileWithoutConfirm("cancel");
                   }
                   setDownloadDropdownOpen(null);
-                  setZipDownloadResult(null);
-                  setZipProgress(null);
+                  const task = readZipBackgroundTask();
+                  const isTaskRunning = task?.status === "pending" || task?.status === "processing";
+                  if (!isTaskRunning) {
+                    setZipDownloadResult(null);
+                    setZipProgress(null);
+                  }
                 }}
                 role="presentation"
               >
@@ -1822,8 +1756,13 @@ export function QrPreviewGridGram({ batches }: Props) {
                                   abortZipCompileWithoutConfirm("cancel");
                                 }
                                 setDownloadDropdownOpen(null);
-                                setZipDownloadResult(null);
-                                setZipProgress(null);
+                                const task = readZipBackgroundTask();
+                                const isTaskRunning =
+                                  task?.status === "pending" || task?.status === "processing";
+                                if (!isTaskRunning) {
+                                  setZipDownloadResult(null);
+                                  setZipProgress(null);
+                                }
                               }}
                               className="shrink-0 p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition"
                               aria-label="Tutup"

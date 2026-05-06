@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Toaster } from "sonner";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { DownloadCard } from "./DownloadCard";
+import { ZipBackgroundFloating } from "./ZipBackgroundFloating";
 import { useDownload } from "@/contexts/DownloadContext";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -675,6 +676,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
           onToggleMinimize={() => setIsDownloadMinimized(!downloadState.isMinimized)}
         />
       )}
+      <ZipBackgroundFloating />
     </div>
   );
 }
