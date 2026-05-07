@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { DownloadProvider } from "@/contexts/DownloadContext";
 
 export default async function ProtectedAdminLayout({
   children,
@@ -16,11 +15,7 @@ export default async function ProtectedAdminLayout({
       redirect("/admin/login");
     }
 
-    return (
-      <DownloadProvider>
-        <AdminLayout email={session.user?.email}>{children}</AdminLayout>
-      </DownloadProvider>
-    );
+    return <AdminLayout email={session.user?.email}>{children}</AdminLayout>;
   } catch (error) {
     console.error("Auth error in protected layout:", error);
     redirect("/admin/login");

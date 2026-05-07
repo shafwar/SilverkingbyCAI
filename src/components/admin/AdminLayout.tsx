@@ -9,10 +9,6 @@ import { useTranslations, useLocale } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import { Toaster } from "sonner";
 import { getR2UrlClient } from "@/utils/r2-url";
-import { DownloadCard } from "./DownloadCard";
-import { ZipBackgroundRunner } from "./ZipBackgroundRunner";
-import { clearZipBackgroundTask, readZipBackgroundTask } from "@/lib/zip-background-task-store";
-import { useDownload } from "@/contexts/DownloadContext";
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
@@ -80,25 +76,6 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
       return next;
     });
   }, []);
-
-  // Get download state from context
-  const { downloadState, cancelDownload, resetDownload, setIsDownloadMinimized } = useDownload();
-
-  const handleDownloadCardCancel = useCallback(() => {
-    if (readZipBackgroundTask()) {
-      if (
-        !window.confirm(
-          "Jika Anda menutup (X), pemantauan ZIP di browser ini dihentikan dan unduhan otomatis ke komputer tidak akan dilanjutkan.\n\nPembuatan ZIP di server dapat tetap berjalan sampai selesai. Buka lagi halaman Batch Gram (ZIP) untuk mengunduh dari link yang tersedia."
-        )
-      ) {
-        return;
-      }
-      clearZipBackgroundTask();
-      resetDownload();
-      return;
-    }
-    cancelDownload();
-  }, [cancelDownload, resetDownload]);
 
   // Safe translation helper with fallback
   const safeT = useMemo(
@@ -683,17 +660,6 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         }}
       />
 
-      {/* Global Download Card - persists across navigation */}
-      {downloadState.percent !== null && (
-        <DownloadCard
-          percent={downloadState.percent}
-          label={downloadState.label}
-          onCancel={handleDownloadCardCancel}
-          isMinimized={downloadState.isMinimized}
-          onToggleMinimize={() => setIsDownloadMinimized(!downloadState.isMinimized)}
-        />
-      )}
-      <ZipBackgroundRunner />
     </div>
   );
 }

@@ -5,6 +5,8 @@ import "@/styles/globals.css";
 import { APP_NAME, APP_DESCRIPTION, getBaseUrl } from "@/utils/constants";
 import { getAbsoluteImageUrl } from "@/utils/r2-url";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
+import { DownloadProvider } from "@/contexts/DownloadContext";
+import { GlobalZipDownloadOverlay } from "@/components/admin/GlobalZipDownloadOverlay";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -73,8 +75,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${GeistSans.variable} ${playfair.variable}`}>
       <body className={`${GeistSans.className} antialiased`}>
-        <GoogleAnalytics />
-        {children}
+        <DownloadProvider>
+          <GoogleAnalytics />
+          {children}
+          <GlobalZipDownloadOverlay />
+        </DownloadProvider>
       </body>
     </html>
   );
