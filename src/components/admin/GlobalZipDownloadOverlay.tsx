@@ -27,6 +27,13 @@ export function GlobalZipDownloadOverlay() {
     window.location.reload();
   }, [cancelDownload, resetDownload]);
 
+  const handleOpenZipBatch = useCallback(() => {
+    const task = readZipBackgroundTask();
+    if (!task) return;
+    const target = `/admin/qr-preview/page2?openZip=1&zipBatchId=${encodeURIComponent(String(task.batchId))}`;
+    window.location.href = target;
+  }, []);
+
   return (
     <>
       {downloadState.percent !== null && (
@@ -36,6 +43,7 @@ export function GlobalZipDownloadOverlay() {
           onCancel={handleDownloadCardCancel}
           isMinimized={downloadState.isMinimized}
           onToggleMinimize={() => setIsDownloadMinimized(!downloadState.isMinimized)}
+          onCardClick={handleOpenZipBatch}
         />
       )}
       <ZipBackgroundRunner />

@@ -307,6 +307,21 @@ export function QrPreviewGridGram({ batches }: Props) {
     return subscribeZipBackgroundTask(sync);
   }, []);
 
+  // Deep-link from global floating card: /admin/qr-preview/page2?openZip=1&zipBatchId=...
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("openZip") !== "1") return;
+    const raw = url.searchParams.get("zipBatchId");
+    const batchId = raw ? Number(raw) : NaN;
+    if (!Number.isFinite(batchId) || batchId <= 0) return;
+    if (!batches.some((b) => b.batchId === batchId)) return;
+    setDownloadDropdownOpen(batchId);
+    url.searchParams.delete("openZip");
+    url.searchParams.delete("zipBatchId");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [batches]);
+
   // Fetch serticard config to check for custom template
   const { data: fontConfig, mutate: mutateFontConfig } = useSWR<{
     customFrontR2Key: string | null;

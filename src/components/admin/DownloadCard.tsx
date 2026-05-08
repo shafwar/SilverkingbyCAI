@@ -10,6 +10,7 @@ interface DownloadCardProps {
   onCancel?: () => void;
   isMinimized?: boolean;
   onToggleMinimize?: () => void;
+  onCardClick?: () => void;
 }
 
 export const DownloadCard: React.FC<DownloadCardProps> = ({
@@ -18,6 +19,7 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
   onCancel,
   isMinimized = false,
   onToggleMinimize,
+  onCardClick,
 }) => {
   return (
     <AnimatePresence>
@@ -48,8 +50,11 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
           layout
           className={`relative rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] ${
             isMinimized ? "p-4" : "p-6 w-full max-w-lg mx-auto"
-          }`}
-          onClick={(e) => e.stopPropagation()}
+          } ${onCardClick ? "cursor-pointer" : ""}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onCardClick?.();
+          }}
         >
           {/* Header with controls */}
           <div className="flex items-center justify-between mb-4">
@@ -59,7 +64,10 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
             <div className="flex items-center gap-2">
               {onToggleMinimize && (
                 <button
-                  onClick={onToggleMinimize}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleMinimize();
+                  }}
                   className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
                   aria-label={isMinimized ? "Maximize" : "Minimize"}
                 >
@@ -72,7 +80,10 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
               )}
               {onCancel && (
                 <button
-                  onClick={onCancel}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCancel();
+                  }}
                   className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-red-500/20 transition-colors"
                   aria-label="Cancel"
                 >
@@ -84,6 +95,7 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
 
           {/* Progress Content */}
           <div className={isMinimized ? "space-y-2" : "space-y-4"}>
+            {onCardClick && <p className="text-[10px] text-white/45">Klik kotak untuk buka batch ZIP</p>}
             {label && (
               <div
                 className={`text-center font-medium text-white ${
