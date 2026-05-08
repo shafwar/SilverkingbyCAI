@@ -14,13 +14,21 @@ export async function findLatestCompletedZipJobForGramKeys(
   const keys = cacheKeyCandidates.filter((k) => k && k.trim() !== "");
   if (keys.length === 0) return null;
 
+  const findLatestForKey = async (
+    cacheKey: string,
+    status?: "PENDING" | "PROCESSING" | "COMPLETED"
+  ): Promise<QrZipDownloadJob | null> => {
+    const agg = await prisma.qrZipDownloadJob.aggregate({
+      where: status ? { cacheKey, status } : { cacheKey },
+      _max: { id: true },
+    });
+    const id = agg._max.id;
+    if (!id) return null;
+    return prisma.qrZipDownloadJob.findUnique({ where: { id } });
+  };
+
   const rows = await Promise.all(
-    keys.map((cacheKey) =>
-      prisma.qrZipDownloadJob.findFirst({
-        where: { cacheKey, status: "COMPLETED" },
-        orderBy: { id: "desc" },
-      })
-    )
+    keys.map((cacheKey) => findLatestForKey(cacheKey, "COMPLETED"))
   );
 
   let best: QrZipDownloadJob | null = null;
@@ -38,13 +46,18 @@ export async function findLatestZipJobForGramKeys(
   const keys = cacheKeyCandidates.filter((k) => k && k.trim() !== "");
   if (keys.length === 0) return null;
 
+  const findLatestForKey = async (cacheKey: string): Promise<QrZipDownloadJob | null> => {
+    const agg = await prisma.qrZipDownloadJob.aggregate({
+      where: { cacheKey },
+      _max: { id: true },
+    });
+    const id = agg._max.id;
+    if (!id) return null;
+    return prisma.qrZipDownloadJob.findUnique({ where: { id } });
+  };
+
   const rows = await Promise.all(
-    keys.map((cacheKey) =>
-      prisma.qrZipDownloadJob.findFirst({
-        where: { cacheKey },
-        orderBy: { id: "desc" },
-      })
-    )
+    keys.map((cacheKey) => findLatestForKey(cacheKey))
   );
 
   let best: QrZipDownloadJob | null = null;
@@ -64,15 +77,21 @@ export async function findLatestActiveZipJobForCacheKey(
 ): Promise<QrZipDownloadJob | null> {
   if (cacheKey == null || String(cacheKey).trim() === "") return null;
   const key = String(cacheKey);
-  const [pending, processing] = await Promise.all([
-    prisma.qrZipDownloadJob.findFirst({
+  const [pendingAgg, processingAgg] = await Promise.all([
+    prisma.qrZipDownloadJob.aggregate({
       where: { cacheKey: key, status: "PENDING" },
-      orderBy: { id: "desc" },
+      _max: { id: true },
     }),
-    prisma.qrZipDownloadJob.findFirst({
+    prisma.qrZipDownloadJob.aggregate({
       where: { cacheKey: key, status: "PROCESSING" },
-      orderBy: { id: "desc" },
+      _max: { id: true },
     }),
+  ]);
+  const [pending, processing] = await Promise.all([
+    pendingAgg._max.id ? prisma.qrZipDownloadJob.findUnique({ where: { id: pendingAgg._max.id } }) : null,
+    processingAgg._max.id
+      ? prisma.qrZipDownloadJob.findUnique({ where: { id: processingAgg._max.id } })
+      : null,
   ]);
   if (!pending) return processing;
   if (!processing) return pending;
