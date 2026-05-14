@@ -278,7 +278,13 @@ export function QrPreviewGridGram({ batches }: Props) {
         percent: Math.round(task.progressPercent),
         label: task.progressLabel || "ZIP diproses di background...",
       });
-      if (task.status === "completed") {
+      const hasPartialOrFinalZip =
+        (Array.isArray(task.downloads) && task.downloads.length > 0) ||
+        Boolean(task.download_url?.trim());
+      if (
+        task.status === "completed" ||
+        ((task.status === "processing" || task.status === "pending") && hasPartialOrFinalZip)
+      ) {
         setZipDownloadResult({
           batchId: task.batchId,
           product_title: task.batchName,

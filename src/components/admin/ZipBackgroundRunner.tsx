@@ -10,9 +10,22 @@ import {
 } from "@/lib/zip-background-task-store";
 import { toast } from "sonner";
 
+function withZipDownloadCacheBust(url: string, bustMs: number): string {
+  if (!url || typeof bustMs !== "number" || !Number.isFinite(bustMs)) return url;
+  try {
+    const u = new URL(url);
+    u.searchParams.set("_skcb", String(Math.floor(bustMs)));
+    return u.toString();
+  } catch {
+    const sep = url.includes("?") ? "&" : "?";
+    return `${url}${sep}_skcb=${encodeURIComponent(String(Math.floor(bustMs)))}`;
+  }
+}
+
 function triggerBrowserDownload(url: string, filename: string) {
+  const busted = withZipDownloadCacheBust(url, Date.now());
   const link = document.createElement("a");
-  link.href = url;
+  link.href = busted;
   link.download = filename;
   link.target = "_blank";
   link.rel = "noopener noreferrer";
@@ -21,14 +34,91 @@ function triggerBrowserDownload(url: string, filename: string) {
   link.remove();
 }
 
+/** Chunked jobs expose new `downloads[]` rows while status is still PROCESSING — auto-save each ZIP as soon as its URL appears. */
+function applyAutoDownloadsForTask(task: ZipBackgroundTask): { task: ZipBackgroundTask; changed: boolean } {
+  const t: ZipBackgroundTask = { ...task };
+  let changed = false;
+  const safeName = (t.batchName || "batch").replace(/\s+/g, "-");
+
+  if (Array.isArray(t.downloads) && t.downloads.length > 0) {
+    t.downloads = t.downloads.map((d) => {
+      if (d.downloaded || d.autoDownloadFailed || !d.download_url?.trim()) return d;
+      try {
+        triggerBrowserDownload(
+          d.download_url,
+          `${safeName}-batch-${d.batchIndex}-of-${d.totalBatches}.zip`
+        );
+        changed = true;
+        return { ...d, downloaded: true };
+      } catch {
+        changed = true;
+        if (!d.autoDownloadFailNotified) {
+          toast.error("Unduh otomatis gagal", {
+            description: `Buka link manual: batch ${d.batchIndex}/${d.totalBatches}`,
+            duration: 12_000,
+            action: {
+              label: "Buka",
+              onClick: () => window.open(d.download_url, "_blank", "noopener,noreferrer"),
+            },
+          });
+        }
+        return { ...d, autoDownloadFailed: true, autoDownloadFailNotified: true };
+      }
+    });
+  } else if (
+    t.status === "completed" &&
+    t.download_url &&
+    !t.singleDownloaded &&
+    (!t.downloads || t.downloads.length === 0)
+  ) {
+    try {
+      triggerBrowserDownload(t.download_url, `${safeName}.zip`);
+      t.singleDownloaded = true;
+      changed = true;
+    } catch {
+      if (!t.singleAutoDownloadFailNotified) {
+        toast.error("Unduh otomatis gagal", {
+          description: "Buka halaman Batch Gram atau gunakan tombol Buka untuk mengunduh manual.",
+          duration: 12_000,
+          action: {
+            label: "Buka",
+            onClick: () => window.open(t.download_url!, "_blank", "noopener,noreferrer"),
+          },
+        });
+      }
+      t.singleAutoDownloadFailed = true;
+      t.singleAutoDownloadFailNotified = true;
+      changed = true;
+    }
+  }
+
+  return { task: t, changed };
+}
+
+function allZipPartsHandled(t: ZipBackgroundTask): boolean {
+  if (Array.isArray(t.downloads) && t.downloads.length > 0) {
+    return t.downloads.every((d) => d.downloaded || d.autoDownloadFailed);
+  }
+  if (t.download_url) {
+    return !!(t.singleDownloaded || t.singleAutoDownloadFailed);
+  }
+  return true;
+}
+
+function shouldStopPolling(t: ZipBackgroundTask | null): boolean {
+  if (!t) return true;
+  if (t.status === "failed") return true;
+  if (t.status === "completed" && allZipPartsHandled(t)) return true;
+  return false;
+}
+
 /**
  * Headless ZIP job tracker: polls `/api/qr/download-job`, updates DownloadCard via DownloadContext,
- * persists task to localStorage, auto-downloads completed batches. No second floating UI.
+ * persists task to localStorage, auto-downloads each chunked ZIP as soon as its batch URL is available.
  */
 export function ZipBackgroundRunner() {
   const { setDownloadPercent, setDownloadLabel } = useDownload();
 
-  // Mirror task → global download card (single floating UI). Dismiss uses resetDownload in AdminLayout.
   useEffect(() => {
     const apply = () => {
       const task = readZipBackgroundTask();
@@ -40,13 +130,12 @@ export function ZipBackgroundRunner() {
     return subscribeZipBackgroundTask(apply);
   }, [setDownloadLabel, setDownloadPercent]);
 
-  // Poll job until terminal state.
   useEffect(() => {
     let cancelled = false;
 
     const pollOnce = async () => {
       const task = readZipBackgroundTask();
-      if (!task || task.status === "completed" || task.status === "failed") return;
+      if (!task || shouldStopPolling(task)) return;
       try {
         const res = await fetch(`/api/qr/download-job/${task.jobId}`, { cache: "no-store" });
         if (!res.ok) return;
@@ -71,7 +160,7 @@ export function ZipBackgroundRunner() {
               : data.status === "PROCESSING"
                 ? "processing"
                 : "pending";
-        const next: ZipBackgroundTask = {
+        let next: ZipBackgroundTask = {
           ...task,
           cacheKey: typeof data.cacheKey === "string" ? data.cacheKey : task.cacheKey,
           status: nextStatus,
@@ -100,6 +189,12 @@ export function ZipBackgroundRunner() {
             data.status === "FAILED" ? data.errorMessage || "Pembuatan ZIP gagal." : task.lastError,
           updatedAt: Date.now(),
         };
+
+        const { task: afterDl, changed: dlChanged } = applyAutoDownloadsForTask(next);
+        next = afterDl;
+        if (dlChanged) {
+          next.updatedAt = Date.now();
+        }
         writeZipBackgroundTask(next);
       } catch {
         // transient network; next tick retries
@@ -115,71 +210,6 @@ export function ZipBackgroundRunner() {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, []);
-
-  // Auto-download when job completes (once per batch URL).
-  useEffect(() => {
-    const run = () => {
-      const task = readZipBackgroundTask();
-      if (!task || task.status !== "completed") return;
-
-      let changed = false;
-      const next: ZipBackgroundTask = { ...task };
-
-      if (Array.isArray(next.downloads) && next.downloads.length > 0) {
-        next.downloads = next.downloads.map((d) => {
-          if (d.downloaded) return d;
-          try {
-            triggerBrowserDownload(
-              d.download_url,
-              `${task.batchName.replace(/\s+/g, "-")}-batch-${d.batchIndex}-of-${d.totalBatches}.zip`
-            );
-            changed = true;
-            return { ...d, downloaded: true };
-          } catch {
-            changed = true;
-            if (!d.autoDownloadFailNotified) {
-              toast.error("Unduh otomatis gagal", {
-                description: `Buka link manual: batch ${d.batchIndex}/${d.totalBatches}`,
-                duration: 12_000,
-                action: {
-                  label: "Buka",
-                  onClick: () => window.open(d.download_url, "_blank", "noopener,noreferrer"),
-                },
-              });
-            }
-            return { ...d, autoDownloadFailed: true, autoDownloadFailNotified: true };
-          }
-        });
-      } else if (next.download_url && !next.singleDownloaded) {
-        try {
-          triggerBrowserDownload(next.download_url, `${task.batchName.replace(/\s+/g, "-")}.zip`);
-          next.singleDownloaded = true;
-          changed = true;
-        } catch {
-          if (!next.singleAutoDownloadFailNotified) {
-            toast.error("Unduh otomatis gagal", {
-              description: "Buka halaman Batch Gram atau gunakan tombol Buka untuk mengunduh manual.",
-              duration: 12_000,
-              action: {
-                label: "Buka",
-                onClick: () => window.open(next.download_url!, "_blank", "noopener,noreferrer"),
-              },
-            });
-          }
-          next.singleAutoDownloadFailed = true;
-          next.singleAutoDownloadFailNotified = true;
-          changed = true;
-        }
-      }
-
-      if (changed) {
-        writeZipBackgroundTask(next);
-      }
-    };
-
-    run();
-    return subscribeZipBackgroundTask(run);
   }, []);
 
   return null;
