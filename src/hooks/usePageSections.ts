@@ -12,13 +12,19 @@ export function getCacheBustedMediaUrl(url: string, version?: number): string {
   return `${url}${sep}v=${version}`;
 }
 
-export function usePageSections(page: string) {
+type UsePageSectionsOptions = {
+  /** When false, skips network fetch until enabled (reduces contention off-home). */
+  enabled?: boolean;
+};
+
+export function usePageSections(page: string, options?: UsePageSectionsOptions) {
+  const enabled = options?.enabled !== false;
   const [sections, setSections] = useState<Record<string, PageSectionEntry>>({});
   const [loading, setLoading] = useState(true);
   const refetchRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
   const refetch = useCallback(async () => {
-    if (!page) {
+    if (!enabled || !page) {
       setSections({});
       setLoading(false);
       return;
@@ -38,14 +44,14 @@ export function usePageSections(page: string) {
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, enabled]);
 
   refetchRef.current = refetch;
 
   // Always fetch fresh on mount (no cache) so replaced assets never flash old version when returning to page
   useEffect(() => {
     let cancelled = false;
-    if (!page) {
+    if (!enabled || !page) {
       setSections({});
       setLoading(false);
       return;
@@ -66,16 +72,17 @@ export function usePageSections(page: string) {
     return () => {
       cancelled = true;
     };
-  }, [page]);
+  }, [page, enabled]);
 
   // When page is restored from bfcache (back/forward), refetch so we never show stale asset
   useEffect(() => {
+    if (!enabled || !page) return;
     const handlePageShow = (e: PageTransitionEvent) => {
-      if (e.persisted && page) refetchRef.current();
+      if (e.persisted) refetchRef.current();
     };
     window.addEventListener("pageshow", handlePageShow);
     return () => window.removeEventListener("pageshow", handlePageShow);
-  }, [page]);
+  }, [page, enabled]);
 
   return { sections, loading, refetch };
 }

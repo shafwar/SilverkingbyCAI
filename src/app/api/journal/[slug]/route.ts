@@ -33,6 +33,8 @@ export async function GET(
     const content = lang === "id" ? j.contentId : j.contentEn;
     const excerpt = lang === "id" ? j.excerptId : j.excerptEn;
 
+    const displayDate = (j.articleDate ?? j.publishedAt)?.toISOString() ?? null;
+
     return NextResponse.json({
       slug: j.slug,
       title,
@@ -40,6 +42,7 @@ export async function GET(
       excerpt: excerpt && excerpt.trim() ? excerpt : null,
       heroImageUrl: j.heroImageR2Key ? getPublicUrl(j.heroImageR2Key) : null,
       publishedAt: j.publishedAt?.toISOString() ?? null,
+      displayDate,
     }, {
       headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
     });

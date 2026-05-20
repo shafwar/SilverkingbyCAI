@@ -2,8 +2,6 @@
 
 import { Link } from "@/i18n/routing";
 import { useRouter } from "@/i18n/routing";
-import { useLocale } from "next-intl";
-import { routing } from "@/i18n/routing";
 import { useCallback, useRef, useEffect, type ComponentProps, type ReactNode } from "react";
 
 interface OptimizedLinkProps extends Omit<ComponentProps<typeof Link>, "prefetch"> {
@@ -14,10 +12,7 @@ interface OptimizedLinkProps extends Omit<ComponentProps<typeof Link>, "prefetch
 }
 
 /**
- * OptimizedLink - Enhanced Link component with aggressive prefetching
- * - Automatically prefetches on mount if prefetch={true}
- * - Prefetches on hover for instant navigation
- * - Uses multiple prefetch strategies for maximum performance
+ * OptimizedLink — locale-aware Link + `router.prefetch` on mount/hover (no extra head <link> spam).
  */
 export function OptimizedLink({
   href,
@@ -30,78 +25,23 @@ export function OptimizedLink({
   ...props
 }: OptimizedLinkProps) {
   const router = useRouter();
-  const locale = useLocale();
   const prefetchedRef = useRef<Set<string>>(new Set());
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Build full path with locale
-  const getFullPath = useCallback(
-    (path: string) => {
-      if (path.startsWith("http")) return path;
-      const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-      return locale === routing.defaultLocale
-        ? normalizedPath
-        : `/${locale}${normalizedPath === "/" ? "" : normalizedPath}`;
-    },
-    [locale]
-  );
-
-  // Aggressive prefetching function
+  /** router.prefetch only — avoids duplicate <link> tags + head churn (same work as manual RSC prefetch). */
   const prefetchRoute = useCallback(
     (path: string) => {
-      const fullPath = getFullPath(path);
-      const cacheKey = fullPath;
-
-      // Skip if already prefetched
-      if (prefetchedRef.current.has(cacheKey)) return;
-      prefetchedRef.current.add(cacheKey);
-
-      // Strategy 1: Use next-intl router.prefetch
+      if (path.startsWith("http")) return;
+      const key = path.toString();
+      if (prefetchedRef.current.has(key)) return;
+      prefetchedRef.current.add(key);
       try {
         router.prefetch(path);
-      } catch (e) {
-        // Silently fail
-      }
-
-      // Strategy 2: Browser link prefetch - PRODUCTION-SAFE: Enhanced checks
-      if (typeof window !== "undefined" && typeof document !== "undefined" && document.head) {
-        try {
-          const link = document.createElement("link");
-          link.rel = "prefetch";
-          link.as = "document";
-          link.href = fullPath;
-          document.head.appendChild(link);
-        } catch (e) {
-          // Silently fail
-        }
-
-        // Strategy 3: Prefetch RSC payload
-        try {
-          const rscLink = document.createElement("link");
-          rscLink.rel = "prefetch";
-          rscLink.as = "fetch";
-          rscLink.href = `${fullPath}?_rsc=`;
-          rscLink.crossOrigin = "anonymous";
-          document.head.appendChild(rscLink);
-        } catch (e) {
-          // Silently fail
-        }
-
-        // Strategy 4: DNS prefetch for external links
-        if (path.startsWith("http")) {
-          try {
-            const url = new URL(path);
-            const dnsLink = document.createElement("link");
-            dnsLink.rel = "dns-prefetch";
-            dnsLink.href = `${url.protocol}//${url.hostname}`;
-            document.head.appendChild(dnsLink);
-          } catch (e) {
-            // Silently fail
-          }
-        }
+      } catch {
+        /* ignore */
       }
     },
-    [router, getFullPath]
+    [router]
   );
 
   // Prefetch on mount - PRODUCTION-SAFE: Enhanced with proper checks

@@ -3,62 +3,29 @@
 import { useEffect } from "react";
 import { useRouter } from "@/i18n/routing";
 import { useLocale } from "next-intl";
-import { routing } from "@/i18n/routing";
+import { getNetworkTier } from "@/utils/network-profile";
 
 /**
- * Global hook for aggressive page prefetching
- * Prefetches all main navigation routes when component mounts
+ * Global hook for page prefetching — toned down on slow / Save-Data so first load stays responsive.
  */
 export function usePagePrefetch() {
   const router = useRouter();
   const locale = useLocale();
 
   useEffect(() => {
+    const tier = getNetworkTier();
+    if (tier === "slow") {
+      return;
+    }
+
     // All main navigation routes - prioritize most visited
     const routes = ["/", "/about", "/products", "/what-we-do", "/authenticity", "/contact"];
 
     const prefetchRoute = (path: string) => {
-      const fullPath =
-        locale === routing.defaultLocale ? path : `/${locale}${path === "/" ? "" : path}`;
-
-      // Strategy 1: Use router.prefetch (most efficient for Next.js)
       try {
         router.prefetch(path);
-      } catch (e) {
-        // Silently fail
-      }
-
-      // Strategy 2: Browser link prefetch (only if not already prefetched)
-      if (typeof window !== "undefined") {
-        const existingLink = document.querySelector(`link[rel="prefetch"][href="${fullPath}"]`);
-        if (!existingLink) {
-          try {
-            const link = document.createElement("link");
-            link.rel = "prefetch";
-            link.as = "document";
-            link.href = fullPath;
-            document.head.appendChild(link);
-          } catch (e) {
-            // Silently fail
-          }
-        }
-
-        // Strategy 3: Prefetch RSC payload (React Server Components)
-        const existingRscLink = document.querySelector(
-          `link[rel="prefetch"][href="${fullPath}?_rsc="]`
-        );
-        if (!existingRscLink) {
-          try {
-            const rscLink = document.createElement("link");
-            rscLink.rel = "prefetch";
-            rscLink.as = "fetch";
-            rscLink.href = `${fullPath}?_rsc=`;
-            rscLink.crossOrigin = "anonymous";
-            document.head.appendChild(rscLink);
-          } catch (e) {
-            // Silently fail
-          }
-        }
+      } catch {
+        /* ignore */
       }
     };
 
@@ -69,7 +36,7 @@ export function usePagePrefetch() {
           () => {
             setTimeout(() => prefetchRoute(route), delay);
           },
-          { timeout: 2000 }
+          { timeout: 3500 }
         );
       } else {
         // Fallback for browsers without requestIdleCallback
@@ -77,42 +44,49 @@ export function usePagePrefetch() {
       }
     };
 
-    // Prefetch critical routes immediately
-    prefetchRoute("/");
-    prefetchRoute("/about");
+    let cancelled = false;
 
-    // Prefetch other routes with staggered timing (non-blocking)
-    routes.slice(2).forEach((route, index) => {
-      schedulePrefetch(route, (index + 1) * 200); // Stagger by 200ms
-    });
-
-    // Also prefetch again after page is fully loaded (idle time)
-    const handleLoad = () => {
-      if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-        requestIdleCallback(
-          () => {
-            routes.forEach((route) => {
-              prefetchRoute(route);
-            });
-          },
-          { timeout: 3000 }
-        );
-      } else {
+    if (tier === "medium") {
+      const start = () => {
+        if (cancelled) return;
+        try {
+          router.prefetch("/");
+        } catch {
+          /* ignore */
+        }
         setTimeout(() => {
-          routes.forEach((route) => {
-            prefetchRoute(route);
-          });
-        }, 1000);
-      }
+          if (cancelled) return;
+          try {
+            router.prefetch("/about");
+          } catch {
+            /* ignore */
+          }
+        }, 600);
+      };
+      const delayed = window.setTimeout(start, 5200);
+      return () => {
+        cancelled = true;
+        clearTimeout(delayed);
+      };
+    }
+
+    const runInitialPrefetch = () => {
+      if (cancelled) return;
+      prefetchRoute("/");
+      prefetchRoute("/about");
+      routes.slice(2).forEach((route, index) => {
+        schedulePrefetch(route, (index + 1) * 900);
+      });
     };
 
-    if (typeof window !== "undefined") {
-      if (document.readyState === "complete") {
-        handleLoad();
-      } else {
-        window.addEventListener("load", handleLoad, { once: true });
-        return () => window.removeEventListener("load", handleLoad);
-      }
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      requestIdleCallback(runInitialPrefetch, { timeout: 2800 });
+    } else {
+      setTimeout(runInitialPrefetch, 800);
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [router, locale]);
 }

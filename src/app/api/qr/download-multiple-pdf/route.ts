@@ -7,8 +7,26 @@ import { promises as fs } from "fs";
 import path from "path";
 import { PDFDocument } from "pdf-lib";
 import { createHash } from "crypto";
-import { loadSerticardTemplates } from "@/lib/load-serticard-templates";
+import { loadSerticardTemplates, isAffirmativeCustomFlag } from "@/lib/load-serticard-templates";
 import { getSerticardConfig, getFontSizeMultipliers } from "@/lib/serticard-config";
+import { normalizeRootKeyForPill } from "@/lib/serticard-rootkey-display";
+import {
+  composeSerticardSpreadPngBuffers,
+  getSerticardPdfPanelSize,
+} from "@/lib/serticard-compose-spread-png";
+import {
+  buildZipVerificationManifest,
+  createZipVerificationSummary,
+  verifySerticardZipItemBuffers,
+  type ZipVerificationSummary,
+} from "@/lib/serticard-zip-verification";
+import {
+  persistInvalidZipProductsAsIssues,
+  persistSerticardZipRenderIssuesFromVerification,
+  persistSerticardZipRootKeyWarningsAsIssues,
+} from "@/lib/serticard-zip-issue-persist";
+import { getQrOnlyPngBufferForZip } from "@/lib/serticard-qr-only-buffer";
+import { findLatestActiveZipJobForCacheKey } from "@/lib/qr-zip-job-gram-lookup";
 
 /** Request dengan product count di atas ini diproses di background (hindari timeout 524). */
 const ZIP_JOB_THRESHOLD = 25;
@@ -24,11 +42,18 @@ function buildZipCacheKey(args: {
   validProducts: Array<{ serialCode: string; isGram?: boolean }>;
   templateVariant: string;
   useCustom: boolean;
+  cmsTemplateId?: number | null;
+  includeRootKey?: boolean;
 }): string {
-  const { batchId, validProducts, templateVariant, useCustom } = args;
+  const { batchId, validProducts, templateVariant, useCustom, cmsTemplateId } = args;
   const gram = validProducts.some((p) => p.isGram === true) ? 1 : 0;
+  const cms =
+    cmsTemplateId != null && Number.isFinite(cmsTemplateId) && cmsTemplateId > 0
+      ? Math.floor(cmsTemplateId)
+      : 0;
+  const rk = args.includeRootKey === false ? 0 : 1;
   if (batchId != null) {
-    return `gram-batch:${batchId}:tpl:${templateVariant}:custom:${useCustom ? 1 : 0}:gram:${gram}`;
+    return `gram-batch:${batchId}:tpl:${templateVariant}:custom:${useCustom ? 1 : 0}:cms:${cms}:gram:${gram}:rk:${rk}`;
   }
   const serials = validProducts
     .map((p) => String(p.serialCode || "").trim().toUpperCase())
@@ -36,7 +61,7 @@ function buildZipCacheKey(args: {
     .sort();
   const base = serials.join(",");
   const hash = createHash("sha256").update(base).digest("hex").slice(0, 32);
-  return `serials:${hash}:n:${serials.length}:tpl:${templateVariant}:custom:${useCustom ? 1 : 0}:gram:${gram}`;
+  return `serials:${hash}:n:${serials.length}:tpl:${templateVariant}:custom:${useCustom ? 1 : 0}:cms:${cms}:gram:${gram}:rk:${rk}`;
 }
 
 /**
@@ -83,11 +108,23 @@ export async function POST(request: NextRequest) {
       templateVariant: templateVariantParam,
       useCustomTemplate,
     } = body;
-    const templateVariant = templateVariantParam ?? "01";
-    const useCustom = useCustomTemplate === true;
+    const rawVariant =
+      templateVariantParam != null && templateVariantParam !== ""
+        ? String(templateVariantParam)
+        : "01";
+    const templateVariant = rawVariant === "custom" ? "01" : rawVariant;
+    const useCustom =
+      isAffirmativeCustomFlag(useCustomTemplate) || rawVariant === "custom";
+    const rawCms = body?.cmsTemplateId;
+    const cmsParsed =
+      rawCms != null && rawCms !== "" ? Math.floor(Number(rawCms)) : null;
+    const cmsTemplateId =
+      cmsParsed != null && Number.isFinite(cmsParsed) && cmsParsed > 0 ? cmsParsed : null;
     const isGramRequest =
       body?.isGram === true ||
       (Array.isArray(productsFromFrontend) && productsFromFrontend.some((p: any) => p?.isGram));
+    /** Same semantics as download-single-pdf: default true (show root key on Gram / when provided). */
+    const includeRootKey = body?.includeRootKey !== false;
 
     // Support both formats: products (new, preferred) or serialCodes (legacy, fallback)
     let productsData: Array<{
@@ -113,12 +150,14 @@ export async function POST(request: NextRequest) {
       // CRITICAL: Use products directly from frontend, no database query needed
       // This is the SAME approach as handleDownload (single) that works correctly
       productsData = productsFromFrontend.map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        serialCode: p.serialCode,
-        weight: p.weight,
+        id: Number.isFinite(Number(p.id)) ? Math.floor(Number(p.id)) : 0,
+        name: String(p.name ?? "").trim(),
+        serialCode: String(p.serialCode ?? "")
+          .trim()
+          .toUpperCase(),
+        weight: typeof p.weight === "number" && !Number.isNaN(p.weight) ? p.weight : 0,
         isGram: p.isGram === true,
-        rootKey: p.rootKey != null ? String(p.rootKey).trim() || null : null,
+        rootKey: p.rootKey != null && String(p.rootKey).trim() !== "" ? String(p.rootKey).trim() : null,
       }));
 
       console.log(`[QR Multiple] Using products from frontend (no database query):`, {
@@ -157,11 +196,13 @@ export async function POST(request: NextRequest) {
 
         productsData = gramItems.map((p) => ({
           id: p.id,
-          name: p.batch?.name || p.uniqCode,
-          serialCode: p.uniqCode,
+          name: String(p.batch?.name || p.uniqCode || "").trim(),
+          serialCode: String(p.uniqCode ?? "")
+            .trim()
+            .toUpperCase(),
           weight: p.batch?.weight || 0,
           isGram: true,
-          rootKey: p.rootKey != null ? String(p.rootKey).trim() || null : null,
+          rootKey: p.rootKey != null && String(p.rootKey).trim() !== "" ? String(p.rootKey).trim() : null,
         }));
       } else {
         const products = await prisma.product.findMany({
@@ -183,10 +224,13 @@ export async function POST(request: NextRequest) {
 
         productsData = products.map((p) => ({
           id: p.id,
-          name: p.name,
-          serialCode: p.serialCode,
+          name: String(p.name ?? "").trim(),
+          serialCode: String(p.serialCode ?? "")
+            .trim()
+            .toUpperCase(),
           weight: p.weight,
           isGram: false,
+          rootKey: null,
         }));
       }
 
@@ -279,6 +323,18 @@ export async function POST(request: NextRequest) {
           serialCode: p.serialCode || "NULL",
         }))
       );
+      try {
+        await persistInvalidZipProductsAsIssues({
+          jobId: null,
+          invalidProducts,
+          templateVariant,
+          useCustomTemplate: useCustom,
+          cmsTemplateId,
+          includeRootKey,
+        });
+      } catch (persistErr) {
+        console.error("[QR Multiple] persistInvalidZipProductsAsIssues failed:", persistErr);
+      }
     }
 
     if (validProducts.length === 0) {
@@ -300,6 +356,8 @@ export async function POST(request: NextRequest) {
       validProducts,
       templateVariant,
       useCustom,
+      cmsTemplateId,
+      includeRootKey,
     });
     const cached = await prisma.qrZipDownloadCache.findUnique({ where: { cacheKey } });
     if (cached) {
@@ -321,11 +379,8 @@ export async function POST(request: NextRequest) {
       Array.isArray(productsFromFrontend) &&
       productsFromFrontend.length > 0
     ) {
-      // Kalau sudah ada job untuk request yang sama, jangan render ulang.
-      const existingJob = await prisma.qrZipDownloadJob.findFirst({
-        where: { cacheKey, status: { in: ["PENDING", "PROCESSING"] } },
-        orderBy: { createdAt: "desc" },
-      });
+      // Kalau sudah ada job untuk request yang sama, jangan render ulang (ORDER BY id: no large sort; see qr-zip-job-gram-lookup).
+      const existingJob = await findLatestActiveZipJobForCacheKey(cacheKey);
       if (existingJob) {
         return NextResponse.json({
           jobId: existingJob.id,
@@ -341,8 +396,10 @@ export async function POST(request: NextRequest) {
         productTitle: bodyProductTitle,
         templateVariant,
         useCustomTemplate: useCustom,
+        cmsTemplateId,
         batchNumber: batchNumber ?? bodyBatchId ?? Math.floor(Date.now() / 1000),
         cacheKey,
+        includeRootKey,
       };
       const job = await prisma.qrZipDownloadJob.create({
         data: {
@@ -368,8 +425,10 @@ export async function POST(request: NextRequest) {
       bodyProductTitle,
       templateVariant,
       useCustom,
+      cmsTemplateId,
       batchNumber: batchNumber ?? bodyBatchId ?? Math.floor(Date.now() / 1000),
       isGramRequest,
+      includeRootKey,
     };
     const outcome = await executeZipGeneration(validProducts, zipOpts);
     if (outcome.json) {
@@ -380,13 +439,20 @@ export async function POST(request: NextRequest) {
       });
       return NextResponse.json(outcome.json);
     }
+    const zipHeaders: Record<string, string> = {
+      "Content-Type": "application/zip",
+      "Content-Disposition": `attachment; filename="${outcome.zip.filename}"`,
+      "Cache-Control": "no-cache",
+    };
+    const vz = outcome.verification;
+    if (vz) {
+      zipHeaders["X-Serticard-Verified-Count"] = String(vz.items.length);
+      zipHeaders["X-Serticard-Warning-Count"] = String(vz.warnings.length);
+      zipHeaders["X-Serticard-Failed-Count"] = String(vz.renderFailures.length);
+    }
     return new NextResponse(new Uint8Array(outcome.zip.buffer), {
       status: 200,
-      headers: {
-        "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="${outcome.zip.filename}"`,
-        "Cache-Control": "no-cache",
-      },
+      headers: zipHeaders,
     });
   } catch (error: any) {
     const errorMessage = error?.message || String(error);
@@ -423,14 +489,19 @@ type ZipGenOpts = {
   bodyProductTitle?: string;
   templateVariant: string;
   useCustom: boolean;
+  cmsTemplateId?: number | null;
   batchNumber: number;
   isGramRequest: boolean;
+  /** Default true: draw root-key pill when Gram / payload has rootKey (matches single-PDF). */
+  includeRootKey?: boolean;
   /** When set, progress (Item 1-100: X%, ...) is written to this job for polling. */
   jobId?: number;
 };
 type ZipOutcome = {
   json?: Record<string, unknown>;
   zip: { buffer: Buffer; filename: string };
+  /** Present when returning raw ZIP bytes so clients can read verification counts from response headers. */
+  verification?: ZipVerificationSummary;
 };
 
 type ZipChunkContext = {
@@ -438,15 +509,18 @@ type ZipChunkContext = {
   // Loaded via dynamic canvas import at runtime (avoid build-time native binding requirement).
   frontTemplateImage: any;
   backTemplateImage: any;
+  panelWidth: number;
+  panelHeight: number;
   fontConfig: Awaited<ReturnType<typeof getSerticardConfig>>;
   sizeMultipliers: ReturnType<typeof getFontSizeMultipliers>;
-  internalBaseUrl: string;
   bodyProductTitle?: string;
   batchNumber: number;
   isGramRequest: boolean;
   hasMultipleWeights: boolean;
   templateVariant: string;
   useCustom: boolean;
+  cmsTemplateId: number | null;
+  includeRootKey: boolean;
 };
 
 /** Callback untuk progress dalam satu chunk: (processed, total) => void. Dipanggil setiap beberapa item. */
@@ -488,6 +562,7 @@ async function updateJobPartialResult(
     }>;
     total_files: number;
     chunked: boolean;
+    verification?: ZipVerificationSummary;
   }
 ): Promise<void> {
   try {
@@ -504,20 +579,22 @@ async function updateJobPartialResult(
 async function buildOneZipChunk(
   validProducts: ZipGenProduct[],
   ctx: ZipChunkContext,
-  onProgress?: OnChunkProgress
+  onProgress: OnChunkProgress | undefined,
+  verification: ZipVerificationSummary
 ): Promise<{ zip: JSZip; successCount: number; failCount: number; firstProduct: ZipGenProduct | null }> {
   const {
     canvasMod,
     frontTemplateImage,
     backTemplateImage,
-    fontConfig,
+    panelWidth,
+    panelHeight,
     sizeMultipliers,
-    internalBaseUrl,
-    bodyProductTitle,
-    batchNumber,
     isGramRequest,
     hasMultipleWeights,
     templateVariant,
+    cmsTemplateId,
+    useCustom,
+    includeRootKey,
   } = ctx;
     const zip = new JSZip();
     let successCount = 0;
@@ -539,97 +616,71 @@ async function buildOneZipChunk(
           continue;
         }
         const productIsGram = (product as any).isGram === true || isGramRequest;
-        const qrBase = productIsGram ? "/api/qr-gram" : "/api/qr";
-        const qrUrl = `${internalBaseUrl}${qrBase}/${encodeURIComponent(productSerialCode)}/qr-only`;
-        const qrResponse = await fetch(qrUrl);
-        if (!qrResponse.ok) {
-        failCount++;
-        continue;
+        const qrBuffer = await getQrOnlyPngBufferForZip(productSerialCode, productIsGram);
+        if (!qrBuffer?.length) {
+          failCount++;
+          continue;
         }
-        const qrBuffer = Buffer.from(await qrResponse.arrayBuffer());
         const qrImage = await canvasMod.loadImage(qrBuffer);
-        const frontCanvas = canvasMod.createCanvas(frontTemplateImage.width, frontTemplateImage.height);
-        const frontCtx = frontCanvas.getContext("2d");
-      frontCtx!.drawImage(frontTemplateImage, 0, 0);
-        const qrSize = Math.min(
-          frontTemplateImage.width * 0.55,
-          frontTemplateImage.height * 0.55,
-          900
-        );
-        const qrX = (frontTemplateImage.width - qrSize) / 2;
-        const qrY = frontTemplateImage.height * 0.38;
-        const padding = 8;
-      frontCtx!.fillStyle = "#ffffff";
-      frontCtx!.fillRect(qrX - padding, qrY - padding, qrSize + padding * 2, qrSize + padding * 2);
-      frontCtx!.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
-        const nameOffset = Math.round(frontTemplateImage.height * 0.038);
-        const serialOffset = Math.round(frontTemplateImage.height * 0.038);
-        const isDarkTemplate = templateVariant !== "01";
-        const textColor = isDarkTemplate ? "#ffffff" : "#111111";
-        const nameFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.nameMultiplier);
-        const nameY = qrY - nameOffset;
-      frontCtx!.fillStyle = textColor;
-      frontCtx!.textAlign = "center";
-      frontCtx!.textBaseline = "bottom";
-      frontCtx!.font = `bold ${nameFontSize}px ${fontConfig.fontFamily}, sans-serif`;
-      frontCtx!.fillText(productName, frontTemplateImage.width / 2, nameY);
-        const serialFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.serialMultiplier);
-        const serialY = qrY + qrSize + serialOffset;
-      frontCtx!.fillStyle = textColor;
-      frontCtx!.textAlign = "center";
-      frontCtx!.textBaseline = "top";
-      frontCtx!.font = `bold ${serialFontSize}px ${fontConfig.fontFamily}, monospace`;
-      frontCtx!.fillText(productSerialCode, frontTemplateImage.width / 2, serialY);
-      const productRootKey =
-        (product as any).rootKey != null && String((product as any).rootKey).trim() !== ""
-          ? String((product as any).rootKey).trim().toUpperCase()
-          : null;
-      const frontBuffer = frontCanvas.toBuffer("image/png");
-        const backCanvas = canvasMod.createCanvas(backTemplateImage.width, backTemplateImage.height);
-        const backCtx = backCanvas.getContext("2d");
-      backCtx!.drawImage(backTemplateImage, 0, 0);
 
-      // Root key: render on BACK side at bottom-left (as per UI spec / marked area).
-      if (productRootKey) {
-        const padX = Math.round(backTemplateImage.width * 0.08);
-        const padY = Math.round(backTemplateImage.height * 0.08);
-        const x = padX;
-        const y = backTemplateImage.height - padY;
-        const fontSize = Math.max(14, Math.min(22, Math.floor(backTemplateImage.width * 0.04)));
-        const font = `600 ${fontSize}px ${fontConfig.fontFamily}, monospace`;
-        backCtx!.save();
-        backCtx!.font = font;
-        backCtx!.textAlign = "left";
-        backCtx!.textBaseline = "alphabetic";
+        let rootKeyForPill: string | null = null;
+        if (includeRootKey) {
+          const fromPayload =
+            product.rootKey != null && String(product.rootKey).trim() !== ""
+              ? String(product.rootKey).trim()
+              : null;
+          if (fromPayload) {
+            rootKeyForPill = normalizeRootKeyForPill(fromPayload);
+          } else if (productIsGram) {
+            let gramItem = await prisma.gramProductItem.findFirst({
+              where: {
+                uniqCode: productSerialCode,
+                ...(product.id != null && Number.isFinite(Number(product.id))
+                  ? { id: Math.floor(Number(product.id)) }
+                  : {}),
+              },
+              select: { rootKey: true },
+            });
+            if (!gramItem?.rootKey?.trim()) {
+              gramItem = await prisma.gramProductItem.findFirst({
+                where: { uniqCode: productSerialCode },
+                orderBy: { id: "asc" },
+                select: { rootKey: true },
+              });
+            }
+            if (gramItem?.rootKey?.trim()) {
+              rootKeyForPill = normalizeRootKeyForPill(gramItem.rootKey.trim());
+            }
+          }
+        }
 
-        // Background pill for readability on light templates
-        const label = productRootKey;
-        const metrics = backCtx!.measureText(label);
-        const boxW = Math.ceil(metrics.width + fontSize * 0.9);
-        const boxH = Math.ceil(fontSize * 1.4);
-        const boxX = x - Math.floor(fontSize * 0.45);
-        const boxY = y - boxH + Math.floor(fontSize * 0.25);
-        backCtx!.fillStyle = "rgba(0,0,0,0.45)";
-        const r = Math.ceil(fontSize * 0.4);
-        // rounded rect
-        backCtx!.beginPath();
-        backCtx!.moveTo(boxX + r, boxY);
-        backCtx!.arcTo(boxX + boxW, boxY, boxX + boxW, boxY + boxH, r);
-        backCtx!.arcTo(boxX + boxW, boxY + boxH, boxX, boxY + boxH, r);
-        backCtx!.arcTo(boxX, boxY + boxH, boxX, boxY, r);
-        backCtx!.arcTo(boxX, boxY, boxX + boxW, boxY, r);
-        backCtx!.closePath();
-        backCtx!.fill();
+        if (includeRootKey && productIsGram && !rootKeyForPill) {
+          verification.warnings.push({
+            code: "ROOT_KEY_MISSING",
+            serialCode: productSerialCode,
+            message:
+              "Root key tidak ada di payload atau database; PDF tetap berisi nama & serial, belakang tanpa pill root key.",
+            productId: product.id,
+            productName: product.name,
+            weight: product.weight,
+            isGram: productIsGram,
+            rootKey: product.rootKey != null ? String(product.rootKey) : null,
+          });
+        }
 
-        // Text
-        backCtx!.fillStyle = "#ffffff";
-        backCtx!.fillText(label, x, y);
-        backCtx!.restore();
-      }
-
-        const backBuffer = backCanvas.toBuffer("image/png");
-        const panelWidth = Math.max(frontTemplateImage.width, backTemplateImage.width);
-        const panelHeight = Math.max(frontTemplateImage.height, backTemplateImage.height);
+        const { frontBuffer, backBuffer } = composeSerticardSpreadPngBuffers({
+          canvasMod,
+          frontTemplateImage,
+          backTemplateImage,
+          qrImage,
+          productName,
+          productSerialCode,
+          sizeMultipliers,
+          templateVariant,
+          useCustomTemplate: useCustom,
+          cmsTemplateId: cmsTemplateId ?? null,
+          rootKeyForBack: rootKeyForPill,
+        });
         const gap = 0;
         const pageWidth = panelWidth * 2 + gap;
         const pageHeight = panelHeight;
@@ -646,6 +697,32 @@ async function buildOneZipChunk(
         });
         const pdfBytes = await pdfDoc.save();
         const pdfBuffer = Buffer.from(pdfBytes);
+
+        const bufferCheck = verifySerticardZipItemBuffers({
+          frontBuffer,
+          backBuffer,
+          pdfBuffer,
+          productName,
+          productSerialCode,
+        });
+        if (!bufferCheck.ok) {
+          failCount++;
+          verification.renderFailures.push({
+            serialCode: productSerialCode,
+            reasons: bufferCheck.reasons,
+            productId: product.id,
+            productName: product.name,
+            weight: product.weight,
+            isGram: productIsGram,
+            rootKey: product.rootKey != null ? String(product.rootKey) : null,
+          });
+          const processed = idx + 1;
+          if (onProgress && (processed % 5 === 0 || processed === totalToProcess)) {
+            await (onProgress(processed, totalToProcess) as Promise<void>);
+          }
+          continue;
+        }
+
       const sanitizedName = (product.name ?? "")
         .toString()
           .trim()
@@ -653,14 +730,24 @@ async function buildOneZipChunk(
           .replace(/[^a-zA-Z0-9-]/g, "")
           .replace(/-+/g, "-")
           .replace(/^-|-$/g, "");
-      const rootKeyPart = (product as any).rootKey
-        ? String((product as any).rootKey).trim().replace(/[^a-zA-Z0-9-]/g, "") || ""
+      const rootKeyPart = rootKeyForPill
+        ? rootKeyForPill.replace(/[^a-zA-Z0-9-]/g, "") || ""
         : "";
       const uniqueId = rootKeyPart ? `-${rootKeyPart}` : `-id${product.id}`;
-      const filename = `QR-${product.serialCode}${uniqueId}${sanitizedName ? `-${sanitizedName}` : ""}.pdf`;
+      const filename = `QR-${productSerialCode}${uniqueId}${sanitizedName ? `-${sanitizedName}` : ""}.pdf`;
         let folderPath = "";
       if (hasMultipleWeights) folderPath = `${product.weight}gr/`;
         zip.file(`${folderPath}${filename}`, pdfBuffer);
+        verification.items.push({
+          serialCode: productSerialCode,
+          productNameLen: productName.length,
+          serialLen: productSerialCode.length,
+          rootKeyRendered: !!rootKeyForPill,
+          frontPngBytes: frontBuffer.length,
+          backPngBytes: backBuffer.length,
+          pdfBytes: pdfBuffer.length,
+          checks: ["PNG_FRONT", "PNG_BACK", "PDF_HEADER", "PAYLOAD_OK"],
+        });
         successCount++;
       if (successCount === 1) firstProduct = product;
       if (shouldLog) {
@@ -679,14 +766,51 @@ async function buildOneZipChunk(
       }
     }
   }
+
+  zip.file(
+    "SERTICARD-ZIP-VERIFICATION.json",
+    JSON.stringify(buildZipVerificationManifest(verification), null, 2)
+  );
+
   return { zip, successCount, failCount, firstProduct };
+}
+
+async function persistZipRenderIssuesSafe(opts: ZipGenOpts, verification: ZipVerificationSummary) {
+  try {
+    await persistSerticardZipRenderIssuesFromVerification({
+      jobId: opts.jobId ?? null,
+      verification,
+      templateVariant: opts.templateVariant,
+      useCustomTemplate: opts.useCustom,
+      cmsTemplateId: opts.cmsTemplateId ?? null,
+      includeRootKey: opts.includeRootKey !== false,
+    });
+    await persistSerticardZipRootKeyWarningsAsIssues({
+      jobId: opts.jobId ?? null,
+      verification,
+      templateVariant: opts.templateVariant,
+      useCustomTemplate: opts.useCustom,
+      cmsTemplateId: opts.cmsTemplateId ?? null,
+      includeRootKey: opts.includeRootKey !== false,
+    });
+  } catch (e) {
+    console.error("[QR Multiple] persistZipRenderIssuesSafe failed:", e);
+  }
 }
 
 async function executeZipGeneration(
   validProducts: ZipGenProduct[],
   opts: ZipGenOpts
 ): Promise<ZipOutcome> {
-  const { bodyProductTitle, templateVariant, useCustom, batchNumber, isGramRequest } = opts;
+  const {
+    bodyProductTitle,
+    templateVariant,
+    useCustom,
+    cmsTemplateId,
+    batchNumber,
+    isGramRequest,
+    includeRootKey = true,
+  } = opts;
 
   // Group VALID products by weight (gramasi)
   const productsByWeight = new Map<number, ZipGenProduct[]>();
@@ -700,6 +824,8 @@ async function executeZipGeneration(
 
   const hasMultipleWeights = productsByWeight.size > 1;
 
+  const zipVerification = createZipVerificationSummary(validProducts.length);
+
   // NEW APPROACH: Use same logic as frontend - no PDFKit, no fontconfig errors
   // 1. Get QR from /api/qr/[serialCode]/qr-only (no PDFKit)
   // 2. Get template from file system or R2
@@ -709,39 +835,42 @@ async function executeZipGeneration(
   console.log(`[QR Multiple] Will combine QR + template in canvas, then generate PDF with pdf-lib`);
   console.log(`[QR Multiple] Template variant: ${templateVariant}`);
 
-  // Pre-load BOTH templates (front and back) - custom or variant
-  // If useCustom flag is set, loadSerticardTemplates will automatically use custom templates
+  // Pre-load BOTH templates — CMS spread, custom pair only if useCustom, else built-in variant
   const { front: frontTemplateImage, back: backTemplateImage } = await loadSerticardTemplates(
-    useCustom ? undefined : templateVariant
+    templateVariant,
+    cmsTemplateId != null ? { cmsTemplateId } : { useCustomTemplate: useCustom }
   );
   const fontConfig = await getSerticardConfig();
   const sizeMultipliers = getFontSizeMultipliers(
     fontConfig.fontSizePreset === "KECIL" ? "KECIL" : "BESAR"
   );
 
+  const { panelWidth, panelHeight } = getSerticardPdfPanelSize(
+    frontTemplateImage,
+    backTemplateImage
+  );
   console.log(`[QR Multiple] Both templates loaded successfully:`, {
     front: `${frontTemplateImage.width}x${frontTemplateImage.height}`,
     back: `${backTemplateImage.width}x${backTemplateImage.height}`,
+    pdfPanel: `${panelWidth}x${panelHeight}`,
   });
-
-  // Get base URL for internal API calls
-  const baseUrl =
-    process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const internalBaseUrl = baseUrl.replace(/\/$/, "");
 
   const ctx: ZipChunkContext = {
     canvasMod: CANVAS_MOD,
     frontTemplateImage,
     backTemplateImage,
+    panelWidth,
+    panelHeight,
     fontConfig,
     sizeMultipliers,
-    internalBaseUrl,
     bodyProductTitle,
     batchNumber,
     isGramRequest,
     hasMultipleWeights,
     templateVariant,
     useCustom,
+    cmsTemplateId: cmsTemplateId ?? null,
+    includeRootKey,
   };
 
   const jobId = opts.jobId;
@@ -800,17 +929,31 @@ async function executeZipGeneration(
           `Item ${startItem}-${endItem}: 0% ${batchLabel}`
         );
       }
-      const chunkResult = await buildOneZipChunk(chunks[c], ctx, jobId
-        ? async (processed, total) => {
-            const pct = Math.round((processed / total) * 100);
-            const overall = Math.floor((c / totalChunks) * 100 + (processed / total) * (100 / totalChunks));
-            await updateJobProgress(
-              jobId,
-              Math.min(99, overall),
-              `Item ${startItem}-${endItem}: ${pct}% ${batchLabel}`
-            );
-          }
-        : undefined);
+      if (jobId) {
+        await updateJobProgress(
+          jobId,
+          Math.floor((c / totalChunks) * 100),
+          `Item ${startItem}-${endItem}: render & verifikasi… ${batchLabel}`
+        );
+      }
+      const chunkResult = await buildOneZipChunk(
+        chunks[c],
+        ctx,
+        jobId
+          ? async (processed, total) => {
+              const pct = Math.round((processed / total) * 100);
+              const overall = Math.floor(
+                (c / totalChunks) * 100 + (processed / total) * (100 / totalChunks)
+              );
+              await updateJobProgress(
+                jobId,
+                Math.min(99, overall),
+                `Item ${startItem}-${endItem}: ${pct}% (verifikasi buffer) ${batchLabel}`
+              );
+            }
+          : undefined,
+        zipVerification
+      );
       if (chunkResult.successCount === 0) continue;
       if (jobId) {
         await updateJobProgress(
@@ -826,7 +969,13 @@ async function executeZipGeneration(
     });
       // Satu folder induk (batch-{num}-{date}), tiap batch 100 = subfolder sendiri; bisa selesai bertahap
       const batchFolder = `batch-${c + 1}-of-${totalChunks}`;
-      const zipBaseName = `serticard-${useCustom ? "custom" : `v${templateVariant}`}-${batchFolder}`;
+      const zipTpl =
+        cmsTemplateId != null
+          ? `cms-${cmsTemplateId}`
+          : useCustom
+            ? "custom"
+            : `v${templateVariant}`;
+      const zipBaseName = `serticard-${zipTpl}-${batchFolder}`;
       const r2Key = `qr-batches/batch-${batchNum}-${dateStr}/${batchFolder}/${zipBaseName}.zip`;
       await r2Client.send(
         new PutObjectCommand({
@@ -856,27 +1005,51 @@ async function executeZipGeneration(
           downloads: [...downloads],
           total_files: validProducts.length,
           chunked: true,
+          verification: zipVerification,
         });
       }
     }
-    if (jobId) await updateJobProgress(jobId, 100, "Semua batch selesai.");
+    if (downloads.length === 0) {
+      await persistZipRenderIssuesSafe(opts, zipVerification);
+      throw new Error(
+        "No PDFs could be generated for this ZIP (QR or verification failed for every item). Check items and template, then retry."
+      );
+    }
+    if (jobId) await updateJobProgress(jobId, 100, "Semua batch selesai. Verifikasi ringkasan di JSON & tiap ZIP.");
     console.log(`[QR Multiple] Chunked upload done: ${downloads.length} ZIPs, ${validProducts.length} total files`);
+    await persistZipRenderIssuesSafe(opts, zipVerification);
     return {
-      json: { success: true, downloads, total_files: validProducts.length, chunked: true },
+      json: {
+        success: true,
+        downloads,
+        total_files: validProducts.length,
+        chunked: true,
+        verification: zipVerification,
+      },
       zip: { buffer: Buffer.alloc(0), filename: "chunked.zip" },
     };
   }
 
   const n = validProducts.length;
-  if (jobId) await updateJobProgress(jobId, 10, `Item 1-${n}: 0%`);
-  const chunkResult = await buildOneZipChunk(validProducts, ctx, jobId
-    ? async (processed, total) => {
-        const pct = Math.round((processed / total) * 100);
-        const overall = 10 + Math.round((processed / total) * 80);
-        await updateJobProgress(jobId!, Math.min(89, overall), `Item 1-${n}: ${pct}%`);
-      }
-    : undefined);
+  if (jobId) await updateJobProgress(jobId, 10, `Item 1-${n}: render & verifikasi buffer…`);
+  const chunkResult = await buildOneZipChunk(
+    validProducts,
+    ctx,
+    jobId
+      ? async (processed, total) => {
+          const pct = Math.round((processed / total) * 100);
+          const overall = 10 + Math.round((processed / total) * 80);
+          await updateJobProgress(
+            jobId!,
+            Math.min(89, overall),
+            `Item 1-${n}: ${pct}% (verifikasi buffer)`
+          );
+        }
+      : undefined,
+    zipVerification
+  );
   if (chunkResult.successCount === 0) {
+    await persistZipRenderIssuesSafe(opts, zipVerification);
     const errorDetails = {
       message: "Failed to generate any PDFs. All products failed.",
       totalProducts: validProducts.length,
@@ -891,7 +1064,13 @@ async function executeZipGeneration(
     compressionOptions: { level: 9 },
   });
     const dateStr = new Date().toISOString().split("T")[0];
-    const filename = `serticard-${useCustom ? "custom" : `v${templateVariant}`}-${validProducts.length}-${dateStr}.zip`;
+    const zipTplSingle =
+      cmsTemplateId != null
+        ? `cms-${cmsTemplateId}`
+        : useCustom
+          ? "custom"
+          : `v${templateVariant}`;
+    const filename = `serticard-${zipTplSingle}-${validProducts.length}-${dateStr}.zip`;
 
   // Single ZIP: R2 upload below (reuses zipBuffer, dateStr, filename from chunkResult)
   const successCount = chunkResult.successCount;
@@ -979,7 +1158,13 @@ async function executeZipGeneration(
           });
 
           await r2Client.send(uploadCommand);
-        if (jobId) await updateJobProgress(jobId, 100, "Selesai.");
+        if (jobId) {
+          await updateJobProgress(
+            jobId,
+            100,
+            `Selesai. ${zipVerification.items.length} PDF terverifikasi; ${zipVerification.warnings.length} peringatan; ${zipVerification.renderFailures.length} gagal.`
+          );
+        }
           console.log(`[QR Multiple] ZIP uploaded to R2 successfully`);
 
           // Construct public URL
@@ -996,6 +1181,7 @@ async function executeZipGeneration(
             ? String(firstProduct.rootKey).trim()
             : null;
 
+        await persistZipRenderIssuesSafe(opts, zipVerification);
         return {
           json: {
             success: true,
@@ -1012,6 +1198,7 @@ async function executeZipGeneration(
             r2Key,
             zipSize: zipBuffer.length,
             message: "ZIP file generated and uploaded to R2 successfully",
+            verification: zipVerification,
           },
           zip: { buffer: zipBuffer, filename },
         };
@@ -1042,7 +1229,8 @@ async function executeZipGeneration(
     }
 
   // Fallback: return ZIP buffer when R2 not available or upload failed
-  return { zip: { buffer: zipBuffer, filename } };
+  await persistZipRenderIssuesSafe(opts, zipVerification);
+  return { zip: { buffer: zipBuffer, filename }, verification: zipVerification };
 }
 
 async function processZipJobInBackground(jobId: number): Promise<void> {
@@ -1065,19 +1253,23 @@ async function processZipJobInBackground(jobId: number): Promise<void> {
     }>;
     productTitle?: string;
     templateVariant?: string;
-    useCustomTemplate?: boolean;
+    useCustomTemplate?: unknown;
+    cmsTemplateId?: number | null;
     batchNumber?: number;
     batchId?: number;
     cacheKey?: string;
+    includeRootKey?: boolean;
   };
 
   const productsData = (payload.products || []).map((p) => ({
-    id: p.id,
-    name: p.name,
-    serialCode: p.serialCode,
-    weight: p.weight,
+    id: Number.isFinite(Number(p.id)) ? Math.floor(Number(p.id)) : 0,
+    name: String(p.name ?? "").trim(),
+    serialCode: String(p.serialCode ?? "")
+      .trim()
+      .toUpperCase(),
+    weight: typeof p.weight === "number" && !Number.isNaN(p.weight) ? p.weight : 0,
     isGram: p.isGram === true,
-    rootKey: p.rootKey ?? null,
+    rootKey: p.rootKey != null && String(p.rootKey).trim() !== "" ? String(p.rootKey).trim() : null,
   }));
 
   const validProducts = productsData.filter(
@@ -1090,6 +1282,45 @@ async function processZipJobInBackground(jobId: number): Promise<void> {
       p.name.trim().toUpperCase() !== "0000"
   );
 
+  const cmsTemplateIdJob = (() => {
+    const v = payload.cmsTemplateId;
+    if (v == null) return null;
+    const n = Math.floor(Number(v));
+    return Number.isFinite(n) && n > 0 ? n : null;
+  })();
+
+  const rawJobVariant =
+    payload.templateVariant != null && String(payload.templateVariant) !== ""
+      ? String(payload.templateVariant)
+      : "01";
+  const templateVariantJob = rawJobVariant === "custom" ? "01" : rawJobVariant;
+  const useCustomJob =
+    isAffirmativeCustomFlag(payload.useCustomTemplate) || rawJobVariant === "custom";
+
+  const invalidJobProducts = productsData.filter(
+    (p) =>
+      !p.name ||
+      !p.serialCode ||
+      p.name.trim().length === 0 ||
+      p.serialCode.trim().length === 0 ||
+      p.serialCode.trim().toUpperCase() === "0000" ||
+      p.name.trim().toUpperCase() === "0000"
+  );
+  if (invalidJobProducts.length > 0) {
+    try {
+      await persistInvalidZipProductsAsIssues({
+        jobId,
+        invalidProducts: invalidJobProducts,
+        templateVariant: templateVariantJob,
+        useCustomTemplate: useCustomJob,
+        cmsTemplateId: cmsTemplateIdJob,
+        includeRootKey: payload.includeRootKey !== false,
+      });
+    } catch (e) {
+      console.error("[QR Multiple] persistInvalidZipProductsAsIssues (job) failed:", e);
+    }
+  }
+
   if (validProducts.length === 0) {
     await prisma.qrZipDownloadJob.update({
       where: { id: jobId },
@@ -1100,10 +1331,12 @@ async function processZipJobInBackground(jobId: number): Promise<void> {
 
   const zipOpts: ZipGenOpts = {
     bodyProductTitle: payload.productTitle,
-    templateVariant: payload.templateVariant ?? "01",
-    useCustom: payload.useCustomTemplate === true,
+    templateVariant: templateVariantJob,
+    useCustom: useCustomJob,
+    cmsTemplateId: cmsTemplateIdJob,
     batchNumber: payload.batchNumber ?? payload.batchId ?? Math.floor(Date.now() / 1000),
     isGramRequest: validProducts.some((p) => p.isGram),
+    includeRootKey: payload.includeRootKey !== false,
     jobId,
   };
 

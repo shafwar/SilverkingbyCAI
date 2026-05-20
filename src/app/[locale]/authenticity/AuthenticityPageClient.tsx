@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
@@ -26,8 +26,10 @@ import { Scanner } from "@/components/shared/Scanner";
 import { useRouter } from "next/navigation";
 import { APP_NAME } from "@/utils/constants";
 import { getR2UrlClient } from "@/utils/r2-url";
+import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { usePageSections } from "@/hooks/usePageSections";
+import { usePageMedia } from "@/hooks/usePageMedia";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
@@ -292,14 +294,12 @@ export default function AuthenticityPageClient() {
   const heroRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const router = useRouter();
-  const {
-    sections: pageSections,
-    loading: sectionsLoading,
-    refetch: refetchPageSections,
-  } = usePageSections("authenticity");
+  const { sections: pageSections, refetch: refetchPageSections } = usePageSections("authenticity");
+  const { data: pageMediaAuthenticity } = usePageMedia("authenticity");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
   const heroMediaUrl =
     pageSections.hero?.url ?? getR2UrlClient("/videos/hero/mobile scanning qr.mp4");
+  const heroVideoPlayUrl = useMemo(() => proxiedHeroVideoSrc(heroMediaUrl), [heroMediaUrl]);
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
   // Register ScrollTrigger only on the client to avoid SSR/window issues
@@ -313,7 +313,7 @@ export default function AuthenticityPageClient() {
   }, []);
 
   // Ensure authenticity hero background video always autoplays reliably
-  useReliableVideoAutoplay(videoRef);
+  useReliableVideoAutoplay(videoRef, { mode: "background" });
 
   useGSAP(
     () => {
@@ -506,14 +506,17 @@ export default function AuthenticityPageClient() {
       {/* Hero background media — fixed behind content */}
       <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
         <div className="absolute inset-0 bg-luxury-black z-0" />
-        {sectionsLoading ? (
-          <div className="absolute inset-0 z-10 bg-luxury-black" aria-hidden />
-        ) : heroMediaType === "VIDEO" ? (
+        {heroMediaType === "VIDEO" ? (
           <VideoLoadGuard
+            key={`auth-hero-${heroVideoPlayUrl}-${pageSections.hero?.version ?? 0}`}
             ref={videoRef}
-            url={heroMediaUrl}
+            url={heroVideoPlayUrl}
             version={pageSections.hero?.version}
+            posterUrl={pageMediaAuthenticity?.heroImageUrl ?? null}
             forcePoster={!shouldLoadHeroVideo}
+            posterPriority
+            optimizeGpu
+            lightVideoFade
             containerClassName="absolute inset-0 h-full w-full z-10"
             className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
             style={{

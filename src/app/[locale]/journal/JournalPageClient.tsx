@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Navbar from "@/components/layout/Navbar";
 import { usePageSections } from "@/hooks/usePageSections";
+import { usePageMedia } from "@/hooks/usePageMedia";
+import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
+import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
+import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import { ScrollRevealSection } from "@/components/shared/ScrollRevealSection";
@@ -18,6 +22,19 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
+}
+
+function formatJournalListDate(iso: string, locale: string) {
+  const d = new Date(iso);
+  const loc = locale === "id" ? "id-ID" : "en-GB";
+  const day = d.toLocaleDateString(loc, { day: "numeric" });
+  const month = d.toLocaleDateString(loc, { month: "long" }).toUpperCase();
+  const year = d.getFullYear();
+  return { primary: `${day} ${month}`, year: String(year) };
+}
+
+function journalCardDateIso(item: Pick<JournalItem, "displayDate" | "publishedAt">) {
+  return item.displayDate ?? item.publishedAt;
 }
 
 const fontJournal = Plus_Jakarta_Sans({
@@ -33,6 +50,8 @@ type JournalItem = {
   excerpt: string | null;
   heroImageUrl: string | null;
   publishedAt: string | null;
+  /** Preferred date for cards (editorial or publish) */
+  displayDate?: string | null;
 };
 
 const LATEST_ARTICLES_LIMIT = 3;
@@ -65,11 +84,11 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
   const [heroImageError, setHeroImageError] = useState(false);
   const [heroVideoError, setHeroVideoError] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
-  const {
-    sections: pageSections,
-    loading: sectionsLoading,
-    refetch: refetchPageSections,
-  } = usePageSections("journal");
+  const journalHeroVideoRef = useRef<HTMLVideoElement>(null);
+  useReliableVideoAutoplay(journalHeroVideoRef, { mode: "background" });
+  const { sections: pageSections, refetch: refetchPageSections } = usePageSections("journal");
+  const { data: pageMediaJournal } = usePageMedia("journal");
+  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
   const heroMediaType = (pageSections.hero?.mediaType?.toUpperCase() ?? initialHeroMediaType) as "IMAGE" | "VIDEO";
   const heroUrl = heroImageError ? initialHeroUrl : (pageSections.hero?.url ?? initialHeroUrl);
@@ -83,32 +102,27 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
   const cmsHeroMediaType = pageSections.hero?.mediaType?.toUpperCase();
   const shouldUseCmsVideo = cmsHeroMediaType === "VIDEO" || cmsHeroUrl.includes(".mp4");
 
-  const r2KeyFromUrl = (url: string): string | null => {
-    const base = process.env.NEXT_PUBLIC_R2_PUBLIC_URL?.replace(/\/$/, "");
-    if (typeof base === "string" && base && url.startsWith(base)) {
-      return url.slice(base.length + 1);
-    }
-    const idx = url.indexOf("/static/");
-    return idx >= 0 ? url.slice(idx + 1) : null; // keep "static/..." prefix
-  };
-
-  const cmsR2Key = shouldUseCmsVideo ? r2KeyFromUrl(cmsHeroUrl) : null;
-  const resolvedHeroVideoSrc = cmsR2Key
-    ? `/api/hero-video?key=${encodeURIComponent(cmsR2Key)}`
-    : fallbackLocalVideoUrl;
+  const resolvedHeroVideoSrc = useMemo(() => {
+    if (!shouldUseCmsVideo || !cmsHeroUrl) return fallbackLocalVideoUrl;
+    return proxiedHeroVideoSrc(cmsHeroUrl);
+  }, [shouldUseCmsVideo, cmsHeroUrl]);
 
   // If we're using the bundled fallback, always bust the cache after re-encode.
   const effectiveHeroVideoVersion = resolvedHeroVideoSrc === fallbackLocalVideoUrl ? 2 : heroVersion;
 
   const shouldRenderVideo = !heroVideoError;
 
-  // Poster behind the hero:
-  // - If CMS sets an IMAGE hero, use that exact URL so "Edit hero" reflects immediately.
-  // - If CMS sets a VIDEO hero, keep a reliable same-origin image fallback (for slow networks / blocked video).
-  const posterUrl =
-    heroMediaType === "IMAGE" && heroUrl
-      ? heroUrl
-      : `/api/hero-image?page=journal${heroVersion ? `&v=${encodeURIComponent(String(heroVersion))}` : ""}`;
+  /**
+   * Poster (same pattern as What we do / Authenticity):
+   * - IMAGE hero: the CMS image URL.
+   * - VIDEO hero: optional PageMedia hero image only — never /api/hero-image?page=journal (that file is a
+   *   fixed legacy silver-bar JPEG and looks like “CMS didn’t update” when the real hero is video).
+   */
+  const posterUrl = useMemo(() => {
+    if (heroMediaType === "IMAGE" && heroUrl) return heroUrl;
+    if (heroMediaType === "VIDEO") return pageMediaJournal?.heroImageUrl ?? null;
+    return null;
+  }, [heroMediaType, heroUrl, pageMediaJournal?.heroImageUrl]);
 
   // Note: effectiveHeroVideoVersion is computed above from resolvedHeroVideoUrl.
 
@@ -181,11 +195,11 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
 
   const goAdminNew = () => {
     if (typeof window === "undefined") return;
-    window.location.href = "/admin/journal?new=1";
+    window.location.href = "/admin/journal/new";
   };
   const goAdminEdit = (id: number) => {
     if (typeof window === "undefined") return;
-    window.location.href = `/admin/journal?edit=${id}`;
+    window.location.href = `/admin/journal/${id}/edit`;
   };
   const deleteAdmin = async (id: number) => {
     if (!confirm("Delete this journal post?")) return;
@@ -234,9 +248,15 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
           {shouldRenderVideo ? (
             <div className="absolute inset-0">
               <VideoLoadGuard
-                key={resolvedHeroVideoSrc}
+                ref={journalHeroVideoRef}
+                key={`journal-hero-${resolvedHeroVideoSrc}-${effectiveHeroVideoVersion ?? 0}`}
                 url={resolvedHeroVideoSrc}
                 version={effectiveHeroVideoVersion}
+                posterUrl={posterUrl}
+                posterPriority
+                forcePoster={!shouldLoadHeroVideo}
+                optimizeGpu
+                lightVideoFade
                 containerClassName="absolute inset-0 h-full w-full"
                 className="absolute inset-0 h-full w-full object-cover"
                 style={{ objectFit: "cover" }}
@@ -332,7 +352,7 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.3 }}
               transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-              className="text-3xl font-semibold tracking-tight text-white sm:text-4xl"
+              className="text-3xl font-black tracking-tight text-white sm:text-4xl"
             >
               {t("listHeading")}
             </motion.h2>
@@ -424,20 +444,27 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
                       <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/55 to-transparent md:from-transparent md:via-transparent md:to-black/35" />
                     </div>
                     <div className="flex flex-col justify-center p-6 md:col-span-3 md:p-10">
-                      {latestItems[0].publishedAt && (
-                        <time className="mb-2 text-xs font-medium uppercase tracking-wider text-luxury-gold/80">
-                          {new Date(latestItems[0].publishedAt).toLocaleDateString(locale === "id" ? "id-ID" : "en-GB", {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })}
+                      {journalCardDateIso(latestItems[0]) && (
+                        <time
+                          dateTime={journalCardDateIso(latestItems[0])!}
+                          className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.65rem] font-bold uppercase tracking-[0.2em] text-luxury-gold sm:text-[0.6875rem]"
+                        >
+                          <span>{formatJournalListDate(journalCardDateIso(latestItems[0])!, locale).primary}</span>
+                          <span className="text-luxury-gold/35" aria-hidden>
+                            ·
+                          </span>
+                          <span className="font-semibold tabular-nums text-white/45">
+                            {formatJournalListDate(journalCardDateIso(latestItems[0])!, locale).year}
+                          </span>
                         </time>
                       )}
-                      <h3 className="mb-3 text-xl font-semibold text-white transition-colors group-hover:text-luxury-gold sm:text-2xl md:text-3xl">
+                      <h3 className="mb-3 text-xl font-extrabold tracking-tight text-white transition-colors group-hover:text-luxury-gold sm:text-2xl md:text-3xl">
                         {latestItems[0].title}
                       </h3>
                       {latestItems[0].excerpt && (
-                        <p className="mb-5 line-clamp-3 text-sm text-white/70 md:text-base">{latestItems[0].excerpt}</p>
+                        <p className="mb-5 line-clamp-3 text-sm leading-relaxed text-white/70 md:text-base">
+                          {latestItems[0].excerpt}
+                        </p>
                       )}
                       <span className="inline-flex items-center gap-2 text-sm font-medium text-luxury-gold">
                         {t("readMore")}
@@ -504,16 +531,19 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                       </div>
                       <div className="p-5 sm:p-6">
-                        {latestItems[1].publishedAt && (
-                          <time className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-luxury-gold/80">
-                            {new Date(latestItems[1].publishedAt).toLocaleDateString(locale === "id" ? "id-ID" : "en-GB", {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            })}
+                        {journalCardDateIso(latestItems[1]) && (
+                          <time
+                            dateTime={journalCardDateIso(latestItems[1])!}
+                            className="mb-2 flex flex-wrap items-center gap-x-1.5 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-luxury-gold"
+                          >
+                            <span>{formatJournalListDate(journalCardDateIso(latestItems[1])!, locale).primary}</span>
+                            <span className="text-luxury-gold/35">·</span>
+                            <span className="font-semibold tabular-nums text-white/45">
+                              {formatJournalListDate(journalCardDateIso(latestItems[1])!, locale).year}
+                            </span>
                           </time>
                         )}
-                        <h3 className="mb-2 text-lg font-semibold text-white transition-colors group-hover:text-luxury-gold sm:text-xl">
+                        <h3 className="mb-2 text-lg font-extrabold tracking-tight text-white transition-colors group-hover:text-luxury-gold sm:text-xl">
                           {latestItems[1].title}
                         </h3>
                         {latestItems[1].excerpt && (
@@ -536,16 +566,19 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
                       >
                         <div className="flex flex-col sm:flex-row sm:min-h-[200px]">
                           <div className="flex-1 p-5 sm:p-6 sm:order-1 sm:min-w-0">
-                            {latestItems[2].publishedAt && (
-                              <time className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-luxury-gold/80">
-                                {new Date(latestItems[2].publishedAt).toLocaleDateString(locale === "id" ? "id-ID" : "en-GB", {
-                                  year: "numeric",
-                                  month: "long",
-                                  day: "numeric",
-                                })}
+                            {journalCardDateIso(latestItems[2]) && (
+                              <time
+                                dateTime={journalCardDateIso(latestItems[2])!}
+                                className="mb-2 flex flex-wrap items-center gap-x-1.5 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-luxury-gold"
+                              >
+                                <span>{formatJournalListDate(journalCardDateIso(latestItems[2])!, locale).primary}</span>
+                                <span className="text-luxury-gold/35">·</span>
+                                <span className="font-semibold tabular-nums text-white/45">
+                                  {formatJournalListDate(journalCardDateIso(latestItems[2])!, locale).year}
+                                </span>
                               </time>
                             )}
-                            <h3 className="mb-2 text-lg font-semibold text-white transition-colors group-hover:text-luxury-gold sm:text-xl">
+                            <h3 className="mb-2 text-lg font-extrabold tracking-tight text-white transition-colors group-hover:text-luxury-gold sm:text-xl">
                               {latestItems[2].title}
                             </h3>
                             {latestItems[2].excerpt && (

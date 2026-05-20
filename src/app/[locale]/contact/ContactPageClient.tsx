@@ -32,7 +32,7 @@ export default function ContactPageClient() {
     try {
       const response = await fetch("/api/feedback", {
         method: "POST",
-        headers: {
+        headers: { 
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -126,43 +126,10 @@ export default function ContactPageClient() {
         {/* Animated Background Gradients */}
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-luxury-black" />
-          <motion.div
-            className="absolute inset-0 bg-gradient-to-br from-luxury-gold/10 via-transparent to-transparent"
-            animate={{
-              opacity: [0.3, 0.5, 0.3],
-            }}
-            transition={{
-              duration: 4,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          />
-          <motion.div
-            className="absolute top-0 left-1/4 w-96 h-96 bg-luxury-gold/5 rounded-full blur-3xl"
-            animate={{
-              x: [0, 100, 0],
-              y: [0, 50, 0],
-              scale: [1, 1.2, 1],
-            }}
-            transition={{
-              duration: 8,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          />
-          <motion.div
-            className="absolute bottom-0 right-1/4 w-96 h-96 bg-luxury-gold/5 rounded-full blur-3xl"
-            animate={{
-              x: [0, -100, 0],
-              y: [0, -50, 0],
-              scale: [1, 1.2, 1],
-            }}
-            transition={{
-              duration: 10,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          />
+          {/* Static gradients — avoids Framer infinite loops (constant main-thread / compositor work) */}
+          <div className="absolute inset-0 bg-gradient-to-br from-luxury-gold/10 via-transparent to-transparent opacity-40" />
+          <div className="absolute top-0 left-1/4 h-96 w-96 rounded-full bg-luxury-gold/5 blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 h-96 w-96 rounded-full bg-luxury-gold/5 blur-3xl" />
         </div>
 
         <div className="relative z-10 mx-auto max-w-5xl text-center">
@@ -218,20 +185,10 @@ export default function ContactPageClient() {
               transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
               className="relative"
             >
-              <div className="group relative rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.08] via-white/[0.05] to-white/[0.03] p-8 backdrop-blur-2xl shadow-[0_25px_80px_-20px_rgba(0,0,0,0.8)] md:p-10 overflow-hidden">
-                {/* Animated gradient overlays */}
+              <div className="group relative rounded-3xl border border-white/10 bg-gradient-to-br from-black/55 via-black/40 to-black/30 p-8 backdrop-blur-md shadow-[0_25px_80px_-20px_rgba(0,0,0,0.8)] md:p-10 overflow-hidden md:backdrop-blur-lg">
+                {/* Static overlays — same look, no per-frame animation */}
                 <div className="absolute inset-0 bg-gradient-to-br from-luxury-gold/8 via-transparent to-transparent pointer-events-none" />
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-tr from-transparent via-luxury-gold/5 to-transparent pointer-events-none"
-                  animate={{
-                    opacity: [0.3, 0.6, 0.3],
-                  }}
-                  transition={{
-                    duration: 5,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-luxury-gold/5 to-transparent opacity-45" />
                 {/* Decorative corner accents */}
                 <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-luxury-gold/10 to-transparent rounded-br-full blur-2xl" />
                 <div className="absolute bottom-0 right-0 w-40 h-40 bg-gradient-to-tl from-luxury-gold/10 to-transparent rounded-tl-full blur-2xl" />
@@ -361,7 +318,7 @@ export default function ContactPageClient() {
                 <motion.div
                   whileHover={{ scale: 1.03, x: 6, y: -2 }}
                   transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                  className="group relative flex items-start gap-5 rounded-3xl border border-white/15 bg-gradient-to-br from-white/[0.08] via-white/[0.05] to-white/[0.03] p-6 backdrop-blur-xl hover:border-luxury-gold/40 hover:bg-gradient-to-br hover:from-white/[0.12] hover:via-white/[0.08] hover:to-white/[0.05] transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-luxury-gold/20 overflow-hidden"
+                  className="group relative flex items-start gap-5 rounded-3xl border border-white/15 bg-gradient-to-br from-black/45 via-black/30 to-black/25 p-6 md:backdrop-blur-md hover:border-luxury-gold/40 hover:bg-gradient-to-br hover:from-black/50 hover:via-black/35 hover:to-black/30 transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-luxury-gold/20 overflow-hidden"
                 >
                   {/* Hover glow effect */}
                   <div className="absolute inset-0 bg-gradient-to-br from-luxury-gold/0 via-luxury-gold/0 to-luxury-gold/0 group-hover:from-luxury-gold/10 group-hover:via-luxury-gold/5 group-hover:to-luxury-gold/0 transition-all duration-300 pointer-events-none" />
@@ -384,7 +341,7 @@ export default function ContactPageClient() {
                 <motion.div
                   whileHover={{ scale: 1.03, x: 6, y: -2 }}
                   transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                  className="group relative flex items-start gap-5 rounded-3xl border border-white/15 bg-gradient-to-br from-white/[0.08] via-white/[0.05] to-white/[0.03] p-6 backdrop-blur-xl hover:border-luxury-gold/40 hover:bg-gradient-to-br hover:from-white/[0.12] hover:via-white/[0.08] hover:to-white/[0.05] transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-luxury-gold/20 overflow-hidden"
+                  className="group relative flex items-start gap-5 rounded-3xl border border-white/15 bg-gradient-to-br from-black/45 via-black/30 to-black/25 p-6 md:backdrop-blur-md hover:border-luxury-gold/40 hover:bg-gradient-to-br hover:from-black/50 hover:via-black/35 hover:to-black/30 transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-luxury-gold/20 overflow-hidden"
                 >
                   {/* Hover glow effect */}
                   <div className="absolute inset-0 bg-gradient-to-br from-luxury-gold/0 via-luxury-gold/0 to-luxury-gold/0 group-hover:from-luxury-gold/10 group-hover:via-luxury-gold/5 group-hover:to-luxury-gold/0 transition-all duration-300 pointer-events-none" />
@@ -407,7 +364,7 @@ export default function ContactPageClient() {
                 <motion.div
                   whileHover={{ scale: 1.03, x: 6, y: -2 }}
                   transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                  className="group relative flex items-start gap-5 rounded-3xl border border-white/15 bg-gradient-to-br from-white/[0.08] via-white/[0.05] to-white/[0.03] p-6 backdrop-blur-xl hover:border-luxury-gold/40 hover:bg-gradient-to-br hover:from-white/[0.12] hover:via-white/[0.08] hover:to-white/[0.05] transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-luxury-gold/20 overflow-hidden"
+                  className="group relative flex items-start gap-5 rounded-3xl border border-white/15 bg-gradient-to-br from-black/45 via-black/30 to-black/25 p-6 md:backdrop-blur-md hover:border-luxury-gold/40 hover:bg-gradient-to-br hover:from-black/50 hover:via-black/35 hover:to-black/30 transition-all duration-300 shadow-lg hover:shadow-2xl hover:shadow-luxury-gold/20 overflow-hidden"
                 >
                   {/* Hover glow effect */}
                   <div className="absolute inset-0 bg-gradient-to-br from-luxury-gold/0 via-luxury-gold/0 to-luxury-gold/0 group-hover:from-luxury-gold/10 group-hover:via-luxury-gold/5 group-hover:to-luxury-gold/0 transition-all duration-300 pointer-events-none" />

@@ -1,56 +1,65 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations, useLocale } from "next-intl";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
-import { useTranslations } from "next-intl";
-import { Plus, Pencil, Trash2, X, Upload } from "lucide-react";
-import { getR2UrlClient } from "@/utils/r2-url";
-import { useSearchParams } from "next/navigation";
-import { ModalPortal } from "@/components/ui/ModalPortal";
-import { JournalRichEditor } from "@/components/admin/journal/JournalRichEditor";
+import { Plus, Pencil, Trash2, ExternalLink, BookOpen, CalendarDays } from "lucide-react";
+import clsx from "clsx";
 
 type JournalItem = {
   id: number;
   slug: string;
   titleId: string;
   titleEn: string;
-  contentId: string;
-  contentEn: string;
-  excerptId: string | null;
-  excerptEn: string | null;
-  heroImageR2Key: string | null;
+  articleDate: string | null;
   publishedAt: string | null;
-  sortOrder: number;
   createdAt: string;
   updatedAt: string;
 };
 
-const defaultItem: Partial<JournalItem> = {
-  slug: "",
-  titleId: "",
-  titleEn: "",
-  contentId: "",
-  contentEn: "",
-  excerptId: "",
-  excerptEn: "",
-  heroImageR2Key: null,
-  publishedAt: null,
-  sortOrder: 0,
-};
+function displayDateIso(row: JournalItem): string | null {
+  return row.articleDate ?? row.publishedAt ?? row.createdAt;
+}
+
+function formatTableDate(iso: string | null, locale: string) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString(locale === "id" ? "id-ID" : "en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function TableSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-transparent p-1">
+      <div className="rounded-xl bg-black/40 p-4">
+        <div className="mb-4 h-10 animate-pulse rounded-lg bg-white/[0.06]" />
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} className="mb-3 flex gap-4 last:mb-0">
+            <div className="h-12 w-24 shrink-0 animate-pulse rounded-lg bg-white/[0.06]" />
+            <div className="h-12 flex-1 animate-pulse rounded-lg bg-white/[0.05]" />
+            <div className="h-12 w-20 shrink-0 animate-pulse rounded-lg bg-white/[0.06]" />
+            <div className="h-12 w-28 shrink-0 animate-pulse rounded-lg bg-white/[0.06]" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function JournalPageClient() {
   const t = useTranslations("admin.journal");
+  const locale = useLocale();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [items, setItems] = useState<JournalItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<JournalItem | null>(null);
-  const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [form, setForm] = useState<Record<string, string | number | null>>({ ...defaultItem } as Record<string, string | number | null>);
-  const [heroFile, setHeroFile] = useState<File | null>(null);
-  const [heroPreviewUrl, setHeroPreviewUrl] = useState<string | null>(null);
-  const [uploadingHero, setUploadingHero] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -69,413 +78,213 @@ export function JournalPageClient() {
     load();
   }, [load]);
 
-  // Allow deep-link from public page: /admin/journal?new=1 or ?edit=<id>
   useEffect(() => {
-    if (loading) return;
     const wantsNew = searchParams.get("new");
     const editId = searchParams.get("edit");
-    if (wantsNew === "1" && !modalOpen) {
-      openCreate();
+    if (wantsNew === "1") {
+      router.replace("/admin/journal/new");
       return;
     }
-    if (editId && !modalOpen) {
+    if (editId) {
       const id = parseInt(editId, 10);
-      if (!Number.isNaN(id)) {
-        const row = items.find((it) => it.id === id);
-        if (row) openEdit(row);
-      }
+      if (!Number.isNaN(id)) router.replace(`/admin/journal/${id}/edit`);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, items, searchParams]);
+  }, [searchParams, router]);
 
-  const getHeroPreview = (r2Key: string | null | undefined): string | null => {
-    if (!r2Key) return null;
-    const base = process.env.NEXT_PUBLIC_R2_PUBLIC_URL?.replace(/\/$/, "");
-    if (base) return `${base}/${r2Key}`;
-    // dev fallback: best-effort map known keys under static/ to / (public)
-    if (r2Key.startsWith("static/")) return `/${r2Key.slice("static/".length)}`;
-    return null;
-  };
-
-  const openCreate = () => {
-    setEditing(null);
-    setForm({ ...defaultItem } as Record<string, string | number | null>);
-    setHeroFile(null);
-    setHeroPreviewUrl(null);
-    setModalOpen(true);
-  };
-
-  const openEdit = (row: JournalItem) => {
-    setEditing(row);
-    setForm({
-      slug: row.slug,
-      titleId: row.titleId,
-      titleEn: row.titleEn,
-      contentId: row.contentId,
-      contentEn: row.contentEn,
-      excerptId: row.excerptId ?? "",
-      excerptEn: row.excerptEn ?? "",
-      heroImageR2Key: row.heroImageR2Key,
-      publishedAt: row.publishedAt ?? null,
-      sortOrder: row.sortOrder,
-    });
-    setHeroFile(null);
-    setHeroPreviewUrl(getHeroPreview(row.heroImageR2Key));
-    setModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setModalOpen(false);
-    setEditing(null);
-    setHeroFile(null);
-    setHeroPreviewUrl(null);
-  };
-
-  const uploadHero = async (): Promise<string | null> => {
-    if (!heroFile) return (form.heroImageR2Key as string) || null;
-    setUploadingHero(true);
-    try {
-      const fd = new FormData();
-      fd.set("file", heroFile);
-      const res = await fetch("/api/admin/journal/upload", { method: "POST", body: fd });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Upload failed");
-      }
-      const data = await res.json();
-      return data.r2Key ?? null;
-    } catch (e) {
-      alert(e instanceof Error ? e.message : "Upload failed");
-      return (form.heroImageR2Key as string) || null;
-    } finally {
-      setUploadingHero(false);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const slug = String(form.slug ?? "").trim();
-    const titleId = String(form.titleId ?? "").trim();
-    const titleEn = String(form.titleEn ?? "").trim();
-    const contentId = String(form.contentId ?? "").trim();
-    const contentEn = String(form.contentEn ?? "").trim();
-    if (!titleId && !titleEn) {
-      alert("Isi minimal salah satu Title (Indonesia atau English).");
-      return;
-    }
-    if (!contentId && !contentEn) {
-      alert("Isi minimal salah satu Content (Indonesia atau English).");
-      return;
-    }
-    const finalTitleId = titleId || titleEn;
-    const finalTitleEn = titleEn || titleId;
-    const finalContentId = contentId || contentEn;
-    const finalContentEn = contentEn || contentId;
-    const excerptId = String(form.excerptId ?? "").trim();
-    const excerptEn = String(form.excerptEn ?? "").trim();
-    const finalExcerptId = excerptId || excerptEn;
-    const finalExcerptEn = excerptEn || excerptId;
-
-    setSaving(true);
-    try {
-      const heroR2Key = await uploadHero();
-      const payload = {
-        slug: slug || undefined,
-        titleId: finalTitleId,
-        titleEn: finalTitleEn,
-        contentId: finalContentId,
-        contentEn: finalContentEn,
-        excerptId: finalExcerptId ? finalExcerptId : undefined,
-        excerptEn: finalExcerptEn ? finalExcerptEn : undefined,
-        heroImageR2Key: heroR2Key || undefined,
-        publishedAt: form.publishedAt === "true" ? true : (form.publishedAt && String(form.publishedAt).trim() ? form.publishedAt : null),
-        sortOrder: typeof form.sortOrder === "number" ? form.sortOrder : parseInt(String(form.sortOrder), 10) || 0,
-      };
-
-      if (editing) {
-        const res = await fetch(`/api/admin/journal/${editing.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error || "Update failed");
-        }
-      } else {
-        const res = await fetch("/api/admin/journal", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error || "Create failed");
-        }
-      }
-      closeModal();
-      await load();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Save failed";
-      alert(`Gagal menyimpan berita: ${msg}`);
-    } finally {
-      setSaving(false);
-    }
-  };
+  const stats = useMemo(() => {
+    const published = items.filter((r) => r.publishedAt).length;
+    return { total: items.length, published, drafts: items.length - published };
+  }, [items]);
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this journal post?")) return;
+    if (!confirm(t("deleteConfirm"))) return;
     setDeletingId(id);
     try {
       const res = await fetch(`/api/admin/journal/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
       await load();
     } catch {
-      alert("Delete failed");
+      alert(t("deleteFailed"));
     } finally {
       setDeletingId(null);
     }
   };
 
-  return (
-    <AdminPageLayout eyebrow="Admin" title={t("title")}>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-white">{t("title")}</h1>
-          <button
-            type="button"
-            onClick={openCreate}
-            aria-label={t("newPost")}
-            title={t("newPost")}
-            className="inline-flex items-center gap-2 rounded-lg bg-luxury-gold/20 px-4 py-2 text-sm font-medium text-luxury-gold hover:bg-luxury-gold/30"
-          >
-            <Plus className="h-4 w-4" />
-            {t("newPost")}
-          </button>
-        </div>
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
 
+  return (
+    <AdminPageLayout
+      eyebrow="Admin"
+      title={t("title")}
+      description={t("listDescription")}
+      actions={
+        <Link
+          href="/admin/journal/new"
+          className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#e8c547] to-[#c9a227] px-5 py-2.5 text-sm font-semibold text-black shadow-[0_0_24px_-4px_rgba(232,197,71,0.45)] transition hover:brightness-105 hover:shadow-[0_0_28px_-4px_rgba(232,197,71,0.55)] active:scale-[0.98]"
+        >
+          <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" strokeWidth={2.5} />
+          {t("newPost")}
+        </Link>
+      }
+    >
+      <div className="space-y-6">
         {loading ? (
-          <p className="text-white/50">Loading…</p>
+          <TableSkeleton />
         ) : items.length === 0 ? (
-          <p className="text-white/50">{t("noPosts")}</p>
+          <div className="relative overflow-hidden rounded-2xl border border-white/[0.09] bg-gradient-to-br from-white/[0.05] via-black/40 to-black/80 px-6 py-16 text-center sm:px-10 sm:py-20">
+            <div
+              className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-luxury-gold/[0.07] blur-3xl"
+              aria-hidden
+            />
+            <div
+              className="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-luxury-gold/[0.05] blur-3xl"
+              aria-hidden
+            />
+            <div className="relative mx-auto flex max-w-md flex-col items-center">
+              <span className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-luxury-gold/90 shadow-inner">
+                <BookOpen className="h-8 w-8" strokeWidth={1.5} />
+              </span>
+              <p className="text-lg font-semibold tracking-tight text-white">{t("noPosts")}</p>
+              <p className="mt-2 text-sm leading-relaxed text-white/45">{t("emptySubtitle")}</p>
+              <Link
+                href="/admin/journal/new"
+                className="mt-8 inline-flex items-center gap-2 rounded-xl border border-luxury-gold/35 bg-luxury-gold/10 px-5 py-2.5 text-sm font-medium text-luxury-gold transition hover:border-luxury-gold/50 hover:bg-luxury-gold/15"
+              >
+                <Plus className="h-4 w-4" />
+                {t("newPost")}
+              </Link>
+            </div>
+          </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/5">
-            <table className="w-full min-w-[640px]">
+          <>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3.5 py-1.5 text-xs font-medium text-white/85">
+                  <span className="h-1.5 w-1.5 rounded-full bg-luxury-gold" aria-hidden />
+                  {t("statsTotal", { count: stats.total })}
+                </span>
+                <span className="text-white/25" aria-hidden>
+                  ·
+                </span>
+                <span className="text-xs text-emerald-400/90">{t("statsLive", { count: stats.published })}</span>
+                <span className="text-xs text-white/30">·</span>
+                <span className="text-xs text-white/50">{t("statsDrafts", { count: stats.drafts })}</span>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.035] to-transparent shadow-[0_24px_48px_-32px_rgba(0,0,0,0.9)]">
+              <div className="h-px w-full bg-gradient-to-r from-transparent via-luxury-gold/25 to-transparent" aria-hidden />
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] text-left text-[13px]">
               <thead>
-                <tr className="border-b border-white/10">
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-white/60">{t("titleLabel")}</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-white/60">Slug</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-white/60">{t("status")}</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-white/60">{t("actions")}</th>
+                    <tr className="border-b border-white/[0.07] bg-black/50">
+                      <th
+                        scope="col"
+                        className="whitespace-nowrap px-5 py-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40"
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <CalendarDays className="h-3.5 w-3.5 text-white/30" aria-hidden />
+                          {t("dateColumn")}
+                        </span>
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-5 py-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40"
+                      >
+                        {t("titleLabel")}
+                      </th>
+                      <th
+                        scope="col"
+                        className="whitespace-nowrap px-5 py-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40"
+                      >
+                        {t("status")}
+                      </th>
+                      <th
+                        scope="col"
+                        className="whitespace-nowrap px-5 py-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40"
+                      >
+                        {t("articleLinkColumn")}
+                      </th>
+                      <th
+                        scope="col"
+                        className="whitespace-nowrap px-5 py-4 text-right text-[10px] font-semibold uppercase tracking-[0.16em] text-white/40"
+                      >
+                        {t("actions")}
+                      </th>
                 </tr>
               </thead>
-              <tbody>
-                {items.map((row) => (
-                  <tr key={row.id} className="border-b border-white/5 hover:bg-white/5">
-                    <td className="px-4 py-3 font-medium text-white/90">{row.titleEn || row.titleId}</td>
-                    <td className="px-4 py-3 text-sm text-white/60">{row.slug}</td>
-                    <td className="px-4 py-3 text-sm">{row.publishedAt ? <span className="text-emerald-400">{t("published")}</span> : <span className="text-white/40">{t("draft")}</span>}</td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(row)}
-                        aria-label={t("editPost")}
-                        title={t("editPost")}
-                        className="mr-2 rounded p-1.5 text-white/60 hover:bg-white/10 hover:text-white"
+                  <tbody className="divide-y divide-white/[0.05]">
+                    {items.map((row, i) => (
+                      <tr
+                        key={row.id}
+                        className={clsx(
+                          "group transition-colors duration-150",
+                          "border-l-2 border-l-transparent hover:border-l-luxury-gold/40 hover:bg-white/[0.03]",
+                          i % 2 === 1 ? "bg-black/15" : "bg-transparent"
+                        )}
+                      >
+                        <td className="whitespace-nowrap px-5 py-4 tabular-nums text-white/75">
+                          {formatTableDate(displayDateIso(row), locale)}
+                        </td>
+                        <td className="max-w-[min(320px,40vw)] px-5 py-4">
+                          <p className="truncate font-medium leading-snug text-white">{row.titleEn || row.titleId}</p>
+                          {row.titleEn && row.titleId && row.titleEn !== row.titleId ? (
+                            <p className="mt-1 truncate text-[12px] leading-snug text-white/38">{row.titleId}</p>
+                          ) : null}
+                        </td>
+                        <td className="px-5 py-4">
+                          {row.publishedAt ? (
+                            <span className="inline-flex items-center rounded-full border border-emerald-400/20 bg-emerald-500/[0.12] px-2.5 py-1 text-[11px] font-semibold tracking-wide text-emerald-300/95">
+                              {t("published")}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full border border-white/[0.1] bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-white/45">
+                              {t("draft")}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-5 py-4">
+                          <a
+                            href={`${origin}/journal/${row.slug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex max-w-full items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] py-1.5 pl-2.5 pr-3 text-[11px] font-medium text-luxury-gold/95 transition hover:border-luxury-gold/25 hover:bg-luxury-gold/[0.08]"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                            <span className="min-w-0 truncate">{t("openLivePage")}</span>
+                          </a>
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <div className="inline-flex items-center gap-0.5 rounded-xl border border-white/[0.06] bg-black/30 p-0.5">
+                            <Link
+                              href={`/admin/journal/${row.id}/edit`}
+                              className="inline-flex rounded-lg p-2 text-white/55 transition hover:bg-white/10 hover:text-white"
+                              aria-label={t("editPost")}
+                              title={t("editPost")}
                       >
                         <Pencil className="h-4 w-4" />
-                      </button>
+                            </Link>
                       <button
                         type="button"
                         onClick={() => handleDelete(row.id)}
                         disabled={deletingId === row.id}
+                              className="inline-flex rounded-lg p-2 text-white/55 transition hover:bg-red-500/15 hover:text-red-300 disabled:pointer-events-none disabled:opacity-35"
                         aria-label={t("deletePost")}
                         title={t("deletePost")}
-                        className="rounded p-1.5 text-white/60 hover:bg-red-500/20 hover:text-red-400 disabled:opacity-50 disabled:pointer-events-none"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
+                          </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+            </div>
+          </>
         )}
       </div>
-
-      {modalOpen && (
-        <ModalPortal zIndex={9999}>
-          <div className="absolute inset-0 bg-black/70" onClick={closeModal} />
-          <div className="absolute inset-0 flex items-center justify-center p-4">
-            <div className="relative w-full max-w-2xl max-h-[calc(100dvh-32px)] overflow-y-auto rounded-2xl border border-white/10 bg-[#0c0c0c] shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
-              <h2 className="text-lg font-semibold text-white">{editing ? t("editPost") : t("newPost")}</h2>
-              <button type="button" onClick={closeModal} className="rounded p-2 text-white/60 hover:bg-white/10 hover:text-white">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-4 p-6">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-white/60">{t("titleId")}</label>
-                  <input
-                    type="text"
-                    value={String(form.titleId ?? "")}
-                    onChange={(e) => setForm((f) => ({ ...f, titleId: e.target.value }))}
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-white/30"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-white/60">{t("titleEn")}</label>
-                  <input
-                    type="text"
-                    value={String(form.titleEn ?? "")}
-                    onChange={(e) => setForm((f) => ({ ...f, titleEn: e.target.value }))}
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-white/30"
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-white/60">Slug (optional, auto from title)</label>
-                <input
-                  type="text"
-                  value={String(form.slug ?? "")}
-                  onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))}
-                  placeholder="e.g. company-news-march-2025"
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-white/30"
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-white/60">{t("excerptId")}</label>
-                  <input
-                    type="text"
-                    value={String(form.excerptId ?? "")}
-                    onChange={(e) => setForm((f) => ({ ...f, excerptId: e.target.value }))}
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-white/30"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-white/60">{t("excerptEn")}</label>
-                  <input
-                    type="text"
-                    value={String(form.excerptEn ?? "")}
-                    onChange={(e) => setForm((f) => ({ ...f, excerptEn: e.target.value }))}
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder-white/30"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-white/60">{t("contentId")}</label>
-                  <JournalRichEditor
-                    value={String(form.contentId ?? "")}
-                    onChange={(html) => setForm((f) => ({ ...f, contentId: html }))}
-                    placeholder="Tulis konten (Indonesia)…"
-                    onUploadImage={async (file) => {
-                      const fd = new FormData();
-                      fd.set("file", file);
-                      const res = await fetch("/api/admin/journal/upload", { method: "POST", body: fd });
-                      if (!res.ok) {
-                        const err = await res.json().catch(() => ({}));
-                        throw new Error(err.error || "Upload failed");
-                      }
-                      const data = await res.json();
-                      return data.url ?? null;
-                    }}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-white/60">{t("contentEn")}</label>
-                  <JournalRichEditor
-                    value={String(form.contentEn ?? "")}
-                    onChange={(html) => setForm((f) => ({ ...f, contentEn: html }))}
-                    placeholder="Write content (English)…"
-                    onUploadImage={async (file) => {
-                      const fd = new FormData();
-                      fd.set("file", file);
-                      const res = await fetch("/api/admin/journal/upload", { method: "POST", body: fd });
-                      if (!res.ok) {
-                        const err = await res.json().catch(() => ({}));
-                        throw new Error(err.error || "Upload failed");
-                      }
-                      const data = await res.json();
-                      return data.url ?? null;
-                    }}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-white/60">{t("heroImage")}</label>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-white/20 bg-white/5 px-4 py-3 text-sm text-white/70 hover:bg-white/10">
-                    <Upload className="h-4 w-4" />
-                    {heroFile ? heroFile.name : (form.heroImageR2Key ? "Replace image" : "Choose image")}
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      className="hidden"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        setHeroFile(f ?? null);
-                        if (f) setHeroPreviewUrl(URL.createObjectURL(f));
-                      }}
-                    />
-                  </label>
-                  {uploadingHero && <span className="text-sm text-white/50">Uploading…</span>}
-                </div>
-                {(heroPreviewUrl || form.heroImageR2Key) && (
-                  <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/30">
-                    <img
-                      src={heroPreviewUrl ?? getHeroPreview(form.heroImageR2Key as string) ?? getR2UrlClient("/images/hero-fallback.jpg")}
-                      alt=""
-                      className="h-40 w-full object-cover"
-                      loading="lazy"
-                    />
-                    {form.heroImageR2Key && (
-                      <div className="px-3 py-2 text-[11px] text-white/50">
-                        R2 key: <span className="font-mono text-white/60">{String(form.heroImageR2Key)}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-4">
-                <label className="flex items-center gap-2 text-sm text-white/80">
-                  <input
-                    type="checkbox"
-                    checked={form.publishedAt === "true" || (!!form.publishedAt && String(form.publishedAt).trim() !== "")}
-                    onChange={(e) => setForm((f) => ({ ...f, publishedAt: e.target.checked ? "true" : null }))}
-                    className="rounded border-white/20"
-                  />
-                  {t("published")}
-                </label>
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-white/60">{t("sortOrder")}</label>
-                  <input
-                    type="number"
-                    value={form.sortOrder ?? 0}
-                    onChange={(e) => setForm((f) => ({ ...f, sortOrder: parseInt(e.target.value, 10) || 0 }))}
-                    className="w-20 rounded border border-white/10 bg-white/5 px-2 py-1 text-white"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 border-t border-white/10 pt-4">
-                <button type="button" onClick={closeModal} className="rounded-lg border border-white/10 px-4 py-2 text-sm text-white/80 hover:bg-white/10">
-                  Cancel
-                </button>
-                <button type="submit" disabled={saving} className="rounded-lg bg-luxury-gold/90 px-4 py-2 text-sm font-medium text-black hover:bg-luxury-gold disabled:opacity-50">
-                  {saving ? "Saving…" : editing ? "Update" : "Create"}
-                </button>
-              </div>
-            </form>
-            </div>
-          </div>
-        </ModalPortal>
-      )}
     </AdminPageLayout>
   );
 }

@@ -7,9 +7,10 @@ import { Pencil, RotateCcw } from "lucide-react";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { usePageSections, getCacheBustedMediaUrl } from "@/hooks/usePageSections";
 import { getR2UrlClient } from "@/utils/r2-url";
+import { useHomeHeroSectionsContext } from "@/components/layout/HomeHeroSectionsContext";
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
-const MAX_VIDEO_BYTES = 10 * 1024 * 1024; // 10 MB
+const MAX_VIDEO_BYTES = 20 * 1024 * 1024; // 20 MB
 const UPLOAD_PROGRESS_CAP = 90; // 100% only after server confirms success
 const IMAGE_UPLOAD_TIMEOUT_MS = 90_000; // 90s
 const VIDEO_UPLOAD_TIMEOUT_MS = 120_000; // 120s
@@ -41,6 +42,8 @@ type EditableMediaProps = {
   fullAreaClickable?: boolean;
   /** When true, opening the modal automatically opens the file picker (e.g. craft cards + footer on What We Do) */
   autoOpenFilePicker?: boolean;
+  /** Home persistent hero: skip duplicate page-sections fetch + cheaper button chrome (less GPU over video). */
+  reduceOverlayChromeCost?: boolean;
 };
 
 export function EditableMedia({
@@ -59,11 +62,20 @@ export function EditableMedia({
   editLabel,
   fullAreaClickable = false,
   autoOpenFilePicker = false,
+  reduceOverlayChromeCost = false,
 }: EditableMediaProps) {
   const isAdmin = useIsAdmin();
-  const { sections, loading: sectionsLoading, refetch } = usePageSections(page);
+  const homeHeroCtx = useHomeHeroSectionsContext();
+  const skipInternalPageFetch = Boolean(
+    overlayOnly && page === "home" && homeHeroCtx != null
+  );
+  const pageKeyForSections = skipInternalPageFetch ? "" : page;
+  const { sections: hookSections, loading: sectionsLoading, refetch: hookRefetch } =
+    usePageSections(pageKeyForSections);
+  const sections = skipInternalPageFetch && homeHeroCtx ? homeHeroCtx.sections : hookSections;
+  const refetchPageSections = skipInternalPageFetch && homeHeroCtx ? homeHeroCtx.refetch : hookRefetch;
   const refetchAll = async () => {
-    await refetch();
+    await refetchPageSections();
     onUploadDone?.();
   };
   const [modalOpen, setModalOpen] = useState(false);
@@ -165,7 +177,7 @@ export function EditableMedia({
     }
     const limit = uploadType === "image" ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
     if (file.size > limit) {
-      setError(uploadType === "image" ? "Image max 3 MB." : "Video max 10 MB.");
+      setError(uploadType === "image" ? "Image max 3 MB." : "Video max 20 MB.");
       e.target.value = "";
       if (autoOpenFilePicker) {
         setModalOpenAttribute();
@@ -339,11 +351,33 @@ export function EditableMedia({
   };
 
   if (overlayOnly) {
-    const btnClass = editLabel
-      ? "flex h-11 items-center gap-2 rounded-xl border-2 border-luxury-gold bg-luxury-gold/25 px-3 py-2.5 text-luxury-gold shadow-lg backdrop-blur-sm transition hover:bg-luxury-gold/40 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50"
-      : "flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-black/50 text-white/80 backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50";
+    const chrome = reduceOverlayChromeCost
+      ? {
+          editLabeled:
+            "flex h-11 items-center gap-2 rounded-xl border-2 border-luxury-gold bg-luxury-gold/40 px-3 py-2.5 text-luxury-gold shadow-md transition hover:bg-luxury-gold/55 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50",
+          editIcon:
+            "flex h-9 w-9 items-center justify-center rounded-lg border border-white/25 bg-black/65 text-white/90 shadow-sm transition hover:bg-black/80 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50",
+          restoreLabeled:
+            "flex h-11 items-center gap-2 rounded-xl border-2 border-white/35 bg-black/70 px-3 py-2.5 text-white/95 shadow-md transition hover:bg-black/85 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 disabled:opacity-50",
+          restoreIcon:
+            "flex h-9 w-9 items-center justify-center rounded-lg border border-white/25 bg-black/65 text-white/90 shadow-sm transition hover:bg-black/80 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 disabled:opacity-50",
+        }
+      : {
+          editLabeled:
+            "flex h-11 items-center gap-2 rounded-xl border-2 border-luxury-gold bg-luxury-gold/25 px-3 py-2.5 text-luxury-gold shadow-lg backdrop-blur-sm transition hover:bg-luxury-gold/40 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50",
+          editIcon:
+            "flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-black/50 text-white/80 backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50",
+          restoreLabeled:
+            "flex h-11 items-center gap-2 rounded-xl border-2 border-white/30 bg-black/50 px-3 py-2.5 text-white/90 shadow-lg backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 disabled:opacity-50",
+          restoreIcon:
+            "flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-black/50 text-white/80 backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 disabled:opacity-50",
+        };
+    const btnClass = editLabel ? chrome.editLabeled : chrome.editIcon;
+    const buttonRowClass = reduceOverlayChromeCost
+      ? "relative z-[10002] flex shrink-0 flex-wrap items-center justify-end gap-2"
+      : "absolute top-3 right-3 z-[10002] flex items-center gap-2";
     const buttons = isAdmin ? (
-      <div className="absolute top-3 right-3 z-[10002] flex items-center gap-2">
+      <div className={buttonRowClass}>
         {/* Restore: shown only when admin has replaced media; reverts to current/default website assets */}
         {hasCustomMedia && (
           <button
@@ -354,11 +388,7 @@ export function EditableMedia({
               handleRestore();
             }}
             disabled={restoring}
-            className={
-              editLabel
-                ? "flex h-11 items-center gap-2 rounded-xl border-2 border-white/30 bg-black/50 px-3 py-2.5 text-white/90 shadow-lg backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 disabled:opacity-50"
-                : "flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-black/50 text-white/80 backdrop-blur-sm transition hover:bg-black/70 hover:text-white focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 disabled:opacity-50"
-            }
+            className={editLabel ? chrome.restoreLabeled : chrome.restoreIcon}
             aria-label="Restore to default"
             title="Restore to default video/image"
           >
@@ -640,7 +670,7 @@ function EditableMediaModal({
         {!progressOnly && (
           <>
             <p className="text-sm text-white/50 mb-4">
-              Pilih foto atau video yang ingin ditampilkan. Image: JPEG, PNG, WebP (maks. 3 MB). Video: MP4, WebM (maks. 10 MB).
+              Pilih foto atau video yang ingin ditampilkan. Image: JPEG, PNG, WebP (maks. 3 MB). Video: MP4, WebM (maks. 20 MB).
             </p>
             <input
               ref={fileInputRef as React.RefObject<HTMLInputElement>}

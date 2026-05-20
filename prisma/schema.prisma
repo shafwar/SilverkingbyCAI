@@ -203,12 +203,26 @@ model ScanLogSummary {
 /// Serticard custom config - single row (id=1)
 /// Admin can upload custom templates and configure font
 model SerticardConfig {
-  id               Int      @id @default(1)
-  customFrontR2Key String? // e.g. templates/serticard-custom-front.png
-  customBackR2Key  String? // e.g. templates/serticard-custom-back.png
-  fontFamily       String   @default("Arial") // Arial | Lucida Sans | Times New Roman | SF Mono
-  fontSizePreset   String   @default("BESAR") // BESAR | KECIL
-  updatedAt        DateTime @updatedAt
+  id                          Int       @id @default(1)
+  customFrontR2Key            String?   // e.g. templates/serticard-custom-front.png
+  customBackR2Key             String?   // e.g. templates/serticard-custom-back.png
+  /// Display title for the custom pair (admin UI + batch template list)
+  customPairTitle             String?   @db.VarChar(191)
+  customTemplateDropdownLabel String?   @db.VarChar(191) // optional label for "custom" in QR Preview template select
+  fontFamily                  String    @default("Arial")   // Arial | Lucida Sans | Times New Roman | SF Mono
+  fontSizePreset              String    @default("BESAR")   // BESAR | KECIL
+  updatedAt                   DateTime  @updatedAt
+}
+
+/// Admin-uploaded full spread (left = QR panel, right = back design); stored in R2 serticard-templates/
+model SerticardUploadedTemplate {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(191)
+  r2Key     String   @unique @db.VarChar(512)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
 }
 
 /// Serticard adjustment config - per template variant
@@ -319,12 +333,15 @@ model Journal {
   excerptId       String?   @db.VarChar(1000)
   excerptEn       String?   @db.VarChar(1000)
   heroImageR2Key  String?
+  /// Editorial / display date (shown on public article; optional)
+  articleDate     DateTime?
   publishedAt     DateTime?
   sortOrder       Int       @default(0)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@index([publishedAt])
+  @@index([articleDate])
   @@index([sortOrder])
 }
 
@@ -345,6 +362,9 @@ model QrZipDownloadJob {
   @@index([status])
   @@index([cacheKey])
   @@index([createdAt])
+  /// ZIP-ready / zip-status: filter by cacheKey + status + ORDER BY updatedAt|createdAt without large filesorts
+  @@index([cacheKey, status, updatedAt])
+  @@index([cacheKey, status, createdAt])
 }
 
 /// Cache hasil ZIP yang sudah tersimpan di R2 agar request yang sama tidak render ulang.
@@ -358,6 +378,33 @@ model QrZipDownloadCache {
   updatedAt       DateTime @updatedAt
 
   @@index([createdAt])
+}
+
+/// Item yang gagal verifikasi render ZIP atau ditolak filter (nama/serial kosong, 0000, dll.) — untuk alert admin & unduh ulang PDF satuan.
+model SerticardZipRenderIssue {
+  id                Int       @id @default(autoincrement())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  jobId             Int?
+  /// RENDER_FAIL = buffer/PDF gagal cek; INVALID_INPUT = tidak masuk ZIP karena filter
+  source            String    @default("RENDER_FAIL") @db.VarChar(32)
+  serialCode        String    @db.VarChar(191)
+  productName       String?   @db.VarChar(500)
+  productId         Int?
+  weight            Int       @default(0)
+  isGram            Boolean   @default(false)
+  rootKey           String?   @db.VarChar(255)
+  reasons           Json
+  templateVariant   String    @default("01") @db.VarChar(32)
+  useCustomTemplate Boolean   @default(false)
+  cmsTemplateId     Int?
+  includeRootKey    Boolean   @default(true)
+  dismissedAt       DateTime?
+
+  @@index([dismissedAt])
+  @@index([createdAt])
+  @@index([serialCode])
+  @@index([jobId])
 }
 
 /// Audit klik download admin (tidak bisa deteksi file benar-benar ada di folder lokal, tapi bisa catat "pernah diunduh").

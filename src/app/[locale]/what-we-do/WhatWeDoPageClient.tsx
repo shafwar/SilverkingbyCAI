@@ -7,8 +7,10 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { motion, useInView, AnimatePresence, type Variants } from "framer-motion";
 import { getR2UrlClient } from "@/utils/r2-url";
+import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { usePageSections, getCacheBustedMediaUrl } from "@/hooks/usePageSections";
+import { usePageMedia } from "@/hooks/usePageMedia";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { EditableMedia } from "@/components/editable-media";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
@@ -278,6 +280,8 @@ const NarrativeImageSection = forwardRef<
                           <VideoLoadGuard
                             url={card.images[0]}
                             version={card.version}
+                            lazyAttach
+                            preload="none"
                             containerClassName="absolute inset-0 w-full h-full"
                             className="absolute inset-0 w-full h-full object-cover"
                             autoPlay
@@ -367,6 +371,7 @@ export default function WhatWeDoPageClient() {
     loading: sectionsLoading,
     refetch: refetchPageSections,
   } = usePageSections("what-we-do");
+  const { data: pageMediaWhatWeDo } = usePageMedia("what-we-do");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
   const heroMediaUrl =
     pageSections.hero?.url ?? getR2UrlClient("/videos/hero/metal crafting hands.mp4");
@@ -375,6 +380,9 @@ export default function WhatWeDoPageClient() {
   const footerMediaUrl =
     pageSections.section_footer_video?.url ??
     getR2UrlClient("/videos/hero/molten metal slow motion.mp4");
+
+  const heroVideoPlayUrl = useMemo(() => proxiedHeroVideoSrc(heroMediaUrl), [heroMediaUrl]);
+  const footerVideoPlayUrl = useMemo(() => proxiedHeroVideoSrc(footerMediaUrl), [footerMediaUrl]);
 
   // Preload first craft card image when it's an image (flexible replace)
   const firstCraftIsImage =
@@ -393,51 +401,8 @@ export default function WhatWeDoPageClient() {
   }, [firstCraftIsImage, firstCraftMediaUrl]);
 
   // Ensure what-we-do hero video autoplays reliably on all devices
-  useReliableVideoAutoplay(videoRef);
-
-  // Footer video autoplay (same pattern as hero)
-  useEffect(() => {
-    const video = footerVideoRef.current;
-    if (!video || footerMediaType !== "VIDEO") return;
-    const forcePlay = async () => {
-      try {
-        if (video.paused && !video.ended) await video.play();
-      } catch {
-        setTimeout(() => video.play().catch(() => {}), 100);
-      }
-    };
-    const onCanPlay = () => forcePlay();
-    const onPause = () => {
-      if (!video.ended)
-        setTimeout(() => {
-          if (video.paused && !video.ended) forcePlay();
-        }, 50);
-    };
-    const onVisibility = () => {
-      if (!document.hidden && video.paused && !video.ended) forcePlay();
-    };
-    const onEnded = () => {
-      video.currentTime = 0;
-      forcePlay();
-    };
-    forcePlay();
-    video.addEventListener("canplay", onCanPlay);
-    video.addEventListener("loadeddata", onCanPlay);
-    video.addEventListener("pause", onPause);
-    video.addEventListener("ended", onEnded);
-    document.addEventListener("visibilitychange", onVisibility);
-    const t = setInterval(() => {
-      if (video.paused && !video.ended && !document.hidden) forcePlay();
-    }, 2000);
-    return () => {
-      video.removeEventListener("canplay", onCanPlay);
-      video.removeEventListener("loadeddata", onCanPlay);
-      video.removeEventListener("pause", onPause);
-      video.removeEventListener("ended", onEnded);
-      document.removeEventListener("visibilitychange", onVisibility);
-      clearInterval(t);
-    };
-  }, [footerMediaUrl, footerMediaType]);
+  useReliableVideoAutoplay(videoRef, { mode: "background" });
+  useReliableVideoAutoplay(footerVideoRef, { mode: "background" });
 
   const featureItems = useMemo(
     () => [
@@ -610,19 +575,22 @@ export default function WhatWeDoPageClient() {
         }}
         className="relative flex min-h-screen items-center justify-start overflow-hidden"
       >
-        {/* Full Screen Hero Background – no media until section data loaded (prevents any flash of wrong asset) */}
+        {/* Full Screen Hero Background – attach src immediately (fixed hero); faster than idle-deferred lazy attach on heavy pages */}
         <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
           <div className="absolute inset-0 bg-luxury-black z-0" />
           <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
 
-          {sectionsLoading ? (
-            <div className="absolute inset-0 z-10 bg-luxury-black" aria-hidden />
-          ) : heroMediaType === "VIDEO" ? (
+          {heroMediaType === "VIDEO" ? (
             <VideoLoadGuard
+              key={`wwd-hero-${heroVideoPlayUrl}-${pageSections.hero?.version ?? 0}`}
               ref={videoRef}
-              url={heroMediaUrl}
+              url={heroVideoPlayUrl}
               version={pageSections.hero?.version}
+              posterUrl={pageMediaWhatWeDo?.heroImageUrl ?? null}
               forcePoster={!shouldLoadHeroVideo}
+              posterPriority
+              optimizeGpu
+              lightVideoFade
               containerClassName="absolute inset-0 w-screen h-screen z-10"
               className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
               style={{
@@ -830,14 +798,18 @@ export default function WhatWeDoPageClient() {
       >
         {/* Footer background – no media until section data loaded (prevents flash of wrong asset) */}
         <div className="absolute inset-0 z-0 overflow-hidden">
-          {sectionsLoading ? (
-            <div className="absolute inset-0 z-10 bg-luxury-black" aria-hidden />
-          ) : footerMediaType === "VIDEO" ? (
+          {footerMediaType === "VIDEO" ? (
             <VideoLoadGuard
+              key={`wwd-footer-${footerVideoPlayUrl}-${pageSections.section_footer_video?.version ?? 0}`}
               ref={footerVideoRef}
-              url={footerMediaUrl}
+              url={footerVideoPlayUrl}
               version={pageSections.section_footer_video?.version}
+              posterUrl={pageMediaWhatWeDo?.heroImageUrl ?? null}
               forcePoster={!shouldLoadHeroVideo}
+              lazyAttach
+              deferAttachUntilIdle
+              idleAttachTimeoutMs={640}
+              optimizeGpu
               containerClassName="absolute inset-0 w-full h-full z-10"
               className="absolute inset-0 w-full h-full object-cover"
               style={{
@@ -852,7 +824,7 @@ export default function WhatWeDoPageClient() {
               loop
               muted
               playsInline
-              preload="auto"
+              preload="none"
               disablePictureInPicture
               disableRemotePlayback
               onContextMenu={(e) => e.preventDefault()}

@@ -16,8 +16,11 @@ declare global {
 }
 
 /**
- * Returns true when it's OK to load hero video (fast connection, no data saver).
- * When false, hero should show poster/image only to keep page light on slow networks.
+ * Returns true when it's OK to load hero video (no data saver, not on very slow links).
+ * When false, hero should show poster/image only.
+ *
+ * Note: Many phones report cellular as "3g" in Network Information API even on usable LTE;
+ * blocking 3g caused blank/black heroes on mobile. We only skip video for save-data, 2g, slow-2g.
  */
 export function useShouldLoadHeroVideo(): boolean {
   const [shouldLoad, setShouldLoad] = useState(true);
@@ -29,15 +32,18 @@ export function useShouldLoadHeroVideo(): boolean {
     }
 
     const conn = navigator.connection;
-    const saveData = conn?.saveData === true;
-    const effectiveType: EffectiveConnectionType | undefined = conn?.effectiveType;
+    if (!conn) {
+      setShouldLoad(true);
+      return;
+    }
 
-    if (saveData) {
+    if (conn.saveData === true) {
       setShouldLoad(false);
       return;
     }
 
-    if (effectiveType === "slow-2g" || effectiveType === "2g" || effectiveType === "3g") {
+    const effectiveType: EffectiveConnectionType | undefined = conn.effectiveType;
+    if (effectiveType === "slow-2g" || effectiveType === "2g") {
       setShouldLoad(false);
       return;
     }

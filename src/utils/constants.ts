@@ -14,6 +14,31 @@ export const ROLES = {
 } as const;
 
 export const APP_NAME = "Silver King by CAI";
+
+/** Public Instagram (footer, contact). Override with NEXT_PUBLIC_INSTAGRAM_URL. */
+export function getSilverKingInstagramUrl(): string {
+  if (typeof process === "undefined") {
+    return "https://www.instagram.com/silverkingofc/";
+  }
+  return (
+    process.env.NEXT_PUBLIC_INSTAGRAM_URL?.trim() || "https://www.instagram.com/silverkingofc/"
+  );
+}
+
+/**
+ * WhatsApp deep link for Silver King / admin contact.
+ * NEXT_PUBLIC_WHATSAPP_MSISDN or NEXT_PUBLIC_MERCH_ADMIN_MSISDN (digits, country code without +).
+ */
+export function getSilverKingWhatsAppUrl(): string {
+  if (typeof process === "undefined") {
+    return "https://wa.me/6285285726980";
+  }
+  const raw =
+    process.env.NEXT_PUBLIC_WHATSAPP_MSISDN || process.env.NEXT_PUBLIC_MERCH_ADMIN_MSISDN;
+  const digits = raw?.replace(/\D/g, "") || "6285285726980";
+  return `https://wa.me/${digits}`;
+}
+
 export const APP_DESCRIPTION =
   "Expert manufacturing of premium gold, silver, and palladium bars with QR-verified authenticity. ISO 9001 certified precious metals manufacturer offering investment-grade bullion from 5gr to 500gr, featuring 99.99% purity guarantee, advanced spectrometry testing, and blockchain-ready traceability. Custom bar fabrication, uncompromising quality standards, and instant QR code verification system for complete product provenance and anti-counterfeit protection.";
 

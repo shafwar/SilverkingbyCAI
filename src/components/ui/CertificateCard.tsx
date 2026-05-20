@@ -1,15 +1,57 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Award } from "lucide-react";
+import { getR2UrlClient } from "@/utils/r2-url";
+
+/** R2 static paths (same pattern as Navbar / What We Do). Public folder may omit this file when assets live on R2 only. */
+const CERT_IMAGE_PRIMARY = "/images/sertificate.jpeg";
+const CERT_IMAGE_FALLBACK = "/images/certificate.jpeg";
 
 const CertificateCard: React.FC = () => {
   const t = useTranslations("about.certificate");
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  const explicitUrl = useMemo(() => {
+    const raw = process.env.NEXT_PUBLIC_ABOUT_CERTIFICATE_IMAGE_URL;
+    return typeof raw === "string" && raw.trim().startsWith("http") ? raw.trim() : null;
+  }, []);
+
+  /** R2 first (production), then same-origin /public paths — covers “not migrated to R2 yet” and Docker without public asset. */
+  const candidateUrls = useMemo(() => {
+    if (explicitUrl) return [explicitUrl];
+    const r2Primary = getR2UrlClient(CERT_IMAGE_PRIMARY);
+    const r2Alt = getR2UrlClient(CERT_IMAGE_FALLBACK);
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const u of [r2Primary, r2Alt, CERT_IMAGE_PRIMARY, CERT_IMAGE_FALLBACK]) {
+      if (!seen.has(u)) {
+        seen.add(u);
+        out.push(u);
+      }
+    }
+    return out;
+  }, [explicitUrl]);
+
+  const [attemptIndex, setAttemptIndex] = useState(0);
+  const imageSrc = candidateUrls[attemptIndex] ?? candidateUrls[0];
+
+  const handleImageError = () => {
+    setAttemptIndex((i) => {
+      const next = i + 1;
+      if (next >= candidateUrls.length) {
+        setLoadError(true);
+        return i;
+      }
+      setIsImageLoaded(false);
+      return next;
+    });
+  };
 
   // Smooth entrance animation
   useEffect(() => {
@@ -54,20 +96,13 @@ const CertificateCard: React.FC = () => {
   };
 
   const imageVariants = {
-    hidden: { opacity: 0, scale: 0.9, y: 20 },
+    hidden: { opacity: 0, y: 12 },
     visible: {
       opacity: 1,
-      scale: 1,
       y: 0,
       transition: {
-        duration: 0.7,
-        delay: 0.2,
-      },
-    },
-    hover: {
-      scale: 1.03,
-      transition: {
-        duration: 0.4,
+        duration: 0.55,
+        delay: 0.15,
       },
     },
   };
@@ -105,9 +140,9 @@ const CertificateCard: React.FC = () => {
           {/* Certificate Display - Direct view, no clickable modal */}
           <motion.div variants={imageVariants} className="relative group">
             {/* Container with proper padding and responsive sizing */}
-            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 p-4 md:p-6 lg:p-8 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.5)] backdrop-blur-sm">
-              {/* Subtle glow effect */}
-              <div className="absolute -inset-1 bg-gradient-to-r from-luxury-gold/10 via-luxury-lightGold/10 to-luxury-gold/10 blur-xl opacity-50 transition-opacity duration-500 rounded-2xl" />
+            <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-br from-black/40 to-black/25 p-4 md:p-6 lg:p-8 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.5)] md:backdrop-blur-sm">
+              {/* Subtle glow — smaller blur = less GPU cost while scrolling */}
+              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-luxury-gold/10 via-luxury-lightGold/10 to-luxury-gold/10 opacity-35 blur-md transition-opacity duration-500" />
 
             {/* Badge - Positioned over image */}
               <div className="absolute top-4 left-4 md:top-6 md:left-6 z-10">
@@ -115,7 +150,7 @@ const CertificateCard: React.FC = () => {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.4, duration: 0.5 }}
-                  className="bg-gradient-to-r from-luxury-gold/95 to-luxury-lightGold/95 text-luxury-black text-xs uppercase px-3 py-1.5 rounded-full shadow-lg font-bold tracking-wide backdrop-blur-sm"
+                  className="rounded-full bg-gradient-to-r from-luxury-gold/95 to-luxury-lightGold/95 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-luxury-black shadow-lg"
               >
                 {t("badge")}
               </motion.div>
@@ -123,19 +158,27 @@ const CertificateCard: React.FC = () => {
 
               {/* Certificate Image - Responsive aspect ratio */}
               <div className="relative aspect-[4/3] md:aspect-[3/2] lg:aspect-[4/3] overflow-hidden rounded-lg bg-white/5">
-              <img
-                ref={imageRef}
-                src="/images/sertificate.jpeg"
-                alt={t("certificateName")}
-                  className={`w-full h-full object-contain ${
-                  isImageLoaded ? "opacity-100" : "opacity-0"
-                }`}
-                onLoad={() => setIsImageLoaded(true)}
-                loading="lazy"
-                draggable={false}
-              />
-              {!isImageLoaded && (
-                <div className="absolute inset-0 bg-gradient-to-r from-white/5 via-white/10 to-white/5 animate-shimmer" />
+              {!loadError ? (
+                <img
+                  ref={imageRef}
+                  key={`${attemptIndex}-${imageSrc}`}
+                  src={imageSrc}
+                  alt={t("certificateName")}
+                  className={`h-full w-full object-contain ${isImageLoaded ? "opacity-100" : "opacity-0"}`}
+                  onLoad={() => setIsImageLoaded(true)}
+                  onError={handleImageError}
+                  loading="lazy"
+                  decoding="async"
+                  draggable={false}
+                />
+              ) : (
+                <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-2 px-4 text-center text-sm text-white/50">
+                  <p>{t("certificateName")}</p>
+                  <p className="text-xs text-white/35">{t("imageLoadError")}</p>
+                </div>
+              )}
+              {!isImageLoaded && !loadError && (
+                <div className="absolute inset-0 animate-pulse bg-white/5" aria-hidden />
               )}
             </div>
 
@@ -150,21 +193,6 @@ const CertificateCard: React.FC = () => {
         </div>
       </motion.div>
 
-      {/* Custom animations */}
-      <style jsx global>{`
-        @keyframes shimmer {
-          0% {
-            background-position: -1000px 0;
-          }
-          100% {
-            background-position: 1000px 0;
-          }
-        }
-        .animate-shimmer {
-          animation: shimmer 2s infinite linear;
-          background-size: 2000px 100%;
-        }
-      `}</style>
     </>
   );
 };

@@ -1,10 +1,12 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { Playfair_Display } from "next/font/google";
 import "@/styles/globals.css";
 import { APP_NAME, APP_DESCRIPTION, getBaseUrl } from "@/utils/constants";
 import { getAbsoluteImageUrl } from "@/utils/r2-url";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
+import { DownloadProvider } from "@/contexts/DownloadContext";
+import { GlobalZipDownloadOverlay } from "@/components/admin/GlobalZipDownloadOverlay";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -60,16 +62,24 @@ export const metadata: Metadata = {
   },
 };
 
-// Root layout - handles root page (/) and admin/API routes
-// [locale] routes are handled by [locale]/layout.tsx
-// Font: GeistSans.variable sets --font-geist-sans on html; body uses GeistSans.className.
-// Splash and all content use font-sans (var(--font-geist-sans)) for consistency; next/font local preloads the font.
+/** Correct scaling + safe areas on all phones (iOS, Android notch/cutout, in-app browsers). */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#000000",
+};
+
+// Geist (next/font via geist package) + Playfair; Tailwind uses --font-geist-sans / --font-playfair.
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${GeistSans.variable} ${playfair.variable}`}>
       <body className={`${GeistSans.className} antialiased`}>
-        <GoogleAnalytics />
-        {children}
+        <DownloadProvider>
+          <GoogleAnalytics />
+          {children}
+          <GlobalZipDownloadOverlay />
+        </DownloadProvider>
       </body>
     </html>
   );

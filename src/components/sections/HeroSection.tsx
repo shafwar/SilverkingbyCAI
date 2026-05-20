@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { motion, useScroll, useTransform, type Variants } from "framer-motion";
 import { gsap } from "gsap";
 import { QrCode, BookOpen } from "lucide-react";
-import ScrollingFeatures from "./ScrollingFeatures";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
@@ -16,6 +15,8 @@ interface HeroSectionProps {
   shouldAnimate?: boolean;
   /** When true, video is rendered by layout (PersistentHomeHeroVideo) — no duplicate video, avoids re-mount on navigation */
   skipVideo?: boolean;
+  /** Home LCP: no GSAP hiding headline on first paint; overlays animate without delaying text */
+  priorityLcp?: boolean;
 }
 
 const videoIntroVariants: Variants = {
@@ -26,22 +27,6 @@ const videoIntroVariants: Variants = {
     filter: "blur(0px)",
     rotateX: 0,
     transition: { duration: 1.6, ease: [0.16, 1, 0.3, 1] },
-  },
-};
-
-const gradientIntroVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { duration: 1.2, delay: 0.4, ease: "easeOut" },
-  },
-};
-
-const secondaryGradientVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { duration: 1.4, delay: 0.6, ease: "easeOut" },
   },
 };
 
@@ -113,7 +98,182 @@ const bubbleOrbs = [
   },
 ];
 
-export default function HeroSection({ shouldAnimate = true, skipVideo = false }: HeroSectionProps) {
+/** Persistent home video: CSS orbs only — avoids mix-blend + Framer infinite loops over decoded video */
+const lightHomeOrbs = [
+  {
+    id: "light-1",
+    size: 176,
+    top: "5%",
+    left: "10%",
+    orbClass: "sk-home-orb",
+    gradient:
+      "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.38), rgba(255,255,255,0.04) 68%)",
+  },
+  {
+    id: "light-2",
+    size: 148,
+    top: "26%",
+    left: "6%",
+    orbClass: "sk-home-orb sk-home-orb-d1",
+    gradient: "radial-gradient(circle at 60% 40%, rgba(255,215,0,0.28), rgba(255,215,0,0.04) 70%)",
+  },
+  {
+    id: "light-3",
+    size: 200,
+    top: "38%",
+    left: "34%",
+    orbClass: "sk-home-orb sk-home-orb-d2",
+    gradient:
+      "radial-gradient(circle at 40% 40%, rgba(255,255,255,0.28), rgba(255,255,255,0.04) 70%)",
+  },
+] as const;
+
+/**
+ * Framer scroll + inline video path for non-home heroes only.
+ * Home uses `skipVideo` + PersistentHomeHeroVideo — skipping this subtree avoids scroll-linked MotionValue work on every frame.
+ */
+function HeroScrollDrivenVideoLayer({
+  containerRef,
+  shouldLoadHeroVideo,
+  isLoaded,
+  animationState,
+}: {
+  containerRef: RefObject<HTMLDivElement | null>;
+  shouldLoadHeroVideo: boolean;
+  isLoaded: boolean;
+  animationState: "visible" | "hidden";
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoError, setVideoError] = useState(false);
+
+  useReliableVideoAutoplay(videoRef, { mode: "background" });
+
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end start"],
+  });
+  const scale = useTransform(scrollYProgress, [0, 0.5], [1, 1.05]);
+  const videoOpacity = useTransform(scrollYProgress, [0, 0.3], [1, 0.3]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const handleError = () => {
+      console.warn("[HeroSection] Video error occurred");
+    };
+    video.addEventListener("error", handleError);
+    return () => video.removeEventListener("error", handleError);
+  }, []);
+
+  return (
+    <motion.div
+      style={{ opacity: isLoaded ? videoOpacity : 0, scale }}
+      className="absolute inset-0 z-0 will-change-transform overflow-hidden"
+    >
+      <motion.div
+        className="absolute inset-0"
+        variants={videoIntroVariants}
+        initial="hidden"
+        animate={animationState}
+      >
+        {shouldLoadHeroVideo ? (
+          <video
+            ref={videoRef}
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+            disablePictureInPicture
+            disableRemotePlayback
+            className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
+            style={{
+              pointerEvents: "none",
+              outline: "none",
+              WebkitTapHighlightColor: "transparent",
+              WebkitTouchCallout: "none",
+              userSelect: "none",
+            }}
+            onContextMenu={(e) => e.preventDefault()}
+            onError={() => setVideoError(true)}
+            onPlay={(e) => {
+              const video = e.currentTarget;
+              if (video.paused) video.play().catch(() => {});
+            }}
+          >
+            <source src={getR2UrlClient("/videos/hero/hero-background.mp4")} type="video/mp4" />
+          </video>
+        ) : (
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(180deg, #080808 0%, #050505 50%, #030303 100%), radial-gradient(ellipse 80% 60% at 50% 40%, rgba(212,175,55,0.05) 0%, transparent 55%)",
+            }}
+            aria-hidden
+          />
+        )}
+        {videoError && <div className="absolute inset-0 bg-black" />}
+      </motion.div>
+
+      <motion.div
+        className="absolute inset-0 pointer-events-none z-[1]"
+        variants={bubbleLayerVariants}
+        initial="hidden"
+        animate={animationState}
+      >
+        {bubbleOrbs.map((orb) => (
+          <motion.span
+            key={orb.id}
+            className="absolute rounded-full blur-3xl opacity-70"
+            style={{
+              width: orb.size,
+              height: orb.size,
+              top: orb.top,
+              left: orb.left,
+              background: orb.gradient,
+              mixBlendMode: "screen",
+            }}
+            variants={bubbleVariants}
+            custom={{ delay: orb.delay, duration: orb.duration }}
+            initial="hidden"
+            animate={animationState}
+          />
+        ))}
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function HeroQrScanCardLink({ t }: { t: (key: string) => string }) {
+  return (
+    <OptimizedLink
+      href="/authenticity"
+      className="group inline-flex items-center gap-3 text-left w-full max-w-[min(calc(100vw-32px),360px)] sm:max-w-[368px] rounded-2xl border border-white/[0.12] bg-black/45 p-3.5 shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur-md transition-all duration-300 hover:border-white/20 hover:bg-black/55 pointer-events-auto"
+    >
+      <div className="flex h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 items-center justify-center rounded-xl border border-white/25 bg-black/50">
+        <QrCode className="h-[1.15rem] w-[1.15rem] sm:h-5 sm:w-5 text-white" strokeWidth={2} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[0.5rem] sm:text-[0.5rem] font-medium uppercase tracking-[0.32em] text-luxury-gold">
+          {t("qrCard.label")}
+        </p>
+        <p className="mt-1 text-[0.8125rem] sm:text-[0.875rem] md:text-[0.95rem] font-sans font-semibold text-white tracking-tight leading-snug">
+          {t("qrCard.title")}
+        </p>
+        <p className="mt-1 text-[0.625rem] sm:text-[0.65rem] font-sans text-white/65 leading-relaxed line-clamp-3 sm:line-clamp-2">
+          {t("qrCard.description")}
+        </p>
+      </div>
+    </OptimizedLink>
+  );
+}
+
+export default function HeroSection({
+  shouldAnimate = true,
+  skipVideo = false,
+  priorityLcp = false,
+}: HeroSectionProps) {
   const t = useTranslations("home.hero");
   const tJournal = useTranslations("home.journalTeaser");
   const pathname = usePathname();
@@ -122,125 +282,13 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
   const headlineRef = useRef<HTMLHeadingElement>(null);
   const subtitleRef = useRef<HTMLParagraphElement>(null);
   const statsRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [videoError, setVideoError] = useState(false);
-  const [isPageTransitioning, setIsPageTransitioning] = useState(false);
-  const prevPathnameRef = useRef<string | null>(null);
-  const fadeInTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Ensure hero background video always autoplays on both mobile & desktop
-  useReliableVideoAutoplay(videoRef);
-
-  // ENHANCED: Detect page transition untuk smooth fade-in/out
-  // Works for BOTH navigating TO home AND FROM home to other pages
+  /** Keep hero shell cheap on SPA route changes — previous GSAP+blur here cost hundreds of ms main-thread (bad INP). */
   useEffect(() => {
-    // Normalize pathname untuk consistent detection
-    const normalizedPathname = pathname.replace(/^\/[a-z]{2}$/, "/").replace(/^\/[a-z]{2}\//, "/");
-    const isHomePage =
-      normalizedPathname === "/" || pathname === "/" || pathname === "/en" || pathname === "/id";
-
-    // Check if pathname changed
-    const wasDifferentPage =
-      prevPathnameRef.current !== null &&
-      prevPathnameRef.current !== pathname &&
-      prevPathnameRef.current !== normalizedPathname;
-
-    // Check if we were on home page before
-    const wasOnHomePage =
-      prevPathnameRef.current !== null &&
-      (prevPathnameRef.current === "/" ||
-        prevPathnameRef.current === "/en" ||
-        prevPathnameRef.current === "/id" ||
-        prevPathnameRef.current.replace(/^\/[a-z]{2}$/, "/").replace(/^\/[a-z]{2}\//, "/") === "/");
-
-    if (isHomePage) {
-      // We're on home page now
-      if (wasDifferentPage && wasOnHomePage === false) {
-        // User just navigated TO home from another page - trigger fade-in
-        console.log("[HeroSection] Navigating to home, triggering fade-in", {
-          prevPath: prevPathnameRef.current,
-          currentPath: pathname,
-        });
-
-        setIsPageTransitioning(true);
-
-        // Clear any existing fade-in timeout
-        if (fadeInTimeoutRef.current) {
-          clearTimeout(fadeInTimeoutRef.current);
-        }
-
-        // IMPORTANT: Don't set opacity to 0 immediately - keep it visible with blur
-        // Match the DEEP blur from PageTransitionOverlay (14px * 1.2 = ~17px)
-        if (containerRef.current) {
-          gsap.set(containerRef.current, {
-            opacity: 0.94,
-            filter: "blur(17px)", // DEEP blur matching PageTransitionOverlay hero blur
-          });
-        }
-
-        // Wait for fade-in
-        const fadeInDelay = 250;
-
-        fadeInTimeoutRef.current = setTimeout(() => {
-          if (containerRef.current) {
-            // Smooth fade-in animation dengan GSAP
-            gsap.fromTo(
-              containerRef.current,
-              {
-                opacity: 0.94,
-                filter: "blur(17px)", // DEEP blur
-              },
-              {
-                opacity: 1,
-                filter: "blur(0px)",
-                duration: 0.7, // Longer duration for smoother blur removal
-                ease: "power2.out",
-                onComplete: () => {
-                  setIsPageTransitioning(false);
-                  console.log("[HeroSection] Fade-in complete");
-                },
-              }
-            );
-          }
-        }, fadeInDelay);
-      } else if (prevPathnameRef.current === null) {
-        // Initial mount - ensure visible
-        if (containerRef.current) {
-          gsap.set(containerRef.current, {
-            opacity: 1,
-            filter: "blur(0px)",
-          });
-        }
-      } else {
-        // Already on home page, ensure it's visible
-        if (containerRef.current) {
-          gsap.set(containerRef.current, {
-            opacity: 1,
-            filter: "blur(0px)",
-          });
-        }
-      }
-    } else if (wasOnHomePage && wasDifferentPage) {
-      // ENHANCED: User navigated FROM home to another page
-      // Ensure hero section participates in blur transition
-      console.log("[HeroSection] Navigating from home to another page", {
-        prevPath: prevPathnameRef.current,
-        currentPath: pathname,
-      });
-
-      // No transition blur - removed
+    if (containerRef.current) {
+      gsap.set(containerRef.current, { opacity: 1, filter: "none", clearProps: "filter" });
     }
-
-    // Always update prevPathnameRef
-    prevPathnameRef.current = pathname;
-
-    // Cleanup timeout on unmount
-    return () => {
-      if (fadeInTimeoutRef.current) {
-        clearTimeout(fadeInTimeoutRef.current);
-      }
-    };
   }, [pathname]);
 
   // Features data from translations - simple and stable
@@ -262,35 +310,13 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
     },
   ];
 
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end start"],
-  });
-
-  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
-  const scale = useTransform(scrollYProgress, [0, 0.5], [1, 1.05]);
-  const videoOpacity = useTransform(scrollYProgress, [0, 0.3], [1, 0.3]);
-
-  // Set video loaded state - autoplay is handled by useReliableVideoAutoplay hook
   useEffect(() => {
     setIsLoaded(true);
-
-    const video = videoRef.current;
-    if (!video) return;
-
-    // Handle video errors only (autoplay is handled by hook)
-    const handleError = () => {
-      console.warn("[HeroSection] Video error occurred");
-    };
-
-    video.addEventListener("error", handleError);
-
-    return () => {
-      video.removeEventListener("error", handleError);
-    };
   }, []);
 
-  const animationState = shouldAnimate ? "visible" : "hidden";
+  const animationState = priorityLcp || shouldAnimate ? "visible" : "hidden";
+  /** Home + persistent video: vignette/orbs must wait for splash — do not tie to priorityLcp or they never animate */
+  const skipVideoOverlayState = skipVideo ? (shouldAnimate ? "visible" : "hidden") : animationState;
   const [animationsReady, setAnimationsReady] = useState(false);
 
   // Defer heavy animations until after initial page load
@@ -330,11 +356,9 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
     }
   }, []);
 
-  // SET INITIAL STATES IMMEDIATELY - NO FLICKER (useLayoutEffect runs BEFORE browser paint)
+  // First paint: keep hero copy visible for LCP; GSAP timeline uses fromTo for entrance when not priorityLcp.
   useLayoutEffect(() => {
-    // Only run heavy GSAP animations if animations are ready and should animate
-    if (!animationsReady || !shouldAnimate) {
-      // Set initial states without animations
+    const setTextVisible = () => {
       if (headlineRef.current) {
         const words = headlineRef.current.querySelectorAll(".word");
         gsap.set(words, { opacity: 1, y: 0, rotationX: 0, scale: 1, filter: "blur(0px)" });
@@ -352,52 +376,14 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
         const statItems = statsRef.current.querySelectorAll(".stat-item");
         gsap.set(statItems, { opacity: 1, x: 0, y: 0, filter: "blur(0px)" });
       }
-      return;
-    }
+    };
 
-    const ctx = gsap.context(() => {
-      // Headline words - hidden initially
-      if (headlineRef.current) {
-        const words = headlineRef.current.querySelectorAll(".word");
-        gsap.set(words, {
-          opacity: 0,
-          y: 100,
-          rotationX: -25,
-          scale: 0.8,
-          filter: "blur(10px)",
-        });
-      }
-
-      // Subtitle - hidden initially
-      if (subtitleRef.current) {
-        gsap.set(subtitleRef.current, {
-          opacity: 0,
-          y: 50,
-          clipPath: "polygon(0 0, 100% 0, 100% 0, 0 0)",
-          filter: "blur(8px)",
-        });
-      }
-
-      // Insight stack - hidden initially
-      if (statsRef.current) {
-        gsap.set(statsRef.current, { opacity: 0, x: 40 });
-
-        const statItems = statsRef.current.querySelectorAll(".stat-item");
-        gsap.set(statItems, {
-          opacity: 0,
-          x: 20,
-          y: 10,
-          filter: "blur(4px)",
-        });
-      }
-    });
-
-    return () => ctx.revert();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run once on mount - animationsReady and shouldAnimate handled in separate effect
+    setTextVisible();
+  }, [priorityLcp]);
 
   // ANIMATE WHEN shouldAnimate becomes true
   useEffect(() => {
+    if (priorityLcp) return;
     if (!shouldAnimate) return;
 
     const ctx = gsap.context(() => {
@@ -497,7 +483,7 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
     });
 
     return () => ctx.revert();
-  }, [shouldAnimate, animationsReady]); // Dependencies included for proper effect updates
+  }, [shouldAnimate, animationsReady, priorityLcp]);
 
   return (
     <section
@@ -505,133 +491,67 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
       className={`relative h-screen w-full overflow-hidden hero-section-transition ${skipVideo ? "bg-transparent" : "bg-black"}`}
       style={{
         pointerEvents: "auto",
-        // ALWAYS ensure HeroSection participates in page transition blur
-        willChange: isPageTransitioning ? "opacity, filter" : "auto",
-        // Ensure initial state is correct for transitions
-        // Don't set opacity to 0 if not transitioning to prevent flash
       }}
     >
       {/* Video Background — skip when PersistentHomeHeroVideo in layout is used (skipVideo); on slow connection show poster only */}
       {!skipVideo && (
-        <motion.div
-          style={{ opacity: isLoaded ? videoOpacity : 0, scale }}
-          className="absolute inset-0 z-0 will-change-transform overflow-hidden"
-        >
-          <motion.div
-            className="absolute inset-0"
-            variants={videoIntroVariants}
-            initial="hidden"
-            animate={animationState}
-          >
-            {shouldLoadHeroVideo ? (
-              <video
-                ref={videoRef}
-                autoPlay
-                loop
-                muted
-                playsInline
-                preload="metadata"
-                disablePictureInPicture
-                disableRemotePlayback
-                className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
-                style={{
-                  pointerEvents: "none",
-                  outline: "none",
-                  WebkitTapHighlightColor: "transparent",
-                  WebkitTouchCallout: "none",
-                  userSelect: "none",
-                }}
-                onContextMenu={(e) => e.preventDefault()}
-                onPlay={(e) => {
-                  const video = e.currentTarget;
-                  if (video.paused) video.play().catch(() => {});
-                }}
-              >
-                <source src={getR2UrlClient("/videos/hero/hero-background.mp4")} type="video/mp4" />
-              </video>
-            ) : (
-              <div
-                className="absolute inset-0"
-                style={{
-                  background:
-                    "linear-gradient(180deg, #080808 0%, #050505 50%, #030303 100%), radial-gradient(ellipse 80% 60% at 50% 40%, rgba(212,175,55,0.05) 0%, transparent 55%)",
-                }}
-                aria-hidden
-              />
-            )}
-            {videoError && (
-              <div className="absolute inset-0 bg-black" />
-            )}
-          </motion.div>
-
-          <motion.div
-            className="absolute inset-0 pointer-events-none z-[1]"
-            variants={bubbleLayerVariants}
-            initial="hidden"
-            animate={animationState}
-          >
-            {bubbleOrbs.map((orb) => (
-              <motion.span
-                key={orb.id}
-                className="absolute rounded-full blur-3xl opacity-70"
-                style={{
-                  width: orb.size,
-                  height: orb.size,
-                  top: orb.top,
-                  left: orb.left,
-                  background: orb.gradient,
-                  mixBlendMode: "screen",
-                }}
-                variants={bubbleVariants}
-                custom={{ delay: orb.delay, duration: orb.duration }}
-                initial="hidden"
-                animate={animationState}
-              />
-            ))}
-          </motion.div>
-        </motion.div>
+        <HeroScrollDrivenVideoLayer
+          containerRef={containerRef}
+          shouldLoadHeroVideo={shouldLoadHeroVideo}
+          isLoaded={isLoaded}
+          animationState={animationState}
+        />
       )}
 
       {/* When skipVideo: overlays only (video from PersistentHomeHeroVideo) + vignette dark motif */}
       {skipVideo && (
         <>
-          <motion.div
-            className="absolute inset-0 z-0 bg-gradient-to-b from-black/55 via-black/25 to-black/60"
-            variants={gradientIntroVariants}
-            initial="hidden"
-            animate={animationState}
+          {/* CSS-only fades: Framer on full-viewport layers + video caused main-thread jank */}
+          <div
+            className={`absolute inset-0 z-0 pointer-events-none hidden md:block transition-opacity duration-[440ms] ease-out motion-reduce:transition-none motion-reduce:opacity-100 ${
+              skipVideoOverlayState === "visible" ? "opacity-100" : "opacity-0"
+            }`}
+            style={{
+              transitionDelay: skipVideoOverlayState === "visible" ? "40ms" : "0ms",
+              backgroundImage:
+                "linear-gradient(to bottom, rgba(0,0,0,0.55), rgba(0,0,0,0.25) 50%, rgba(0,0,0,0.6)), linear-gradient(to right, rgba(0,0,0,0.65), transparent 50%, rgba(0,0,0,0.4))",
+            }}
+            aria-hidden
           />
-          <motion.div
-            className="absolute inset-0 z-0 bg-gradient-to-r from-black/65 via-transparent to-black/40"
-            variants={secondaryGradientVariants}
-            initial="hidden"
-            animate={animationState}
+          <div
+            className={`absolute inset-0 z-0 pointer-events-none md:hidden transition-opacity duration-[440ms] ease-out motion-reduce:transition-none motion-reduce:opacity-100 ${
+              skipVideoOverlayState === "visible" ? "opacity-100" : "opacity-0"
+            }`}
+            style={{
+              transitionDelay: skipVideoOverlayState === "visible" ? "40ms" : "0ms",
+              backgroundImage:
+                "linear-gradient(to bottom, rgba(0,0,0,0.38), rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.45)), linear-gradient(to right, rgba(0,0,0,0.45), transparent 50%, rgba(0,0,0,0.28))",
+            }}
+            aria-hidden
           />
-          <motion.div
-            className="absolute inset-0 pointer-events-none z-[1]"
-            variants={bubbleLayerVariants}
-            initial="hidden"
-            animate={animationState}
+          <div
+            className={`absolute inset-0 pointer-events-none z-[1] overflow-hidden transition-opacity duration-[480ms] ease-out motion-reduce:transition-none motion-reduce:opacity-100 ${
+              skipVideoOverlayState === "visible" ? "opacity-100" : "opacity-0"
+            }`}
+            style={{
+              transitionDelay: skipVideoOverlayState === "visible" ? "100ms" : "0ms",
+            }}
+            aria-hidden
           >
-            {bubbleOrbs.map((orb) => (
-              <motion.span
+            {lightHomeOrbs.map((orb) => (
+              <div
                 key={orb.id}
-                className="absolute rounded-full blur-3xl opacity-70"
+                className={`absolute rounded-full blur-2xl opacity-60 ${orb.orbClass}`}
                 style={{
                   width: orb.size,
                   height: orb.size,
                   top: orb.top,
                   left: orb.left,
                   background: orb.gradient,
-                  mixBlendMode: "screen",
                 }}
-                variants={bubbleVariants}
-                custom={{ delay: orb.delay, duration: orb.duration }}
-                initial="hidden"
-                animate={animationState}
               />
             ))}
-          </motion.div>
+          </div>
         </>
       )}
 
@@ -660,7 +580,11 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
                 {t("headline2")}
               </span>{" "}
               {/* Fragment 2 */}
-              <span className="word inline-block" style={{ transformStyle: "preserve-3d" }}>
+              <span
+                id="hero-home-timeless-anchor"
+                className="word inline-block"
+                style={{ transformStyle: "preserve-3d" }}
+              >
                 {t("headline3")}
               </span>{" "}
               <span
@@ -726,19 +650,13 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
                   <div className="absolute left-0 top-0 bottom-0 w-[1.5px] bg-gradient-to-b from-transparent via-white/25 to-transparent">
                     <div className="absolute -left-[2.5px] top-1.5 h-1.5 w-1.5 rounded-full bg-gradient-to-r from-white/60 to-white/20" />
                   </div>
-                  <p
-                    className="font-sans text-[0.52rem] uppercase tracking-[0.45em] text-white/45"
-                  >
+                  <p className="font-sans text-[0.52rem] uppercase tracking-[0.45em] text-white/45">
                     {item.label}
                   </p>
-                  <p
-                    className="mt-1 font-sans text-[1.05rem] font-semibold bg-gradient-to-r from-white via-white/80 to-white/60 bg-clip-text text-transparent tracking-tight leading-snug"
-                  >
+                  <p className="mt-1 font-sans text-[1.05rem] font-semibold bg-gradient-to-r from-white via-white/80 to-white/60 bg-clip-text text-transparent tracking-tight leading-snug">
                     {item.title}
                   </p>
-                  <p
-                    className="mt-1 font-sans text-[0.75rem] text-white/55 leading-relaxed"
-                  >
+                  <p className="mt-1 font-sans text-[0.75rem] text-white/55 leading-relaxed">
                     {item.body}
                   </p>
                 </div>
@@ -748,33 +666,36 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
         </div>
       </div>
 
-      {/* Mobile: Scrolling Features - dinaikkan agar tidak mepet dengan Scan & Verify */}
-      <div className="md:hidden absolute left-0 right-0 bottom-[calc(200px+env(safe-area-inset-bottom))] sm:bottom-[calc(208px+env(safe-area-inset-bottom))] z-20 px-4 sm:px-6 pointer-events-auto">
-        <ScrollingFeatures features={featuresData} shouldAnimate={shouldAnimate} />
+      {/* Mobile: circular Journal + Scan & Verify (fixed bottom stack, proportional spacing) */}
+      <div
+        className="md:hidden absolute left-0 right-0 z-30 flex flex-col items-center gap-5 px-5 pointer-events-none"
+        style={{ bottom: "calc(52px + env(safe-area-inset-bottom, 0px))" }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+          transition={{ duration: 0.55, delay: 0.95, ease: "easeOut" }}
+          className="pointer-events-auto"
+        >
+          <OptimizedLink
+            href="/journal"
+            aria-label={tJournal("title")}
+            className="flex h-[3.5rem] w-[3.5rem] items-center justify-center rounded-full border-2 border-luxury-gold bg-black/35 text-white shadow-[0_0_28px_rgba(212,175,55,0.4),inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-md transition-transform active:scale-[0.96] hover:border-luxury-lightGold hover:shadow-[0_0_32px_rgba(255,215,0,0.45)]"
+          >
+            <BookOpen className="h-[1.4rem] w-[1.4rem]" strokeWidth={2.25} />
+          </OptimizedLink>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
+          transition={{ duration: 0.6, delay: 1.05, ease: "easeOut" }}
+          className="pointer-events-auto flex w-full justify-center"
+        >
+          <HeroQrScanCardLink t={t} />
+        </motion.div>
       </div>
 
-      {/* Mobile only: Journal button — centered between features block and Scan & Verify */}
-      <motion.div
-        initial={{ opacity: 0, y: 6 }}
-        animate={shouldAnimate ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
-        transition={{ duration: 0.5, delay: 1.05, ease: "easeOut" }}
-        className="md:hidden absolute left-0 right-0 bottom-[calc(168px+env(safe-area-inset-bottom))] sm:bottom-[calc(174px+env(safe-area-inset-bottom))] z-25 flex justify-center px-4 pointer-events-auto"
-      >
-        <OptimizedLink
-          href="/journal"
-          className="group inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-1.5 backdrop-blur-sm transition-all duration-300 hover:bg-white/10 hover:border-amber-500/30 hover:shadow-[0_0_20px_rgba(245,158,11,0.06)]"
-          aria-label={tJournal("title")}
-        >
-          <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-400/90 transition-colors group-hover:border-amber-500/35 group-hover:bg-amber-500/15">
-            <BookOpen className="h-3 w-3" />
-          </span>
-          <span className="font-sans text-xs font-medium text-white/90 tracking-tight">
-            {tJournal("title")}
-          </span>
-        </OptimizedLink>
-      </motion.div>
-
-      {/* QR Card - SUPER SAFE POSITION untuk SEMUA device dan browser */}
+      {/* Desktop: QR card */}
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.97 }}
         animate={{
@@ -783,33 +704,9 @@ export default function HeroSection({ shouldAnimate = true, skipVideo = false }:
           scale: shouldAnimate ? 1 : 0.97,
         }}
         transition={{ duration: 1, delay: 1.1, ease: "easeOut" }}
-        className="absolute bottom-[calc(50px+env(safe-area-inset-bottom))] sm:bottom-[calc(55px+env(safe-area-inset-bottom))] md:bottom-8 inset-x-0 z-30 flex justify-center px-3.5 sm:px-4 pointer-events-auto"
+        className="hidden md:flex absolute bottom-8 inset-x-0 z-30 justify-center px-4 pointer-events-auto"
       >
-        <OptimizedLink
-          href="/authenticity"
-          className="group inline-flex items-center gap-2.5 sm:gap-3 text-left w-full max-w-[min(calc(100vw-28px),358px)] sm:max-w-[368px] backdrop-blur-sm bg-black/50 border border-white/10 rounded-2xl p-3 sm:p-3.5 transition-all duration-300 hover:bg-black/60 hover:border-white/20 pointer-events-auto"
-        >
-          <div className="flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-xl sm:rounded-2xl border border-white/20 bg-black/40">
-            <QrCode className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p
-              className="text-[0.45rem] sm:text-[0.5rem] uppercase tracking-[0.4em] sm:tracking-[0.45em] text-white/55"
-            >
-              {t("qrCard.label")}
-            </p>
-            <p
-              className="mt-0.5 text-[0.75rem] sm:text-[0.8125rem] md:text-[0.95rem] font-sans font-semibold text-white tracking-tight leading-tight"
-            >
-              {t("qrCard.title")}
-            </p>
-            <p
-              className="mt-0.5 text-[0.6rem] sm:text-[0.625rem] font-sans text-white/60 leading-relaxed line-clamp-2"
-            >
-              {t("qrCard.description")}
-            </p>
-          </div>
-        </OptimizedLink>
+        <HeroQrScanCardLink t={t} />
       </motion.div>
 
       {/* Bottom fade - dark vignette (Home only); translateZ + solid cap to prevent flickering line */}

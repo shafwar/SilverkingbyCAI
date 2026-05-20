@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useCallback, useEffect, useState } from "react";
+import { useRef, useCallback, useEffect, useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import Navbar from "@/components/layout/Navbar";
 import { DistributorCard, type DistributorItem } from "@/components/distributor/DistributorCard";
 import { DistributorForm } from "@/components/admin/DistributorForm";
@@ -9,10 +10,12 @@ import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Plus, X } from "lucide-react";
 import { usePageSections } from "@/hooks/usePageSections";
+import { usePageMedia } from "@/hooks/usePageMedia";
+import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { PageFooter } from "@/components/footer/PageFooter";
-import { ModalPortal } from "@/components/ui/ModalPortal";
+import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
@@ -67,6 +70,9 @@ export default function DistributorPageClient({
     loading: sectionsLoading,
     refetch: refetchPageSections,
   } = usePageSections("distributor");
+  const { data: pageMediaDistributor } = usePageMedia("distributor");
+  const distributorHeroVideoRef = useRef<HTMLVideoElement | null>(null);
+  useReliableVideoAutoplay(distributorHeroVideoRef, { mode: "background" });
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "IMAGE";
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
   /** Show hero immediately with server URL; only use CMS URL after sections load (better LCP, no black flash) */
@@ -74,6 +80,10 @@ export default function DistributorPageClient({
     ? HERO_FALLBACK_PATH
     : (sectionsLoading ? initialHeroImageUrl : (pageSections.hero?.url ?? initialHeroImageUrl));
   const displayHeroMediaType = sectionsLoading ? "IMAGE" : heroMediaType;
+  const displayHeroVideoUrl = useMemo(
+    () => proxiedHeroVideoSrc(displayHeroUrl),
+    [displayHeroUrl]
+  );
   const [editing, setEditing] = useState<DistributorItem | null>(null);
   const [saving, setSaving] = useState(false);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -137,6 +147,15 @@ export default function DistributorPageClient({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!modalOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [modalOpen]);
 
   useGSAP(
     () => {
@@ -249,9 +268,15 @@ export default function DistributorPageClient({
         <div className="absolute inset-[-6%] z-10 scale-90 md:scale-100 md:inset-0 origin-center overflow-hidden">
           {displayHeroMediaType === "VIDEO" ? (
             <VideoLoadGuard
-              url={displayHeroUrl}
+              key={`dist-hero-${displayHeroVideoUrl}-${pageSections.hero?.version ?? 0}-${sectionsLoading ? "s" : "r"}`}
+              ref={distributorHeroVideoRef}
+              url={displayHeroVideoUrl}
               version={pageSections.hero?.version}
+              posterUrl={pageMediaDistributor?.heroImageUrl ?? null}
               forcePoster={!shouldLoadHeroVideo}
+              posterPriority
+              optimizeGpu
+              lightVideoFade
               containerClassName="absolute inset-0 w-full h-full"
               className="absolute inset-0 w-full h-full object-cover"
               style={{ objectFit: "cover" }}
@@ -469,28 +494,37 @@ export default function DistributorPageClient({
 
       <PageFooter />
 
-      {/* Modal Add / Edit (admin only) – CMS unchanged */}
-      <AnimatePresence>
-        {modalOpen && (
-          <ModalPortal zIndex={9999}>
-            <motion.div
-              className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 pt-24 sm:pt-28"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={closeModal}
-            >
-              <motion.div
-                className="w-full max-w-lg max-h-[calc(100dvh-32px)] overflow-y-auto rounded-2xl border border-white/15 bg-gradient-to-b from-[#111] to-[#0a0a0a] p-6 shadow-2xl"
-                initial={{ opacity: 0, y: 16, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 16 }}
-                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                onClick={(e) => e.stopPropagation()}
-              >
+      {/* Modal Add / Edit: portal to <html> so fixed overlay is viewport-correct (body transform in globals). */}
+      {isAdmin && typeof document !== "undefined"
+        ? createPortal(
+            <AnimatePresence>
+              {modalOpen ? (
+                <motion.div
+                  key="distributor-cms-overlay"
+                  role="presentation"
+                  className="fixed inset-0 z-[9999] flex min-h-full w-full flex-col items-center justify-center overflow-y-auto overscroll-y-contain bg-black/75 px-4 py-8 backdrop-blur-sm sm:px-6"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={closeModal}
+                >
+                  <motion.div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="distributor-cms-modal-title"
+                    className="relative z-[1] mx-auto w-full max-w-lg flex-shrink-0 rounded-2xl border border-white/15 bg-gradient-to-b from-[#111] to-[#0a0a0a] p-6 shadow-2xl max-h-[min(90dvh,100%)] overflow-y-auto overflow-x-hidden"
+                    initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 12, scale: 0.98 }}
+                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-white font-[family-name:var(--font-distributor)]">
+                <h2
+                  id="distributor-cms-modal-title"
+                  className="text-lg font-semibold text-white font-[family-name:var(--font-distributor)]"
+                >
                   {editing ? t("card.edit") : t("addDistributor")}
                 </h2>
                 <button
@@ -508,11 +542,13 @@ export default function DistributorPageClient({
                 onCancel={closeModal}
                 saving={saving}
               />
-              </motion.div>
-            </motion.div>
-          </ModalPortal>
-        )}
-      </AnimatePresence>
+                  </motion.div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>,
+            document.documentElement
+          )
+        : null}
     </div>
   );
 }

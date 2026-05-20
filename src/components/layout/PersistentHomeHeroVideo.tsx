@@ -1,32 +1,29 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useMemo } from "react";
 import { getR2UrlClient } from "@/utils/r2-url";
+import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { usePageSections } from "@/hooks/usePageSections";
+import { usePageMedia } from "@/hooks/usePageMedia";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
+import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
+import { usePauseBackgroundVideoOnScrollAndHidden } from "@/hooks/usePauseBackgroundVideoOnScrollAndHidden";
 import { VideoLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
+import { HomeHeroSectionsContext } from "@/components/layout/HomeHeroSectionsContext";
 
 const HERO_VIDEO_FALLBACK = "/videos/hero/hero-background.mp4";
 
-/** Delay (ms) after splash finishes before allowing edit button.
- *  Must exceed the hero entrance GSAP animation (~2.7s) + content fade (0.3s). */
-const POST_SPLASH_BUFFER_MS = 3500;
-
-/** Delay (ms) on subsequent visits (splash already shown) before allowing edit button.
- *  Hero entrance animation still plays (~2.7s), so we wait for it. */
-const SUBSEQUENT_VISIT_BUFFER_MS = 3200;
+/** Delay before showing hero edit affordance only — keep minimal so UI is not blocked */
+const POST_SPLASH_BUFFER_MS = 400;
+const SUBSEQUENT_VISIT_BUFFER_MS = 0;
 
 function isHomePath(pathname: string | null): boolean {
   const path = (pathname ?? "").replace(/\/$/, "").trim() || "/";
   return path === "/" || path === "/en" || path === "/id";
 }
 
-/**
- * Detects whether the splash screen has completed AND all entrance animations
- * have settled, so the edit button can appear without overlapping with content transitions.
- */
 function useSplashComplete(): boolean {
   const [done, setDone] = useState(false);
 
@@ -66,78 +63,190 @@ function useSplashComplete(): boolean {
 }
 
 /**
- * Persistent hero video for Home. Rendered in layout so it does NOT unmount
- * when navigating away. Video URL from page-sections (CMS) or fallback.
- * Admin sees edit icon only after splash + fade-in are fully complete.
+ * Persistent hero video for Home. URL from page-sections (CMS) or fallback.
+ * Poster from PageMedia hero image when present — no CMS workflow change.
  */
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => setReduced(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
+  return reduced;
+}
+
 export function PersistentHomeHeroVideo() {
   const pathname = usePathname();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [isHome, setIsHome] = useState(false);
+  const holdHomeHeroPausedRef = useRef(false);
+  const [isHome, setIsHome] = useState(() => isHomePath(pathname));
+  /** Once user has opened home, keep <video> mounted (pause when away) — avoids re-decode, blank, and transition jank on SPA return */
+  const [everHome, setEverHome] = useState(() => isHomePath(pathname));
   const splashComplete = useSplashComplete();
-  const shouldLoadVideo = useShouldLoadHeroVideo();
-  const { sections, loading: sectionsLoading, refetch } = usePageSections("home");
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
+  const { sections, refetch } = usePageSections("home");
+  const { data: pageMedia } = usePageMedia("home");
+  const homeSectionsBridge = useMemo(() => ({ sections, refetch }), [sections, refetch]);
+
   const heroUrl = sections.hero?.url ?? getR2UrlClient(HERO_VIDEO_FALLBACK);
   const heroVersion = sections.hero?.version;
+  /** Same-origin /api/hero-video for R2 — avoids decoder showing a flash of cached frames when the object is replaced. */
+  const heroVideoPlayUrl = useMemo(() => proxiedHeroVideoSrc(heroUrl), [heroUrl]);
+  /** Non-CMS fallback has no section version; stable numeric version keeps cache-bust predictable if default asset changes. */
+  const effectiveHeroVideoVersion = sections.hero?.url != null ? heroVersion : 1;
+
+  /** Static fallback so poster + gradient never sit on an invisible layer (fixes “black hero” on slow JS / splash) */
+  const posterUrl =
+    pageMedia?.heroImageUrl && pageMedia.heroImageUrl.length > 0
+      ? pageMedia.heroImageUrl
+      : "/images/hero-fallback.jpg";
+
+  useReliableVideoAutoplay(videoRef, {
+    mode: "background",
+    holdPausedRef: holdHomeHeroPausedRef,
+  });
+  usePauseBackgroundVideoOnScrollAndHidden(videoRef, {
+    enabled: isHome && everHome && shouldLoadHeroVideo && !prefersReducedMotion,
+    scrollPastVH: 0.38,
+    holdPausedRef: holdHomeHeroPausedRef,
+    pauseOnWindowBlur: true,
+  });
 
   useEffect(() => {
-    setIsHome(isHomePath(pathname));
+    const home = isHomePath(pathname);
+    setIsHome(home);
+    if (home) setEverHome(true);
   }, [pathname]);
+
+  /** Off home: hold autoplay watchdog + pause so video cannot resume in background while layout keeps the node mounted */
+  useEffect(() => {
+    if (!isHome) {
+      holdHomeHeroPausedRef.current = true;
+      videoRef.current?.pause();
+    }
+  }, [isHome]);
+
+  /** Pause CSS hero orbs when tab hidden or window blurred (saves compositor work on laptops) */
+  useEffect(() => {
+    const root = document.documentElement;
+    const syncDocHidden = () => {
+      root.toggleAttribute("data-doc-hidden", document.hidden);
+    };
+    const onBlur = () => root.setAttribute("data-window-blurred", "");
+    const onFocus = () => root.removeAttribute("data-window-blurred");
+    syncDocHidden();
+    document.addEventListener("visibilitychange", syncDocHidden);
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", syncDocHidden);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", onFocus);
+      root.removeAttribute("data-doc-hidden");
+      root.removeAttribute("data-window-blurred");
+    };
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    if (isHome) {
-      video.play().catch(() => {});
-    } else {
+    if (!isHome) {
       video.pause();
+      return;
     }
+    void video.play().catch(() => {});
   }, [isHome]);
 
+  /** bfcache / iOS: resume after back-forward */
+  useEffect(() => {
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (!e.persisted || !isHome) return;
+      const v = videoRef.current;
+      if (v) void v.play().catch(() => {});
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, [isHome]);
+
+  const videoInner = (
+    <VideoLoadGuard
+      ref={videoRef}
+      key={`home-hero-${heroVideoPlayUrl}-${effectiveHeroVideoVersion ?? 0}`}
+      url={heroVideoPlayUrl}
+      version={effectiveHeroVideoVersion}
+      posterUrl={posterUrl}
+      posterVersion={undefined}
+      posterPriority
+      lcpFriendlyPoster
+      optimizeGpu
+      lightVideoFade
+      forcePoster={!shouldLoadHeroVideo}
+      suspendSrc={prefersReducedMotion || !isHome}
+      snapVideoOpacity
+      containerClassName="absolute inset-0 min-w-full min-h-full w-full h-full"
+      className="absolute left-1/2 top-1/2 min-w-full min-h-full w-full h-full -translate-x-1/2 -translate-y-1/2 object-cover"
+      style={{ pointerEvents: "none" }}
+      autoPlay
+      loop
+      muted
+      playsInline
+      preload="auto"
+      disablePictureInPicture
+      disableRemotePlayback
+      onContextMenu={(e) => e.preventDefault()}
+    />
+  );
+
+  const videoShellClass =
+    "absolute left-1/2 top-1/2 h-[104%] w-[104%] min-h-[104%] min-w-[104%] -translate-x-1/2 -translate-y-1/2 origin-center scale-100 md:left-0 md:top-0 md:h-full md:w-full md:min-h-0 md:min-w-0 md:translate-x-0 md:translate-y-0 md:scale-100";
+
+  /** Always show poster/placeholder at full opacity — splash overlay (z-9999) covers brand moment; fading the whole shell left semi-transparent gradients over nothing = black screen on mobile */
+  const shellClassName = [videoShellClass, "opacity-100"].join(" ");
+
   return (
-    <div
-      aria-hidden="true"
-      className="fixed inset-0 z-0 min-h-dvh pointer-events-none overflow-hidden"
-      style={{
-        visibility: isHome ? "visible" : "hidden",
-        opacity: isHome ? 1 : 0,
-        transition: "opacity 0.25s ease",
-      }}
-    >
-      {sectionsLoading ? (
-        <div className="absolute inset-0 bg-luxury-black" aria-hidden />
-      ) : isHome ? (
-        <div className="absolute inset-0 overflow-hidden">
-          <div
-            className="absolute left-1/2 top-1/2 h-[112%] w-[112%] min-h-[112%] min-w-[112%] -translate-x-1/2 -translate-y-1/2 origin-center scale-90 md:left-0 md:top-0 md:h-full md:w-full md:min-h-0 md:min-w-0 md:translate-x-0 md:translate-y-0 md:scale-100"
-            aria-hidden
-          >
-            <VideoLoadGuard
-              ref={videoRef}
-              url={heroUrl}
-              version={heroVersion}
-              forcePoster={!shouldLoadVideo}
-              containerClassName="absolute inset-0 min-w-full min-h-full w-full h-full"
-              className="absolute left-1/2 top-1/2 min-w-full min-h-full w-full h-full -translate-x-1/2 -translate-y-1/2 object-cover"
-              style={{ pointerEvents: "none" }}
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="auto"
-              disablePictureInPicture
-              disableRemotePlayback
-              onContextMenu={(e) => e.preventDefault()}
-            />
+    <HomeHeroSectionsContext.Provider value={homeSectionsBridge}>
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 z-0 min-h-dvh pointer-events-none overflow-hidden motion-reduce:transition-none"
+        style={{
+          visibility: isHome ? "visible" : "hidden",
+          opacity: isHome ? 1 : 0,
+          transition: isHome ? "opacity 0.12s ease-out" : "opacity 0.1s ease-out",
+        }}
+      >
+        {everHome ? (
+          <div className="absolute inset-0 overflow-hidden">
+            <div className={shellClassName} aria-hidden>
+              {videoInner}
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="absolute inset-0 bg-luxury-black" aria-hidden />
-      )}
-      {/* Vignette / dark motif - Home only */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/60 pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-transparent to-black/40 pointer-events-none" />
-      {/* Edit video: only after splash + fade-in are fully complete */}
+        ) : !isHome ? (
+          <div className="absolute inset-0 bg-luxury-black" aria-hidden />
+        ) : null}
+        <div
+          className="absolute inset-0 hidden md:block pointer-events-none"
+          style={{
+            backgroundImage:
+              "linear-gradient(to bottom, rgba(0,0,0,0.55), rgba(0,0,0,0.25) 50%, rgba(0,0,0,0.6)), linear-gradient(to right, rgba(0,0,0,0.65), transparent 50%, rgba(0,0,0,0.4))",
+          }}
+          aria-hidden
+        />
+        <div
+          className="absolute inset-0 md:hidden pointer-events-none"
+          style={{
+            backgroundImage:
+              "linear-gradient(to bottom, rgba(0,0,0,0.38), rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.45)), linear-gradient(to right, rgba(0,0,0,0.45), transparent 50%, rgba(0,0,0,0.28))",
+          }}
+          aria-hidden
+        />
+      </div>
       {isHome && splashComplete && (
         <HeroEditPortal
           page="home"
@@ -145,8 +254,9 @@ export function PersistentHomeHeroVideo() {
           type="video"
           onUploadDone={refetch}
           editLabel="Edit video"
+          performanceMode="home"
         />
       )}
-    </div>
+    </HomeHeroSectionsContext.Provider>
   );
 }

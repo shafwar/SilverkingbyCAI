@@ -11,6 +11,7 @@ import Image from "next/image";
 import { Plus, Pencil, Trash2, X, Phone } from "lucide-react";
 import { ModalPortal } from "@/components/ui/ModalPortal";
 import { getR2UrlClient } from "@/utils/r2-url";
+import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { VideoLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
@@ -65,6 +66,23 @@ const cardVariants: Variants = {
 
 const CATEGORY_ORDER: MerchandiseCategory[] = ["polo", "tshirt_cap", "knitware"];
 
+/**
+ * Footer “Hubungi admin”: satu sumber untuk tampilan, tel:, dan wa.me.
+ * Override via NEXT_PUBLIC_MERCH_ADMIN_MSISDN (digits, e.g. 6285…) dan
+ * NEXT_PUBLIC_MERCH_ADMIN_DISPLAY (human label); fallback = commit merchandise baseline.
+ */
+const MERCH_ADMIN_MSISDN =
+  typeof process.env.NEXT_PUBLIC_MERCH_ADMIN_MSISDN === "string" &&
+  process.env.NEXT_PUBLIC_MERCH_ADMIN_MSISDN.trim() !== ""
+    ? process.env.NEXT_PUBLIC_MERCH_ADMIN_MSISDN.replace(/\D/g, "")
+    : "6285285726980";
+
+const MERCH_ADMIN_DISPLAY =
+  typeof process.env.NEXT_PUBLIC_MERCH_ADMIN_DISPLAY === "string" &&
+  process.env.NEXT_PUBLIC_MERCH_ADMIN_DISPLAY.trim() !== ""
+    ? process.env.NEXT_PUBLIC_MERCH_ADMIN_DISPLAY.trim()
+    : "+62 852-8572-6980";
+
 /** Fallback R2 paths when API returns no items (e.g. production not seeded) — matches compress-and-upload keys */
 const FALLBACK_IMAGE_PATHS: Record<MerchandiseCategory, string[]> = {
   polo: [
@@ -89,6 +107,9 @@ const FALLBACK_IMAGE_PATHS: Record<MerchandiseCategory, string[]> = {
     "/images/merchandise/knitware-5-knitware-5.jpg",
   ],
 };
+
+/** Bump after replacing MP4/WebP on R2 so clients flush decoder/cache-bust via VideoLoadGuard. */
+const MERCH_HERO_VIDEO_ASSET_VERSION = 2;
 
 /** Centered product copy: larger type, subtle gradient, no box. Optional second colors line. */
 function DetailBlockCentered({
@@ -172,6 +193,7 @@ export default function MerchandisePageClient() {
   const pageRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
   const footerVideoRef = useRef<HTMLVideoElement | null>(null);
+  const heroVideoRef = useRef<HTMLVideoElement | null>(null);
   const [byCategory, setByCategory] = useState<Record<string, MerchandiseItemType[]>>({
     polo: [],
     knitware: [],
@@ -187,32 +209,20 @@ export default function MerchandisePageClient() {
   const addCategoryRef = useRef<MerchandiseCategory | null>(null);
   const addFileInputRef = useRef<HTMLInputElement>(null);
   const [isMounted, setIsMounted] = useState(false);
-  const [heroIndex, setHeroIndex] = useState(0);
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
-  /** Hero images: second image first (polo close-up / “ss kedua”), then rest of flow. */
-  const heroImageUrls = useMemo(() => {
-    const fromApi: string[] = [];
-    CATEGORY_ORDER.forEach((cat) => {
-      (byCategory[cat] ?? []).forEach((item) => fromApi.push(item.imageUrl));
-    });
-    const raw =
-      fromApi.length > 0
-        ? fromApi.map(resolveImageUrl)
-        : CATEGORY_ORDER.flatMap((cat) => FALLBACK_IMAGE_PATHS[cat].map((p) => getR2UrlClient(p)));
-    if (raw.length < 2) return raw;
-    return [raw[1], raw[0], ...raw.slice(2)];
-  }, [byCategory]);
-
-  /** Hero image carousel: transition every 6 seconds */
-  const HERO_INTERVAL_MS = 6000;
-  useEffect(() => {
-    if (heroImageUrls.length <= 1) return;
-    const t = setInterval(() => {
-      setHeroIndex((i) => (i + 1) % heroImageUrls.length);
-    }, HERO_INTERVAL_MS);
-    return () => clearInterval(t);
-  }, [heroImageUrls.length]);
+  const merchHeroMediaUrl = useMemo(
+    () => getR2UrlClient("/videos/hero/merchandise-hero.mp4"),
+    []
+  );
+  const merchHeroPosterUrl = useMemo(
+    () => getR2UrlClient("/images/merchandise/merch-hero-poster.webp"),
+    []
+  );
+  const merchHeroVideoPlayUrl = useMemo(
+    () => proxiedHeroVideoSrc(merchHeroMediaUrl),
+    [merchHeroMediaUrl]
+  );
 
   useEffect(() => {
     setIsMounted(true);
@@ -301,7 +311,11 @@ export default function MerchandisePageClient() {
     return () => ctx.revert();
   }, [isMounted, byCategory]);
 
-  useReliableVideoAutoplay(footerVideoRef);
+  useReliableVideoAutoplay(heroVideoRef, {
+    mode: "background",
+    reattachKey: merchHeroVideoPlayUrl,
+  });
+  useReliableVideoAutoplay(footerVideoRef, { mode: "background" });
 
   const openAdd = (category: MerchandiseCategory) => {
     setEditing(null);
@@ -469,55 +483,49 @@ export default function MerchandisePageClient() {
       />
       <Navbar />
 
-      {/* Hero: extend layer + seam cover to prevent flickering line at bottom (mobile/desktop) */}
-      <section className="relative min-h-[70vh] overflow-hidden pt-20 isolate">
-        {heroImageUrls.length > 0 && (
-          <div
-            className="absolute inset-0 overflow-hidden"
-            style={{ transform: "translateZ(0)", WebkitBackfaceVisibility: "hidden" }}
-          >
-            <AnimatePresence initial={false}>
-              <motion.div
-                key={heroIndex}
-                className="absolute inset-0 origin-center"
-                style={{
-                  backfaceVisibility: "hidden",
-                  willChange: "transform",
-                  transform: "translateZ(0)",
-                  WebkitBackfaceVisibility: "hidden",
-                }}
-                initial={{ opacity: 0, scale: 1.02 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.02 }}
-                transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <motion.div
-                  className="absolute inset-0 origin-center overflow-hidden"
-                  style={{ backfaceVisibility: "hidden", transform: "translateZ(0)" }}
-                  animate={{ scale: 1.05 }}
-                  transition={{ duration: 6, ease: "linear" }}
-                >
-                  <Image
-                    src={heroImageUrls[heroIndex]}
-                    alt=""
-                    fill
-                    className="object-cover"
-                    sizes="100vw"
-                    priority
-                    unoptimized={heroImageUrls[heroIndex]?.startsWith("http")}
-                  />
-                </motion.div>
-                <div className="absolute inset-0 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-luxury-black/40" />
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        )}
+      {/* Hero: full-viewport (100dvh), 15s loop MP4 + WebP poster; R2 via proxiedHeroVideoSrc */}
+      <section className="relative isolate min-h-[100dvh] overflow-hidden">
+        <div
+          className="absolute inset-0 overflow-hidden"
+          style={{ transform: "translateZ(0)", WebkitBackfaceVisibility: "hidden" }}
+        >
+          <VideoLoadGuard
+            key={`merch-hero-${merchHeroVideoPlayUrl}-${MERCH_HERO_VIDEO_ASSET_VERSION}`}
+            ref={heroVideoRef}
+            url={merchHeroVideoPlayUrl}
+            version={MERCH_HERO_VIDEO_ASSET_VERSION}
+            posterUrl={merchHeroPosterUrl}
+            posterVersion={MERCH_HERO_VIDEO_ASSET_VERSION}
+            forcePoster={!shouldLoadHeroVideo}
+            posterPriority
+            lcpFriendlyPoster
+            optimizeGpu
+            lightVideoFade
+            containerClassName="absolute inset-0 h-full w-full"
+            className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
+            style={{
+              pointerEvents: "none",
+              outline: "none",
+              WebkitTapHighlightColor: "transparent",
+              userSelect: "none",
+            }}
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+            disablePictureInPicture
+            disableRemotePlayback
+            onContextMenu={(e) => e.preventDefault()}
+          />
+          <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-luxury-black via-luxury-black/60 to-luxury-black/40" />
+        </div>
         {/* Seam cover: hides subpixel line at hero bottom (flicker fix) */}
         <div
           className="absolute bottom-0 left-0 right-0 z-[1] h-[3px] bg-luxury-black pointer-events-none"
           aria-hidden
         />
-        <div className="relative z-10 flex min-h-[70vh] flex-col items-center justify-center px-6 pb-20 text-center font-[family-name:var(--font-merch)]">
+        <div className="relative z-10 flex min-h-[100dvh] flex-col items-center justify-center px-6 pb-[max(5rem,env(safe-area-inset-bottom))] pt-[max(5rem,env(safe-area-inset-top))] text-center font-[family-name:var(--font-merch)]">
           <motion.h1
             className="text-4xl font-semibold tracking-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.5)] md:text-5xl lg:text-6xl xl:text-7xl"
             initial={{ opacity: 0, y: 28 }}
@@ -996,9 +1004,14 @@ export default function MerchandisePageClient() {
         {/* Video layer: covers section, stays fixed in place while section scrolls */}
         <div className="absolute inset-0 z-0">
           <VideoLoadGuard
+            key="merch-footer-gold-footage"
             ref={footerVideoRef}
             url={getR2UrlClient("/videos/hero/gold-footage.mp4")}
             forcePoster={!shouldLoadHeroVideo}
+            lazyAttach
+            deferAttachUntilIdle
+            idleAttachTimeoutMs={720}
+            optimizeGpu
             containerClassName="absolute inset-0 w-full h-full"
             className="absolute inset-0 w-full h-full object-cover"
             style={{
@@ -1011,7 +1024,7 @@ export default function MerchandisePageClient() {
             loop
             muted
             playsInline
-            preload="metadata"
+            preload="none"
             disablePictureInPicture
             disableRemotePlayback
             onContextMenu={(e) => e.preventDefault()}
@@ -1047,14 +1060,14 @@ export default function MerchandisePageClient() {
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3">
               <a
-                href="tel:+6285695785199"
+                href={`tel:+${MERCH_ADMIN_MSISDN}`}
                 className="inline-flex items-center gap-3 rounded-2xl border border-white/20 bg-white/[0.08] px-5 py-3.5 text-white/95 hover:bg-white/[0.12] hover:border-luxury-gold/40 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-luxury-gold/50"
               >
                 <Phone className="h-5 w-5 text-luxury-gold shrink-0" />
-                <span className="font-medium tracking-wide">+62 856-9578-5199</span>
+                <span className="font-medium tracking-wide">{MERCH_ADMIN_DISPLAY}</span>
               </a>
               <a
-                href="https://wa.me/6285695785199"
+                href={`https://wa.me/${MERCH_ADMIN_MSISDN}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/[0.06] px-4 py-3 text-white/80 hover:bg-white/[0.1] hover:text-white transition-all duration-300"

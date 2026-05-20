@@ -10,6 +10,7 @@ import {
 } from "@/utils/serticard-templates";
 import { getSerticardConfig } from "@/lib/serticard-config";
 import { fileExistsInR2 } from "@/lib/r2-client";
+import { prisma } from "@/lib/prisma";
 
 const r2Client = new S3Client({
   region: "auto",
@@ -28,6 +29,44 @@ export type LoadedTemplates = {
   back: any;
 };
 
+export type LoadSerticardTemplatesOptions = {
+  /** CMS row id: single spread image in R2, split left = front (QR), right = back */
+  cmsTemplateId?: number | null;
+  /**
+   * When truthy and both admin custom files exist in R2, load that pair.
+   * When false/omitted, use built-in variant (01, 03, …) even if custom files exist.
+   */
+  useCustomTemplate?: boolean | string | number | null;
+};
+
+/** JSON / job payloads occasionally send "true" / 1 — treat like boolean true */
+export function isAffirmativeCustomFlag(v: unknown): boolean {
+  if (v === true || v === 1) return true;
+  if (typeof v === "string") {
+    const s = v.trim().toLowerCase();
+    return s === "true" || s === "1" || s === "yes";
+  }
+  return false;
+}
+
+/** Split one horizontal spread into two panels (same pipeline as paired front/back files). */
+function splitSpreadToFrontBack(fullImage: any, canvasMod: any): LoadedTemplates {
+  const w = fullImage.width as number;
+  const h = fullImage.height as number;
+  if (w < 8 || h < 8) {
+    throw new Error("Serticard template image is too small");
+  }
+  const leftW = Math.floor(w / 2);
+  const rightW = w - leftW;
+  const frontCanvas = canvasMod.createCanvas(leftW, h);
+  const backCanvas = canvasMod.createCanvas(rightW, h);
+  const fctx = frontCanvas.getContext("2d");
+  const bctx = backCanvas.getContext("2d");
+  fctx.drawImage(fullImage, 0, 0, leftW, h, 0, 0, leftW, h);
+  bctx.drawImage(fullImage, leftW, 0, rightW, h, 0, 0, rightW, h);
+  return { front: frontCanvas, back: backCanvas };
+}
+
 async function loadImageFromR2(key: string): Promise<any> {
   const canvasMod = await import("canvas").catch(() => null);
   if (!canvasMod) {
@@ -43,30 +82,63 @@ async function loadImageFromR2(key: string): Promise<any> {
 
 /**
  * Load front and back serticard templates.
- * 1. If custom templates are set in SerticardConfig, load those from R2
- * 2. Else load based on variant (01, 03, etc)
+ * 1. If options.cmsTemplateId set — CMS spread from R2
+ * 2. Else if options.useCustomTemplate === true and admin pair exists in R2 — custom pair
+ * 3. Else built-in variant (01, 03, …) from local / R2
  */
 export async function loadSerticardTemplates(
-  variantId?: string
+  variantId?: string,
+  options?: LoadSerticardTemplatesOptions
 ): Promise<LoadedTemplates> {
   const canvasMod = await import("canvas").catch(() => null);
   if (!canvasMod) {
     throw new Error("Canvas module unavailable in this environment");
   }
 
-  const config = await getSerticardConfig();
-  const useCustom =
-    config.customFrontR2Key &&
-    config.customBackR2Key &&
-    (await fileExistsInR2(config.customFrontR2Key)) &&
-    (await fileExistsInR2(config.customBackR2Key));
+  const cmsId = options?.cmsTemplateId;
+  if (cmsId != null) {
+    const id = Math.floor(Number(cmsId));
+    if (Number.isFinite(id) && id > 0) {
+      const row = await prisma.serticardUploadedTemplate.findUnique({ where: { id } });
+      if (!row) {
+        throw new Error(`Serticard CMS template not found (id ${id})`);
+      }
+      const full = await loadImageFromR2(row.r2Key);
+      return splitSpreadToFrontBack(full, canvasMod);
+    }
+  }
 
-  if (useCustom) {
-    const [front, back] = await Promise.all([
-      loadImageFromR2(config.customFrontR2Key!),
-      loadImageFromR2(config.customBackR2Key!),
-    ]);
-    return { front, back };
+  const wantsCustom = isAffirmativeCustomFlag(options?.useCustomTemplate);
+
+  if (wantsCustom) {
+    const config = await getSerticardConfig();
+    let customAvailable = false;
+    try {
+      customAvailable =
+        Boolean(config.customFrontR2Key) &&
+        Boolean(config.customBackR2Key) &&
+        (await fileExistsInR2(config.customFrontR2Key!)) &&
+        (await fileExistsInR2(config.customBackR2Key!));
+    } catch (e) {
+      console.warn(
+        "[Serticard] R2 check for custom templates failed; falling back to built-in variant:",
+        e instanceof Error ? e.message : e
+      );
+      customAvailable = false;
+    }
+
+    if (customAvailable) {
+      const [front, back] = await Promise.all([
+        loadImageFromR2(config.customFrontR2Key!),
+        loadImageFromR2(config.customBackR2Key!),
+      ]);
+      return { front, back };
+    }
+
+    console.warn(
+      "[Serticard] Custom template requested but pair missing or R2 unreachable; using variant:",
+      variantId
+    );
   }
 
   const vid = variantId && isValidSerticardVariant(variantId) ? variantId : DEFAULT_SERTICARD_VARIANT;

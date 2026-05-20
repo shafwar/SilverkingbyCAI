@@ -1,6 +1,6 @@
 /**
  * Admin API: update and delete journal post.
- * PATCH: update (any of slug, titleId, titleEn, contentId, contentEn, excerptId?, excerptEn?, heroImageR2Key?, publishedAt?, sortOrder?)
+ * PATCH: update (any of slug, titleId, titleEn, contentId, contentEn, excerptId?, excerptEn?, heroImageR2Key?, publishedAt?, articleDate?)
  * DELETE: delete
  */
 
@@ -29,13 +29,11 @@ function sanitizeJournalHtml(input: string): string {
       "h2",
       "h3",
       "a",
-      "img",
       "code",
       "pre",
     ],
     allowedAttributes: {
       a: ["href", "target", "rel"],
-      img: ["src", "alt", "title", "loading"],
       "*": ["class"],
     },
     allowedSchemes: ["http", "https", "data"],
@@ -88,7 +86,7 @@ export async function PATCH(
       excerptEn?: string | null;
       heroImageR2Key?: string | null;
       publishedAt?: Date | null;
-      sortOrder?: number;
+      articleDate?: Date | null;
     } = {};
 
     if (body.slug !== undefined) updates.slug = slugify(String(body.slug).trim()) || existing.slug;
@@ -99,14 +97,22 @@ export async function PATCH(
     if (body.excerptId !== undefined) updates.excerptId = body.excerptId == null || body.excerptId === "" ? null : String(body.excerptId).trim();
     if (body.excerptEn !== undefined) updates.excerptEn = body.excerptEn == null || body.excerptEn === "" ? null : String(body.excerptEn).trim();
     if (body.heroImageR2Key !== undefined) updates.heroImageR2Key = body.heroImageR2Key == null || body.heroImageR2Key === "" ? null : String(body.heroImageR2Key).trim();
-    if (body.sortOrder !== undefined) updates.sortOrder = typeof body.sortOrder === "number" ? body.sortOrder : existing.sortOrder;
     if (body.publishedAt !== undefined) {
       if (body.publishedAt === null || body.publishedAt === false || body.publishedAt === "false" || body.publishedAt === "") {
         updates.publishedAt = null;
+      } else if (body.publishedAt === true || body.publishedAt === "true") {
+        updates.publishedAt = existing.publishedAt ?? new Date();
       } else {
-        updates.publishedAt = body.publishedAt === true || body.publishedAt === "true"
-          ? new Date()
-          : new Date(body.publishedAt);
+        updates.publishedAt = new Date(body.publishedAt);
+      }
+    }
+
+    if (body.articleDate !== undefined) {
+      if (body.articleDate === null || body.articleDate === "") {
+        updates.articleDate = null;
+      } else {
+        const d = new Date(String(body.articleDate));
+        updates.articleDate = Number.isNaN(d.getTime()) ? existing.articleDate : d;
       }
     }
 

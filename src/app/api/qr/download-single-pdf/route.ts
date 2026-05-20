@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PDFDocument } from "pdf-lib";
-import { loadSerticardTemplates } from "@/lib/load-serticard-templates";
+import { loadSerticardTemplates, isAffirmativeCustomFlag } from "@/lib/load-serticard-templates";
 import { getSerticardConfig, getFontSizeMultipliers } from "@/lib/serticard-config";
-import { getSerticardAdjustment, type SerticardAdjustmentData } from "@/lib/serticard-adjustment";
+import {
+  composeSerticardSpreadPngBuffers,
+  getSerticardPdfPanelSize,
+} from "@/lib/serticard-compose-spread-png";
+import { normalizeRootKeyForPill } from "@/lib/serticard-rootkey-display";
+import { getQrOnlyPngBufferForZip } from "@/lib/serticard-qr-only-buffer";
 
 /**
  * Generate a SINGLE Serticard PDF (front + back) for one QR code.
@@ -18,7 +23,7 @@ import { getSerticardAdjustment, type SerticardAdjustmentData } from "@/lib/sert
  *   "product": { "id", "name", "serialCode", "weight", "isGram?", "rootKey?" },
  *   "templateVariant": string,
  *   "useCustomTemplate": boolean,
- *   "includeRootKey": boolean  // if false, PDF output hanya judul + serial (no root key)
+ *   "includeRootKey": boolean  // default false: single PDF tanpa pill root key (ZIP bulk bisa true)
  * }
  */
 export async function POST(request: NextRequest) {
@@ -60,9 +65,15 @@ export async function POST(request: NextRequest) {
     const productName = String(product.name).trim();
     const productSerialCode = String(product.serialCode).trim().toUpperCase();
     const isGram = Boolean(product.isGram);
-    const templateVariant = body?.templateVariant ?? "01";
-    const useCustom = body?.useCustomTemplate === true;
-    const adjustmentData = body?.adjustment as SerticardAdjustmentData | undefined;
+    const rawVariant = body?.templateVariant != null ? String(body.templateVariant) : "01";
+    const templateVariant = rawVariant === "custom" ? "01" : rawVariant;
+    const rawCms = body?.cmsTemplateId;
+    const cmsTemplateId =
+      rawCms != null && rawCms !== ""
+        ? Math.floor(Number(rawCms))
+        : null;
+    const useCmsTemplate =
+      cmsTemplateId != null && Number.isFinite(cmsTemplateId) && cmsTemplateId > 0;
 
     // Validate inputs
     if (!productName || productName.length === 0) {
@@ -81,18 +92,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Resolve rootKey: when includeRootKey is false, output PDF hanya judul + id (no root key), like previous system
-    const includeRootKey = body?.includeRootKey !== false;
-    let rootKeyValue: string | null =
+    /** Single PDF: pill root key hanya jika client explicitly `includeRootKey: true` (bulk ZIP tetap bisa kirim true). */
+    const includeRootKey = body?.includeRootKey === true;
+    let rootKeyValue: string | null = normalizeRootKeyForPill(
       product.rootKey != null && String(product.rootKey).trim() !== ""
         ? String(product.rootKey).trim()
-        : null;
+        : null
+    );
     if (includeRootKey && !rootKeyValue && isGram) {
       const gramItem = await prisma.gramProductItem.findFirst({
-        where: { uniqCode: productSerialCode },
+        where: {
+          uniqCode: productSerialCode,
+          ...(product.id != null && Number.isFinite(Number(product.id))
+            ? { id: Math.floor(Number(product.id)) }
+            : {}),
+        },
         select: { rootKey: true },
       });
-      if (gramItem?.rootKey?.trim()) rootKeyValue = gramItem.rootKey.trim();
+      if (gramItem?.rootKey?.trim()) rootKeyValue = normalizeRootKeyForPill(gramItem.rootKey.trim());
     }
 
     console.log("[QR Single PDF] Processing:", {
@@ -103,153 +120,61 @@ export async function POST(request: NextRequest) {
       hasRootKey: !!rootKeyValue,
     });
 
-    // --- Load Serticard templates (custom or variant) ---
-    // If useCustom flag is set, loadSerticardTemplates will automatically use custom templates
-    const { front: frontTemplateImage, back: backTemplateImage } =
-      await loadSerticardTemplates(useCustom ? undefined : templateVariant);
-    
-    // Get adjustment config (from request or database)
-    const adjustment = adjustmentData || await getSerticardAdjustment(
-      useCustom ? "custom" : templateVariant,
-      null // Global adjustment for now
+    // --- Load Serticard templates (CMS spread, custom pair only if requested, else built-in variant) ---
+    const useCustomRequested =
+      isAffirmativeCustomFlag(body?.useCustomTemplate) || rawVariant === "custom";
+    const { front: frontTemplateImage, back: backTemplateImage } = await loadSerticardTemplates(
+      templateVariant,
+      useCmsTemplate
+        ? { cmsTemplateId: cmsTemplateId! }
+        : { useCustomTemplate: useCustomRequested }
     );
-    
-    const sizeMultipliers = getFontSizeMultipliers(adjustment.fontSizePreset);
+    const fontConfig = await getSerticardConfig();
+    const sizeMultipliers = getFontSizeMultipliers(
+      fontConfig.fontSizePreset === "KECIL" ? "KECIL" : "BESAR"
+    );
 
-    // --- Fetch QR-only image for this serial/uniq code ---
-    const baseUrl =
-      process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const internalBaseUrl = baseUrl.replace(/\/$/, "");
-
-    const qrBase = isGram ? "/api/qr-gram" : "/api/qr";
-    const qrUrl = `${internalBaseUrl}${qrBase}/${encodeURIComponent(productSerialCode)}/qr-only`;
-    const qrResponse = await fetch(qrUrl);
-    if (!qrResponse.ok) {
-      const text = await qrResponse.text().catch(() => "");
+    const qrBuffer = await getQrOnlyPngBufferForZip(productSerialCode, isGram);
+    if (!qrBuffer?.length) {
       return NextResponse.json(
         {
-          error: "Failed to fetch QR-only image",
-          details: text || `Status ${qrResponse.status}`,
+          error: "Failed to generate QR-only image",
+          details: "Product or gram item not found for this code",
         },
-        { status: 500 }
+        { status: 404 }
       );
     }
-    const qrBuffer = Buffer.from(await qrResponse.arrayBuffer());
     const qrImage = await canvasMod.loadImage(qrBuffer);
 
-    // --- Compose FRONT canvas (same layout as download-multiple-pdf/handleDownload) ---
-    const frontCanvas = canvasMod.createCanvas(frontTemplateImage.width, frontTemplateImage.height);
-    const frontCtx = frontCanvas.getContext("2d");
-    frontCtx.drawImage(frontTemplateImage, 0, 0);
+    const rootKeyForBack =
+      includeRootKey && rootKeyValue != null && rootKeyValue.length > 0 ? rootKeyValue : null;
 
-    // Layout tuned for Serticard 01 (603x1053); scaled proportionally for 03-18
-    // Apply QR size adjustment
-    const baseQrSize = Math.min(frontTemplateImage.width * 0.55, frontTemplateImage.height * 0.55, 900);
-    const qrSize = baseQrSize * adjustment.qrSize;
-    const qrX = (frontTemplateImage.width - qrSize) / 2;
-    const qrY = frontTemplateImage.height * 0.38;
-
-    const padding = 8;
-    frontCtx.fillStyle = "#ffffff";
-    frontCtx.fillRect(qrX - padding, qrY - padding, qrSize + padding * 2, qrSize + padding * 2);
-    frontCtx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
-
-    const nameOffset = Math.round(frontTemplateImage.height * 0.038);
-    const serialOffset = Math.round(frontTemplateImage.height * 0.038);
-    const isDarkTemplate = templateVariant !== "01";
-    const textColor = isDarkTemplate ? "#ffffff" : "#111111";
-
-    // Apply product title size adjustment
-    const baseNameFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.nameMultiplier);
-    const nameFontSize = baseNameFontSize * adjustment.productTitleSize;
-    const nameY = qrY - nameOffset;
-    const nameFont = `bold ${nameFontSize}px ${adjustment.fontFamily}, sans-serif`;
-    const displayProductName = productName && productName.length > 0 ? productName : "PRODUCT";
-
-    frontCtx.fillStyle = textColor;
-    frontCtx.textAlign = "center";
-    frontCtx.textBaseline = "bottom";
-    frontCtx.font = nameFont;
-    frontCtx.fillText(displayProductName, frontTemplateImage.width / 2, nameY);
-
-    console.log("[QR Single PDF] Product name rendered:", {
-      text: displayProductName,
-      fontSize: nameFontSize,
-      font: nameFont,
-      adjustment: adjustment.productTitleSize,
+    const { frontBuffer, backBuffer } = composeSerticardSpreadPngBuffers({
+      canvasMod,
+      frontTemplateImage,
+      backTemplateImage,
+      qrImage,
+      productName,
+      productSerialCode,
+      sizeMultipliers,
+      templateVariant,
+      useCustomTemplate: useCustomRequested,
+      cmsTemplateId: useCmsTemplate ? cmsTemplateId! : null,
+      rootKeyForBack,
     });
 
-    // Apply serialcode size adjustment
-    const baseSerialFontSize = Math.floor(frontTemplateImage.width * sizeMultipliers.serialMultiplier);
-    const serialFontSize = baseSerialFontSize * adjustment.serialcodeSize;
-    const serialY = qrY + qrSize + serialOffset;
-    const serialFont = `bold ${serialFontSize}px ${adjustment.fontFamily}, monospace`;
-    const displaySerialCode = productSerialCode && productSerialCode.length > 0 ? productSerialCode : "UNKNOWN";
-
-    frontCtx.fillStyle = textColor;
-    frontCtx.textAlign = "center";
-    frontCtx.textBaseline = "top";
-    frontCtx.font = serialFont;
-    frontCtx.fillText(displaySerialCode, frontTemplateImage.width / 2, serialY);
-
-    const productRootKey =
-      rootKeyValue != null && rootKeyValue.length > 0 ? rootKeyValue.toUpperCase() : null;
-
-    console.log("[QR Single PDF] Serial code rendered:", {
-      text: displaySerialCode,
-      fontSize: serialFontSize,
-      font: serialFont,
-      hasRootKey: !!productRootKey,
+    console.log("[QR Single PDF] Rendered spread PNGs", {
+      productName,
+      productSerialCode,
+      hasRootKey: !!rootKeyForBack,
     });
-
-    const frontBuffer = frontCanvas.toBuffer("image/png");
-
-    // --- BACK canvas (template + root key label) ---
-    const backCanvas = canvasMod.createCanvas(backTemplateImage.width, backTemplateImage.height);
-    const backCtx = backCanvas.getContext("2d");
-    backCtx.drawImage(backTemplateImage, 0, 0);
-
-    // Root key: render on BACK side at bottom-left (as per UI spec / marked area).
-    if (productRootKey) {
-      const padX = Math.round(backTemplateImage.width * 0.08);
-      const padY = Math.round(backTemplateImage.height * 0.08);
-      const x = padX;
-      const y = backTemplateImage.height - padY;
-      const fontSize = Math.max(14, Math.min(22, Math.floor(backTemplateImage.width * 0.04)));
-      const font = `600 ${fontSize}px ${fontConfig.fontFamily}, monospace`;
-      backCtx.save();
-      backCtx.font = font;
-      backCtx.textAlign = "left";
-      backCtx.textBaseline = "alphabetic";
-
-      const label = productRootKey;
-      const metrics = backCtx.measureText(label);
-      const boxW = Math.ceil(metrics.width + fontSize * 0.9);
-      const boxH = Math.ceil(fontSize * 1.4);
-      const boxX = x - Math.floor(fontSize * 0.45);
-      const boxY = y - boxH + Math.floor(fontSize * 0.25);
-      backCtx.fillStyle = "rgba(0,0,0,0.45)";
-      const r = Math.ceil(fontSize * 0.4);
-      backCtx.beginPath();
-      backCtx.moveTo(boxX + r, boxY);
-      backCtx.arcTo(boxX + boxW, boxY, boxX + boxW, boxY + boxH, r);
-      backCtx.arcTo(boxX + boxW, boxY + boxH, boxX, boxY + boxH, r);
-      backCtx.arcTo(boxX, boxY + boxH, boxX, boxY, r);
-      backCtx.arcTo(boxX, boxY, boxX + boxW, boxY, r);
-      backCtx.closePath();
-      backCtx.fill();
-
-      backCtx.fillStyle = "#ffffff";
-      backCtx.fillText(label, x, y);
-      backCtx.restore();
-    }
-    const backBuffer = backCanvas.toBuffer("image/png");
 
     // --- Build single PDF with front+back side-by-side - UNIFIED DIMENSIONS for 100% balance ---
-    // Serticard 01-02 have matching dimensions; 03-18 have mismatched front/back sizes.
-    // Use same panel size for both so left & right are identical (like 01-02).
-    const panelWidth = Math.max(frontTemplateImage.width, backTemplateImage.width);
-    const panelHeight = Math.max(frontTemplateImage.height, backTemplateImage.height);
+    // Must match export upscale in compose (not raw template pixel size) or PDF would downscale HD PNGs.
+    const { panelWidth, panelHeight } = getSerticardPdfPanelSize(
+      frontTemplateImage,
+      backTemplateImage
+    );
     const gap = 0;
     const pageWidth = panelWidth * 2 + gap;
     const pageHeight = panelHeight;

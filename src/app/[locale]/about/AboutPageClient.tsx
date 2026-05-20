@@ -6,8 +6,11 @@ import Navbar from "@/components/layout/Navbar";
 import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
 import { getR2UrlClient } from "@/utils/r2-url";
+import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
+import { usePauseBackgroundVideoOnScrollAndHidden } from "@/hooks/usePauseBackgroundVideoOnScrollAndHidden";
 import { usePageSections } from "@/hooks/usePageSections";
+import { usePageMedia } from "@/hooks/usePageMedia";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
@@ -56,7 +59,7 @@ type ValueItem = {
 const FeatureCard = ({ feature }: { feature: FeatureItem; index: number }) => {
   return (
     <div className="group relative min-h-[360px]">
-      <div className="relative flex h-full flex-col rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] p-10 backdrop-blur-xl transition-all duration-300 hover:border-luxury-gold/40 hover:shadow-[0px_20px_60px_-30px_rgba(212,175,55,0.4)]">
+      <div className="relative flex h-full flex-col rounded-3xl border border-white/10 bg-gradient-to-br from-black/50 to-black/30 p-10 md:backdrop-blur-md transition-all duration-300 hover:border-luxury-gold/40 hover:shadow-[0px_20px_60px_-30px_rgba(212,175,55,0.4)]">
         <div className="relative z-10">
           <div
             className={`mb-6 inline-flex rounded-2xl bg-gradient-to-br ${feature.gradient} p-4 shadow-lg`}
@@ -99,7 +102,7 @@ const StepCard = ({ step, index }: { step: StepItem; index: number }) => {
 const ValueCard = ({ value }: { value: ValueItem; index: number }) => {
   return (
     <div className="min-h-[220px]">
-      <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 via-white/[0.03] to-transparent p-8 text-center backdrop-blur-xl shadow-[0_20px_70px_-30px_rgba(0,0,0,0.7)] transition-transform duration-300 hover:scale-[1.02]">
+      <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-black/45 via-black/25 to-transparent p-8 text-center md:backdrop-blur-md shadow-[0_20px_70px_-30px_rgba(0,0,0,0.7)] transition-transform duration-300 hover:scale-[1.02]">
         <value.icon className="mx-auto mb-4 h-10 w-10 text-luxury-gold" />
         <h3 className="mb-2 text-lg font-semibold text-luxury-gold">{value.title}</h3>
         <p className="text-sm text-luxury-silver/70">{value.description}</p>
@@ -117,17 +120,25 @@ export default function AboutPageClient() {
   const noiseOverlay = useRef<HTMLDivElement | null>(null);
   const gradientOverlay = useRef<HTMLDivElement | null>(null);
   const heroVideoRef = useRef<HTMLVideoElement | null>(null);
-  const {
-    sections: pageSections,
-    loading: sectionsLoading,
-    refetch: refetchPageSections,
-  } = usePageSections("about");
+  const holdHeroVideoPausedRef = useRef(false);
+  const { sections: pageSections, refetch: refetchPageSections } = usePageSections("about");
+  const { data: pageMediaAbout } = usePageMedia("about");
   const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
   const heroMediaUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/gold-footage.mp4");
+  const heroVideoPlayUrl = useMemo(() => proxiedHeroVideoSrc(heroMediaUrl), [heroMediaUrl]);
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
   // Ensure about-page hero video autoplays reliably on all devices
-  useReliableVideoAutoplay(heroVideoRef);
+  useReliableVideoAutoplay(heroVideoRef, {
+    mode: "background",
+    holdPausedRef: holdHeroVideoPausedRef,
+  });
+  usePauseBackgroundVideoOnScrollAndHidden(heroVideoRef, {
+    enabled: heroMediaType === "VIDEO" && shouldLoadHeroVideo,
+    scrollPastVH: 0.42,
+    holdPausedRef: holdHeroVideoPausedRef,
+    pauseOnWindowBlur: true,
+  });
 
   const featureItems = useMemo<FeatureItem[]>(
     () => [
@@ -219,7 +230,7 @@ export default function AboutPageClient() {
     >
       <div
         ref={noiseOverlay}
-        className="pointer-events-none fixed inset-0 z-0 opacity-60 mix-blend-soft-light"
+        className="pointer-events-none fixed inset-0 z-0 opacity-[0.22]"
       />
       <div
         ref={gradientOverlay}
@@ -232,17 +243,23 @@ export default function AboutPageClient() {
       {/* Navbar */}
       <Navbar />
 
-      {/* Hero: no media until section data loaded (prevents flash of wrong asset) */}
+      {/* Hero: fixed fullscreen — attach src immediately + preload for fast visible playback */}
       <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
         <div className="absolute inset-0 bg-luxury-black z-0" />
-        {sectionsLoading ? (
-          <div className="absolute inset-0 z-10 bg-luxury-black" aria-hidden />
-        ) : heroMediaType === "VIDEO" ? (
+        {heroMediaType === "VIDEO" ? (
           <VideoLoadGuard
+            key={`about-hero-${heroVideoPlayUrl}-${pageSections.hero?.version ?? 0}`}
             ref={heroVideoRef}
-            url={heroMediaUrl}
+            url={heroVideoPlayUrl}
             version={pageSections.hero?.version}
+            posterUrl={pageMediaAbout?.heroImageUrl ?? null}
             forcePoster={!shouldLoadHeroVideo}
+            posterPriority
+            lcpFriendlyPoster
+            deferAttachUntilIdle
+            idleAttachTimeoutMs={320}
+            optimizeGpu
+            lightVideoFade
             containerClassName="absolute inset-0 z-10 h-full w-full"
             className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
             style={{
@@ -290,8 +307,9 @@ export default function AboutPageClient() {
       {/* Hero Section – same size & layout as Distributor (min-h-screen, left-aligned, scroll button) */}
       <section className="relative flex min-h-screen items-center justify-start overflow-hidden">
         <div className="relative z-20 w-full text-left pl-4 sm:pl-6 md:pl-8 lg:pl-12 xl:pl-16 2xl:pl-20 pr-4 sm:pr-6 md:pr-8 lg:pr-12">
-          <ScrollRevealSection as="div" direction="up" delay={0.15} amount={0.4} className="space-y-6 sm:space-y-8 max-w-4xl">
-            <div ref={heroRef} className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-6 py-2 text-[12px] uppercase tracking-[0.45em] text-luxury-silver/60 backdrop-blur w-fit">
+          {/* Static hero copy (no scroll-reveal opacity:0) so LCP can paint headline/subtitle immediately */}
+          <div ref={heroRef} className="space-y-6 sm:space-y-8 max-w-4xl">
+            <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-6 py-2 text-[12px] uppercase tracking-[0.45em] text-luxury-silver/60 backdrop-blur w-fit">
               <span className="h-1 w-1 rounded-full bg-luxury-gold" />
               {t("hero.badge")}
               <span className="h-1 w-1 rounded-full bg-luxury-gold" />
@@ -302,7 +320,7 @@ export default function AboutPageClient() {
             <p className="text-base sm:text-lg md:text-xl font-sans font-light leading-relaxed text-luxury-silver/90 max-w-2xl">
               {t("hero.subtitle")}
             </p>
-          </ScrollRevealSection>
+          </div>
         </div>
         {/* Scroll indicator – same as Distributor */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-3 pointer-events-none">

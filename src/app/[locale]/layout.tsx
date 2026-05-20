@@ -1,5 +1,6 @@
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
+import { unstable_cache } from "next/cache";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import "@/styles/globals.css";
@@ -12,6 +13,12 @@ import { SetDocumentLang } from "@/components/layout/SetDocumentLang";
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
+
+const getCachedIntlMessages = unstable_cache(
+  async (locale: string) => getMessages({ locale }),
+  ["locale-layout-intl-messages"],
+  { revalidate: 3600 }
+);
 
 /**
  * Locale layout – wraps all [locale] routes with i18n providers.
@@ -32,7 +39,7 @@ export default async function LocaleLayout({
 
   let messages;
   try {
-    messages = await getMessages({ locale });
+    messages = await getCachedIntlMessages(locale);
   } catch (error) {
     console.error(`[LocaleLayout] Error loading messages for locale "${locale}":`, error);
     messages = {};

@@ -57,10 +57,12 @@ export async function GET(request: NextRequest) {
   const cached = await prisma.qrZipDownloadCache.findUnique({ where: { cacheKey } });
   let result: any = cached?.result ?? null;
   if (!result) {
-    const job = await prisma.qrZipDownloadJob.findFirst({
+    const agg = await prisma.qrZipDownloadJob.aggregate({
       where: { cacheKey, status: "COMPLETED" },
-      orderBy: { updatedAt: "desc" },
+      _max: { id: true },
     });
+    const latestId = agg._max.id;
+    const job = latestId ? await prisma.qrZipDownloadJob.findUnique({ where: { id: latestId } }) : null;
     result = job?.result ?? null;
   }
 
@@ -113,7 +115,7 @@ export async function GET(request: NextRequest) {
     };
   }
 
-  return NextResponse.json({
+  const res = NextResponse.json({
     cacheKey,
     items: items.map((it) => ({
       ...it,
@@ -122,5 +124,7 @@ export async function GET(request: NextRequest) {
       lastDownloadedAt: auditByKey[it.r2Key]?.lastDownloadedAt ?? null,
     })),
   });
+  res.headers.set("Cache-Control", "private, no-store, max-age=0, must-revalidate");
+  return res;
 }
 

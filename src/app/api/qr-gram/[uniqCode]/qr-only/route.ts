@@ -31,7 +31,7 @@ export async function GET(request: NextRequest, { params }: { params: { uniqCode
     const verifyUrl = getVerifyUrl(gramItem.uniqCode);
 
     const qrBuffer = await QRCode.toBuffer(verifyUrl, {
-      width: 800,
+      width: 2048,
       errorCorrectionLevel: "H",
       color: { dark: "#0c0c0c", light: "#ffffff" },
       margin: 2,

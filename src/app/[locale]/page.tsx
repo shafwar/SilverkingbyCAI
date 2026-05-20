@@ -3,6 +3,9 @@ import { getTranslations } from "next-intl/server";
 import { generatePageMetadata } from "@/lib/seo";
 import HomePageClient from "./HomePageClient";
 
+/** ISR shell lets CDN/origin reuse HTML between rebuilds — client hero still loads from CMS APIs */
+export const revalidate = 300;
+
 export async function generateMetadata({
   params,
 }: {
@@ -32,5 +35,10 @@ export async function generateMetadata({
 }
 
 export default function HomePage() {
-  return <HomePageClient />;
+  return (
+    <>
+      <link rel="preload" href="/images/hero-fallback.jpg" as="image" fetchPriority="high" />
+      <HomePageClient />
+    </>
+  );
 }

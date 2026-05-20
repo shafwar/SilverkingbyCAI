@@ -20,15 +20,19 @@ import {
   Check,
   CloudUpload,
 } from "lucide-react";
-import { PDFDocument } from "pdf-lib";
-
 import { fetcher } from "@/lib/fetcher";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import { Modal } from "./Modal";
 import { AnimatedCard } from "./AnimatedCard";
 import { useDownload } from "@/contexts/DownloadContext";
 import { toast } from "sonner";
-import { SERTICARD_VARIANTS, getSerticardVariant, getLocalTemplateFilename, type SerticardVariantId } from "@/utils/serticard-templates";
+import { SERTICARD_VARIANTS } from "@/utils/serticard-templates";
+import { templateSelectToApiBody } from "@/utils/serticard-template-select";
+import {
+  mergeZipVerificationSummaries,
+  zipVerificationSummaryFromHttpHeaders,
+  type ZipVerificationSummary,
+} from "@/lib/serticard-zip-verification";
 
 type Product = {
   id: number;
@@ -63,20 +67,30 @@ export function QrPreviewGrid() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
-  const [selectedTemplateVariant, setSelectedTemplateVariant] = useState<SerticardVariantId | "custom">("01");
+  const [selectedTemplateVariant, setSelectedTemplateVariant] = useState<string>("01");
 
-  // Fetch serticard config for font settings and custom template availability
+  useEffect(() => {
+    setSelectedTemplateVariant((v) => (typeof v === "string" && v.startsWith("cms:") ? "01" : v));
+  }, []);
+
+  // Fetch serticard config for custom template availability and dropdown label
   const { data: fontConfig, mutate: mutateFontConfig } = useSWR<{
     fontFamily: string;
     fontSizePreset: string;
     customFrontR2Key: string | null;
     customBackR2Key: string | null;
+    customTemplateDropdownLabel?: string | null;
   }>("/api/admin/serticard/config", fetcher, {
     revalidateOnFocus: false,
     revalidateOnReconnect: true,
   });
 
   const hasCustomTemplate = fontConfig?.customFrontR2Key && fontConfig?.customBackR2Key;
+  const customTemplateSelectLabel = (() => {
+    const raw = fontConfig?.customTemplateDropdownLabel?.trim();
+    if (raw) return `✨ ${raw}`;
+    return "✨ Custom";
+  })();
 
   // Listen for config updates from SerticardPanel
   useEffect(() => {
@@ -86,19 +100,6 @@ export function QrPreviewGrid() {
     window.addEventListener("serticard-config-updated", handleConfigUpdate);
     return () => window.removeEventListener("serticard-config-updated", handleConfigUpdate);
   }, [mutateFontConfig]);
-
-  // Font size multipliers helper (client-side)
-  const getFontSizeMultipliers = (preset: string) => {
-    if (preset === "KECIL") {
-      return { nameMultiplier: 0.028, serialMultiplier: 0.032 };
-    }
-    return { nameMultiplier: 0.044, serialMultiplier: 0.050 };
-  };
-
-  const fontMultipliers = fontConfig
-    ? getFontSizeMultipliers(fontConfig.fontSizePreset)
-    : { nameMultiplier: 0.044, serialMultiplier: 0.050 }; // Default BESAR
-  const fontFamily = fontConfig?.fontFamily || "Arial";
 
   // Use download context for global state management
   const {
@@ -182,419 +183,71 @@ export function QrPreviewGrid() {
     return filtered;
   }, [data?.products, searchQuery, selectedCategory]);
 
-  // Helper function to load image with better error handling and CORS support
-  // All images now go through proxy endpoints which have CORS headers
-  const loadImage = (src: string): Promise<HTMLImageElement> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-
-      // All images now come from same-origin proxy endpoints with CORS headers
-      // Set crossOrigin for proxy endpoints and qr-only endpoints to allow canvas export
-      const isProxyEndpoint =
-        src.includes("/api/admin/template-proxy") ||
-        src.includes("/api/admin/qr-proxy") ||
-        (src.includes("/api/qr/") && src.includes("/qr-only"));
-
-      if (isProxyEndpoint) {
-        img.crossOrigin = "anonymous";
-      }
-
-      // Set timeout to prevent hanging
-      const timeout = setTimeout(() => {
-        reject(new Error(`Image load timeout: ${src}`));
-      }, 30000); // 30 seconds timeout
-
-      img.onload = () => {
-        clearTimeout(timeout);
-        console.log(`[LoadImage] Successfully loaded: ${src}`, {
-          width: img.width,
-          height: img.height,
-          crossOrigin: img.crossOrigin || "not set",
-        });
-        resolve(img);
-      };
-
-      img.onerror = (error) => {
-        clearTimeout(timeout);
-        console.error(`[LoadImage] Failed to load image: ${src}`, error);
-        reject(new Error(`Failed to load image: ${src}. Please check if the file exists.`));
-      };
-
-      img.src = src;
-    });
-  };
-
+  /** Single Serticard PDF: always server-rendered so fonts match production (no browser tofu). */
   const handleDownload = async (product: Product) => {
     setIsDownloading(true);
     try {
-      console.log("[Download] Starting download for:", product.serialCode);
+      const tpl = templateSelectToApiBody(selectedTemplateVariant);
+      if (selectedTemplateVariant.startsWith("cms:")) {
+        if (
+          tpl.cmsTemplateId == null ||
+          !Number.isFinite(tpl.cmsTemplateId) ||
+          tpl.cmsTemplateId <= 0
+        ) {
+          throw new Error("Template CMS tidak valid");
+        }
+      }
 
-      // Use proxy endpoint for templates to avoid CORS/tainted canvas issues
-      // If custom template selected, use custom preview endpoint
-      const absoluteFrontUrl =
-        selectedTemplateVariant === "custom"
-          ? `${window.location.origin}/api/admin/serticard/preview?side=front`
-          : `${window.location.origin}/api/admin/template-proxy?template=front&variant=${selectedTemplateVariant}`;
-      const absoluteBackUrl =
-        selectedTemplateVariant === "custom"
-          ? `${window.location.origin}/api/admin/serticard/preview?side=back`
-          : `${window.location.origin}/api/admin/template-proxy?template=back&variant=${selectedTemplateVariant}`;
+      const body: Record<string, unknown> = {
+        product: {
+          id: product.id,
+          name: product.name.trim(),
+          serialCode: product.serialCode.trim().toUpperCase(),
+          weight: product.weight,
+          isGram: false,
+        },
+        templateVariant: tpl.templateVariant,
+        useCustomTemplate: tpl.useCustomTemplate,
+        includeRootKey: false,
+      };
+      if (tpl.cmsTemplateId != null && Number.isFinite(tpl.cmsTemplateId) && tpl.cmsTemplateId > 0) {
+        body.cmsTemplateId = tpl.cmsTemplateId;
+      }
 
-      console.log("[Download] Using template proxy URLs:", {
-        front: absoluteFrontUrl,
-        back: absoluteBackUrl,
+      const res = await fetch("/api/qr/download-single-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
       });
-
-      // CRITICAL: Get QR code WITHOUT text (qr-only) to avoid text inside white box
-      // Use qr-only endpoint directly to ensure QR image has NO text inside
-      // Text will be drawn separately on template canvas, OUTSIDE the white QR box
-      const qrImageUrl = `${window.location.origin}/api/qr/${encodeURIComponent(product.serialCode)}/qr-only`;
-      console.log("[Download] QR URL (qr-only, no text inside):", qrImageUrl);
-
-      // Load all images: front template, back template, and QR code
-      // If R2 template fails, fallback to local paths
-      console.log("[Download] Loading images...");
-      let frontTemplateImg: HTMLImageElement;
-      let backTemplateImg: HTMLImageElement;
-
-      try {
-        frontTemplateImg = await loadImage(absoluteFrontUrl);
-        console.log("[Download] Front template loaded from:", absoluteFrontUrl);
-      } catch (frontErr: any) {
-        console.warn("[Download] Failed to load front template from R2, trying local:", frontErr);
-        // Fallback to local static path
-        const v = getSerticardVariant(selectedTemplateVariant);
-        const localFrontPath = v ? `/${v.localBase}/${getLocalTemplateFilename(v.frontNum, v.ext)}` : "/images/serticard/Serticard-01.png";
-        const localFrontUrl = window.location.origin + localFrontPath;
+      if (!res.ok) {
+        const text = await res.text();
+        let msg = text;
         try {
-          frontTemplateImg = await loadImage(localFrontUrl);
-          console.log("[Download] Front template loaded from local:", localFrontUrl);
-        } catch (localErr: any) {
-          throw new Error(`Failed to load front template from R2 and local: ${frontErr.message}`);
+          const j = JSON.parse(text) as { error?: string };
+          if (j?.error) msg = j.error;
+        } catch {
+          // ignore
         }
+        throw new Error(msg || `HTTP ${res.status}`);
       }
-
-      try {
-        backTemplateImg = await loadImage(absoluteBackUrl);
-        console.log("[Download] Back template loaded from:", absoluteBackUrl);
-      } catch (backErr: any) {
-        console.warn("[Download] Failed to load back template from R2, trying local:", backErr);
-        // Fallback to local static path
-        const v = getSerticardVariant(selectedTemplateVariant);
-        const localBackPath = v ? `/${v.localBase}/${getLocalTemplateFilename(v.backNum, v.ext)}` : "/images/serticard/Serticard-02.png";
-        const localBackUrl = window.location.origin + localBackPath;
-        try {
-          backTemplateImg = await loadImage(localBackUrl);
-          console.log("[Download] Back template loaded from local:", localBackUrl);
-        } catch (localErr: any) {
-          throw new Error(`Failed to load back template from R2 and local: ${backErr.message}`);
-        }
-      }
-
-      // Load QR code (required, no fallback)
-      const qrImg = await loadImage(qrImageUrl).catch((err) => {
-        console.error("[Download] Failed to load QR:", err);
-        throw new Error(`Failed to load QR code: ${err.message}`);
-      });
-
-      console.log("[Download] Images loaded successfully", {
-        frontSize: { width: frontTemplateImg.width, height: frontTemplateImg.height },
-        backSize: { width: backTemplateImg.width, height: backTemplateImg.height },
-        qrSize: { width: qrImg.width, height: qrImg.height },
-      });
-
-      // Create canvas for FRONT template with QR code overlay
-      const frontCanvas = document.createElement("canvas");
-      frontCanvas.width = frontTemplateImg.width;
-      frontCanvas.height = frontTemplateImg.height;
-      const frontCtx = frontCanvas.getContext("2d", {
-        willReadFrequently: false, // Optimize for drawing, not reading
-      });
-      if (!frontCtx) throw new Error("Failed to get canvas context");
-
-      // Draw front template as background
-      // Use try-catch to handle potential tainted canvas errors
-      try {
-        frontCtx.drawImage(frontTemplateImg, 0, 0);
-      } catch (drawError: any) {
-        // If tainted canvas error, try to reload image without crossOrigin
-        if (drawError.message?.includes("tainted") || drawError.message?.includes("cross-origin")) {
-          console.warn(
-            "[Download] Tainted canvas detected, reloading front template without crossOrigin"
-          );
-          const v = getSerticardVariant(selectedTemplateVariant);
-          const localFrontPath = v ? `/${v.localBase}/${getLocalTemplateFilename(v.frontNum, v.ext)}` : "/images/serticard/Serticard-01.png";
-          const fallbackImg = await loadImage(window.location.origin + localFrontPath);
-          frontCtx.drawImage(fallbackImg, 0, 0);
-          frontTemplateImg = fallbackImg; // Update reference for later use
-        } else {
-          throw drawError;
-        }
-      }
-
-      // Calculate QR position based on template design
-      // From image: QR is centered, serial below, product name above
-      const qrSize = Math.min(frontTemplateImg.width * 0.55, frontTemplateImg.height * 0.55, 900);
-      const qrX = (frontTemplateImg.width - qrSize) / 2; // Center horizontally
-      const qrY = frontTemplateImg.height * 0.38; // Position vertically
-
-      // Draw white background for QR (optional, for better contrast)
-      const padding = 8;
-      frontCtx.fillStyle = "#ffffff";
-      frontCtx.fillRect(qrX - padding, qrY - padding, qrSize + padding * 2, qrSize + padding * 2);
-
-      // Draw QR code on front template
-      frontCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-
-      // === LAYOUT: Nama produk & serial - no white bg, bold & larger (03-18: white text on dark) ===
-      const nameOffset = Math.round(frontTemplateImg.height * 0.038);
-      const serialOffset = Math.round(frontTemplateImg.height * 0.038);
-        const isDarkTemplate = selectedTemplateVariant !== "01" && selectedTemplateVariant !== "custom";
-      const textColor = isDarkTemplate ? "#ffffff" : "#111111";
-
-      if (product.name && product.name.trim().length > 0) {
-        const nameFontSize = Math.floor(frontTemplateImg.width * fontMultipliers.nameMultiplier);
-        const nameY = qrY - nameOffset;
-        frontCtx.fillStyle = textColor;
-        frontCtx.textAlign = "center";
-        frontCtx.textBaseline = "bottom";
-        frontCtx.font = `bold ${nameFontSize}px ${fontFamily}, sans-serif`;
-        frontCtx.fillText(product.name.trim(), frontTemplateImg.width / 2, nameY);
-      }
-
-      if (product.serialCode && product.serialCode.trim().length > 0) {
-        const serialFontSize = Math.floor(frontTemplateImg.width * fontMultipliers.serialMultiplier);
-        const serialY = qrY + qrSize + serialOffset;
-        frontCtx.fillStyle = textColor;
-        frontCtx.textAlign = "center";
-        frontCtx.textBaseline = "top";
-        frontCtx.font = `bold ${serialFontSize}px ${fontFamily}, monospace`;
-        frontCtx.fillText(product.serialCode.trim().toUpperCase(), frontTemplateImg.width / 2, serialY);
-      }
-      // === END: 2 fillText calls dengan kotak putih - product name di atas QR, serial code di bawah QR ===
-
-      // Create canvas for BACK template (no QR, just the template)
-      const backCanvas = document.createElement("canvas");
-      backCanvas.width = backTemplateImg.width;
-      backCanvas.height = backTemplateImg.height;
-      const backCtx = backCanvas.getContext("2d", {
-        willReadFrequently: false, // Optimize for drawing, not reading
-      });
-      if (!backCtx) throw new Error("Failed to get canvas context");
-
-      // Draw back template as background (no QR code, just the template)
-      // Use try-catch to handle potential tainted canvas errors
-      try {
-        backCtx.drawImage(backTemplateImg, 0, 0);
-      } catch (drawError: any) {
-        // If tainted canvas error, try to reload image without crossOrigin
-        if (drawError.message?.includes("tainted") || drawError.message?.includes("cross-origin")) {
-          console.warn(
-            "[Download] Tainted canvas detected, reloading back template without crossOrigin"
-          );
-          const vb = getSerticardVariant(selectedTemplateVariant);
-          const localBackPath = vb ? `/${vb.localBase}/${getLocalTemplateFilename(vb.backNum, vb.ext)}` : "/images/serticard/Serticard-02.png";
-          const fallbackImg = await loadImage(window.location.origin + localBackPath);
-          backCtx.drawImage(fallbackImg, 0, 0);
-          backTemplateImg = fallbackImg; // Update reference for later use
-        } else {
-          throw drawError;
-        }
-      }
-
-      // Convert both canvases to image data
-      // Handle tainted canvas errors with fallback
-      console.log("[Download] Converting canvases to image data...");
-      let frontImageData: string;
-      let backImageData: string;
-
-      try {
-        frontImageData = frontCanvas.toDataURL("image/png", 1.0);
-      } catch (toDataError: any) {
-        if (toDataError.message?.includes("tainted")) {
-          console.warn("[Download] Tainted canvas error on front, using local template fallback");
-          const v = getSerticardVariant(selectedTemplateVariant);
-          const localFrontPath = v ? `/${v.localBase}/${getLocalTemplateFilename(v.frontNum, v.ext)}` : "/images/serticard/Serticard-01.png";
-          const localFrontImg = await loadImage(window.location.origin + localFrontPath);
-          const fallbackCanvas = document.createElement("canvas");
-          fallbackCanvas.width = localFrontImg.width;
-          fallbackCanvas.height = localFrontImg.height;
-          const fallbackCtx = fallbackCanvas.getContext("2d");
-          if (!fallbackCtx) throw new Error("Failed to get canvas context");
-          fallbackCtx.drawImage(localFrontImg, 0, 0);
-          // Redraw QR and text on fallback canvas
-          const qrSize = Math.min(localFrontImg.width * 0.55, localFrontImg.height * 0.55, 900);
-          const qrX = (localFrontImg.width - qrSize) / 2;
-          const qrY = localFrontImg.height * 0.38;
-          const padding = 8;
-          fallbackCtx.fillStyle = "#ffffff";
-          fallbackCtx.fillRect(
-            qrX - padding,
-            qrY - padding,
-            qrSize + padding * 2,
-            qrSize + padding * 2
-          );
-          fallbackCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-          const nameOffsetFb = Math.round(localFrontImg.height * 0.038);
-          const serialOffsetFb = Math.round(localFrontImg.height * 0.038);
-          const isDarkFb = selectedTemplateVariant !== "01" && selectedTemplateVariant !== "custom";
-          const textColorFb = isDarkFb ? "#ffffff" : "#111111";
-
-          if (product.name && product.name.trim().length > 0) {
-            const nameFontSize = Math.floor(localFrontImg.width * fontMultipliers.nameMultiplier);
-            const nameY = qrY - nameOffsetFb;
-            fallbackCtx.fillStyle = textColorFb;
-            fallbackCtx.textAlign = "center";
-            fallbackCtx.textBaseline = "bottom";
-            fallbackCtx.font = `bold ${nameFontSize}px ${fontFamily}, sans-serif`;
-            fallbackCtx.fillText(product.name.trim(), localFrontImg.width / 2, nameY);
-          }
-          if (product.serialCode && product.serialCode.trim().length > 0) {
-            const serialFontSize = Math.floor(localFrontImg.width * fontMultipliers.serialMultiplier);
-            const serialY = qrY + qrSize + serialOffsetFb;
-            fallbackCtx.fillStyle = textColorFb;
-            fallbackCtx.textAlign = "center";
-            fallbackCtx.textBaseline = "top";
-            fallbackCtx.font = `bold ${serialFontSize}px ${fontFamily}, monospace`;
-            fallbackCtx.fillText(product.serialCode.trim().toUpperCase(), localFrontImg.width / 2, serialY);
-          }
-          // === END: 2 fillText calls dengan kotak putih - product name di atas QR, serial code di bawah QR ===
-          frontImageData = fallbackCanvas.toDataURL("image/png", 1.0);
-        } else {
-          throw toDataError;
-        }
-      }
-
-      try {
-        backImageData = backCanvas.toDataURL("image/png", 1.0);
-      } catch (toDataError: any) {
-        if (toDataError.message?.includes("tainted")) {
-          console.warn("[Download] Tainted canvas error on back, using local template fallback");
-          const v = getSerticardVariant(selectedTemplateVariant);
-          const localBackPath = v ? `/${v.localBase}/${getLocalTemplateFilename(v.backNum, v.ext)}` : "/images/serticard/Serticard-02.png";
-          const localBackImg = await loadImage(window.location.origin + localBackPath);
-          const fallbackCanvas = document.createElement("canvas");
-          fallbackCanvas.width = localBackImg.width;
-          fallbackCanvas.height = localBackImg.height;
-          const fallbackCtx = fallbackCanvas.getContext("2d");
-          if (!fallbackCtx) throw new Error("Failed to get canvas context");
-          fallbackCtx.drawImage(localBackImg, 0, 0);
-          backImageData = fallbackCanvas.toDataURL("image/png", 1.0);
-        } else {
-          throw toDataError;
-        }
-      }
-
-      console.log("[Download] Image data lengths:", {
-        front: frontImageData.length,
-        back: backImageData.length,
-      });
-
-      if (
-        !frontImageData ||
-        frontImageData === "data:," ||
-        !backImageData ||
-        backImageData === "data:,"
-      ) {
-        throw new Error("Failed to generate image data from canvas");
-      }
-
-      // Create PDF - UNIFIED PANEL DIMENSIONS for 100% balance (same as Serticard 01-02)
-      console.log("[Download] Creating PDF with side-by-side layout using pdf-lib...");
-
-      const panelWidth = Math.max(frontTemplateImg.width, backTemplateImg.width);
-      const panelHeight = Math.max(frontTemplateImg.height, backTemplateImg.height);
-      const gap = 0;
-      const pageWidth = panelWidth * 2 + gap;
-      const pageHeight = panelHeight;
-
-      console.log("[Download] PDF dimensions:", {
-        pageWidth,
-        pageHeight,
-        panelSize: `${panelWidth}x${panelHeight}`,
-        frontSize: `${frontTemplateImg.width}x${frontTemplateImg.height}`,
-        backSize: `${backTemplateImg.width}x${backTemplateImg.height}`,
-      });
-
-      const pdfDoc = await PDFDocument.create();
-      const page = pdfDoc.addPage([pageWidth, pageHeight]);
-
-      // Convert base64 image data to Uint8Array for pdf-lib
-      const frontImageBytes = Uint8Array.from(atob(frontImageData.split(",")[1]), (c) =>
-        c.charCodeAt(0)
-      );
-      const backImageBytes = Uint8Array.from(atob(backImageData.split(",")[1]), (c) =>
-        c.charCodeAt(0)
-      );
-
-      // Embed images
-      const frontPngImage = await pdfDoc.embedPng(frontImageBytes);
-      const backPngImage = await pdfDoc.embedPng(backImageBytes);
-
-      console.log("[Download] Embedding images to PDF:", {
-        frontSize: `${frontTemplateImg.width}x${frontTemplateImg.height}`,
-        backSize: `${backTemplateImg.width}x${backTemplateImg.height}`,
-        pageSize: `${pageWidth}x${pageHeight}`,
-      });
-
-      // Both panels at SAME size = 100% balanced (same as Serticard 01-02)
-      page.drawImage(frontPngImage, {
-        x: 0,
-        y: 0,
-        width: panelWidth,
-        height: panelHeight,
-      });
-
-      const backX = panelWidth + gap;
-      page.drawImage(backPngImage, {
-        x: backX,
-        y: 0,
-        width: panelWidth,
-        height: panelHeight,
-      });
-
-      console.log("[Download] Both templates drawn to PDF:", {
-        frontPosition: "(0, 0)",
-        backPosition: `(${backX}, 0)`,
-        frontDrawn: true,
-        backDrawn: true,
-      });
-
-      // Generate PDF bytes
-      const pdfBytes = await pdfDoc.save();
-
-      // Generate filename
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
       const sanitizedName = product.name
         .trim()
         .replace(/\s+/g, "-")
         .replace(/[^a-zA-Z0-9-]/g, "")
         .replace(/-+/g, "-")
         .replace(/^-|-$/g, "");
-
-      const filename = `QR-${product.serialCode}${sanitizedName ? `-${sanitizedName}` : ""}.pdf`;
-
-      // Download PDF
-      console.log("[Download] Saving PDF:", filename);
-      const blob = new Blob([new Uint8Array(Array.from(pdfBytes))], { type: "application/pdf" });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
+      link.download = `QR-${product.serialCode}${sanitizedName ? `-${sanitizedName}` : ""}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      console.log("[Download] Download completed successfully");
-    } catch (error: any) {
-      console.error("[Download] Failed to download QR code:", error);
-      console.error("[Download] Error details:", {
-        message: error?.message,
-        stack: error?.stack,
-        name: error?.name,
-      });
-
-      // Show more detailed error message
-      const errorMessage = error?.message || "Unknown error occurred";
+    } catch (error: unknown) {
+      console.error("[Download] Failed to download Serticard PDF:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       toast.error(t("downloadFailed"), {
         description: errorMessage,
       });
@@ -622,6 +275,7 @@ export function QrPreviewGrid() {
       const BATCH_SIZE = 100;
       const totalBatches = Math.ceil(allProducts.length / BATCH_SIZE);
       let downloadedBatches = 0;
+      const zipVerificationBatches: ZipVerificationSummary[] = [];
 
       // Split products into batches of 100 and download each batch as a separate ZIP
       // CRITICAL: Send full product objects (like handleDownload single), not just serialCodes
@@ -682,11 +336,14 @@ export function QrPreviewGrid() {
           // Call endpoint for this batch (100 files) - backend will generate and return 1 ZIP
           // CRITICAL: Send products (full objects) instead of serialCodes
           // Backend will use these products directly, same as handleDownload (single)
+          const tpl = templateSelectToApiBody(selectedTemplateVariant);
           const requestBody = {
             products,
             batchNumber,
-            templateVariant: selectedTemplateVariant === "custom" ? "01" : selectedTemplateVariant,
-            useCustomTemplate: selectedTemplateVariant === "custom",
+            templateVariant: tpl.templateVariant,
+            useCustomTemplate: tpl.useCustomTemplate,
+            includeRootKey: true,
+            ...(tpl.cmsTemplateId != null ? { cmsTemplateId: tpl.cmsTemplateId } : {}),
           };
           console.log(
             `[DownloadAll] Request body size:`,
@@ -743,6 +400,9 @@ export function QrPreviewGrid() {
           if (contentType?.includes("application/json")) {
             // Response is JSON with R2 download URL
             const result = await response.json();
+            if (result?.verification && typeof result.verification === "object") {
+              zipVerificationBatches.push(result.verification as ZipVerificationSummary);
+            }
             if (result.success && result.downloadUrl) {
               setDownloadLabel(`Mengunduh batch ${batchNumber}/${totalBatches} dari R2...`);
               setDownloadPercent(Math.round(((downloadedBatches + 0.5) / totalBatches) * 100));
@@ -819,6 +479,8 @@ export function QrPreviewGrid() {
             }
           } else if (contentType?.startsWith("application/zip")) {
             // Direct ZIP download (fallback)
+            const hdrZipVerify = zipVerificationSummaryFromHttpHeaders(response.headers);
+            if (hdrZipVerify) zipVerificationBatches.push(hdrZipVerify);
             // Stream download with progress
             const contentLength = response.headers.get("content-length");
             const total = contentLength ? parseInt(contentLength, 10) : null;
@@ -927,9 +589,37 @@ export function QrPreviewGrid() {
         setIsDownloadMinimized(false);
       }, 2000);
 
-      toast.success("Download berhasil", {
-        description: `Berhasil mengunduh ${totalBatches} file ZIP (${allProducts.length} file QR total). Setiap ZIP berisi 100 file PDF (kecuali batch terakhir).`,
-      });
+      const mergedVerify = mergeZipVerificationSummaries(zipVerificationBatches);
+      const verifyLine =
+        mergedVerify &&
+        (mergedVerify.items.length > 0 ||
+          mergedVerify.warnings.length > 0 ||
+          mergedVerify.renderFailures.length > 0)
+          ? t("zipVerificationSummary", {
+              verified: mergedVerify.items.length,
+              warnings: mergedVerify.warnings.length,
+              failed: mergedVerify.renderFailures.length,
+            })
+          : null;
+      const baseDesc = `Berhasil mengunduh ${totalBatches} file ZIP (${allProducts.length} file QR total). Setiap ZIP berisi 100 file PDF (kecuali batch terakhir).`;
+      const failedPdf = mergedVerify?.renderFailures.length ?? 0;
+      const okPdf = mergedVerify?.items.length ?? 0;
+      if (mergedVerify && failedPdf > 0 && okPdf === 0) {
+        toast.error("ZIP diunduh tetapi tidak ada PDF yang lolos verifikasi buffer", {
+          description: [verifyLine, baseDesc].filter(Boolean).join("\n"),
+          duration: 12_000,
+        });
+      } else if (mergedVerify && failedPdf > 0) {
+        toast.warning("ZIP diunduh — sebagian PDF gagal verifikasi / tidak masuk ZIP", {
+          description: [verifyLine, baseDesc].filter(Boolean).join("\n"),
+          duration: 12_000,
+        });
+      } else {
+        toast.success("Download berhasil", {
+          description: [baseDesc, verifyLine].filter(Boolean).join("\n"),
+          duration: 8000,
+        });
+      }
     } catch (error: any) {
       // Check if error is due to abort
       if (error?.name === "AbortError" || abortController.signal.aborted) {
@@ -996,7 +686,19 @@ export function QrPreviewGrid() {
     if (!data?.products) return;
 
     const selectedProducts = data.products.filter((p) => selectedItems.has(p.id));
-    const serialCodes = selectedProducts.map((p) => p.serialCode);
+    const productsPayload = selectedProducts
+      .map((p) => ({
+        id: p.id,
+        name: (p.name || "").trim(),
+        serialCode: (p.serialCode || "").trim(),
+        weight: p.weight ?? 0,
+      }))
+      .filter((p) => p.name.length > 0 && p.serialCode.length > 0);
+
+    if (productsPayload.length === 0) {
+      toast.error(t("downloadSelectedFailed"));
+      return;
+    }
 
     setIsDownloadingSelected(true);
     setDownloadPercent(0);
@@ -1007,6 +709,8 @@ export function QrPreviewGrid() {
     const abortController = new AbortController();
     setDownloadAbortController(abortController);
 
+    let zipVerificationForToast: ZipVerificationSummary | null = null;
+
     try {
       // Download selected QR codes as ZIP with PDFs (one PDF per QR)
       const response = await fetch("/api/qr/download-multiple-pdf", {
@@ -1015,9 +719,16 @@ export function QrPreviewGrid() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          serialCodes,
-          templateVariant: selectedTemplateVariant === "custom" ? "01" : selectedTemplateVariant,
-          useCustomTemplate: selectedTemplateVariant === "custom",
+          products: productsPayload,
+          includeRootKey: true,
+          ...(() => {
+            const tpl = templateSelectToApiBody(selectedTemplateVariant);
+            return {
+              templateVariant: tpl.templateVariant,
+              useCustomTemplate: tpl.useCustomTemplate,
+              ...(tpl.cmsTemplateId != null ? { cmsTemplateId: tpl.cmsTemplateId } : {}),
+            };
+          })(),
         }),
         signal: abortController.signal,
       });
@@ -1056,72 +767,126 @@ export function QrPreviewGrid() {
       const contentType = response.headers.get("Content-Type");
 
       if (contentType?.includes("application/json")) {
-        // Response is JSON with R2 download URL
-        const result = await response.json();
-        if (result.success && result.downloadUrl) {
+        let result = (await response.json()) as Record<string, any>;
+        if (result.jobId != null && result.status === "pending") {
+          setDownloadLabel("ZIP sedang diproses di server...");
+          const jobId = result.jobId as number;
+          const maxAttempts = 240;
+          let completed = false;
+          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            if (abortController.signal.aborted) throw new Error("Download cancelled");
+            await new Promise((r) => setTimeout(r, 2000));
+            const jobRes = await fetch(`/api/qr/download-job/${jobId}`, {
+              signal: abortController.signal,
+            });
+            if (!jobRes.ok) {
+              const err = (await jobRes.json().catch(() => ({}))) as { error?: string };
+              throw new Error(err.error || "Gagal memeriksa status ZIP");
+            }
+            const jobData = (await jobRes.json()) as {
+              status: string;
+              result?: Record<string, any>;
+              errorMessage?: string;
+              progressPercent?: number;
+              progressMessage?: string | null;
+            };
+            if (jobData.progressMessage || jobData.progressPercent != null) {
+              setDownloadLabel(
+                (jobData.progressMessage?.slice(0, 72) as string) ||
+                  `Memproses… ${jobData.progressPercent ?? 0}%`
+              );
+            }
+            if (jobData.status === "FAILED") {
+              throw new Error(jobData.errorMessage || "ZIP gagal diproses");
+            }
+            if (jobData.status === "COMPLETED" && jobData.result) {
+              result = { ...jobData.result, success: true };
+              completed = true;
+              break;
+            }
+          }
+          if (!completed) {
+            throw new Error("Timeout: ZIP belum selesai. Kurangi jumlah item atau coba lagi.");
+          }
+        }
+
+        if (result?.verification && typeof result.verification === "object") {
+          zipVerificationForToast = result.verification as ZipVerificationSummary;
+        }
+
+        const primaryUrl = (result.downloadUrl || result.download_url) as string | undefined;
+        const downloads = Array.isArray(result.downloads) ? result.downloads : [];
+
+        const downloadOneZipFromUrl = async (zipUrl: string, filenameHint: string) => {
           setDownloadLabel(`Mengunduh dari R2...`);
           setDownloadPercent(50);
-
-          console.log(`[Download] Downloading from R2: ${result.downloadUrl}`);
-
-          // Download from R2 URL with progress tracking
-          const r2Response = await fetch(result.downloadUrl, {
-            signal: abortController.signal,
-          });
+          console.log(`[Download] Downloading from R2: ${zipUrl}`);
+          const r2Response = await fetch(zipUrl, { signal: abortController.signal });
           if (!r2Response.ok) {
             throw new Error(`Gagal mengunduh dari R2. Status: ${r2Response.status}`);
           }
-
-          // Track download progress from R2
           const r2ContentLength = r2Response.headers.get("content-length");
           const r2Total = r2ContentLength ? parseInt(r2ContentLength, 10) : null;
           let r2Loaded = 0;
-
           const r2Reader = r2Response.body?.getReader();
           if (!r2Reader) {
             throw new Error(`Stream download tidak tersedia dari R2`);
           }
-
           const r2Chunks: BlobPart[] = [];
           while (true) {
-            // Check for abort during download
-            if (abortController.signal.aborted) {
-              throw new Error("Download cancelled");
-            }
+            if (abortController.signal.aborted) throw new Error("Download cancelled");
             const { done, value } = await r2Reader.read();
             if (done) break;
-
             if (value) {
               r2Chunks.push(value);
               r2Loaded += value.length;
-
-              // Update progress
               if (r2Total) {
                 const r2Progress = Math.round((r2Loaded / r2Total) * 100);
-                const overallProgress = Math.round(50 + r2Progress / 2); // 50-100%
-                setDownloadPercent(overallProgress);
+                setDownloadPercent(Math.round(50 + r2Progress / 2));
                 setDownloadLabel(`Mengunduh dari R2... ${r2Progress}%`);
               }
             }
           }
-
           const r2Blob = new Blob(r2Chunks, { type: "application/zip" });
           const url = window.URL.createObjectURL(r2Blob);
           const link = document.createElement("a");
           link.href = url;
           link.download =
-            result.filename ||
-            `Silver-King-Selected-QR-Codes-${serialCodes.length}-${new Date().toISOString().split("T")[0]}.zip`;
+            filenameHint ||
+            (result.filename as string) ||
+            `Silver-King-Selected-QR-Codes-${productsPayload.length}-${new Date().toISOString().split("T")[0]}.zip`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
           window.URL.revokeObjectURL(url);
+          console.log(`[Download] Downloaded from R2 successfully: ${zipUrl}`);
+        };
 
-          console.log(`[Download] Downloaded from R2 successfully: ${result.downloadUrl}`);
+        if (result.success && downloads.length > 0) {
+          for (let di = 0; di < downloads.length; di++) {
+            const d = downloads[di] as { download_url?: string; downloadUrl?: string };
+            const u = d.download_url || d.downloadUrl;
+            if (!u) continue;
+            setDownloadLabel(`Mengunduh dari R2… (${di + 1}/${downloads.length})`);
+            setDownloadPercent(Math.round(((di + 0.5) / Math.max(1, downloads.length)) * 100));
+            await downloadOneZipFromUrl(
+              u,
+              `Silver-King-Selected-part-${di + 1}-of-${downloads.length}.zip`
+            );
+            if (di < downloads.length - 1) await new Promise((r) => setTimeout(r, 400));
+          }
+        } else if (result.success && primaryUrl) {
+          await downloadOneZipFromUrl(
+            primaryUrl,
+            `Silver-King-Selected-QR-Codes-${productsPayload.length}-${new Date().toISOString().split("T")[0]}.zip`
+          );
         } else {
-          throw new Error(result.error || `Gagal mendapatkan URL download`);
+          throw new Error((result.error as string) || `Gagal mendapatkan URL download`);
         }
       } else if (contentType?.startsWith("application/zip")) {
+        setDownloadLabel("Mengunduh ZIP (verifikasi per item ada di SERTICARD-ZIP-VERIFICATION.json)…");
+        const hdrSel = zipVerificationSummaryFromHttpHeaders(response.headers);
+        if (hdrSel) zipVerificationForToast = hdrSel;
         // Direct ZIP download (fallback)
         // Stream download with progress
         const contentLength = response.headers.get("content-length");
@@ -1166,7 +931,7 @@ export function QrPreviewGrid() {
         link.href = url;
 
         const contentDisposition = response.headers.get("Content-Disposition");
-        let filename = `Silver-King-Selected-QR-Codes-${serialCodes.length}-${new Date().toISOString().split("T")[0]}.zip`;
+        let filename = `Silver-King-Selected-QR-Codes-${productsPayload.length}-${new Date().toISOString().split("T")[0]}.zip`;
         if (contentDisposition) {
           const filenameMatch = contentDisposition.match(/filename=?"?([^\s"]+)"?/);
           if (filenameMatch) {
@@ -1195,7 +960,34 @@ export function QrPreviewGrid() {
         setIsDownloadMinimized(false);
       }, 2000);
 
-      toast.success(t("downloadSelectedSuccess", { count: serialCodes.length }));
+      const verifyDesc =
+        zipVerificationForToast &&
+        (zipVerificationForToast.items.length > 0 ||
+          zipVerificationForToast.warnings.length > 0 ||
+          zipVerificationForToast.renderFailures.length > 0)
+          ? t("zipVerificationSummary", {
+              verified: zipVerificationForToast.items.length,
+              warnings: zipVerificationForToast.warnings.length,
+              failed: zipVerificationForToast.renderFailures.length,
+            })
+          : undefined;
+      const selFailed = zipVerificationForToast?.renderFailures.length ?? 0;
+      const selOk = zipVerificationForToast?.items.length ?? 0;
+      if (zipVerificationForToast && selFailed > 0 && selOk === 0) {
+        toast.error("ZIP diunduh tetapi tidak ada PDF yang lolos verifikasi", {
+          description: verifyDesc,
+          duration: 12_000,
+        });
+      } else if (zipVerificationForToast && selFailed > 0) {
+        toast.warning("ZIP diunduh — sebagian PDF gagal verifikasi", {
+          description: verifyDesc,
+          duration: 12_000,
+        });
+      } else {
+        toast.success(t("downloadSelectedSuccess", { count: productsPayload.length }), {
+          ...(verifyDesc ? { description: verifyDesc } : {}),
+        });
+      }
     } catch (error: any) {
       // Check if error is due to abort
       if (error?.name === "AbortError" || abortController.signal.aborted) {
@@ -1611,7 +1403,7 @@ export function QrPreviewGrid() {
               <span className="text-[10px] sm:text-xs text-white/50 whitespace-nowrap">{t("serticardTemplate") || "Template:"}</span>
               <select
                 value={selectedTemplateVariant}
-                onChange={(e) => setSelectedTemplateVariant(e.target.value as SerticardVariantId | "custom")}
+                onChange={(e) => setSelectedTemplateVariant(e.target.value)}
                 className="rounded-full border border-white/15 bg-black/40 px-2.5 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs text-white focus:border-[#FFD700]/50 focus:outline-none focus:ring-1 focus:ring-[#FFD700]/30"
               >
                 {SERTICARD_VARIANTS.map((v) => (
@@ -1621,7 +1413,7 @@ export function QrPreviewGrid() {
                 ))}
                 {hasCustomTemplate && (
                   <option value="custom" className="bg-[#0a0a0a] text-[#FFD700] font-semibold">
-                    ✨ Custom
+                    {customTemplateSelectLabel}
                   </option>
                 )}
               </select>

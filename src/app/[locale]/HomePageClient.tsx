@@ -1,23 +1,15 @@
 "use client";
 
-import { useState, useLayoutEffect, useEffect, Suspense } from "react";
-import dynamic from "next/dynamic";
+import { useState, useLayoutEffect, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import SplashScreen from "@/components/sections/SplashScreen";
-import { PageLoadingSkeleton } from "@/components/ui/PageLoadingSkeleton";
-// Lazy load HeroSection to improve initial page load
-const HeroSection = dynamic(() => import("@/components/sections/HeroSection"), {
-  loading: () => <PageLoadingSkeleton />,
-  ssr: true, // Still SSR for SEO, but lazy load on client
-});
+import HeroSection from "@/components/sections/HeroSection";
 
 export default function HomePageClient() {
-  // Initialize with true to prevent flash - splash shows FIRST
   const [showSplash, setShowSplash] = useState<boolean>(true);
   const [splashComplete, setSplashComplete] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
-  // Add home-page class to body for CSS targeting
   useEffect(() => {
     if (typeof window !== "undefined") {
       document.body.classList.add("home-page");
@@ -27,23 +19,19 @@ export default function HomePageClient() {
     }
   }, []);
 
-  // IMMEDIATELY check if splash should be shown (BEFORE first render)
   useLayoutEffect(() => {
     setIsClient(true);
     if (typeof window !== "undefined") {
       try {
         const splashShown = sessionStorage.getItem("splashShown");
-        
+
         if (splashShown === "true") {
-          // Skip splash entirely - set immediately
           setShowSplash(false);
           setSplashComplete(true);
         } else {
-          // Show splash - already set to true, no change needed
           setShowSplash(true);
         }
       } catch (error) {
-        // Handle sessionStorage errors (e.g., in private browsing)
         console.warn("[HomePage] sessionStorage error:", error);
         setShowSplash(false);
         setSplashComplete(true);
@@ -63,10 +51,8 @@ export default function HomePageClient() {
     setSplashComplete(true);
   };
 
-  // Always render both splash and content to prevent hydration mismatch
   return (
     <>
-      {/* Splash Screen - Always render, control visibility */}
       {(!isClient || showSplash) && (
         <div
           style={{
@@ -83,11 +69,10 @@ export default function HomePageClient() {
         </div>
       )}
 
-      {/* Main Content - Always render, control visibility */}
       <div
         style={{
           opacity: isClient && !showSplash ? 1 : 0,
-          transition: "opacity 0.3s ease-in",
+          transition: "opacity 0.22s ease-out",
           pointerEvents: isClient && !showSplash ? "auto" : "none",
           position: "relative",
           zIndex: 1,
@@ -96,10 +81,9 @@ export default function HomePageClient() {
       >
         <Navbar />
         <main className="min-h-screen bg-transparent overflow-hidden">
-          <HeroSection shouldAnimate={splashComplete} skipVideo />
+          <HeroSection shouldAnimate={splashComplete} skipVideo priorityLcp />
         </main>
       </div>
     </>
   );
 }
-
