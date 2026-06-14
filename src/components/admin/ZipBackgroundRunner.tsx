@@ -26,6 +26,8 @@ import {
 const POLL_INTERVAL_MS = 1500;
 const UI_DISMISS_AFTER_SUCCESS_MS = 2500;
 const MAX_AUTO_DOWNLOAD_ATTEMPTS = 4;
+/** Tunggu UI menampilkan 100% sukses R2 sebelum mulai simpan ke laptop. */
+const SERVER_SUCCESS_BEFORE_DEVICE_MS = 800;
 
 function safeBatchFilename(batchName: string): string {
   return (batchName || "batch").replace(/\s+/g, "-");
@@ -253,14 +255,16 @@ async function saveOneBatchToDevice(t: ZipBackgroundTask, d: ZipTaskDownload): P
   );
   writeZipBackgroundTask(next);
 
-  const result = await saveZipBatchPartToDevice({
-    filename,
-    jobId: t.jobId,
-    batchIndex: d.batchIndex,
-    r2Key: d.r2Key,
-    download_url: d.download_url,
-    preferSavePicker: false,
-  });
+    const result = await saveZipBatchPartToDevice({
+      filename,
+      jobId: t.jobId,
+      batchIndex: d.batchIndex,
+      r2Key: d.r2Key,
+      download_url: d.download_url,
+      preferR2KeyFirst: true,
+      preferNativeDownload: true,
+      preferSavePicker: false,
+    });
 
   if (result.ok) {
     next = applyBatchSaveSuccessToTask(next, d.batchIndex, result.method, result.bytes);
@@ -431,19 +435,41 @@ export function ZipBackgroundRunner() {
       if (cancelled || downloadInFlightRef.current) return;
       const task = readZipBackgroundTask();
       if (!task || !canStartDeviceDownload(task)) return;
-      if (!nextBatchToSave(task) && !getSingleZipDownloadUrl(task)) return;
+      const d = nextBatchToSave(task);
+      if (!d && !getSingleZipDownloadUrl(task)) return;
 
       downloadInFlightRef.current = true;
-      void runDeviceDownloadPass()
-        .catch((e) => {
-          console.warn("[ZipBackgroundRunner] Download error:", e instanceof Error ? e.message : e);
-        })
-        .finally(() => {
-          downloadInFlightRef.current = false;
-          if (!cancelled && canStartDeviceDownload(readZipBackgroundTask() ?? ({} as ZipBackgroundTask))) {
-            window.setTimeout(triggerDownload, 400);
-          }
-        });
+
+      if (d) {
+        writeZipBackgroundTask(
+          applyBatchProgressToTask(
+            { ...task, updatedAt: Date.now() },
+            `Batch ${d.batchIndex}/${d.totalBatches} — selesai di R2 ✓`
+          )
+        );
+      }
+
+      window.setTimeout(() => {
+        void runDeviceDownloadPass()
+          .catch((e) => {
+            console.warn(
+              "[ZipBackgroundRunner] Download error:",
+              e instanceof Error ? e.message : e
+            );
+          })
+          .finally(() => {
+            downloadInFlightRef.current = false;
+            const latest = readZipBackgroundTask();
+            if (
+              !cancelled &&
+              latest &&
+              canStartDeviceDownload(latest) &&
+              (nextBatchToSave(latest) || getSingleZipDownloadUrl(latest))
+            ) {
+              window.setTimeout(triggerDownload, 400);
+            }
+          });
+      }, d ? SERVER_SUCCESS_BEFORE_DEVICE_MS : 0);
     };
 
     const pollOnce = async () => {

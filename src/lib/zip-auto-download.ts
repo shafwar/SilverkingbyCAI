@@ -25,7 +25,29 @@ export function buildZipFileUrlByR2Key(r2Key: string, filename?: string): string
   return `/api/qr/zip-file?${params.toString()}`;
 }
 
-/** Simpan satu batch ZIP ke laptop — job proxy dulu, fallback langsung dari R2 key. */
+/** Unduh langsung via proxy same-origin — browser stream, tanpa load blob ke memori. */
+export async function triggerNativeProxyDownload(
+  url: string,
+  filename: string
+): Promise<ZipDownloadAttemptResult> {
+  await yieldForDownloadUi();
+  try {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.style.display = "none";
+    link.setAttribute("rel", "noopener");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    return { ok: true, method: "blob", bytes: 0 };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, blocked: true, error: msg };
+  }
+}
+
+/** Simpan satu batch ZIP ke laptop — R2 key dulu, fallback job proxy. */
 export async function saveZipBatchPartToDevice(options: {
   filename: string;
   jobId?: number | null;
@@ -34,14 +56,47 @@ export async function saveZipBatchPartToDevice(options: {
   download_url?: string | null;
   signal?: AbortSignal;
   preferSavePicker?: boolean;
+  /** Anchor/iframe download — cepat untuk file besar, tanpa blob di memori. */
+  preferNativeDownload?: boolean;
+  /** Prioritaskan r2Key (lebih cepat & andal daripada lookup job DB). */
+  preferR2KeyFirst?: boolean;
 }): Promise<ZipDownloadAttemptResult> {
-  const { filename, jobId, batchIndex, signal, preferSavePicker = true } = options;
+  const {
+    filename,
+    jobId,
+    batchIndex,
+    signal,
+    preferSavePicker = true,
+    preferNativeDownload = false,
+    preferR2KeyFirst = false,
+  } = options;
   let r2Key = options.r2Key?.trim() || null;
   if (!r2Key && options.download_url?.trim()) {
     r2Key = r2KeyFromDownloadUrl(options.download_url.trim());
   }
 
+  const r2Url = r2Key
+    ? withZipDownloadCacheBust(buildZipFileUrlByR2Key(r2Key, filename), Date.now())
+    : null;
+
+  if (preferR2KeyFirst && r2Url) {
+    if (preferNativeDownload) {
+      return triggerNativeProxyDownload(r2Url, filename);
+    }
+    const viaR2 = await triggerSameOriginBlobDownload(r2Url, filename, signal, {
+      yieldBeforeClick: true,
+      preferSavePicker,
+    });
+    if (viaR2.ok || viaR2.error === "Dialog simpan dibatalkan") {
+      return viaR2;
+    }
+  }
+
   if (jobId != null && Number.isFinite(jobId) && jobId > 0) {
+    const jobUrl = withZipDownloadCacheBust(buildZipJobFileUrl(jobId, batchIndex), Date.now());
+    if (preferNativeDownload) {
+      return triggerNativeProxyDownload(jobUrl, filename);
+    }
     const viaJob = await triggerZipJobFileDownload(jobId, filename, {
       batchIndex,
       signal,
@@ -53,9 +108,11 @@ export async function saveZipBatchPartToDevice(options: {
     }
   }
 
-  if (r2Key) {
-    const url = withZipDownloadCacheBust(buildZipFileUrlByR2Key(r2Key, filename), Date.now());
-    return triggerSameOriginBlobDownload(url, filename, signal, {
+  if (r2Url) {
+    if (preferNativeDownload) {
+      return triggerNativeProxyDownload(r2Url, filename);
+    }
+    return triggerSameOriginBlobDownload(r2Url, filename, signal, {
       yieldBeforeClick: true,
       preferSavePicker,
     });

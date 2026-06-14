@@ -43,8 +43,10 @@ interface DownloadCardProps {
   onPauseBatchDownloads?: () => void;
   onSaveBatchToDevice?: (batchIndex: number) => void;
   onResumeBatchDownloads?: () => void;
-  /** Tampilkan tombol simpan ke laptop saat unduh otomatis macet. */
+  /** Tampilkan tombol simpan manual — hanya setelah unduh otomatis gagal. */
   saveFallback?: { batchIndex: number; totalBatches: number } | null;
+  /** Fase progress per batch (untuk styling bar). */
+  progressPhase?: string;
 }
 
 export const DownloadCard: React.FC<DownloadCardProps> = ({
@@ -65,6 +67,7 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
   onSaveBatchToDevice,
   onResumeBatchDownloads,
   saveFallback,
+  progressPhase,
 }) => {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const totalBatchesHint = zipBatches?.[0]?.totalBatches ?? zipBatches?.length ?? 0;
@@ -218,7 +221,11 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
                       ? "bg-gradient-to-r from-emerald-500 via-green-400 to-emerald-300"
                       : proceedPrompt && !proceedPrompt.isPaused
                         ? "bg-gradient-to-r from-sky-500 via-sky-400 to-cyan-300"
-                        : "bg-gradient-to-r from-[#FFD700] via-yellow-400 to-[#FDE68A]"
+                        : progressPhase === "server_complete" ||
+                            progressPhase === "device_save" ||
+                            progressPhase === "manual_retry"
+                          ? "bg-gradient-to-r from-emerald-500 via-green-400 to-emerald-300"
+                          : "bg-gradient-to-r from-[#FFD700] via-yellow-400 to-[#FDE68A]"
                   }`}
                   initial={{ width: 0 }}
                   animate={{ width: `${percent}%` }}
@@ -233,11 +240,11 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
                 {percent}%
               </div>
 
-              {saveFallback && !proceedPrompt && !isComplete && (
+              {saveFallback && !proceedPrompt && !isComplete && progressPhase === "manual_retry" && (
                 <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-2">
                   <p className="text-[11px] text-amber-100/90 leading-relaxed">
-                    File belum masuk ke laptop? Batch {saveFallback.batchIndex}/
-                    {saveFallback.totalBatches} sudah ada di server (R2) — klik untuk
+                    Unduh otomatis gagal. Batch {saveFallback.batchIndex}/
+                    {saveFallback.totalBatches} sudah selesai di server (R2) — klik untuk
                     simpan ke komputer Anda.
                   </p>
                   <button
@@ -260,7 +267,7 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
                     {proceedPrompt.savedVia === "save-picker"
                       ? "disimpan via dialog simpan."
                       : "dikirim ke unduhan browser."}{" "}
-                    Pastikan file ZIP sudah ada di komputer Anda sebelum melanjutkan.
+                    Pastikan file ZIP sudah ada di komputer, lalu klik tombol di bawah untuk melanjutkan.
                   </p>
                   {proceedPrompt.isPaused ? (
                     <div className="flex flex-col gap-2">
@@ -287,7 +294,7 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
                           onClick={() => onProceedBatch?.()}
                           className="w-full rounded-lg border border-emerald-400/40 bg-emerald-500/20 px-3 py-2.5 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/30 transition"
                         >
-                          Ya — file sudah ada, lanjut Batch {proceedPrompt.nextBatchIndex}
+                          Lanjut unduh Batch {proceedPrompt.nextBatchIndex}
                         </button>
                       ) : (
                         <button

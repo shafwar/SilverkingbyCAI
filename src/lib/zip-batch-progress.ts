@@ -4,8 +4,10 @@ import { isChunkedZipResult } from "@/lib/serticard-zip-result";
 export type ZipBatchProgressPhase =
   | "server"
   | "upload"
-  | "download"
+  | "server_complete"
+  | "device_save"
   | "awaiting_proceed"
+  | "manual_retry"
   | "paused"
   | "complete"
   | "failed";
@@ -128,20 +130,22 @@ export function computeZipBatchProgressView(
       currentBatchIndex: Math.min(completedOnDevice + 1, totalBatches),
       totalBatches,
       phase: "paused",
-      percent: 0,
+      percent: 100,
       label: `Unduh batch dijeda — ${completedOnDevice} batch dikonfirmasi`,
       batchesCompletedOnDevice: completedOnDevice,
     };
   }
 
   const inFlight = downloads.find((d) => d.downloadInFlight);
-  if (inFlight) {
+  if (inFlight || task.downloadInFlight || task.singleDownloadInFlight) {
+    const idx = inFlight?.batchIndex ?? task.activeDeviceBatchIndex ?? parsed.batchIndex ?? 1;
+    const tb = inFlight?.totalBatches || totalBatches;
     return {
-      currentBatchIndex: inFlight.batchIndex,
-      totalBatches: inFlight.totalBatches || totalBatches,
-      phase: "download",
-      percent: 96,
-      label: `Batch ${inFlight.batchIndex}/${inFlight.totalBatches || totalBatches} — mengunduh ke perangkat...`,
+      currentBatchIndex: idx,
+      totalBatches: tb,
+      phase: "device_save",
+      percent: 100,
+      label: `Batch ${idx}/${tb} — menyimpan ke laptop...`,
       batchesCompletedOnDevice: completedOnDevice,
     };
   }
@@ -156,7 +160,9 @@ export function computeZipBatchProgressView(
     return downloads
       .filter(
         (d) =>
-          d.download_url?.trim() && !d.downloaded && !d.autoDownloadFailed
+          (d.download_url?.trim() || d.r2Key?.trim()) &&
+          !d.downloaded &&
+          !d.autoDownloadFailed
       )
       .sort((a, b) => a.batchIndex - b.batchIndex)[0];
   })();
@@ -164,9 +170,27 @@ export function computeZipBatchProgressView(
     return {
       currentBatchIndex: readyToDownload.batchIndex,
       totalBatches: readyToDownload.totalBatches || totalBatches,
-      phase: "download",
-      percent: 92,
-      label: `Batch ${readyToDownload.batchIndex}/${readyToDownload.totalBatches || totalBatches} — mulai unduh otomatis...`,
+      phase: "server_complete",
+      percent: 100,
+      label: `Batch ${readyToDownload.batchIndex}/${readyToDownload.totalBatches || totalBatches} — selesai di R2 ✓, unduh otomatis...`,
+      batchesCompletedOnDevice: completedOnDevice,
+    };
+  }
+
+  const needsManualRetry = downloads.find(
+    (d) =>
+      (d.download_url?.trim() || d.r2Key?.trim()) &&
+      !d.downloaded &&
+      !d.pendingSaveConfirm &&
+      (d.autoDownloadFailNotified || task.manualDownloadRequired)
+  );
+  if (needsManualRetry) {
+    return {
+      currentBatchIndex: needsManualRetry.batchIndex,
+      totalBatches: needsManualRetry.totalBatches || totalBatches,
+      phase: "manual_retry",
+      percent: 100,
+      label: `Batch ${needsManualRetry.batchIndex}/${needsManualRetry.totalBatches || totalBatches} — selesai di R2, simpan manual ke laptop`,
       batchesCompletedOnDevice: completedOnDevice,
     };
   }
@@ -196,9 +220,9 @@ export function computeZipBatchProgressView(
     return {
       currentBatchIndex: 1,
       totalBatches: 1,
-      phase: "download",
-      percent: 96,
-      label: "Mengunduh ZIP ke perangkat...",
+      phase: "device_save",
+      percent: 100,
+      label: "Menyimpan ZIP ke laptop...",
       batchesCompletedOnDevice: 0,
     };
   }
@@ -207,9 +231,9 @@ export function computeZipBatchProgressView(
     return {
       currentBatchIndex: 1,
       totalBatches: 1,
-      phase: "download",
-      percent: 92,
-      label: "ZIP siap — mengunduh ke perangkat...",
+      phase: "server_complete",
+      percent: 100,
+      label: "ZIP selesai di R2 ✓ — unduh otomatis...",
       batchesCompletedOnDevice: 0,
     };
   }
@@ -221,12 +245,14 @@ export function computeZipBatchProgressView(
 
   currentBatchIndex = Math.max(1, Math.min(currentBatchIndex, totalBatches));
 
+  const itemPercent = parsed.itemPercent ?? 0;
+
   if (/Mengunggah/i.test(message)) {
     return {
       currentBatchIndex,
       totalBatches,
       phase: "upload",
-      percent: 88,
+      percent: Math.max(90, Math.min(99, itemPercent > 0 ? itemPercent : 95)),
       label: `Batch ${currentBatchIndex}/${totalBatches} — mengunggah ke R2...`,
       batchesCompletedOnDevice: completedOnDevice,
     };
@@ -236,15 +262,14 @@ export function computeZipBatchProgressView(
     return {
       currentBatchIndex,
       totalBatches,
-      phase: "server",
+      phase: "server_complete",
       percent: 100,
-      label: `Batch ${currentBatchIndex}/${totalBatches} — sudah di R2`,
+      label: `Batch ${currentBatchIndex}/${totalBatches} — selesai di R2 ✓`,
       batchesCompletedOnDevice: completedOnDevice,
     };
   }
 
-  const itemPercent = parsed.itemPercent ?? 0;
-  const serverPct = Math.max(0, Math.min(85, itemPercent > 0 ? itemPercent : 8));
+  const serverPct = Math.max(0, Math.min(89, itemPercent > 0 ? itemPercent : 8));
 
   if (task.status === "pending") {
     return {

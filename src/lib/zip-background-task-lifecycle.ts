@@ -171,6 +171,12 @@ export async function saveZipBatchToDevice(batchIndex: number): Promise<boolean>
   if (!part?.download_url?.trim() && !part?.r2Key?.trim()) {
     return false;
   }
+  if (part.downloadInFlight || task.downloadInFlight) {
+    return false;
+  }
+  if (task.downloads?.some((d) => d.downloadInFlight && d.batchIndex !== batchIndex)) {
+    return false;
+  }
 
   updateZipBackgroundTask((t) => {
     if (!t) return t;
@@ -194,6 +200,8 @@ export async function saveZipBatchToDevice(batchIndex: number): Promise<boolean>
     batchIndex,
     r2Key: part.r2Key,
     download_url: part.download_url,
+    preferR2KeyFirst: true,
+    preferNativeDownload: true,
     preferSavePicker: true,
   });
 

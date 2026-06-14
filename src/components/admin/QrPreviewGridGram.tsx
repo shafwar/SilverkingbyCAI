@@ -368,16 +368,23 @@ export function QrPreviewGridGram({ batches }: Props) {
     return false;
   };
 
-  const closeDownloadModalOrCancel = (batchId: number) => {
-    if (isZipWorkActive(batchId)) {
-      cancelActiveZipWorkAndResetUi({ closeModal: true });
-      return;
+  /** Tutup modal unduh + refresh halaman (background job tetap jalan di floating card). */
+  const closeDownloadModalWithRefresh = (_batchId: number) => {
+    if (zipCompileAbortRef.current) {
+      abortZipCompileWithoutConfirm("cancel");
+      setDownloadingZipBatchId(null);
+      setIsDownloadingBatchZip(false);
+      setZipProgress(null);
     }
+    setModalBatchSavingId(null);
+    setZipPreDownloadPrompt(null);
+    setZipPreDownloadChecking(false);
+    resetZipModalCheckState();
     setDownloadDropdownOpen(null);
-    setZipDownloadResult(null);
-    setZipProgress(null);
-    setZipPendingJob(null);
+    router.refresh();
   };
+
+  const closeDownloadModalOrCancel = closeDownloadModalWithRefresh;
 
   /** Hapus ZIP di R2 + cache DB untuk signature ini (admin mulai dari awal). */
   const handleModalZipPurge = async () => {
@@ -731,11 +738,24 @@ export function QrPreviewGridGram({ batches }: Props) {
     },
     productTitle: string
   ) => {
+    const bgTask = readZipBackgroundTask();
+    const bgPart = bgTask?.downloads?.find((x) => x.batchIndex === d.batchIndex);
+    if (
+      bgPart?.downloadInFlight ||
+      (bgTask?.downloadInFlight && bgTask.activeDeviceBatchIndex === d.batchIndex)
+    ) {
+      toast.message("Batch sedang diunduh otomatis di floating card", {
+        description: "Tunggu selesai, atau batalkan pemantauan di floating card lalu coba lagi.",
+        duration: 8000,
+      });
+      return;
+    }
+
     const jobId =
       zipDownloadResult?.jobId ??
       zipBundleStatus?.jobId ??
       zipPendingJob?.jobId ??
-      readZipBackgroundTask()?.jobId ??
+      bgTask?.jobId ??
       null;
     const bundleRow = zipBundleStatus?.batches?.find((b) => b.batchIndex === d.batchIndex);
     const r2Key =
@@ -755,7 +775,9 @@ export function QrPreviewGridGram({ batches }: Props) {
         batchIndex: d.batchIndex,
         r2Key,
         download_url: d.download_url,
-        preferSavePicker: true,
+        preferR2KeyFirst: true,
+        preferNativeDownload: true,
+        preferSavePicker: false,
       });
       if (!res.ok) {
         toast.error(res.error || "Gagal menyimpan ZIP ke laptop");
@@ -771,19 +793,11 @@ export function QrPreviewGridGram({ batches }: Props) {
         });
       }
       toast.success(
-        res.method === "save-picker"
-          ? `Batch ${d.batchIndex} tersimpan — pilih lokasi selesai`
-          : `Batch ${d.batchIndex} dikirim ke unduhan browser`
+        res.bytes > 0
+          ? `Batch ${d.batchIndex} tersimpan (${Math.round(res.bytes / 1024 / 1024)} MB)`
+          : `Batch ${d.batchIndex} — unduhan dimulai, cek folder Unduhan browser`
       );
       setZipBrowserTrackVersion((v) => v + 1);
-      const openBatchId = downloadDropdownOpenRef.current;
-      if (openBatchId != null) {
-        const batch = batches.find((b) => b.batchId === openBatchId);
-        if (batch) {
-          const json = await fetchZipReadyForBatch(batch);
-          if (json) applyZipReadyPayload(json, batch);
-        }
-      }
     } finally {
       setModalBatchSavingId(null);
     }
@@ -1765,7 +1779,7 @@ export function QrPreviewGridGram({ batches }: Props) {
       bundle?.jobStatus === "PROCESSING";
     const initialLabel =
       seedDownloads.length > 0
-        ? `Batch ${seedDownloads[0]!.batchIndex}/${totalBatches} sudah di R2 — menyimpan ke laptop...`
+        ? `Batch ${seedDownloads[0]!.batchIndex}/${totalBatches} — selesai di R2 ✓, unduh otomatis...`
         : itemCount > 500
           ? `ZIP ${itemCount} file diproses di background (bisa 10–20 menit)...`
           : "ZIP diproses di background. Anda bisa tutup modal dan lanjut kerja.";
@@ -1777,7 +1791,7 @@ export function QrPreviewGridGram({ batches }: Props) {
         templateId: selectedZipTemplateId,
         cacheKey,
         status: jobActive ? "processing" : seedDownloads.length > 0 ? "processing" : "pending",
-        progressPercent: progressPercent ?? (seedDownloads.length > 0 ? 92 : 5),
+        progressPercent: progressPercent ?? (seedDownloads.length > 0 ? 100 : 5),
         progressLabel: initialLabel,
         totalFiles: itemCount,
         ...(chunked
@@ -2474,11 +2488,15 @@ export function QrPreviewGridGram({ batches }: Props) {
       <Modal
         open={Boolean(selectedBatch)}
         onClose={() => {
-          if (selectedBatch && isZipWorkActive(selectedBatch.batchId)) {
-            cancelActiveZipWorkAndResetUi();
+          if (zipCompileAbortRef.current) {
+            abortZipCompileWithoutConfirm("cancel");
+            setDownloadingZipBatchId(null);
+            setIsDownloadingBatchZip(false);
+            setZipProgress(null);
           }
           setSelectedBatch(null);
           setBatchItems([]);
+          router.refresh();
         }}
         title={selectedBatch ? `${selectedBatch.name} - All Serial Codes` : ""}
       >
@@ -2584,7 +2602,10 @@ export function QrPreviewGridGram({ batches }: Props) {
       {/* QR Preview Modal (enlarge like Page 1) */}
       <Modal
         open={Boolean(selectedQrItem)}
-        onClose={() => setSelectedQrItem(null)}
+        onClose={() => {
+          setSelectedQrItem(null);
+          router.refresh();
+        }}
         title={selectedQrItem ? `${selectedQrItem.name} - ${selectedQrItem.uniqCode}` : ""}
       >
         {selectedQrItem && (
@@ -2873,12 +2894,24 @@ export function QrPreviewGridGram({ batches }: Props) {
                                               : "Belum dikonfirmasi di perangkat";
 
                                             const isSaving = modalBatchSavingId === batchIdx;
+                                            const bgTask = readZipBackgroundTask();
+                                            const bgSavingThisBatch =
+                                              bgTask?.activeDeviceBatchIndex === batchIdx &&
+                                              (bgTask.downloadInFlight ||
+                                                bgTask.downloads?.some(
+                                                  (x) =>
+                                                    x.batchIndex === batchIdx && x.downloadInFlight
+                                                ));
 
                                             return (
                                               <div key={batchIdx} className="space-y-1">
                                                 <button
                                                   type="button"
-                                                  disabled={isSaving || modalBatchSavingId != null}
+                                                  disabled={
+                                                    isSaving ||
+                                                    modalBatchSavingId != null ||
+                                                    bgSavingThisBatch
+                                                  }
                                                   onClick={() => {
                                                     void handleModalSaveZipBatch(
                                                       {
@@ -2897,7 +2930,9 @@ export function QrPreviewGridGram({ batches }: Props) {
                                                   <Download className={`h-4 w-4 ${isSaving ? "animate-pulse" : ""}`} />
                                                   {isSaving
                                                     ? `Menyimpan Batch ${batchIdx} ke laptop...`
-                                                    : serverConfirmed
+                                                    : bgSavingThisBatch
+                                                      ? `Batch ${batchIdx} — unduh otomatis berjalan...`
+                                                      : serverConfirmed
                                                       ? `Simpan ulang Batch ${batchIdx}/${d.totalBatches ?? totalBatches} ke laptop`
                                                       : `Simpan Batch ${batchIdx}/${d.totalBatches ?? totalBatches} ke laptop (${d.fileCount ?? 0} file)`}
                                                 </button>

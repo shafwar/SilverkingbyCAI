@@ -188,17 +188,32 @@ export function GlobalZipDownloadOverlay() {
 
   const saveFallback = useMemo(() => {
     if (!task || proceedPrompt) return null;
-    const activeIdx =
-      task.activeDeviceBatchIndex ??
-      task.downloads?.find((d) => d.downloadInFlight)?.batchIndex;
-    if (activeIdx == null) return null;
-    const part = task.downloads?.find((d) => d.batchIndex === activeIdx);
-    if (!part?.download_url?.trim() && !part?.r2Key?.trim()) return null;
+    if (task.downloadInFlight || task.singleDownloadInFlight) return null;
+    if (task.downloads?.some((d) => d.downloadInFlight)) return null;
+    if (
+      progressView?.phase === "device_save" ||
+      progressView?.phase === "server_complete" ||
+      progressView?.phase === "awaiting_proceed"
+    ) {
+      return null;
+    }
+
+    const sorted = [...(task.downloads ?? [])].sort((a, b) => a.batchIndex - b.batchIndex);
+    const needsManual = sorted.find(
+      (d) =>
+        (d.download_url?.trim() || d.r2Key?.trim()) &&
+        !d.downloaded &&
+        !d.pendingSaveConfirm &&
+        !d.downloadInFlight &&
+        (d.autoDownloadFailNotified || progressView?.phase === "manual_retry")
+    );
+    if (!needsManual) return null;
+
     return {
-      batchIndex: activeIdx,
-      totalBatches: part.totalBatches || task.downloads?.[0]?.totalBatches || 1,
+      batchIndex: needsManual.batchIndex,
+      totalBatches: needsManual.totalBatches || task.downloads?.[0]?.totalBatches || 1,
     };
-  }, [task, proceedPrompt]);
+  }, [task, proceedPrompt, progressView?.phase]);
 
   const subtitle = useMemo(() => {
     if (!task) return undefined;
@@ -268,6 +283,7 @@ export function GlobalZipDownloadOverlay() {
         onSaveBatchToDevice={(idx) => void handleSaveBatchToDevice(idx)}
         onResumeBatchDownloads={handleResumeBatchDownloads}
         saveFallback={saveFallback}
+        progressPhase={progressView?.phase}
       />
       <ZipBackgroundRunner />
     </>
