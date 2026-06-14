@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
     resolvedCacheKey = cachedRow.cacheKey;
     cached = true;
     resultPayload = cachedRow.result as Record<string, unknown>;
-    const jobForCache = await findLatestCompletedZipJobForGramKeys([cachedRow.cacheKey]);
+    const jobForCache = await findLatestZipJobForGramKeys([cachedRow.cacheKey]);
     jobId = jobForCache?.id ?? null;
   } else {
     const completedJob = await findLatestCompletedZipJobForGramKeys(cacheKeyCandidates);

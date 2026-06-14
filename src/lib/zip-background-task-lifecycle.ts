@@ -12,7 +12,7 @@ import { applyBatchProgressToTask } from "@/lib/zip-batch-progress";
 import { markBatchDownloadedInBrowser } from "@/lib/zip-batch-download-tracker";
 import { recordZipDownloadAuditClient } from "@/lib/zip-download-audit-client";
 import { r2KeyFromDownloadUrl } from "@/lib/zip-r2-key";
-import { triggerZipJobFileDownload } from "@/lib/zip-auto-download";
+import { triggerZipJobFileDownload, saveZipBatchPartToDevice } from "@/lib/zip-auto-download";
 
 export const ZIP_MONITORING_ABORT_EVENT = "sk-zip-monitoring-abort";
 export const ZIP_MONITORING_CANCELLED_EVENT = "sk-zip-monitoring-cancelled";
@@ -190,10 +190,13 @@ export async function saveZipBatchToDevice(batchIndex: number): Promise<boolean>
   });
 
   const filename = `${safeBatchFilename(task.batchName)}-batch-${batchIndex}-of-${part.totalBatches}.zip`;
-  const result = await triggerZipJobFileDownload(task.jobId, filename, {
+  const result = await saveZipBatchPartToDevice({
+    filename,
+    jobId: task.jobId,
     batchIndex,
+    r2Key: part.r2Key,
+    download_url: part.download_url,
     preferSavePicker: true,
-    yieldBeforeClick: true,
   });
 
   if (!result.ok) {

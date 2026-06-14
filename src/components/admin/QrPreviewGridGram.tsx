@@ -47,7 +47,7 @@ import {
   getSingleZipDownloadUrl,
   isChunkedZipResult,
 } from "@/lib/serticard-zip-result";
-import { triggerZipJobFileDownload } from "@/lib/zip-auto-download";
+import { saveZipBatchPartToDevice, triggerZipJobFileDownload } from "@/lib/zip-auto-download";
 import {
   clearZipDownloadTrackerForCacheKey,
   markSingleZipDownloadedInBrowser,
@@ -248,6 +248,7 @@ export function QrPreviewGridGram({ batches }: Props) {
   } | null>(null);
   /** Bump setelah localStorage tracker diubah agar daftar batch ter-refresh. */
   const [zipBrowserTrackVersion, setZipBrowserTrackVersion] = useState(0);
+  const [modalBatchSavingId, setModalBatchSavingId] = useState<number | null>(null);
   /** Status bundle dari server: R2, unduhan, freeze lock. */
   const [zipBundleStatus, setZipBundleStatus] = useState<ZipBundleStatus | null>(null);
   const zipAutoResumeRef = useRef<number | null>(null);
@@ -601,27 +602,38 @@ export function QrPreviewGridGram({ batches }: Props) {
       : undefined;
     let url = (json.download_url ?? json.downloadUrl) as string | undefined;
 
-    // Fallback: bangun dari bundle.batches (R2 HeadObject) bila cache JSON tidak lengkap
+    // Gabungkan daftar batch dari bundle (HeadObject R2) agar r2Key & URL selalu lengkap
     if (bundle?.batches?.length) {
-      const onR2 = bundle.batches.filter((b) => b.onR2 && (b.downloadUrl || b.r2Key));
-      if (onR2.length > 0 && (!downloads?.length || !url)) {
-        if (onR2.length === 1 && bundle.totalBatches <= 1) {
-          url = url ?? onR2[0]!.downloadUrl;
+      const onR2 = bundle.batches.filter((b) => b.onR2);
+      if (onR2.length > 0) {
+        const byIndex = new Map<number, Record<string, unknown>>();
+        for (const d of downloads ?? []) {
+          byIndex.set(Number(d.batchIndex ?? 0), d);
         }
-        if (onR2.length > 1 || bundle.totalBatches > 1) {
-          downloads = onR2.map((b) => ({
+        for (const b of onR2) {
+          const prev = byIndex.get(b.batchIndex) ?? {};
+          byIndex.set(b.batchIndex, {
+            ...prev,
             batchIndex: b.batchIndex,
             totalBatches: b.totalBatches,
-            download_url: b.downloadUrl ?? "",
-            downloadUrl: b.downloadUrl ?? "",
-            r2Key: b.r2Key,
-            fileCount: b.fileCount ?? 0,
-          }));
-        } else if (!url && onR2[0]?.downloadUrl) {
-          url = onR2[0].downloadUrl;
+            download_url: String(
+              prev.download_url ?? prev.downloadUrl ?? b.downloadUrl ?? ""
+            ),
+            downloadUrl: String(prev.downloadUrl ?? b.downloadUrl ?? ""),
+            r2Key: b.r2Key ?? prev.r2Key,
+            fileCount: b.fileCount ?? prev.fileCount ?? 0,
+          });
+        }
+        downloads = Array.from(byIndex.values()).sort(
+          (a, b) => Number(a.batchIndex) - Number(b.batchIndex)
+        );
+        if (onR2.length === 1 && bundle.totalBatches <= 1 && !url?.trim()) {
+          url = onR2[0]!.downloadUrl ?? url;
         }
       }
     }
+
+    const resolvedJobId = jobId ?? bundle?.jobId ?? undefined;
 
     const hasDownloads = Array.isArray(downloads) && downloads.length > 0;
     const hasResult = Boolean(url?.trim()) || hasDownloads;
@@ -639,11 +651,11 @@ export function QrPreviewGridGram({ batches }: Props) {
 
     if (
       !showZipReady &&
-      jobId &&
+      resolvedJobId &&
       (status === "PENDING" || status === "PROCESSING" || bundle?.phase === "GENERATING")
     ) {
       setZipPendingJob({
-        jobId,
+        jobId: resolvedJobId,
         cacheKey: typeof json.cacheKey === "string" ? json.cacheKey : bundle?.cacheKey,
         status: status || bundle?.jobStatus || "PENDING",
         progressPercent:
@@ -682,7 +694,7 @@ export function QrPreviewGridGram({ batches }: Props) {
       cacheKey:
         typeof json.cacheKey === "string" ? json.cacheKey : bundle?.cacheKey,
       linkBustMs,
-      ...(jobId ? { jobId } : {}),
+      ...(resolvedJobId ? { jobId: resolvedJobId } : {}),
       ...(hasDownloads
         ? {
             downloads: downloads!.map((d) => ({
@@ -703,6 +715,73 @@ export function QrPreviewGridGram({ batches }: Props) {
         : {}),
     });
     setZipPendingJob(null);
+  };
+
+  const handleModalSaveZipBatch = async (
+    d: {
+      batchIndex: number;
+      totalBatches: number;
+      download_url: string;
+      r2Key?: string;
+    },
+    productTitle: string
+  ) => {
+    const jobId =
+      zipDownloadResult?.jobId ??
+      zipBundleStatus?.jobId ??
+      zipPendingJob?.jobId ??
+      readZipBackgroundTask()?.jobId ??
+      null;
+    const bundleRow = zipBundleStatus?.batches?.find((b) => b.batchIndex === d.batchIndex);
+    const r2Key =
+      d.r2Key ??
+      bundleRow?.r2Key ??
+      (d.download_url?.trim() ? deriveR2KeyFromUrl(d.download_url) : null);
+    if (!jobId && !r2Key && !d.download_url?.trim()) {
+      toast.error("File batch belum tersedia di server.");
+      return;
+    }
+    const filename = `${(productTitle || "serticard").replace(/\s+/g, "-")}-batch-${d.batchIndex}-of-${d.totalBatches}.zip`;
+    setModalBatchSavingId(d.batchIndex);
+    try {
+      const res = await saveZipBatchPartToDevice({
+        filename,
+        jobId,
+        batchIndex: d.batchIndex,
+        r2Key,
+        download_url: d.download_url,
+        preferSavePicker: true,
+      });
+      if (!res.ok) {
+        toast.error(res.error || "Gagal menyimpan ZIP ke laptop");
+        return;
+      }
+      const ck = zipDownloadResult?.cacheKey ?? zipBundleStatus?.cacheKey;
+      if (ck && r2Key) {
+        void recordZipDownloadAuditClient({
+          cacheKey: ck,
+          r2Key,
+          batchIndex: d.batchIndex,
+          totalBatches: d.totalBatches,
+        });
+      }
+      toast.success(
+        res.method === "save-picker"
+          ? `Batch ${d.batchIndex} tersimpan — pilih lokasi selesai`
+          : `Batch ${d.batchIndex} dikirim ke unduhan browser`
+      );
+      setZipBrowserTrackVersion((v) => v + 1);
+      const openBatchId = downloadDropdownOpenRef.current;
+      if (openBatchId != null) {
+        const batch = batches.find((b) => b.batchId === openBatchId);
+        if (batch) {
+          const json = await fetchZipReadyForBatch(batch);
+          if (json) applyZipReadyPayload(json, batch);
+        }
+      }
+    } finally {
+      setModalBatchSavingId(null);
+    }
   };
 
   const fetchZipReadyForBatch = async (
@@ -2713,42 +2792,27 @@ export function QrPreviewGridGram({ batches }: Props) {
                                               ? "Sudah dikonfirmasi unduh (server)"
                                               : "Belum dikonfirmasi di perangkat";
 
+                                            const isSaving = modalBatchSavingId === d.batchIndex;
+
                                             return (
                                               <div key={d.batchIndex} className="space-y-1">
                                                 <button
                                                   type="button"
+                                                  disabled={isSaving || modalBatchSavingId != null}
                                                   onClick={() => {
-                                                    const ck = zipDownloadResult.cacheKey;
-                                                    const jobId = zipDownloadResult.jobId;
-                                                    const filename = `${(zipDownloadResult.product_title || "serticard").replace(/\s+/g, "-")}-batch-${d.batchIndex}-of-${d.totalBatches}.zip`;
-                                                    if (!jobId) {
-                                                      toast.error("Job ZIP tidak ditemukan.");
-                                                      return;
-                                                    }
-                                                    void (async () => {
-                                                      const res = await triggerZipJobFileDownload(
-                                                        jobId,
-                                                        filename,
-                                                        {
-                                                          batchIndex: d.batchIndex,
-                                                          preferSavePicker: true,
-                                                        }
-                                                      );
-                                                      if (!res.ok) {
-                                                        toast.error(res.error);
-                                                        return;
-                                                      }
-                                                      toast.success(
-                                                        `Batch ${d.batchIndex} disimpan — konfirmasi dari floating card jika unduh via background`
-                                                      );
-                                                    })();
+                                                    void handleModalSaveZipBatch(
+                                                      d,
+                                                      zipDownloadResult.product_title || batch.name
+                                                    );
                                                   }}
-                                                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFD700]/40 bg-[#FFD700]/15 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/25 transition"
+                                                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFD700]/40 bg-[#FFD700]/15 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/25 transition disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
-                                                  <Download className="h-4 w-4" />
-                                                  {serverConfirmed
-                                                    ? `Unduh ulang Batch ${d.batchIndex}/${d.totalBatches}`
-                                                    : `Unduh Batch ${d.batchIndex}/${d.totalBatches} (${d.fileCount} file)`}
+                                                  <Download className={`h-4 w-4 ${isSaving ? "animate-pulse" : ""}`} />
+                                                  {isSaving
+                                                    ? `Menyimpan Batch ${d.batchIndex} ke laptop...`
+                                                    : serverConfirmed
+                                                      ? `Simpan ulang Batch ${d.batchIndex}/${d.totalBatches} ke laptop`
+                                                      : `Simpan Batch ${d.batchIndex}/${d.totalBatches} ke laptop (${d.fileCount} file)`}
                                                 </button>
                                                 <div className="flex items-center justify-between text-[10px] text-white/50 px-1">
                                                   <span className="tabular-nums">{statusLabel}</span>

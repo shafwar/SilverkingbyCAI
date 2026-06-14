@@ -3,6 +3,8 @@
  * Prefer File System Access API (save picker) when available for guaranteed file save.
  */
 
+import { r2KeyFromDownloadUrl } from "@/lib/zip-r2-key";
+
 export type ZipDownloadAttemptResult =
   | { ok: true; method: "save-picker" | "blob"; bytes: number }
   | { ok: false; blocked: boolean; error: string };
@@ -13,6 +15,57 @@ export function buildZipJobFileUrl(jobId: number, batchIndex?: number): string {
     params.set("batchIndex", String(batchIndex));
   }
   return `/api/qr/zip-file?${params.toString()}`;
+}
+
+export function buildZipFileUrlByR2Key(r2Key: string, filename?: string): string {
+  const params = new URLSearchParams({ r2Key: r2Key.trim() });
+  if (filename?.trim()) {
+    params.set("filename", filename.trim());
+  }
+  return `/api/qr/zip-file?${params.toString()}`;
+}
+
+/** Simpan satu batch ZIP ke laptop — job proxy dulu, fallback langsung dari R2 key. */
+export async function saveZipBatchPartToDevice(options: {
+  filename: string;
+  jobId?: number | null;
+  batchIndex?: number;
+  r2Key?: string | null;
+  download_url?: string | null;
+  signal?: AbortSignal;
+  preferSavePicker?: boolean;
+}): Promise<ZipDownloadAttemptResult> {
+  const { filename, jobId, batchIndex, signal, preferSavePicker = true } = options;
+  let r2Key = options.r2Key?.trim() || null;
+  if (!r2Key && options.download_url?.trim()) {
+    r2Key = r2KeyFromDownloadUrl(options.download_url.trim());
+  }
+
+  if (jobId != null && Number.isFinite(jobId) && jobId > 0) {
+    const viaJob = await triggerZipJobFileDownload(jobId, filename, {
+      batchIndex,
+      signal,
+      preferSavePicker,
+      yieldBeforeClick: true,
+    });
+    if (viaJob.ok || viaJob.error === "Dialog simpan dibatalkan") {
+      return viaJob;
+    }
+  }
+
+  if (r2Key) {
+    const url = withZipDownloadCacheBust(buildZipFileUrlByR2Key(r2Key, filename), Date.now());
+    return triggerSameOriginBlobDownload(url, filename, signal, {
+      yieldBeforeClick: true,
+      preferSavePicker,
+    });
+  }
+
+  return {
+    ok: false,
+    blocked: false,
+    error: "Referensi file ZIP tidak ditemukan (jobId / R2 key kosong)",
+  };
 }
 
 export function withZipDownloadCacheBust(url: string, bustMs: number): string {
