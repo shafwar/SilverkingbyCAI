@@ -25,13 +25,28 @@ export function buildZipFileUrlByR2Key(r2Key: string, filename?: string): string
   return `/api/qr/zip-file?${params.toString()}`;
 }
 
-/** Unduh langsung via proxy same-origin — browser stream, tanpa load blob ke memori. */
+/** Unduh langsung via proxy same-origin — iframe agar file besar tidak macet. */
 export async function triggerNativeProxyDownload(
   url: string,
   filename: string
 ): Promise<ZipDownloadAttemptResult> {
   await yieldForDownloadUi();
   try {
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = "position:fixed;left:-9999px;width:0;height:0;border:none";
+    iframe.setAttribute("aria-hidden", "true");
+    iframe.setAttribute("title", filename);
+    document.body.appendChild(iframe);
+    iframe.src = url;
+    window.setTimeout(() => {
+      try {
+        iframe.remove();
+      } catch {
+        // ignore
+      }
+    }, 120_000);
+    return { ok: true, method: "blob", bytes: 0 };
+  } catch {
     const link = document.createElement("a");
     link.href = url;
     link.download = filename;
@@ -41,9 +56,6 @@ export async function triggerNativeProxyDownload(
     link.click();
     link.remove();
     return { ok: true, method: "blob", bytes: 0 };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return { ok: false, blocked: true, error: msg };
   }
 }
 

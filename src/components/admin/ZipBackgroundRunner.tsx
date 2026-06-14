@@ -15,7 +15,8 @@ import {
   ZIP_BATCH_PROCEED_EVENT,
 } from "@/lib/zip-background-task-lifecycle";
 import { applyBatchProgressToTask } from "@/lib/zip-batch-progress";
-import { saveZipBatchPartToDevice } from "@/lib/zip-auto-download";
+import { saveZipBatchPartToDevice, type ZipDownloadAttemptResult } from "@/lib/zip-auto-download";
+import { r2KeyFromDownloadUrl } from "@/lib/zip-r2-key";
 import { toast } from "sonner";
 import {
   getSingleZipDownloadUrl,
@@ -26,6 +27,10 @@ import {
 const POLL_INTERVAL_MS = 1500;
 const UI_DISMISS_AFTER_SUCCESS_MS = 2500;
 const MAX_AUTO_DOWNLOAD_ATTEMPTS = 4;
+/** Maks tunggu trigger unduh browser — lalu lanjut ke konfirmasi admin. */
+const DEVICE_TRIGGER_TIMEOUT_MS = 5000;
+/** Jika state downloadInFlight macet lebih lama, paksa ke konfirmasi. */
+const DEVICE_SAVE_STUCK_MS = 45_000;
 /** Tunggu UI menampilkan 100% sukses R2 sebelum mulai simpan ke laptop. */
 const SERVER_SUCCESS_BEFORE_DEVICE_MS = 800;
 
@@ -88,11 +93,15 @@ function mapJobResultToTask(
         (x) => x.batchIndex === d.batchIndex && x.totalBatches === d.totalBatches
       );
       const url = (d.download_url || d.downloadUrl || "").trim();
+      const r2Key =
+        d.r2Key?.trim() ||
+        prev?.r2Key ||
+        (url ? r2KeyFromDownloadUrl(url) ?? undefined : undefined);
       return {
         batchIndex: d.batchIndex ?? 0,
         totalBatches: d.totalBatches ?? 0,
         download_url: url,
-        r2Key: d.r2Key,
+        r2Key,
         fileCount: d.fileCount,
         downloaded: prev?.downloaded ?? false,
         pendingSaveConfirm: prev?.pendingSaveConfirm ?? false,
@@ -176,6 +185,27 @@ function nextBatchToSave(t: ZipBackgroundTask): ZipTaskDownload | undefined {
   return undefined;
 }
 
+function healStuckDeviceDownload(task: ZipBackgroundTask): ZipBackgroundTask {
+  if (task.awaitingProceed) return task;
+  const inFlightIdx =
+    task.activeDeviceBatchIndex ??
+    task.downloads?.find((d) => d.downloadInFlight)?.batchIndex;
+  const stuck =
+    task.downloadInFlight ||
+    (inFlightIdx != null && task.downloads?.some((d) => d.downloadInFlight));
+  if (!stuck || !inFlightIdx) return task;
+  if (Date.now() - task.updatedAt < DEVICE_SAVE_STUCK_MS) return task;
+
+  const cleared = {
+    ...task,
+    downloadInFlight: false,
+    activeDeviceBatchIndex: undefined,
+    downloads: (task.downloads ?? []).map((d) => ({ ...d, downloadInFlight: false })),
+    updatedAt: Date.now(),
+  };
+  return applyBatchSaveSuccessToTask(cleared, inFlightIdx, "blob", 0);
+}
+
 function preserveDeviceDownloadState(
   current: ZipBackgroundTask,
   next: ZipBackgroundTask
@@ -255,26 +285,32 @@ async function saveOneBatchToDevice(t: ZipBackgroundTask, d: ZipTaskDownload): P
   );
   writeZipBackgroundTask(next);
 
-    const result = await saveZipBatchPartToDevice({
+  const result = await Promise.race([
+    saveZipBatchPartToDevice({
       filename,
       jobId: t.jobId,
       batchIndex: d.batchIndex,
-      r2Key: d.r2Key,
+      r2Key: d.r2Key ?? (d.download_url ? r2KeyFromDownloadUrl(d.download_url) : null),
       download_url: d.download_url,
       preferR2KeyFirst: true,
       preferNativeDownload: true,
       preferSavePicker: false,
-    });
+    }),
+    new Promise<ZipDownloadAttemptResult>((resolve) => {
+      window.setTimeout(
+        () => resolve({ ok: true, method: "blob", bytes: 0 }),
+        DEVICE_TRIGGER_TIMEOUT_MS
+      );
+    }),
+  ]);
 
   if (result.ok) {
     next = applyBatchSaveSuccessToTask(next, d.batchIndex, result.method, result.bytes);
     writeZipBackgroundTask(next);
-    toast.message(`Batch ${d.batchIndex}/${d.totalBatches} — simpan ke laptop`, {
+    toast.message(`Batch ${d.batchIndex}/${d.totalBatches} — unduhan dikirim ke browser`, {
       description:
-        result.method === "save-picker"
-          ? "File disimpan. Konfirmasi di floating card untuk lanjut batch berikutnya."
-          : "Cek folder unduhan, lalu konfirmasi di floating card.",
-      duration: 12_000,
+        "Cek folder Unduhan. Konfirmasi di floating card jika file sudah ada, lalu lanjut batch berikutnya.",
+      duration: 14_000,
     });
     return next;
   }
@@ -485,7 +521,12 @@ export function ZipBackgroundRunner() {
         const current = readZipBackgroundTask();
         if (!current) return;
 
-        const res = await fetch(`/api/qr/download-job/${current.jobId}`, { cache: "no-store" });
+        const healed = healStuckDeviceDownload(current);
+        if (healed !== current) {
+          writeZipBackgroundTask(healed);
+        }
+
+        const res = await fetch(`/api/qr/download-job/${healed.jobId}`, { cache: "no-store" });
         if (!res.ok) {
           console.warn("[ZipBackgroundRunner] Poll HTTP", res.status, current.jobId);
           return;
@@ -494,8 +535,8 @@ export function ZipBackgroundRunner() {
         if (!readZipBackgroundTask()) return;
 
         const next = preserveDeviceDownloadState(
-          current,
-          mapJobResultToTask(current, data)
+          healed,
+          mapJobResultToTask(healed, data)
         );
         writeZipBackgroundTask(next);
 
