@@ -13,6 +13,7 @@ import { usePageSections } from "@/hooks/usePageSections";
 import { usePageMedia } from "@/hooks/usePageMedia";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
+import { DEFAULT_HERO_POSTER } from "@/lib/hero-media-defaults";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import { PageLoadingSkeleton } from "@/components/ui/PageLoadingSkeleton";
 // Lazy load CertificateCard to improve initial page load
@@ -252,12 +253,10 @@ export default function AboutPageClient() {
             ref={heroVideoRef}
             url={heroVideoPlayUrl}
             version={pageSections.hero?.version}
-            posterUrl={pageMediaAbout?.heroImageUrl ?? null}
+            posterUrl={pageMediaAbout?.heroImageUrl ?? DEFAULT_HERO_POSTER}
             forcePoster={!shouldLoadHeroVideo}
             posterPriority
             lcpFriendlyPoster
-            deferAttachUntilIdle
-            idleAttachTimeoutMs={320}
             optimizeGpu
             lightVideoFade
             containerClassName="absolute inset-0 z-10 h-full w-full"

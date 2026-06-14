@@ -32,6 +32,7 @@ import { usePageSections } from "@/hooks/usePageSections";
 import { usePageMedia } from "@/hooks/usePageMedia";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
+import { DEFAULT_HERO_POSTER } from "@/lib/hero-media-defaults";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import { ModalPortal } from "@/components/ui/ModalPortal";
 
@@ -512,9 +513,10 @@ export default function AuthenticityPageClient() {
             ref={videoRef}
             url={heroVideoPlayUrl}
             version={pageSections.hero?.version}
-            posterUrl={pageMediaAuthenticity?.heroImageUrl ?? null}
+            posterUrl={pageMediaAuthenticity?.heroImageUrl ?? DEFAULT_HERO_POSTER}
             forcePoster={!shouldLoadHeroVideo}
             posterPriority
+            lcpFriendlyPoster
             optimizeGpu
             lightVideoFade
             containerClassName="absolute inset-0 h-full w-full z-10"

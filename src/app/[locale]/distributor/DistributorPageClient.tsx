@@ -14,6 +14,7 @@ import { usePageMedia } from "@/hooks/usePageMedia";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
+import { DEFAULT_HERO_POSTER } from "@/lib/hero-media-defaults";
 import { PageFooter } from "@/components/footer/PageFooter";
 import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import gsap from "gsap";
@@ -272,9 +273,10 @@ export default function DistributorPageClient({
               ref={distributorHeroVideoRef}
               url={displayHeroVideoUrl}
               version={pageSections.hero?.version}
-              posterUrl={pageMediaDistributor?.heroImageUrl ?? null}
+              posterUrl={pageMediaDistributor?.heroImageUrl ?? DEFAULT_HERO_POSTER}
               forcePoster={!shouldLoadHeroVideo}
               posterPriority
+              lcpFriendlyPoster
               optimizeGpu
               lightVideoFade
               containerClassName="absolute inset-0 w-full h-full"

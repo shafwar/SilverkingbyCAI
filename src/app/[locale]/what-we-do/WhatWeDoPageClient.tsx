@@ -14,6 +14,7 @@ import { usePageMedia } from "@/hooks/usePageMedia";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { EditableMedia } from "@/components/editable-media";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
+import { DEFAULT_HERO_POSTER, HERO_PLACEHOLDER_BG } from "@/lib/hero-media-defaults";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import {
   Sparkles,
@@ -169,6 +170,7 @@ const NarrativeImageSection = forwardRef<
 
     // Detect mobile for quality optimization
     const [isMobile, setIsMobile] = useState(false);
+    const shouldLoadHeroVideo = useShouldLoadHeroVideo();
     useEffect(() => {
       const checkMobile = () => {
         setIsMobile(window.innerWidth < 768);
@@ -250,7 +252,10 @@ const NarrativeImageSection = forwardRef<
                     <div className="relative w-full flex-[0_0_65%] overflow-hidden bg-black/40">
                       {/* Loading placeholder (images only); or black when sections loading to prevent flash */}
                       {(sectionsLoading || (!isVideo && !isImageLoaded)) && (
-                        <div className="absolute inset-0 z-10 flex items-center justify-center bg-luxury-black">
+                        <div
+                          className="absolute inset-0 z-10 flex items-center justify-center"
+                          style={{ background: HERO_PLACEHOLDER_BG }}
+                        >
                           {!sectionsLoading && (
                             <div className="h-6 w-6 sm:h-8 sm:w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
                           )}
@@ -275,11 +280,17 @@ const NarrativeImageSection = forwardRef<
                         }}
                       >
                         {sectionsLoading ? (
-                          <div className="absolute inset-0 bg-luxury-black" aria-hidden />
+                          <div
+                            className="absolute inset-0"
+                            style={{ background: HERO_PLACEHOLDER_BG }}
+                            aria-hidden
+                          />
                         ) : isVideo ? (
                           <VideoLoadGuard
                             url={card.images[0]}
                             version={card.version}
+                            posterUrl={DEFAULT_HERO_POSTER}
+                            forcePoster={!shouldLoadHeroVideo}
                             lazyAttach
                             preload="none"
                             containerClassName="absolute inset-0 w-full h-full"
@@ -586,9 +597,10 @@ export default function WhatWeDoPageClient() {
               ref={videoRef}
               url={heroVideoPlayUrl}
               version={pageSections.hero?.version}
-              posterUrl={pageMediaWhatWeDo?.heroImageUrl ?? null}
+              posterUrl={pageMediaWhatWeDo?.heroImageUrl ?? DEFAULT_HERO_POSTER}
               forcePoster={!shouldLoadHeroVideo}
               posterPriority
+              lcpFriendlyPoster
               optimizeGpu
               lightVideoFade
               containerClassName="absolute inset-0 w-screen h-screen z-10"
@@ -804,11 +816,11 @@ export default function WhatWeDoPageClient() {
               ref={footerVideoRef}
               url={footerVideoPlayUrl}
               version={pageSections.section_footer_video?.version}
-              posterUrl={pageMediaWhatWeDo?.heroImageUrl ?? null}
+              posterUrl={pageMediaWhatWeDo?.heroImageUrl ?? DEFAULT_HERO_POSTER}
               forcePoster={!shouldLoadHeroVideo}
+              posterPriority
+              lcpFriendlyPoster
               lazyAttach
-              deferAttachUntilIdle
-              idleAttachTimeoutMs={640}
               optimizeGpu
               containerClassName="absolute inset-0 w-full h-full z-10"
               className="absolute inset-0 w-full h-full object-cover"

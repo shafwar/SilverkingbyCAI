@@ -11,6 +11,7 @@ import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
+import { DEFAULT_HERO_POSTER } from "@/lib/hero-media-defaults";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import { ScrollRevealSection } from "@/components/shared/ScrollRevealSection";
 import { motion } from "framer-motion";
@@ -120,8 +121,8 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
    */
   const posterUrl = useMemo(() => {
     if (heroMediaType === "IMAGE" && heroUrl) return heroUrl;
-    if (heroMediaType === "VIDEO") return pageMediaJournal?.heroImageUrl ?? null;
-    return null;
+    if (heroMediaType === "VIDEO") return pageMediaJournal?.heroImageUrl ?? DEFAULT_HERO_POSTER;
+    return DEFAULT_HERO_POSTER;
   }, [heroMediaType, heroUrl, pageMediaJournal?.heroImageUrl]);
 
   // Note: effectiveHeroVideoVersion is computed above from resolvedHeroVideoUrl.
@@ -254,6 +255,7 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
                 version={effectiveHeroVideoVersion}
                 posterUrl={posterUrl}
                 posterPriority
+                lcpFriendlyPoster
                 forcePoster={!shouldLoadHeroVideo}
                 optimizeGpu
                 lightVideoFade

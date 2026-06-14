@@ -175,6 +175,7 @@ model GramProductItem {
 
   /// Index for faster lookups by uniqCode (since multiple items can have same uniqCode)
   @@index([uniqCode])
+  @@index([uniqCode, rootKey])
 }
 
 model GramQRScanLog {

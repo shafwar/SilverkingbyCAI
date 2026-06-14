@@ -3,6 +3,7 @@
 import { forwardRef, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { getCacheBustedMediaUrl } from "@/hooks/usePageSections";
+import { HERO_PLACEHOLDER_BG } from "@/lib/hero-media-defaults";
 
 type VideoGuardProps = Omit<React.ComponentPropsWithoutRef<"video">, "src"> & {
   url: string;
@@ -46,8 +47,7 @@ type ImageGuardProps = Omit<React.ComponentPropsWithoutRef<"img">, "src"> & {
   priority?: boolean;
 };
 
-const FALLBACK_POSTER_BG =
-  "linear-gradient(180deg, #080808 0%, #050505 50%, #030303 100%), radial-gradient(ellipse 80% 60% at 50% 40%, rgba(212,175,55,0.05) 0%, transparent 55%)";
+const FALLBACK_POSTER_BG = HERO_PLACEHOLDER_BG;
 
 /**
  * CMS-safe video: poster/placeholder always visible, optional lazy src attach, fade-in when ready.
@@ -373,7 +373,10 @@ export function ImageLoadGuard({
   const { onLoad, onError, ...restImgProps } = imgProps;
 
   return (
-    <div className={containerClassName} style={{ background: "#0a0a0a", position: "relative" }}>
+    <div
+      className={containerClassName}
+      style={{ background: HERO_PLACEHOLDER_BG, position: "relative" }}
+    >
       <img
         key={src}
         src={src}

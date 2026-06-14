@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { VERIFIED_BG_IMAGES } from "@/assets/verified-bg";
 import { getR2UrlClient } from "@/utils/r2-url";
+import { useRichMediaNetwork } from "@/hooks/useRichMediaNetwork";
 
 interface VerificationResult {
   verified: boolean;
@@ -35,6 +36,44 @@ interface VerificationResult {
     createdAt: string;
   };
   error?: string;
+}
+
+async function fetchVerifyResult(
+  serial: string,
+  signal?: AbortSignal
+): Promise<VerificationResult> {
+  const normalizedSerial =
+    serial?.trim().toUpperCase().replace(/[^A-Z0-9]/g, "") || "";
+
+  if (!normalizedSerial || normalizedSerial.length < 3 || normalizedSerial.length > 50) {
+    return { verified: false, error: "Invalid serial number format" };
+  }
+
+  const response = await fetch(`/api/verify/${encodeURIComponent(normalizedSerial)}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    signal,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+    return {
+      verified: false,
+      error: errorData.error || `Verification failed: ${response.status}`,
+    };
+  }
+
+  const data = await response.json();
+  if (!data || typeof data !== "object" || !("verified" in data)) {
+    return { verified: false, error: "Invalid response from server" };
+  }
+
+  if (data.verified && data.product && (!data.product.serialCode || !data.product.name)) {
+    return { verified: false, error: "Invalid product data received" };
+  }
+
+  return data as VerificationResult;
 }
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
@@ -189,6 +228,7 @@ export default function VerifyPage() {
   const [rootKey, setRootKey] = useState("");
   const [verifyingRootKey, setVerifyingRootKey] = useState(false);
   const [rootKeyError, setRootKeyError] = useState<string | null>(null);
+  const shouldLoadRichMedia = useRichMediaNetwork();
 
   /** Guaranteed pool: static URLs always included so we never have empty; try next on error until one loads. */
   const staticUrls = useMemo(
@@ -204,7 +244,7 @@ export default function VerifyPage() {
 
   // Background image: load ONLY after "Product Verified" text has painted (deferred). Prefer static URLs first (easiest/closest).
   useEffect(() => {
-    if (!result?.verified) {
+    if (!result?.verified || !shouldLoadRichMedia) {
       setVerifiedBgDisplayUrl(null);
       setVerifiedBgError(false);
       verifiedBgFallbackUrls.current = [];
@@ -225,7 +265,7 @@ export default function VerifyPage() {
         try {
           await new Promise<void>((resolve, reject) => {
             const img = new window.Image();
-            const t = window.setTimeout(() => reject(new Error("timeout")), 8000);
+            const t = window.setTimeout(() => reject(new Error("timeout")), 4500);
             img.onload = () => {
               window.clearTimeout(t);
               resolve();
@@ -285,7 +325,7 @@ export default function VerifyPage() {
       window.clearTimeout(tid);
       window.clearTimeout(apiTid);
     };
-  }, [result?.verified, staticUrls]);
+  }, [result?.verified, staticUrls, shouldLoadRichMedia]);
 
   const effectiveVerifiedBgUrl = verifiedBgDisplayUrl;
 
@@ -322,84 +362,21 @@ export default function VerifyPage() {
 
     async function verifyProduct() {
       try {
-        const normalizedSerial =
-          serialNumber
-            ?.trim()
-            .toUpperCase()
-            .replace(/[^A-Z0-9]/g, "") || "";
-
-        if (!normalizedSerial || normalizedSerial.length < 3 || normalizedSerial.length > 50) {
-          if (isMounted) {
-            setResult({
-              verified: false,
-              error: "Invalid serial number format",
-            });
-            setLoading(false);
-          }
-          return;
-        }
-
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-        const response = await fetch(`/api/verify/${encodeURIComponent(normalizedSerial)}`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
-          if (isMounted) {
-            setResult({
-              verified: false,
-              error: errorData.error || `Verification failed: ${response.status}`,
-            });
-            setLoading(false);
-          }
-          return;
-        }
-
-        const data = await response.json();
-
-        if (!data || typeof data !== "object" || !("verified" in data)) {
-          if (isMounted) {
-            setResult({
-              verified: false,
-              error: "Invalid response from server",
-            });
-            setLoading(false);
-          }
-          return;
-        }
-
-        if (data.verified && data.product) {
-          if (!data.product.serialCode || !data.product.name) {
-            if (isMounted) {
-              setResult({
-                verified: false,
-                error: "Invalid product data received",
-              });
-              setLoading(false);
-            }
-            return;
-          }
-        }
+        const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+        const data = await fetchVerifyResult(serialNumber, controller.signal);
+        window.clearTimeout(timeoutId);
 
         if (isMounted) {
           setResult(data);
           setLoading(false);
         }
-      } catch (error: any) {
-        if (error.name === "AbortError") {
+      } catch (error: unknown) {
+        if (error instanceof Error && error.name === "AbortError") {
           if (isMounted) {
             setResult({
               verified: false,
-              error: "Request timeout. Please try again.",
+              error: "Jaringan lambat — coba lagi.",
             });
             setLoading(false);
           }
@@ -410,7 +387,10 @@ export default function VerifyPage() {
         if (isMounted) {
           setResult({
             verified: false,
-            error: error?.message || "Failed to verify product. Please try again.",
+            error:
+              error instanceof Error
+                ? error.message
+                : "Failed to verify product. Please try again.",
           });
           setLoading(false);
         }
@@ -509,8 +489,12 @@ export default function VerifyPage() {
       }
 
       if (data.serialCode) {
-        console.log("[VerifyPage] Root key verified, redirecting to:", data.serialCode);
-        window.location.href = `/verify/${encodeURIComponent(data.serialCode)}`;
+        const serialCode = String(data.serialCode);
+        window.history.replaceState(null, "", `/verify/${encodeURIComponent(serialCode)}`);
+        const verified = await fetchVerifyResult(serialCode);
+        setResult(verified);
+        setRootKey("");
+        setVerifyingRootKey(false);
       } else {
         console.error("[VerifyPage] Verification successful but serialCode missing:", data);
         setRootKeyError(
@@ -733,7 +717,7 @@ export default function VerifyPage() {
                   >
                     <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-[200%] group-hover:translate-x-[200%] transition-transform duration-700 pointer-events-none" />
                     <span className="relative z-10">
-                      {verifyingRootKey ? "Verifying..." : "Verify Root Key"}
+                      {verifyingRootKey ? "Memverifikasi root key..." : "Verify Root Key"}
                     </span>
                   </button>
                 </form>

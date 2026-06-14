@@ -84,6 +84,7 @@ export default function HeroWithVideo({
             url={currentVideoSrc}
             posterUrl={r2FallbackImage}
             posterPriority
+            lcpFriendlyPoster
             optimizeGpu
             lightVideoFade
             containerClassName="absolute inset-0 h-full w-full"
