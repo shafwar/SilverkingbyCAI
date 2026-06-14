@@ -372,7 +372,7 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
                 <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.03] p-3">
                   <div className="text-[10px] text-white/55">
                     {zipBatches![0]?.totalBatches ?? zipBatches!.length} batch total ·{" "}
-                    {zipBatches!.filter((b) => b.ready || b.downloaded || b.pendingConfirm).length}{" "}
+                    {zipBatches!.filter((b) => b.ready || b.downloaded || b.pendingConfirm || b.inProgress).length}{" "}
                     di R2 · {downloadedBatchCount} dikonfirmasi di perangkat
                   </div>
                   <div

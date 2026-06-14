@@ -29,9 +29,11 @@ const POLL_INTERVAL_MS = 1500;
 const UI_DISMISS_AFTER_SUCCESS_MS = 2500;
 const MAX_AUTO_DOWNLOAD_ATTEMPTS = 4;
 /** Jeda setelah trigger unduh browser sebelum tampilkan konfirmasi admin. */
-const DEVICE_AUTO_WAIT_MS = 6000;
+const DEVICE_AUTO_WAIT_MS = 3500;
 /** Tombol konfirmasi aktif setelah unduh otomatis dikirim. */
-const DEVICE_CONFIRM_BUTTON_DELAY_MS = 2500;
+const DEVICE_CONFIRM_BUTTON_DELAY_MS = 2000;
+/** Jika klaim unduh macet tanpa file terkirim, reset dan coba lagi. */
+const AUTO_DOWNLOAD_CLAIM_STUCK_MS = 20_000;
 /** Jika state downloadInFlight macet lebih lama, paksa ke konfirmasi. */
 const DEVICE_SAVE_STUCK_MS = 45_000;
 /** Tunggu UI menampilkan 100% sukses R2 sebelum mulai simpan ke laptop. */
@@ -188,7 +190,6 @@ function nextBatchToSave(t: ZipBackgroundTask): ZipTaskDownload | undefined {
     if (d.downloaded || d.pendingSaveConfirm || d.downloadInFlight || d.autoDownloadFailed) {
       continue;
     }
-    if (d.autoDownloadTriggered) continue;
     const priorIncomplete = sorted.some(
       (p) =>
         p.batchIndex < d.batchIndex &&
@@ -200,6 +201,74 @@ function nextBatchToSave(t: ZipBackgroundTask): ZipTaskDownload | undefined {
     return d;
   }
   return undefined;
+}
+
+function findBatchDownloadPart(
+  t: ZipBackgroundTask,
+  batchIndex: number
+): ZipTaskDownload | undefined {
+  const d = t.downloads?.find((x) => x.batchIndex === batchIndex);
+  if (!d) return undefined;
+  if (!(d.download_url?.trim() || d.r2Key?.trim())) return undefined;
+  if (d.downloaded || d.pendingSaveConfirm || d.autoDownloadFailed) return undefined;
+  return d;
+}
+
+/** Reset klaim unduh yatim dari deploy lama — langsung, tanpa tunggu. */
+function healOrphanAutoDownloadClaim(task: ZipBackgroundTask): ZipBackgroundTask {
+  if (task.awaitingProceed || task.downloadInFlight || task.singleDownloadInFlight) return task;
+  if (task.downloads?.some((d) => d.downloadInFlight)) return task;
+
+  const orphan = task.downloads?.find(
+    (d) =>
+      d.autoDownloadTriggered &&
+      !d.pendingSaveConfirm &&
+      !d.downloaded &&
+      !d.downloadInFlight
+  );
+  if (!orphan) return task;
+
+  triggeredBatchKeys.delete(batchTriggerKey(task, orphan.batchIndex));
+  return applyBatchProgressToTask(
+    {
+      ...task,
+      downloads: (task.downloads ?? []).map((d) =>
+        d.batchIndex === orphan.batchIndex ? { ...d, autoDownloadTriggered: false } : d
+      ),
+      updatedAt: Date.now(),
+    },
+    `Batch ${orphan.batchIndex}/${orphan.totalBatches} — siap unduh otomatis ke laptop...`
+  );
+}
+
+/** Reset batch yang diklaim tapi unduh browser tidak pernah selesai (sudah lama). */
+function healStuckAutoDownloadClaim(task: ZipBackgroundTask): ZipBackgroundTask {
+  const stuckPart = task.downloads?.find(
+    (d) =>
+      d.autoDownloadTriggered &&
+      !d.pendingSaveConfirm &&
+      !d.downloaded &&
+      !d.downloadInFlight &&
+      !task.awaitingProceed
+  );
+  if (!stuckPart) return task;
+  if (Date.now() - task.updatedAt < AUTO_DOWNLOAD_CLAIM_STUCK_MS) return task;
+
+  triggeredBatchKeys.delete(batchTriggerKey(task, stuckPart.batchIndex));
+  return applyBatchProgressToTask(
+    {
+      ...task,
+      downloadInFlight: false,
+      activeDeviceBatchIndex: undefined,
+      downloads: (task.downloads ?? []).map((d) =>
+        d.batchIndex === stuckPart.batchIndex
+          ? { ...d, autoDownloadTriggered: false, downloadInFlight: false }
+          : d
+      ),
+      updatedAt: Date.now(),
+    },
+    `Batch ${stuckPart.batchIndex}/${stuckPart.totalBatches} — siap unduh otomatis ke laptop...`
+  );
 }
 
 function healStuckDeviceDownload(task: ZipBackgroundTask): ZipBackgroundTask {
@@ -313,21 +382,19 @@ function applyBatchSaveSuccessToTask(
 }
 
 function claimBatchForAutoDownload(task: ZipBackgroundTask, batchIndex: number): boolean {
-  if (isBatchAutoTriggered(task, batchIndex)) return false;
+  const key = batchTriggerKey(task, batchIndex);
+  if (triggeredBatchKeys.has(key)) return false;
+
   let claimed = false;
   updateZipBackgroundTask((t) => {
     if (!t || !canStartDeviceDownload(t)) return t;
     const target = nextBatchToSave(t);
     if (!target || target.batchIndex !== batchIndex) return t;
-    if (isBatchAutoTriggered(t, batchIndex)) return t;
     claimed = true;
-    triggeredBatchKeys.add(batchTriggerKey(t, batchIndex));
+    triggeredBatchKeys.add(key);
     return applyBatchProgressToTask(
       {
         ...t,
-        downloads: (t.downloads ?? []).map((x) =>
-          x.batchIndex === batchIndex ? { ...x, autoDownloadTriggered: true } : x
-        ),
         updatedAt: Date.now(),
       },
       `Batch ${batchIndex}/${target.totalBatches} — 100%. Tunggu sebentar, file akan masuk secara otomatis...`
@@ -341,14 +408,14 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function saveOneBatchToDevice(t: ZipBackgroundTask, d: ZipTaskDownload): Promise<ZipBackgroundTask> {
-  if (isBatchAutoTriggered(t, d.batchIndex)) {
-    const fresh = readZipBackgroundTask();
-    if (
-      fresh?.awaitingProceed?.completedBatchIndex === d.batchIndex ||
-      fresh?.downloads?.find((x) => x.batchIndex === d.batchIndex)?.pendingSaveConfirm
-    ) {
-      return fresh ?? t;
-    }
+  const freshBefore = readZipBackgroundTask();
+  const existing = freshBefore?.downloads?.find((x) => x.batchIndex === d.batchIndex);
+  if (
+    existing?.downloaded ||
+    freshBefore?.awaitingProceed?.completedBatchIndex === d.batchIndex ||
+    existing?.pendingSaveConfirm
+  ) {
+    return freshBefore ?? t;
   }
 
   const safeName = safeBatchFilename(t.batchName);
@@ -400,6 +467,7 @@ async function saveOneBatchToDevice(t: ZipBackgroundTask, d: ZipTaskDownload): P
     }
     next = applyBatchSaveSuccessToTask(next, d.batchIndex, result.method, result.bytes);
     writeZipBackgroundTask(next);
+    triggeredBatchKeys.delete(batchTriggerKey(t, d.batchIndex));
     toast.message(`Batch ${d.batchIndex}/${d.totalBatches} — unduhan dikirim ke browser`, {
       description:
         "Cek folder Unduhan. Konfirmasi di floating card jika file sudah ada, lalu lanjut batch berikutnya.",
@@ -450,9 +518,9 @@ async function saveOneBatchToDevice(t: ZipBackgroundTask, d: ZipTaskDownload): P
   return next;
 }
 
-async function runDeviceDownloadPass(): Promise<boolean> {
+async function runDeviceDownloadPass(forcedBatchIndex?: number): Promise<boolean> {
   const task = readZipBackgroundTask();
-  if (!task || !canStartDeviceDownload(task)) return false;
+  if (!task) return false;
 
   const canChunked =
     isTaskChunked(task) &&
@@ -461,7 +529,12 @@ async function runDeviceDownloadPass(): Promise<boolean> {
     task.downloads.length > 0;
 
   if (canChunked) {
-    const d = nextBatchToSave(task);
+    const d =
+      forcedBatchIndex != null
+        ? findBatchDownloadPart(task, forcedBatchIndex)
+        : canStartDeviceDownload(task)
+          ? nextBatchToSave(task)
+          : undefined;
     if (!d) return false;
     await saveOneBatchToDevice(task, d);
     return true;
@@ -572,10 +645,11 @@ export function ZipBackgroundRunner() {
       if (!d && !getSingleZipDownloadUrl(task)) return;
       if (d && !claimBatchForAutoDownload(task, d.batchIndex)) return;
 
+      const forcedBatch = d?.batchIndex;
       downloadInFlightRef.current = true;
 
       window.setTimeout(() => {
-        void runDeviceDownloadPass()
+        void runDeviceDownloadPass(forcedBatch)
           .catch((e) => {
             console.warn(
               "[ZipBackgroundRunner] Download error:",
@@ -604,11 +678,18 @@ export function ZipBackgroundRunner() {
           return;
         }
         const data = await res.json();
-        const latest = readZipBackgroundTask();
+        let latest = readZipBackgroundTask();
         if (!latest) return;
 
-        const healed = healStuckDeviceDownload(latest);
-        const fromServer = mapJobResultToTask(healed, data);
+        let healed = healOrphanAutoDownloadClaim(latest);
+        healed = healStuckAutoDownloadClaim(healed);
+        healed = healStuckDeviceDownload(healed);
+        if (healed !== latest) {
+          writeZipBackgroundTask(healed);
+          latest = healed;
+        }
+
+        const fromServer = mapJobResultToTask(latest, data);
         const next = mergePollWithLocalState(
           healed,
           fromServer,

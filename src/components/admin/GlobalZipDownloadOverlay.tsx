@@ -171,7 +171,7 @@ export function GlobalZipDownloadOverlay() {
     const totalBatches = task.downloads[0]?.totalBatches ?? task.downloads.length;
 
     return task.downloads.map((d) => {
-      const onR2 = !!(d.download_url?.trim() || serverDone);
+      const onR2 = !!(d.download_url?.trim() || d.r2Key?.trim() || serverDone);
       const isActive = activeIdx != null && d.batchIndex === activeIdx && !!d.downloadInFlight;
       const waitingTurn =
         onR2 &&
