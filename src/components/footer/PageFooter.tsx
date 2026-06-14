@@ -8,6 +8,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Instagram } from "lucide-react";
 import { APP_NAME, getSilverKingInstagramUrl, getSilverKingWhatsAppUrl } from "@/utils/constants";
+import { DEFAULT_HERO_POSTER } from "@/lib/hero-media-defaults";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -45,7 +46,7 @@ export function PageFooter() {
   const bgImageUrl =
     typeof process !== "undefined" && process.env.NEXT_PUBLIC_FOOTER_BG_IMAGE_URL?.trim()
       ? process.env.NEXT_PUBLIC_FOOTER_BG_IMAGE_URL.trim()
-      : "/images/hero-fallback.jpg";
+      : DEFAULT_HERO_POSTER;
 
   const instagramHref = getSilverKingInstagramUrl();
   const whatsappHref = getSilverKingWhatsAppUrl();

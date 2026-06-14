@@ -2,18 +2,17 @@
 
 import { usePathname } from "next/navigation";
 import { useRef, useEffect, useState, useMemo } from "react";
-import { getR2UrlClient } from "@/utils/r2-url";
-import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
-import { usePageSections } from "@/hooks/usePageSections";
-import { usePageMedia } from "@/hooks/usePageMedia";
+import { useMerchStylePageHero } from "@/hooks/useMerchStylePageHero";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { usePauseBackgroundVideoOnScrollAndHidden } from "@/hooks/usePauseBackgroundVideoOnScrollAndHidden";
 import { VideoLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
+import {
+  HERO_VIDEO_MERCH_PATTERN,
+  HERO_VIDEO_POINTER_STYLE,
+} from "@/lib/hero-media-defaults";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import { HomeHeroSectionsContext } from "@/components/layout/HomeHeroSectionsContext";
-
-const HERO_VIDEO_FALLBACK = "/videos/hero/hero-background.mp4";
 
 /** Delay before showing hero edit affordance only — keep minimal so UI is not blocked */
 const POST_SPLASH_BUFFER_MS = 400;
@@ -91,22 +90,14 @@ export function PersistentHomeHeroVideo() {
   const splashComplete = useSplashComplete();
   const prefersReducedMotion = usePrefersReducedMotion();
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
-  const { sections, refetch } = usePageSections("home");
-  const { data: pageMedia } = usePageMedia("home");
+  const {
+    pageSections: sections,
+    heroVideoPlayUrl,
+    heroPosterUrl: posterUrl,
+    heroVersion: effectiveHeroVideoVersion,
+    refetchPageSections: refetch,
+  } = useMerchStylePageHero("home");
   const homeSectionsBridge = useMemo(() => ({ sections, refetch }), [sections, refetch]);
-
-  const heroUrl = sections.hero?.url ?? getR2UrlClient(HERO_VIDEO_FALLBACK);
-  const heroVersion = sections.hero?.version;
-  /** Same-origin /api/hero-video for R2 — avoids decoder showing a flash of cached frames when the object is replaced. */
-  const heroVideoPlayUrl = useMemo(() => proxiedHeroVideoSrc(heroUrl), [heroUrl]);
-  /** Non-CMS fallback has no section version; stable numeric version keeps cache-bust predictable if default asset changes. */
-  const effectiveHeroVideoVersion = sections.hero?.url != null ? heroVersion : 1;
-
-  /** Static fallback so poster + gradient never sit on an invisible layer (fixes “black hero” on slow JS / splash) */
-  const posterUrl =
-    pageMedia?.heroImageUrl && pageMedia.heroImageUrl.length > 0
-      ? pageMedia.heroImageUrl
-      : "/images/hero-fallback.jpg";
 
   useReliableVideoAutoplay(videoRef, {
     mode: "background",
@@ -183,16 +174,13 @@ export function PersistentHomeHeroVideo() {
       version={effectiveHeroVideoVersion}
       posterUrl={posterUrl}
       posterVersion={undefined}
-      posterPriority
-      lcpFriendlyPoster
-      optimizeGpu
-      lightVideoFade
       forcePoster={!shouldLoadHeroVideo}
+      {...HERO_VIDEO_MERCH_PATTERN}
       suspendSrc={prefersReducedMotion || !isHome}
       snapVideoOpacity
       containerClassName="absolute inset-0 min-w-full min-h-full w-full h-full"
       className="absolute left-1/2 top-1/2 min-w-full min-h-full w-full h-full -translate-x-1/2 -translate-y-1/2 object-cover"
-      style={{ pointerEvents: "none" }}
+      style={{ ...HERO_VIDEO_POINTER_STYLE, pointerEvents: "none" }}
       autoPlay
       loop
       muted

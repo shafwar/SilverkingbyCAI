@@ -10,6 +10,14 @@ import { usePathname } from "next/navigation";
 import { OptimizedLink } from "@/components/ui/OptimizedLink";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
+import { VideoLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
+import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
+import {
+  DEFAULT_HERO_POSTER,
+  HERO_PLACEHOLDER_BG,
+  HERO_VIDEO_MERCH_PATTERN,
+  HERO_VIDEO_POINTER_STYLE,
+} from "@/lib/hero-media-defaults";
 
 interface HeroSectionProps {
   shouldAnimate?: boolean;
@@ -145,6 +153,8 @@ function HeroScrollDrivenVideoLayer({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoError, setVideoError] = useState(false);
+  const heroVideoUrl = getR2UrlClient("/videos/hero/hero-background.mp4");
+  const heroVideoPlayUrl = proxiedHeroVideoSrc(heroVideoUrl);
 
   useReliableVideoAutoplay(videoRef, { mode: "background" });
 
@@ -176,44 +186,40 @@ function HeroScrollDrivenVideoLayer({
         initial="hidden"
         animate={animationState}
       >
-        {shouldLoadHeroVideo ? (
-          <video
+        {shouldLoadHeroVideo && !videoError ? (
+          <VideoLoadGuard
             ref={videoRef}
+            url={heroVideoPlayUrl}
+            version={1}
+            posterUrl={DEFAULT_HERO_POSTER}
+            forcePoster={!shouldLoadHeroVideo}
+            {...HERO_VIDEO_MERCH_PATTERN}
+            containerClassName="absolute inset-0 h-full w-full"
+            className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
+            style={HERO_VIDEO_POINTER_STYLE}
             autoPlay
             loop
             muted
             playsInline
-            preload="auto"
             disablePictureInPicture
             disableRemotePlayback
-            className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
-            style={{
-              pointerEvents: "none",
-              outline: "none",
-              WebkitTapHighlightColor: "transparent",
-              WebkitTouchCallout: "none",
-              userSelect: "none",
-            }}
             onContextMenu={(e) => e.preventDefault()}
             onError={() => setVideoError(true)}
             onPlay={(e) => {
               const video = e.currentTarget;
-              if (video.paused) video.play().catch(() => {});
+              if (video.paused) video.play().catch(() => setVideoError(true));
             }}
-          >
-            <source src={getR2UrlClient("/videos/hero/hero-background.mp4")} type="video/mp4" />
-          </video>
+          />
         ) : (
           <div
             className="absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(180deg, #080808 0%, #050505 50%, #030303 100%), radial-gradient(ellipse 80% 60% at 50% 40%, rgba(212,175,55,0.05) 0%, transparent 55%)",
-            }}
+            style={{ background: HERO_PLACEHOLDER_BG }}
             aria-hidden
           />
         )}
-        {videoError && <div className="absolute inset-0 bg-black" />}
+        {videoError && (
+          <div className="absolute inset-0" style={{ background: HERO_PLACEHOLDER_BG }} aria-hidden />
+        )}
       </motion.div>
 
       <motion.div

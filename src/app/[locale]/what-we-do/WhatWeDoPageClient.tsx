@@ -7,14 +7,21 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { motion, useInView, AnimatePresence, type Variants } from "framer-motion";
 import { getR2UrlClient } from "@/utils/r2-url";
-import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
-import { usePageSections, getCacheBustedMediaUrl } from "@/hooks/usePageSections";
-import { usePageMedia } from "@/hooks/usePageMedia";
+import { useMerchStylePageHero } from "@/hooks/useMerchStylePageHero";
+import { getCacheBustedMediaUrl } from "@/hooks/usePageSections";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { EditableMedia } from "@/components/editable-media";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
-import { DEFAULT_HERO_POSTER, HERO_PLACEHOLDER_BG } from "@/lib/hero-media-defaults";
+import {
+  DEFAULT_HERO_POSTER,
+  HERO_PLACEHOLDER_BG,
+  FOOTER_VIDEO_MERCH_PATTERN,
+  HERO_VIDEO_COVER_STYLE,
+  HERO_VIDEO_MERCH_PATTERN,
+  HERO_VIDEO_POINTER_STYLE,
+  SECTION_VIDEO_MERCH_PATTERN,
+} from "@/lib/hero-media-defaults";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import {
   Sparkles,
@@ -146,8 +153,6 @@ const NarrativeImageSection = forwardRef<
     description?: string;
     sectionKeys?: readonly [string, string, string];
     refetchSections?: () => void;
-    /** When true, show placeholder for card media until section data is loaded (prevents flash of wrong asset) */
-    sectionsLoading?: boolean;
     /** When true, opening edit on a card auto-opens the file picker (craft cards on What We Do) */
     autoOpenFilePicker?: boolean;
   }
@@ -160,7 +165,6 @@ const NarrativeImageSection = forwardRef<
       description,
       sectionKeys,
       refetchSections,
-      sectionsLoading,
       autoOpenFilePicker,
     },
     ref
@@ -251,48 +255,27 @@ const NarrativeImageSection = forwardRef<
                     {/* Media container - image or video at top */}
                     <div className="relative w-full flex-[0_0_65%] overflow-hidden bg-black/40">
                       {/* Loading placeholder (images only); or black when sections loading to prevent flash */}
-                      {(sectionsLoading || (!isVideo && !isImageLoaded)) && (
+                      {!isVideo && !isImageLoaded && (
                         <div
                           className="absolute inset-0 z-10 flex items-center justify-center"
                           style={{ background: HERO_PLACEHOLDER_BG }}
                         >
-                          {!sectionsLoading && (
-                            <div className="h-6 w-6 sm:h-8 sm:w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
-                          )}
+                          <div className="h-6 w-6 sm:h-8 sm:w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
                         </div>
                       )}
 
-                      {/* Image or video (flexible replace); placeholder when sections still loading to prevent flash */}
                       <div
                         className={`absolute inset-0 transition-opacity duration-300 ease-out ${
-                          sectionsLoading
-                            ? "opacity-0"
-                            : isVideo || isImageLoaded
-                              ? "opacity-100"
-                              : "opacity-0"
+                          isVideo || isImageLoaded ? "opacity-100" : "opacity-0"
                         }`}
-                        style={{
-                          willChange: sectionsLoading
-                            ? "auto"
-                            : isVideo || isImageLoaded
-                              ? "auto"
-                              : "opacity",
-                        }}
                       >
-                        {sectionsLoading ? (
-                          <div
-                            className="absolute inset-0"
-                            style={{ background: HERO_PLACEHOLDER_BG }}
-                            aria-hidden
-                          />
-                        ) : isVideo ? (
+                        {isVideo ? (
                           <VideoLoadGuard
                             url={card.images[0]}
                             version={card.version}
                             posterUrl={DEFAULT_HERO_POSTER}
                             forcePoster={!shouldLoadHeroVideo}
-                            lazyAttach
-                            preload="none"
+                            {...SECTION_VIDEO_MERCH_PATTERN}
                             containerClassName="absolute inset-0 w-full h-full"
                             className="absolute inset-0 w-full h-full object-cover"
                             autoPlay
@@ -378,22 +361,19 @@ export default function WhatWeDoPageClient() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const footerVideoRef = useRef<HTMLVideoElement | null>(null);
   const {
-    sections: pageSections,
-    loading: sectionsLoading,
-    refetch: refetchPageSections,
-  } = usePageSections("what-we-do");
-  const { data: pageMediaWhatWeDo } = usePageMedia("what-we-do");
-  const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
-  const heroMediaUrl =
-    pageSections.hero?.url ?? getR2UrlClient("/videos/hero/metal crafting hands.mp4");
+    pageSections,
+    heroMediaType,
+    heroMediaUrl,
+    heroVideoPlayUrl,
+    heroPosterUrl,
+    heroVersion,
+    footerMediaType,
+    footerMediaUrl,
+    footerVideoPlayUrl,
+    footerVersion,
+    refetchPageSections,
+  } = useMerchStylePageHero("what-we-do");
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
-  const footerMediaType = pageSections.section_footer_video?.mediaType?.toUpperCase() ?? "VIDEO";
-  const footerMediaUrl =
-    pageSections.section_footer_video?.url ??
-    getR2UrlClient("/videos/hero/molten metal slow motion.mp4");
-
-  const heroVideoPlayUrl = useMemo(() => proxiedHeroVideoSrc(heroMediaUrl), [heroMediaUrl]);
-  const footerVideoPlayUrl = useMemo(() => proxiedHeroVideoSrc(footerMediaUrl), [footerMediaUrl]);
 
   // Preload first craft card image when it's an image (flexible replace)
   const firstCraftIsImage =
@@ -588,33 +568,24 @@ export default function WhatWeDoPageClient() {
       >
         {/* Full Screen Hero Background – attach src immediately (fixed hero); faster than idle-deferred lazy attach on heavy pages */}
         <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
-          <div className="absolute inset-0 bg-luxury-black z-0" />
+          <div className="absolute inset-0 z-0" style={{ background: HERO_PLACEHOLDER_BG }} aria-hidden />
           <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
 
           {heroMediaType === "VIDEO" ? (
             <VideoLoadGuard
-              key={`wwd-hero-${heroVideoPlayUrl}-${pageSections.hero?.version ?? 0}`}
+              key={`wwd-hero-${heroVideoPlayUrl}-${heroVersion ?? 0}`}
               ref={videoRef}
               url={heroVideoPlayUrl}
-              version={pageSections.hero?.version}
-              posterUrl={pageMediaWhatWeDo?.heroImageUrl ?? DEFAULT_HERO_POSTER}
+              version={heroVersion}
+              posterUrl={heroPosterUrl}
               forcePoster={!shouldLoadHeroVideo}
-              posterPriority
-              lcpFriendlyPoster
-              optimizeGpu
-              lightVideoFade
+              {...HERO_VIDEO_MERCH_PATTERN}
               containerClassName="absolute inset-0 w-screen h-screen z-10"
               className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
               style={{
-                objectFit: "cover",
-                objectPosition: "center center",
-                width: "100%",
-                height: "100%",
-                pointerEvents: "none",
-                outline: "none",
-                WebkitTapHighlightColor: "transparent",
+                ...HERO_VIDEO_COVER_STYLE,
+                ...HERO_VIDEO_POINTER_STYLE,
                 WebkitTouchCallout: "none",
-                userSelect: "none",
               }}
               autoPlay
               loop
@@ -627,7 +598,7 @@ export default function WhatWeDoPageClient() {
           ) : (
             <ImageLoadGuard
               url={heroMediaUrl}
-              version={pageSections.hero?.version}
+              version={heroVersion}
               containerClassName="absolute inset-0 w-screen h-screen z-10"
               className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
               style={{
@@ -649,6 +620,7 @@ export default function WhatWeDoPageClient() {
           section="hero"
           type="video"
           onUploadDone={refetchPageSections}
+          performanceMode="deferred"
           editLabel="Edit video"
         />
 
@@ -696,7 +668,6 @@ export default function WhatWeDoPageClient() {
         description={t("description")}
         sectionKeys={["craft_card_1", "craft_card_2", "craft_card_3"]}
         refetchSections={refetchPageSections}
-        sectionsLoading={sectionsLoading}
         autoOpenFilePicker
       />
 
@@ -812,26 +783,16 @@ export default function WhatWeDoPageClient() {
         <div className="absolute inset-0 z-0 overflow-hidden">
           {footerMediaType === "VIDEO" ? (
             <VideoLoadGuard
-              key={`wwd-footer-${footerVideoPlayUrl}-${pageSections.section_footer_video?.version ?? 0}`}
+              key={`wwd-footer-${footerVideoPlayUrl}-${footerVersion ?? 0}`}
               ref={footerVideoRef}
               url={footerVideoPlayUrl}
-              version={pageSections.section_footer_video?.version}
-              posterUrl={pageMediaWhatWeDo?.heroImageUrl ?? DEFAULT_HERO_POSTER}
+              version={footerVersion}
+              posterUrl={heroPosterUrl}
               forcePoster={!shouldLoadHeroVideo}
-              posterPriority
-              lcpFriendlyPoster
-              lazyAttach
-              optimizeGpu
+              {...FOOTER_VIDEO_MERCH_PATTERN}
               containerClassName="absolute inset-0 w-full h-full z-10"
               className="absolute inset-0 w-full h-full object-cover"
-              style={{
-                objectFit: "cover",
-                objectPosition: "center center",
-                width: "100%",
-                height: "100%",
-                transform: "scale(1)",
-                transformOrigin: "center center",
-              }}
+              style={HERO_VIDEO_COVER_STYLE}
               autoPlay
               loop
               muted
@@ -848,7 +809,7 @@ export default function WhatWeDoPageClient() {
           ) : (
             <ImageLoadGuard
               url={footerMediaUrl}
-              version={pageSections.section_footer_video?.version}
+              version={footerVersion}
               containerClassName="absolute inset-0 w-full h-full z-10"
               className="absolute inset-0 w-full h-full object-cover"
               style={{
@@ -858,6 +819,7 @@ export default function WhatWeDoPageClient() {
                 height: "100%",
               }}
               alt=""
+              priority
             />
           )}
           <div className="absolute top-3 right-3 z-20 pointer-events-auto rounded-xl border border-white/15 bg-black/60 px-2 py-1.5 shadow-lg backdrop-blur-sm">

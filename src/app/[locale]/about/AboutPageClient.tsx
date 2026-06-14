@@ -5,15 +5,16 @@ import dynamic from "next/dynamic";
 import Navbar from "@/components/layout/Navbar";
 import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
-import { getR2UrlClient } from "@/utils/r2-url";
-import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { usePauseBackgroundVideoOnScrollAndHidden } from "@/hooks/usePauseBackgroundVideoOnScrollAndHidden";
-import { usePageSections } from "@/hooks/usePageSections";
-import { usePageMedia } from "@/hooks/usePageMedia";
+import { useMerchStylePageHero } from "@/hooks/useMerchStylePageHero";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
-import { DEFAULT_HERO_POSTER } from "@/lib/hero-media-defaults";
+import {
+  HERO_PLACEHOLDER_BG,
+  HERO_VIDEO_MERCH_PATTERN,
+  HERO_VIDEO_POINTER_STYLE,
+} from "@/lib/hero-media-defaults";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import { PageLoadingSkeleton } from "@/components/ui/PageLoadingSkeleton";
 // Lazy load CertificateCard to improve initial page load
@@ -122,11 +123,15 @@ export default function AboutPageClient() {
   const gradientOverlay = useRef<HTMLDivElement | null>(null);
   const heroVideoRef = useRef<HTMLVideoElement | null>(null);
   const holdHeroVideoPausedRef = useRef(false);
-  const { sections: pageSections, refetch: refetchPageSections } = usePageSections("about");
-  const { data: pageMediaAbout } = usePageMedia("about");
-  const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
-  const heroMediaUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/gold-footage.mp4");
-  const heroVideoPlayUrl = useMemo(() => proxiedHeroVideoSrc(heroMediaUrl), [heroMediaUrl]);
+  const {
+    pageSections,
+    heroMediaType,
+    heroMediaUrl,
+    heroVideoPlayUrl,
+    heroPosterUrl,
+    heroVersion,
+    refetchPageSections,
+  } = useMerchStylePageHero("about");
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
   // Ensure about-page hero video autoplays reliably on all devices
@@ -246,27 +251,19 @@ export default function AboutPageClient() {
 
       {/* Hero: fixed fullscreen — attach src immediately + preload for fast visible playback */}
       <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
-        <div className="absolute inset-0 bg-luxury-black z-0" />
+        <div className="absolute inset-0 z-0" style={{ background: HERO_PLACEHOLDER_BG }} aria-hidden />
         {heroMediaType === "VIDEO" ? (
           <VideoLoadGuard
-            key={`about-hero-${heroVideoPlayUrl}-${pageSections.hero?.version ?? 0}`}
+            key={`about-hero-${heroVideoPlayUrl}-${heroVersion ?? 0}`}
             ref={heroVideoRef}
             url={heroVideoPlayUrl}
-            version={pageSections.hero?.version}
-            posterUrl={pageMediaAbout?.heroImageUrl ?? DEFAULT_HERO_POSTER}
+            version={heroVersion}
+            posterUrl={heroPosterUrl}
             forcePoster={!shouldLoadHeroVideo}
-            posterPriority
-            lcpFriendlyPoster
-            optimizeGpu
-            lightVideoFade
+            {...HERO_VIDEO_MERCH_PATTERN}
             containerClassName="absolute inset-0 z-10 h-full w-full"
             className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
-            style={{
-              pointerEvents: "none",
-              outline: "none",
-              WebkitTapHighlightColor: "transparent",
-              userSelect: "none",
-            }}
+            style={HERO_VIDEO_POINTER_STYLE}
             autoPlay
             loop
             muted
@@ -283,7 +280,7 @@ export default function AboutPageClient() {
         ) : (
           <ImageLoadGuard
             url={heroMediaUrl}
-            version={pageSections.hero?.version}
+            version={heroVersion}
             containerClassName="absolute inset-0 z-10 h-full w-full"
             className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
             style={{ pointerEvents: "none" }}
@@ -300,6 +297,7 @@ export default function AboutPageClient() {
         section="hero"
         type="video"
         onUploadDone={refetchPageSections}
+        performanceMode="deferred"
         editLabel="Edit video"
       />
 

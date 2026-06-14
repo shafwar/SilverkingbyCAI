@@ -13,6 +13,12 @@ import { ModalPortal } from "@/components/ui/ModalPortal";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { VideoLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
+import {
+  FOOTER_VIDEO_MERCH_PATTERN,
+  HERO_VIDEO_MERCH_PATTERN,
+  HERO_VIDEO_POINTER_STYLE,
+  resolveHeroPoster,
+} from "@/lib/hero-media-defaults";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { Plus_Jakarta_Sans } from "next/font/google";
@@ -497,18 +503,10 @@ export default function MerchandisePageClient() {
             posterUrl={merchHeroPosterUrl}
             posterVersion={MERCH_HERO_VIDEO_ASSET_VERSION}
             forcePoster={!shouldLoadHeroVideo}
-            posterPriority
-            lcpFriendlyPoster
-            optimizeGpu
-            lightVideoFade
+            {...HERO_VIDEO_MERCH_PATTERN}
             containerClassName="absolute inset-0 h-full w-full"
             className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
-            style={{
-              pointerEvents: "none",
-              outline: "none",
-              WebkitTapHighlightColor: "transparent",
-              userSelect: "none",
-            }}
+            style={HERO_VIDEO_POINTER_STYLE}
             autoPlay
             loop
             muted
@@ -1007,11 +1005,9 @@ export default function MerchandisePageClient() {
             key="merch-footer-gold-footage"
             ref={footerVideoRef}
             url={getR2UrlClient("/videos/hero/gold-footage.mp4")}
+            posterUrl={resolveHeroPoster(merchHeroPosterUrl)}
             forcePoster={!shouldLoadHeroVideo}
-            lazyAttach
-            deferAttachUntilIdle
-            idleAttachTimeoutMs={720}
-            optimizeGpu
+            {...FOOTER_VIDEO_MERCH_PATTERN}
             containerClassName="absolute inset-0 w-full h-full"
             className="absolute inset-0 w-full h-full object-cover"
             style={{

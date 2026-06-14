@@ -9,12 +9,18 @@ import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Plus, X } from "lucide-react";
-import { usePageSections } from "@/hooks/usePageSections";
-import { usePageMedia } from "@/hooks/usePageMedia";
+import { useMerchStylePageHero } from "@/hooks/useMerchStylePageHero";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
-import { DEFAULT_HERO_POSTER } from "@/lib/hero-media-defaults";
+import {
+  DEFAULT_HERO_POSTER,
+  HERO_PLACEHOLDER_BG,
+  HERO_MEDIA_SHELL_STYLE,
+  HERO_VIDEO_COVER_STYLE,
+  HERO_VIDEO_MERCH_PATTERN,
+  HERO_VIDEO_POINTER_STYLE,
+} from "@/lib/hero-media-defaults";
 import { PageFooter } from "@/components/footer/PageFooter";
 import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import gsap from "gsap";
@@ -31,7 +37,7 @@ const fontDistributor = Plus_Jakarta_Sans({
   display: "swap",
 });
 
-const HERO_FALLBACK_PATH = "/images/hero-fallback.jpg";
+const HERO_FALLBACK_PATH = DEFAULT_HERO_POSTER;
 
 const revealVariants: Variants = {
   initial: { opacity: 0, y: 48 },
@@ -67,24 +73,23 @@ export default function DistributorPageClient({
   const [isAdmin, setIsAdmin] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const {
-    sections: pageSections,
-    loading: sectionsLoading,
-    refetch: refetchPageSections,
-  } = usePageSections("distributor");
-  const { data: pageMediaDistributor } = usePageMedia("distributor");
+    pageSections,
+    heroMediaType,
+    heroMediaUrl,
+    heroVideoPlayUrl,
+    heroPosterUrl,
+    heroVersion,
+    refetchPageSections,
+  } = useMerchStylePageHero("distributor", {
+    initialHeroUrl: initialHeroImageUrl,
+    initialHeroMediaType: "IMAGE",
+  });
   const distributorHeroVideoRef = useRef<HTMLVideoElement | null>(null);
   useReliableVideoAutoplay(distributorHeroVideoRef, { mode: "background" });
-  const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "IMAGE";
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
-  /** Show hero immediately with server URL; only use CMS URL after sections load (better LCP, no black flash) */
-  const displayHeroUrl = heroImageError
-    ? HERO_FALLBACK_PATH
-    : (sectionsLoading ? initialHeroImageUrl : (pageSections.hero?.url ?? initialHeroImageUrl));
-  const displayHeroMediaType = sectionsLoading ? "IMAGE" : heroMediaType;
-  const displayHeroVideoUrl = useMemo(
-    () => proxiedHeroVideoSrc(displayHeroUrl),
-    [displayHeroUrl]
-  );
+  const displayHeroUrl = heroImageError ? HERO_FALLBACK_PATH : heroMediaUrl;
+  const displayHeroMediaType = heroMediaType;
+  const displayHeroVideoUrl = heroVideoPlayUrl;
   const [editing, setEditing] = useState<DistributorItem | null>(null);
   const [saving, setSaving] = useState(false);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -263,25 +268,22 @@ export default function DistributorPageClient({
           WebkitTransform: "translateZ(0)",
         }}
       >
-        <div className="absolute inset-0 bg-luxury-black z-0" />
+        <div className="absolute inset-0 z-0" style={{ background: HERO_PLACEHOLDER_BG }} aria-hidden />
 
         {/* Hero: show image immediately (initialHeroImageUrl) so no black flash; CMS overlay when sections load */}
-        <div className="absolute inset-[-6%] z-10 scale-90 md:scale-100 md:inset-0 origin-center overflow-hidden">
+        <div className="absolute inset-[-6%] z-10 scale-90 md:scale-100 md:inset-0 origin-center overflow-hidden" style={HERO_MEDIA_SHELL_STYLE}>
           {displayHeroMediaType === "VIDEO" ? (
             <VideoLoadGuard
-              key={`dist-hero-${displayHeroVideoUrl}-${pageSections.hero?.version ?? 0}-${sectionsLoading ? "s" : "r"}`}
+              key={`dist-hero-${displayHeroVideoUrl}-${heroVersion ?? 0}`}
               ref={distributorHeroVideoRef}
               url={displayHeroVideoUrl}
-              version={pageSections.hero?.version}
-              posterUrl={pageMediaDistributor?.heroImageUrl ?? DEFAULT_HERO_POSTER}
+              version={heroVersion}
+              posterUrl={heroPosterUrl}
               forcePoster={!shouldLoadHeroVideo}
-              posterPriority
-              lcpFriendlyPoster
-              optimizeGpu
-              lightVideoFade
+              {...HERO_VIDEO_MERCH_PATTERN}
               containerClassName="absolute inset-0 w-full h-full"
               className="absolute inset-0 w-full h-full object-cover"
-              style={{ objectFit: "cover" }}
+              style={HERO_VIDEO_COVER_STYLE}
               autoPlay
               loop
               muted
@@ -291,7 +293,7 @@ export default function DistributorPageClient({
           ) : (
             <ImageLoadGuard
               url={displayHeroUrl}
-              version={sectionsLoading ? undefined : pageSections.hero?.version}
+              version={heroVersion}
               containerClassName="absolute inset-0 w-full h-full"
               className="absolute inset-0 w-full h-full object-cover"
               style={{ objectFit: "cover" }}
@@ -325,6 +327,7 @@ export default function DistributorPageClient({
         section="hero"
         type="image"
         onUploadDone={refetchPageSections}
+        performanceMode="deferred"
         editLabel="Edit photo"
       />
 

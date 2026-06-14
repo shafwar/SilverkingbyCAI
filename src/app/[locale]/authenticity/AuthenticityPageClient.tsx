@@ -28,11 +28,16 @@ import { APP_NAME } from "@/utils/constants";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
-import { usePageSections } from "@/hooks/usePageSections";
-import { usePageMedia } from "@/hooks/usePageMedia";
+import { useMerchStylePageHero } from "@/hooks/useMerchStylePageHero";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
-import { DEFAULT_HERO_POSTER } from "@/lib/hero-media-defaults";
+import {
+  DEFAULT_HERO_POSTER,
+  HERO_PLACEHOLDER_BG,
+  HERO_VIDEO_COVER_STYLE,
+  HERO_VIDEO_MERCH_PATTERN,
+  HERO_VIDEO_POINTER_STYLE,
+} from "@/lib/hero-media-defaults";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import { ModalPortal } from "@/components/ui/ModalPortal";
 
@@ -295,12 +300,15 @@ export default function AuthenticityPageClient() {
   const heroRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const router = useRouter();
-  const { sections: pageSections, refetch: refetchPageSections } = usePageSections("authenticity");
-  const { data: pageMediaAuthenticity } = usePageMedia("authenticity");
-  const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
-  const heroMediaUrl =
-    pageSections.hero?.url ?? getR2UrlClient("/videos/hero/mobile scanning qr.mp4");
-  const heroVideoPlayUrl = useMemo(() => proxiedHeroVideoSrc(heroMediaUrl), [heroMediaUrl]);
+  const {
+    pageSections,
+    heroMediaType,
+    heroMediaUrl,
+    heroVideoPlayUrl,
+    heroPosterUrl,
+    heroVersion,
+    refetchPageSections,
+  } = useMerchStylePageHero("authenticity");
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
   // Register ScrollTrigger only on the client to avoid SSR/window issues
@@ -500,33 +508,25 @@ export default function AuthenticityPageClient() {
 
   return (
     <div ref={pageRef} className="min-h-screen bg-luxury-black text-white">
-      <div className="pointer-events-none fixed inset-0 bg-luxury-black" />
+      <div className="pointer-events-none fixed inset-0" style={{ background: HERO_PLACEHOLDER_BG }} />
 
       <Navbar />
 
       {/* Hero background media — fixed behind content */}
       <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
-        <div className="absolute inset-0 bg-luxury-black z-0" />
+        <div className="absolute inset-0 z-0" style={{ background: HERO_PLACEHOLDER_BG }} aria-hidden />
         {heroMediaType === "VIDEO" ? (
           <VideoLoadGuard
-            key={`auth-hero-${heroVideoPlayUrl}-${pageSections.hero?.version ?? 0}`}
+            key={`auth-hero-${heroVideoPlayUrl}-${heroVersion ?? 0}`}
             ref={videoRef}
             url={heroVideoPlayUrl}
-            version={pageSections.hero?.version}
-            posterUrl={pageMediaAuthenticity?.heroImageUrl ?? DEFAULT_HERO_POSTER}
+            version={heroVersion}
+            posterUrl={heroPosterUrl}
             forcePoster={!shouldLoadHeroVideo}
-            posterPriority
-            lcpFriendlyPoster
-            optimizeGpu
-            lightVideoFade
+            {...HERO_VIDEO_MERCH_PATTERN}
             containerClassName="absolute inset-0 h-full w-full z-10"
             className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
-            style={{
-              pointerEvents: "none",
-              outline: "none",
-              WebkitTapHighlightColor: "transparent",
-              userSelect: "none",
-            }}
+            style={HERO_VIDEO_POINTER_STYLE}
             autoPlay
             loop
             muted
@@ -539,7 +539,7 @@ export default function AuthenticityPageClient() {
         ) : (
           <ImageLoadGuard
             url={heroMediaUrl}
-            version={pageSections.hero?.version}
+            version={heroVersion}
             containerClassName="absolute inset-0 h-full w-full z-10"
             className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
             style={{ pointerEvents: "none" }}
@@ -572,6 +572,7 @@ export default function AuthenticityPageClient() {
         section="hero"
         type="video"
         onUploadDone={refetchPageSections}
+        performanceMode="deferred"
         editLabel="Edit video"
       />
 

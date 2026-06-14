@@ -15,13 +15,16 @@ import { useGSAP } from "@gsap/react";
 import ProductModal, { type Product } from "@/components/ui/ProductModal";
 import ProductCard, { type ProductWithPricing } from "@/components/ui/ProductCard";
 import { getR2UrlClient } from "@/utils/r2-url";
-import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
-import { usePageSections } from "@/hooks/usePageSections";
-import { usePageMedia } from "@/hooks/usePageMedia";
+import { useMerchStylePageHero } from "@/hooks/useMerchStylePageHero";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
-import { DEFAULT_HERO_POSTER } from "@/lib/hero-media-defaults";
+import {
+  HERO_PLACEHOLDER_BG,
+  HERO_VIDEO_COVER_STYLE,
+  HERO_VIDEO_MERCH_PATTERN,
+  HERO_VIDEO_POINTER_STYLE,
+} from "@/lib/hero-media-defaults";
 import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
 import Image from "next/image";
 
@@ -285,11 +288,15 @@ export default function ProductsPageClient() {
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
   const [isMounted, setIsMounted] = useState(false);
   const [visibleProductCount, setVisibleProductCount] = useState(INITIAL_PRODUCT_GRID);
-  const { sections: pageSections, refetch: refetchPageSections } = usePageSections("products");
-  const { data: pageMediaProducts } = usePageMedia("products");
-  const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
-  const heroMediaUrl = pageSections.hero?.url ?? getR2UrlClient("/videos/hero/gold-stone.mp4");
-  const heroVideoPlayUrl = useMemo(() => proxiedHeroVideoSrc(heroMediaUrl), [heroMediaUrl]);
+  const {
+    pageSections,
+    heroMediaType,
+    heroMediaUrl,
+    heroVideoPlayUrl,
+    heroPosterUrl,
+    heroVersion,
+    refetchPageSections,
+  } = useMerchStylePageHero("products");
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
   useReliableVideoAutoplay(videoRef, { mode: "background" });
@@ -1107,7 +1114,7 @@ export default function ProductsPageClient() {
           WebkitTransform: "translateZ(0)",
         }}
       >
-        <div className="absolute inset-0 bg-luxury-black z-0" />
+        <div className="absolute inset-0 z-0" style={{ background: HERO_PLACEHOLDER_BG }} aria-hidden />
         <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/35 via-black/10 to-black/55 pointer-events-none" />
         <div
           className="absolute inset-0 z-[11] bg-gradient-to-r from-black/50 via-black/20 to-transparent pointer-events-none md:from-black/40 md:via-black/12"
@@ -1116,30 +1123,20 @@ export default function ProductsPageClient() {
 
         {heroMediaType === "VIDEO" ? (
           <VideoLoadGuard
-            key={`products-hero-${heroVideoPlayUrl}-${pageSections.hero?.version ?? 0}`}
+            key={`products-hero-${heroVideoPlayUrl}-${heroVersion ?? 0}`}
             ref={videoRef}
             url={heroVideoPlayUrl}
-            version={pageSections.hero?.version}
-            posterUrl={pageMediaProducts?.heroImageUrl ?? DEFAULT_HERO_POSTER}
+            version={heroVersion}
+            posterUrl={heroPosterUrl}
             forcePoster={!shouldLoadHeroVideo}
-            posterPriority
-            lcpFriendlyPoster
-            optimizeGpu
-            lightVideoFade
+            {...HERO_VIDEO_MERCH_PATTERN}
             containerClassName="absolute inset-0 w-screen h-screen z-10"
             className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
             style={{
-              objectFit: "cover",
-              objectPosition: "center center",
-              width: "100%",
-              height: "100%",
+              ...HERO_VIDEO_COVER_STYLE,
+              ...HERO_VIDEO_POINTER_STYLE,
               transform: "translateZ(0)",
               WebkitTransform: "translateZ(0)",
-              pointerEvents: "none",
-              outline: "none",
-              WebkitTapHighlightColor: "transparent",
-              WebkitTouchCallout: "none",
-              userSelect: "none",
             }}
             autoPlay
             loop
@@ -1157,7 +1154,7 @@ export default function ProductsPageClient() {
         ) : (
           <ImageLoadGuard
             url={heroMediaUrl}
-            version={pageSections.hero?.version}
+            version={heroVersion}
             containerClassName="absolute inset-0 w-screen h-screen z-10"
             className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
             style={{
@@ -1187,6 +1184,7 @@ export default function ProductsPageClient() {
         section="hero"
         type="video"
         onUploadDone={refetchPageSections}
+        performanceMode="deferred"
         editLabel="Edit video"
       />
 

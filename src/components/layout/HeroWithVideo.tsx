@@ -6,6 +6,12 @@ import { getR2UrlClient } from "@/utils/r2-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { VideoLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
+import {
+  DEFAULT_HERO_POSTER,
+  HERO_VIDEO_MERCH_PATTERN,
+  HERO_VIDEO_POINTER_STYLE,
+  resolveHeroPoster,
+} from "@/lib/hero-media-defaults";
 
 interface HeroWithVideoProps {
   videoSrc: string;
@@ -20,7 +26,7 @@ interface HeroWithVideoProps {
 export default function HeroWithVideo({
   videoSrc,
   mobileSrc,
-  fallbackImage = "/images/hero-fallback.jpg",
+  fallbackImage = DEFAULT_HERO_POSTER,
   title,
   subtitle,
   overlayOpacity = 0.5,
@@ -82,20 +88,12 @@ export default function HeroWithVideo({
           <VideoLoadGuard
             ref={videoRef}
             url={currentVideoSrc}
-            posterUrl={r2FallbackImage}
-            posterPriority
-            lcpFriendlyPoster
-            optimizeGpu
-            lightVideoFade
+            posterUrl={resolveHeroPoster(r2FallbackImage)}
+            forcePoster={!shouldLoadVideo}
+            {...HERO_VIDEO_MERCH_PATTERN}
             containerClassName="absolute inset-0 h-full w-full"
             className="h-full w-full object-cover pointer-events-none select-none"
-            style={{
-              pointerEvents: "none",
-              outline: "none",
-              WebkitTapHighlightColor: "transparent",
-              WebkitTouchCallout: "none",
-              userSelect: "none",
-            }}
+            style={HERO_VIDEO_POINTER_STYLE}
             autoPlay
             loop
             muted

@@ -21,7 +21,7 @@ export type HeroEditPortalProps = {
   /** e.g. "Edit video" or "Edit photo". Defaults by type. */
   editLabel?: string;
   /** Lighter portal timing + chrome for persistent home hero (admin video jank). */
-  performanceMode?: "home" | "default";
+  performanceMode?: "home" | "default" | "deferred";
 };
 
 /**
@@ -66,32 +66,32 @@ export function HeroEditPortal({
 
   useEffect(() => {
     if (!mounted) return;
-    if (performanceMode !== "home") {
-      const t = setTimeout(() => setShowEditButton(true), EDIT_BUTTON_DELAY_MS);
-      return () => clearTimeout(t);
-    }
-    let cancelled = false;
-    let done = false;
-    const reveal = () => {
-      if (cancelled || done) return;
-      done = true;
-      setShowEditButton(true);
-    };
-    const tMax = setTimeout(reveal, HOME_EDIT_MAX_WAIT_MS);
-    const w = globalThis as Window & typeof globalThis;
-    let idleId: number | null = null;
-    if ("requestIdleCallback" in w && typeof w.requestIdleCallback === "function") {
-      idleId = w.requestIdleCallback(() => reveal(), {
-        timeout: HOME_EDIT_IDLE_CALLBACK_TIMEOUT_MS,
-      });
-    }
-    return () => {
-      cancelled = true;
-      clearTimeout(tMax);
-      if (idleId != null && "cancelIdleCallback" in w) {
-        w.cancelIdleCallback(idleId);
+    if (performanceMode === "home" || performanceMode === "deferred") {
+      let cancelled = false;
+      let done = false;
+      const reveal = () => {
+        if (cancelled || done) return;
+        done = true;
+        setShowEditButton(true);
+      };
+      const tMax = setTimeout(reveal, HOME_EDIT_MAX_WAIT_MS);
+      const w = globalThis as Window & typeof globalThis;
+      let idleId: number | null = null;
+      if ("requestIdleCallback" in w && typeof w.requestIdleCallback === "function") {
+        idleId = w.requestIdleCallback(() => reveal(), {
+          timeout: HOME_EDIT_IDLE_CALLBACK_TIMEOUT_MS,
+        });
       }
-    };
+      return () => {
+        cancelled = true;
+        clearTimeout(tMax);
+        if (idleId != null && "cancelIdleCallback" in w) {
+          w.cancelIdleCallback(idleId);
+        }
+      };
+    }
+    const t = setTimeout(() => setShowEditButton(true), EDIT_BUTTON_DELAY_MS);
+    return () => clearTimeout(t);
   }, [mounted, performanceMode]);
 
   useLayoutEffect(() => {
@@ -123,6 +123,7 @@ export function HeroEditPortal({
   }
 
   const isHomePerf = performanceMode === "home";
+  const isDeferred = performanceMode === "deferred";
   const useTimelessAnchor = isHomePerf && homeAnchorPos != null;
 
   return createPortal(
@@ -149,7 +150,7 @@ export function HeroEditPortal({
             : showEditButton
               ? "translateY(0)"
               : "translateY(-8px)",
-        transition: isHomePerf
+        transition: isHomePerf || isDeferred
           ? "opacity 0.2s ease-out"
           : "opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1), transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)",
         pointerEvents: showEditButton ? "auto" : "none",
@@ -163,7 +164,7 @@ export function HeroEditPortal({
         overlayOnly
         onUploadDone={onUploadDone}
         editLabel={editLabel}
-        reduceOverlayChromeCost={isHomePerf}
+        reduceOverlayChromeCost={isHomePerf || isDeferred}
       />
     </div>,
     document.body

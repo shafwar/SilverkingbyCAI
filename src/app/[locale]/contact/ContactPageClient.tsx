@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Mail, Phone, MapPin, Send, Instagram, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { HERO_PLACEHOLDER_BG } from "@/lib/hero-media-defaults";
 import { Toaster } from "sonner";
 import Navbar from "@/components/layout/Navbar";
 import { APP_NAME } from "@/utils/constants";
@@ -125,7 +126,7 @@ export default function ContactPageClient() {
       <section className="relative overflow-hidden border-b border-white/5 px-6 py-24 md:py-36">
         {/* Animated Background Gradients */}
         <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-luxury-black" />
+          <div className="absolute inset-0" style={{ background: HERO_PLACEHOLDER_BG }} />
           {/* Static gradients — avoids Framer infinite loops (constant main-thread / compositor work) */}
           <div className="absolute inset-0 bg-gradient-to-br from-luxury-gold/10 via-transparent to-transparent opacity-40" />
           <div className="absolute top-0 left-1/4 h-96 w-96 rounded-full bg-luxury-gold/5 blur-3xl" />

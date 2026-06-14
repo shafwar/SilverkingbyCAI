@@ -8,6 +8,14 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { usePageSections, getCacheBustedMediaUrl } from "@/hooks/usePageSections";
 import { getR2UrlClient } from "@/utils/r2-url";
 import { useHomeHeroSectionsContext } from "@/components/layout/HomeHeroSectionsContext";
+import { VideoLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
+import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
+import {
+  DEFAULT_HERO_POSTER,
+  HERO_PLACEHOLDER_BG,
+  SECTION_VIDEO_MERCH_PATTERN,
+  resolveHeroPoster,
+} from "@/lib/hero-media-defaults";
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 20 * 1024 * 1024; // 20 MB
@@ -84,6 +92,7 @@ export function EditableMedia({
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
   const rawUrl = sections[section]?.url ?? fallbackUrl ?? (type === "image" ? getR2UrlClient("/images/placeholder-hero.jpg") : undefined);
   const url = rawUrl != null ? getCacheBustedMediaUrl(rawUrl, sections[section]?.version) : undefined;
@@ -472,7 +481,7 @@ export function EditableMedia({
   return (
     <div className="relative">
       {sectionsLoading ? (
-        <div className="absolute inset-0 bg-luxury-black" aria-hidden />
+        <div className="absolute inset-0" style={{ background: HERO_PLACEHOLDER_BG }} aria-hidden />
       ) : (
         <>
           {displayType === "image" && url &&
@@ -492,11 +501,15 @@ export function EditableMedia({
                 className={className}
               />
             ))}
-          {displayType === "video" && url && (
-            <video
-              src={url}
+          {displayType === "video" && rawUrl && (
+            <VideoLoadGuard
+              url={rawUrl}
+              version={sections[section]?.version}
+              posterUrl={resolveHeroPoster(poster ?? DEFAULT_HERO_POSTER)}
+              forcePoster={!shouldLoadHeroVideo}
+              {...SECTION_VIDEO_MERCH_PATTERN}
+              containerClassName="absolute inset-0 w-full h-full"
               className={className}
-              poster={poster}
               autoPlay
               loop
               muted
