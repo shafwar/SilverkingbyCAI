@@ -7,9 +7,9 @@ nixPkgs = ["nodejs_20", "npm"]
 [phases.install]
 cmds = [
   "apt-get update",
-  "apt-get install -y ffmpeg libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev fontconfig fontconfig-config fonts-dejavu-core",
-  "fc-cache -fv || true",
-  "npm ci --legacy-peer-deps"
+  "apt-get install -y libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev fontconfig",
+  "npm ci --legacy-peer-deps --omit=dev",
+  "npm cache clean --force"
 ]
 
 [phases.build]
