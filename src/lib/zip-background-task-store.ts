@@ -10,6 +10,8 @@ export type ZipTaskDownload = {
   autoDownloadFailed?: boolean;
   /** Set after user was notified (toast) so we do not spam. */
   autoDownloadFailNotified?: boolean;
+  /** Prevents duplicate concurrent download for this batch part. */
+  downloadInFlight?: boolean;
 };
 
 export type ZipBackgroundTask = {
@@ -19,14 +21,24 @@ export type ZipBackgroundTask = {
   templateId: string;
   cacheKey?: string;
   status: "pending" | "processing" | "completed" | "failed";
+  /** Server indicated multi-ZIP batch (>100 items). */
+  chunked?: boolean;
   progressPercent: number;
   progressLabel: string;
   totalFiles?: number;
   download_url?: string;
   downloads?: ZipTaskDownload[];
   singleDownloaded?: boolean;
+  /** Lock: single ZIP auto-download already in progress (prevents duplicate file save). */
+  singleDownloadInFlight?: boolean;
   singleAutoDownloadFailed?: boolean;
   singleAutoDownloadFailNotified?: boolean;
+  /** Auto-download exhausted — user can unduh manual dari kotak ZIP siap di modal batch. */
+  manualDownloadRequired?: boolean;
+  /** Prevents duplicate concurrent download attempts for the same task tick. */
+  downloadInFlight?: boolean;
+  /** Auto-download retry counter (transient R2 / browser blocks). */
+  downloadAttempts?: number;
   lastError?: string;
   createdAt: number;
   updatedAt: number;

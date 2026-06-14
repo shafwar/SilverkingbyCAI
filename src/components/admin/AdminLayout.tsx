@@ -27,7 +27,15 @@ import {
   ChevronLeft,
 } from "lucide-react";
 import clsx from "clsx";
+import { toast } from "sonner";
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
+import { AdminZipNavigationGuard } from "@/components/admin/AdminZipNavigationGuard";
+import { useZipBackgroundTaskGuard } from "@/hooks/useZipBackgroundTaskGuard";
+import { useDownload } from "@/contexts/DownloadContext";
+import {
+  ZIP_NAV_BLOCKED_TOAST,
+  hrefLeavesAdminArea,
+} from "@/lib/zip-background-task-guard";
 
 type AdminLayoutProps = {
   children: ReactNode;
@@ -52,6 +60,8 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
   const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
+  const { resetDownload } = useDownload();
+  const { isBlocking, confirmLeaveOrStay, cancelMonitoring } = useZipBackgroundTaskGuard();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -191,9 +201,18 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
     };
   }, [mobileOpen]);
 
+  const notifyNavBlocked = useCallback(() => {
+    toast.warning("Tidak dapat keluar admin", {
+      description: ZIP_NAV_BLOCKED_TOAST,
+      duration: 6000,
+    });
+  }, []);
+
   const handleSignOut = async () => {
+    if (!confirmLeaveOrStay()) return;
+    cancelMonitoring();
+    resetDownload();
     await signOut({ redirect: false });
-    // Redirect to homepage after logout
     window.location.href = "https://cahayasilverking.id/";
   };
 
@@ -206,6 +225,11 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
   };
 
   const handleMenuLinkClick = (href: string, isExternal: boolean = false) => {
+    if (isBlocking && hrefLeavesAdminArea(href)) {
+      notifyNavBlocked();
+      return;
+    }
+
     // Prefetch immediately before closing menu for faster navigation
     if (!isExternal) {
       try {
@@ -235,6 +259,8 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
     const Icon = item.icon;
     const active = pathname === item.href;
     const isExternal = (item as { isExternal?: boolean }).isExternal;
+    const leavesAdmin = hrefLeavesAdminArea(item.href);
+    const navLocked = isBlocking && leavesAdmin;
 
     const linkClassName = clsx(
       "flex w-full min-w-0 items-center border border-transparent text-left transition-[background-color,border-color,color,box-shadow,ring-width] duration-200 touch-manipulation",
@@ -245,9 +271,11 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         ),
       mode === "col" &&
         "h-11 shrink-0 gap-3 rounded-full px-4 text-sm font-medium leading-none tracking-wide whitespace-nowrap",
+      navLocked && "cursor-not-allowed opacity-45 hover:border-transparent hover:bg-transparent",
       active
         ? "border-[#FFD700]/30 bg-white/[0.1] font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] ring-1 ring-[#FFD700]/35"
-        : "text-white/75 hover:border-white/10 hover:bg-white/[0.06] hover:text-white"
+        : !navLocked &&
+            "text-white/75 hover:border-white/10 hover:bg-white/[0.06] hover:text-white"
     );
 
     const iconClassName = clsx(
@@ -276,11 +304,18 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         <button
           key={item.href}
           type="button"
-          onClick={() => handleMenuLinkClick(item.href, isExternal)}
+          onClick={() => {
+            if (navLocked) {
+              notifyNavBlocked();
+              return;
+            }
+            handleMenuLinkClick(item.href, isExternal);
+          }}
           className={linkClassName}
-          title={collapsedSidebarTitle}
+          title={navLocked ? ZIP_NAV_BLOCKED_TOAST : collapsedSidebarTitle}
+          aria-disabled={navLocked || undefined}
           onMouseEnter={() => {
-            if (!isExternal) {
+            if (!isExternal && !navLocked) {
               try {
                 router.prefetch(item.href);
               } catch {
@@ -295,7 +330,22 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
       );
     }
 
-    if (isExternal) {
+    if (isExternal || navLocked) {
+      if (navLocked) {
+        return (
+          <button
+            key={item.href}
+            type="button"
+            onClick={notifyNavBlocked}
+            className={linkClassName}
+            title={ZIP_NAV_BLOCKED_TOAST}
+            aria-disabled
+          >
+            <Icon className={iconClassName} aria-hidden />
+            {labelEl}
+          </button>
+        );
+      }
       return (
         <a
           key={item.href}
@@ -373,6 +423,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
 
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden bg-black text-white supports-[height:100dvh]:min-h-[100dvh] lg:h-[100dvh] lg:max-h-[100dvh] lg:min-h-0 lg:overflow-hidden">
+      <AdminZipNavigationGuard isBlocking={isBlocking} />
       {/* Mobile: bar atas ringkas */}
       <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-white/[0.08] bg-black/95 px-4 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl lg:hidden">
         <Link

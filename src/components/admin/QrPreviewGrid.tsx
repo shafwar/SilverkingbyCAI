@@ -26,13 +26,19 @@ import { Modal } from "./Modal";
 import { AnimatedCard } from "./AnimatedCard";
 import { useDownload } from "@/contexts/DownloadContext";
 import { toast } from "sonner";
-import { SERTICARD_VARIANTS } from "@/utils/serticard-templates";
+import { SerticardTemplateSelectOptions } from "@/components/admin/SerticardTemplateSelectOptions";
 import { templateSelectToApiBody } from "@/utils/serticard-template-select";
 import {
   mergeZipVerificationSummaries,
   zipVerificationSummaryFromHttpHeaders,
   type ZipVerificationSummary,
 } from "@/lib/serticard-zip-verification";
+import {
+  getChunkedZipDownloadParts,
+  getSingleZipDownloadUrl,
+  isChunkedZipResult,
+  SERTICARD_ZIP_CHUNK_SIZE,
+} from "@/lib/serticard-zip-result";
 
 type Product = {
   id: number;
@@ -272,8 +278,9 @@ export function QrPreviewGrid() {
 
     try {
       const allProducts = data.products;
-      const BATCH_SIZE = 100;
+      const BATCH_SIZE = SERTICARD_ZIP_CHUNK_SIZE;
       const totalBatches = Math.ceil(allProducts.length / BATCH_SIZE);
+      const multiZipDownload = totalBatches > 1;
       let downloadedBatches = 0;
       const zipVerificationBatches: ZipVerificationSummary[] = [];
 
@@ -328,7 +335,9 @@ export function QrPreviewGrid() {
         }
 
         setDownloadLabel(
-          `Menggenerate batch ${batchNumber}/${totalBatches}... (${products.length} file)`
+          multiZipDownload
+            ? `Menggenerate batch ${batchNumber}/${totalBatches}... (${products.length} file)`
+            : `Menggenerate ZIP (${products.length} file)...`
         );
         setDownloadPercent(Math.round((downloadedBatches / totalBatches) * 100));
 
@@ -403,14 +412,19 @@ export function QrPreviewGrid() {
             if (result?.verification && typeof result.verification === "object") {
               zipVerificationBatches.push(result.verification as ZipVerificationSummary);
             }
-            if (result.success && result.downloadUrl) {
-              setDownloadLabel(`Mengunduh batch ${batchNumber}/${totalBatches} dari R2...`);
+            const singleR2Url = getSingleZipDownloadUrl(result) ?? result.downloadUrl;
+            if (result.success && singleR2Url && !isChunkedZipResult(result)) {
+              setDownloadLabel(
+                multiZipDownload
+                  ? `Mengunduh batch ${batchNumber}/${totalBatches} dari R2...`
+                  : "Mengunduh ZIP dari R2..."
+              );
               setDownloadPercent(Math.round(((downloadedBatches + 0.5) / totalBatches) * 100));
 
-              console.log(`[Download] Downloading from R2: ${result.downloadUrl}`);
+              console.log(`[Download] Downloading from R2: ${singleR2Url}`);
 
               // Download from R2 URL with progress tracking
-              const r2Response = await fetch(result.downloadUrl, {
+              const r2Response = await fetch(singleR2Url, {
                 signal: abortController.signal,
               });
               if (!r2Response.ok) {
@@ -463,7 +477,10 @@ export function QrPreviewGrid() {
               const link = document.createElement("a");
               link.href = url;
               link.download =
-                result.filename || `Silver-King-QR-Batch-${batchNumber}-of-${totalBatches}.zip`;
+                result.filename ||
+                (multiZipDownload
+                  ? `Silver-King-QR-Batch-${batchNumber}-of-${totalBatches}.zip`
+                  : `Silver-King-QR-${allProducts.length}-${new Date().toISOString().split("T")[0]}.zip`);
               document.body.appendChild(link);
               link.click();
               document.body.removeChild(link);
@@ -531,7 +548,9 @@ export function QrPreviewGrid() {
 
             const contentDisposition = response.headers.get("Content-Disposition");
             const dateStr = new Date().toISOString().split("T")[0];
-            let filename = `Silver-King-QR-Batch-${batchNumber}-of-${totalBatches}-${dateStr}.zip`;
+            let filename = multiZipDownload
+              ? `Silver-King-QR-Batch-${batchNumber}-of-${totalBatches}-${dateStr}.zip`
+              : `Silver-King-QR-${allProducts.length}-${dateStr}.zip`;
             if (contentDisposition) {
               const filenameMatch = contentDisposition.match(/filename=?"?([^\s"]+)"?/);
               if (filenameMatch) {
@@ -601,7 +620,9 @@ export function QrPreviewGrid() {
               failed: mergedVerify.renderFailures.length,
             })
           : null;
-      const baseDesc = `Berhasil mengunduh ${totalBatches} file ZIP (${allProducts.length} file QR total). Setiap ZIP berisi 100 file PDF (kecuali batch terakhir).`;
+      const baseDesc = multiZipDownload
+        ? `Berhasil mengunduh ${totalBatches} file ZIP (${allProducts.length} file QR total). Setiap ZIP berisi hingga ${BATCH_SIZE} file PDF (kecuali batch terakhir).`
+        : `Berhasil mengunduh 1 file ZIP (${allProducts.length} file PDF).`;
       const failedPdf = mergedVerify?.renderFailures.length ?? 0;
       const okPdf = mergedVerify?.items.length ?? 0;
       if (mergedVerify && failedPdf > 0 && okPdf === 0) {
@@ -814,8 +835,8 @@ export function QrPreviewGrid() {
           zipVerificationForToast = result.verification as ZipVerificationSummary;
         }
 
-        const primaryUrl = (result.downloadUrl || result.download_url) as string | undefined;
-        const downloads = Array.isArray(result.downloads) ? result.downloads : [];
+        const primaryUrl = getSingleZipDownloadUrl(result) ?? undefined;
+        const chunkedParts = getChunkedZipDownloadParts(result);
 
         const downloadOneZipFromUrl = async (zipUrl: string, filenameHint: string) => {
           setDownloadLabel(`Mengunduh dari R2...`);
@@ -862,18 +883,18 @@ export function QrPreviewGrid() {
           console.log(`[Download] Downloaded from R2 successfully: ${zipUrl}`);
         };
 
-        if (result.success && downloads.length > 0) {
-          for (let di = 0; di < downloads.length; di++) {
-            const d = downloads[di] as { download_url?: string; downloadUrl?: string };
+        if (result.success && chunkedParts.length > 0) {
+          for (let di = 0; di < chunkedParts.length; di++) {
+            const d = chunkedParts[di];
             const u = d.download_url || d.downloadUrl;
             if (!u) continue;
-            setDownloadLabel(`Mengunduh dari R2… (${di + 1}/${downloads.length})`);
-            setDownloadPercent(Math.round(((di + 0.5) / Math.max(1, downloads.length)) * 100));
+            setDownloadLabel(`Mengunduh dari R2… (${di + 1}/${chunkedParts.length})`);
+            setDownloadPercent(Math.round(((di + 0.5) / Math.max(1, chunkedParts.length)) * 100));
             await downloadOneZipFromUrl(
               u,
-              `Silver-King-Selected-part-${di + 1}-of-${downloads.length}.zip`
+              `Silver-King-Selected-part-${di + 1}-of-${chunkedParts.length}.zip`
             );
-            if (di < downloads.length - 1) await new Promise((r) => setTimeout(r, 400));
+            if (di < chunkedParts.length - 1) await new Promise((r) => setTimeout(r, 400));
           }
         } else if (result.success && primaryUrl) {
           await downloadOneZipFromUrl(
@@ -1406,16 +1427,10 @@ export function QrPreviewGrid() {
                 onChange={(e) => setSelectedTemplateVariant(e.target.value)}
                 className="rounded-full border border-white/15 bg-black/40 px-2.5 sm:px-3 py-1.5 sm:py-2 text-[10px] sm:text-xs text-white focus:border-[#FFD700]/50 focus:outline-none focus:ring-1 focus:ring-[#FFD700]/30"
               >
-                {SERTICARD_VARIANTS.map((v) => (
-                  <option key={v.id} value={v.id} className="bg-[#0a0a0a] text-white">
-                    {v.label}
-                  </option>
-                ))}
-                {hasCustomTemplate && (
-                  <option value="custom" className="bg-[#0a0a0a] text-[#FFD700] font-semibold">
-                    {customTemplateSelectLabel}
-                  </option>
-                )}
+                <SerticardTemplateSelectOptions
+                  includeCustom={!!hasCustomTemplate}
+                  customLabel={customTemplateSelectLabel}
+                />
               </select>
             </div>
 

@@ -36,6 +36,8 @@ const nextConfig = {
   },
   swcMinify: true,
   reactStrictMode: true,
+  // Keep native canvas bindings out of the webpack graph (API routes only).
+  serverExternalPackages: ["canvas", "@napi-rs/canvas"],
   // Optimize page loading and prefetching
   poweredByHeader: false,
   compress: true,
@@ -57,9 +59,16 @@ const nextConfig = {
   },
   webpack: (config, { isServer }) => {
     if (isServer) {
+      const nativeCanvasPackages = [
+        "canvas",
+        "@napi-rs/canvas",
+        "@napi-rs/canvas/node-canvas",
+      ];
       config.externals = config.externals || [];
-      if (!config.externals.includes("@napi-rs/canvas")) {
-        config.externals.push("@napi-rs/canvas");
+      for (const pkg of nativeCanvasPackages) {
+        if (!config.externals.includes(pkg)) {
+          config.externals.push(pkg);
+        }
       }
     }
     return config;

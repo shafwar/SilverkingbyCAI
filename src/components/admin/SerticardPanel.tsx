@@ -337,8 +337,8 @@ export function SerticardPanel() {
                     src={previewApiUrl("front", thumbEpoch)}
                     alt=""
                     className="max-h-52 w-full max-w-[260px] rounded-lg object-contain shadow-[0_0_0_1px_rgba(255,255,255,0.08)]"
-                  />
-                ) : (
+                />
+              ) : (
                   <p className="text-center text-sm text-white/40">{t("noCustomYet")}</p>
                 )}
               </div>
@@ -362,11 +362,11 @@ export function SerticardPanel() {
                 >
                   <Upload className="h-4 w-4 shrink-0" aria-hidden />
                   {uploading === "front" ? t("uploading") : t("replaceUpload")}
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/jpg"
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg"
                     className="sr-only"
-                    onChange={(e) => {
+                  onChange={(e) => {
                       const input = e.target;
                       const f = input.files?.[0];
                       if (f) {
@@ -376,8 +376,8 @@ export function SerticardPanel() {
                       }
                     }}
                     disabled={busy}
-                  />
-                </label>
+                />
+              </label>
               </div>
             </div>
           </div>
@@ -398,8 +398,8 @@ export function SerticardPanel() {
                     src={previewApiUrl("back", thumbEpoch)}
                     alt=""
                     className="max-h-52 w-full max-w-[260px] rounded-lg object-contain shadow-[0_0_0_1px_rgba(255,255,255,0.08)]"
-                  />
-                ) : (
+                />
+              ) : (
                   <p className="text-center text-sm text-white/40">{t("noCustomYet")}</p>
                 )}
               </div>
@@ -423,11 +423,11 @@ export function SerticardPanel() {
                 >
                   <Upload className="h-4 w-4 shrink-0" aria-hidden />
                   {uploading === "back" ? t("uploading") : t("replaceUpload")}
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/jpg"
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg"
                     className="sr-only"
-                    onChange={(e) => {
+                  onChange={(e) => {
                       const input = e.target;
                       const f = input.files?.[0];
                       if (f) {
@@ -437,8 +437,8 @@ export function SerticardPanel() {
                       }
                     }}
                     disabled={busy}
-                  />
-                </label>
+                />
+              </label>
               </div>
             </div>
           </div>
@@ -497,7 +497,7 @@ export function SerticardPanel() {
         {(pairTitle.trim() || templateDropdownName.trim()) && (
           <div className="flex flex-col gap-3 border-t border-white/[0.06] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <p className={`text-sm ${helperTextClass}`}>{t("resetHint")}</p>
-            <button
+          <button
               type="button"
               onClick={clearFormState}
               disabled={busy}
@@ -505,7 +505,7 @@ export function SerticardPanel() {
             >
               <Trash2 className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
               {t("clearFormOnly")}
-            </button>
+          </button>
           </div>
         )}
       </motion.div>
@@ -526,7 +526,7 @@ export function SerticardPanel() {
                 {t("managementSectionTitle")}
               </h2>
               <p className={`mt-1 max-w-2xl text-sm ${helperTextClass}`}>{t("managementSectionLead")}</p>
-            </div>
+          </div>
           </div>
         </div>
         <div className="p-4 sm:p-6">
@@ -609,8 +609,8 @@ export function SerticardPanel() {
                           >
                             <Pencil className="h-4 w-4" aria-hidden />
                           </button>
-                          <button
-                            type="button"
+                  <button
+                    type="button"
                             onClick={() => setConfirmDialog("deletePersisted")}
                             disabled={deleting !== null}
                             className="inline-flex rounded-lg p-2.5 text-white/60 transition hover:bg-red-500/15 hover:text-red-200 disabled:pointer-events-none disabled:opacity-35"
@@ -618,7 +618,7 @@ export function SerticardPanel() {
                             title={t("managementDeleteAria")}
                           >
                             <Trash2 className="h-4 w-4" aria-hidden />
-                          </button>
+                  </button>
                         </div>
                       </td>
                     </tr>

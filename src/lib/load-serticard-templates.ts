@@ -11,6 +11,7 @@ import {
 import { getSerticardConfig } from "@/lib/serticard-config";
 import { fileExistsInR2 } from "@/lib/r2-client";
 import { prisma } from "@/lib/prisma";
+import { getServerCanvasModule } from "@/lib/server-canvas";
 
 const r2Client = new S3Client({
   region: "auto",
@@ -68,7 +69,7 @@ function splitSpreadToFrontBack(fullImage: any, canvasMod: any): LoadedTemplates
 }
 
 async function loadImageFromR2(key: string): Promise<any> {
-  const canvasMod = await import("canvas").catch(() => null);
+  const canvasMod = await getServerCanvasModule();
   if (!canvasMod) {
     throw new Error("Canvas module unavailable in this environment");
   }
@@ -90,7 +91,7 @@ export async function loadSerticardTemplates(
   variantId?: string,
   options?: LoadSerticardTemplatesOptions
 ): Promise<LoadedTemplates> {
-  const canvasMod = await import("canvas").catch(() => null);
+  const canvasMod = await getServerCanvasModule();
   if (!canvasMod) {
     throw new Error("Canvas module unavailable in this environment");
   }

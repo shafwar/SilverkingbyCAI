@@ -20,6 +20,7 @@ import {
   verifySerticardZipItemBuffers,
   type ZipVerificationSummary,
 } from "@/lib/serticard-zip-verification";
+import { getServerCanvasModule } from "@/lib/server-canvas";
 import {
   persistInvalidZipProductsAsIssues,
   persistSerticardZipRenderIssuesFromVerification,
@@ -27,12 +28,14 @@ import {
 } from "@/lib/serticard-zip-issue-persist";
 import { getQrOnlyPngBufferForZip } from "@/lib/serticard-qr-only-buffer";
 import { findLatestActiveZipJobForCacheKey } from "@/lib/qr-zip-job-gram-lookup";
+import { SERTICARD_ZIP_CHUNK_SIZE } from "@/lib/serticard-zip-result";
+import { getZipCacheTemplateSegment } from "@/utils/serticard-templates";
 
 /** Request dengan product count di atas ini diproses di background (hindari timeout 524). */
 const ZIP_JOB_THRESHOLD = 25;
 
 /** Maksimal file per satu ZIP; jika lebih maka dipecah jadi beberapa ZIP (batch 1, 2, ...) agar cepat & aman dari timeout. */
-const ZIP_CHUNK_SIZE = 100;
+const ZIP_CHUNK_SIZE = SERTICARD_ZIP_CHUNK_SIZE;
 
 // Loaded dynamically at request-time to avoid build-time native bindings requirement.
 let CANVAS_MOD: any | null = null;
@@ -46,6 +49,7 @@ function buildZipCacheKey(args: {
   includeRootKey?: boolean;
 }): string {
   const { batchId, validProducts, templateVariant, useCustom, cmsTemplateId } = args;
+  const tpl = getZipCacheTemplateSegment(templateVariant);
   const gram = validProducts.some((p) => p.isGram === true) ? 1 : 0;
   const cms =
     cmsTemplateId != null && Number.isFinite(cmsTemplateId) && cmsTemplateId > 0
@@ -53,7 +57,7 @@ function buildZipCacheKey(args: {
       : 0;
   const rk = args.includeRootKey === false ? 0 : 1;
   if (batchId != null) {
-    return `gram-batch:${batchId}:tpl:${templateVariant}:custom:${useCustom ? 1 : 0}:cms:${cms}:gram:${gram}:rk:${rk}`;
+    return `gram-batch:${batchId}:tpl:${tpl}:custom:${useCustom ? 1 : 0}:cms:${cms}:gram:${gram}:rk:${rk}`;
   }
   const serials = validProducts
     .map((p) => String(p.serialCode || "").trim().toUpperCase())
@@ -61,7 +65,7 @@ function buildZipCacheKey(args: {
     .sort();
   const base = serials.join(",");
   const hash = createHash("sha256").update(base).digest("hex").slice(0, 32);
-  return `serials:${hash}:n:${serials.length}:tpl:${templateVariant}:custom:${useCustom ? 1 : 0}:cms:${cms}:gram:${gram}:rk:${rk}`;
+  return `serials:${hash}:n:${serials.length}:tpl:${tpl}:custom:${useCustom ? 1 : 0}:cms:${cms}:gram:${gram}:rk:${rk}`;
 }
 
 /**
@@ -78,7 +82,7 @@ export async function POST(request: NextRequest) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const canvasMod = await import("canvas").catch(() => null);
+    const canvasMod = await getServerCanvasModule();
     CANVAS_MOD = canvasMod;
     if (!canvasMod) {
       return NextResponse.json(
@@ -359,6 +363,24 @@ export async function POST(request: NextRequest) {
       cmsTemplateId,
       includeRootKey,
     });
+    const { resolveZipBundleStatus } = await import("@/lib/zip-bundle-status");
+    const bundlePreview = await resolveZipBundleStatus({
+      cacheKey,
+      itemCount: validProducts.length,
+    });
+    if (bundlePreview.frozen) {
+      const cached = await prisma.qrZipDownloadCache.findUnique({ where: { cacheKey } });
+      return NextResponse.json({
+        ...((cached?.result as Record<string, unknown>) ?? {}),
+        success: true,
+        cached: true,
+        frozen: true,
+        cacheKey,
+        bundle: bundlePreview,
+        message: bundlePreview.message,
+      });
+    }
+
     const cached = await prisma.qrZipDownloadCache.findUnique({ where: { cacheKey } });
     if (cached) {
       await prisma.qrZipDownloadCache.update({
@@ -369,6 +391,7 @@ export async function POST(request: NextRequest) {
         ...(cached.result as any),
         cached: true,
         cacheKey,
+        bundle: bundlePreview,
       });
     }
 
@@ -386,7 +409,50 @@ export async function POST(request: NextRequest) {
           jobId: existingJob.id,
           status: "pending",
           cacheKey,
+          bundle: bundlePreview,
           message: "Job ZIP sudah berjalan. Silakan tunggu / polling status.",
+        });
+      }
+
+      const failedAgg = await prisma.qrZipDownloadJob.aggregate({
+        where: { cacheKey, status: "FAILED" },
+        _max: { id: true },
+      });
+      const failedJob = failedAgg._max.id
+        ? await prisma.qrZipDownloadJob.findUnique({ where: { id: failedAgg._max.id } })
+        : null;
+      const failedResult = failedJob?.result as {
+        downloads?: Array<{ batchIndex?: number; totalBatches?: number }>;
+      } | null;
+      const failedDownloads = Array.isArray(failedResult?.downloads)
+        ? failedResult!.downloads!
+        : [];
+      const failedTotal = failedDownloads[0]?.totalBatches ?? 0;
+      if (
+        failedJob &&
+        failedDownloads.length > 0 &&
+        failedTotal > failedDownloads.length
+      ) {
+        await prisma.qrZipDownloadJob.update({
+          where: { id: failedJob.id },
+          data: {
+            status: "PENDING",
+            errorMessage: null,
+            progressMessage: `Melanjutkan batch ${failedDownloads.length + 1}–${failedTotal}...`,
+            updatedAt: new Date(),
+          },
+        });
+        processZipJobInBackground(failedJob.id).catch((err) => {
+          console.error("[QR Multiple] Resume job failed:", err);
+        });
+        return NextResponse.json({
+          jobId: failedJob.id,
+          status: "pending",
+          resumed: true,
+          cacheKey,
+          bundle: bundlePreview,
+          downloads: failedDownloads,
+          message: `Melanjutkan generate batch ${failedDownloads.length + 1}–${failedTotal}.`,
         });
       }
 
@@ -485,6 +551,17 @@ type ZipGenProduct = {
   isGram?: boolean;
   rootKey?: string | null;
 };
+type ZipResumeDownload = {
+  batchIndex: number;
+  totalBatches: number;
+  download_url: string;
+  r2Key: string;
+  fileCount: number;
+  product_title: string;
+  product_id: string;
+  rootkey: string | null;
+};
+
 type ZipGenOpts = {
   bodyProductTitle?: string;
   templateVariant: string;
@@ -496,6 +573,8 @@ type ZipGenOpts = {
   includeRootKey?: boolean;
   /** When set, progress (Item 1-100: X%, ...) is written to this job for polling. */
   jobId?: number;
+  /** Batch ZIP yang sudah ada di R2 — skip generate ulang (resume). */
+  resumeDownloads?: ZipResumeDownload[];
 };
 type ZipOutcome = {
   json?: Record<string, unknown>;
@@ -907,7 +986,7 @@ async function executeZipGeneration(
       forcePathStyle: true,
       maxAttempts: 3,
     });
-    const downloads: Array<{
+    type ZipDlPart = {
       batchIndex: number;
       totalBatches: number;
       download_url: string;
@@ -916,9 +995,37 @@ async function executeZipGeneration(
       product_title: string;
       product_id: string;
       rootkey: string | null;
-    }> = [];
+    };
+    const resumeMap = new Map<number, ZipDlPart>();
+    for (const d of opts.resumeDownloads ?? []) {
+      if (d?.batchIndex && d.r2Key) resumeMap.set(d.batchIndex, d);
+    }
+    const downloads: ZipDlPart[] = [];
+    for (const d of resumeMap.values()) {
+      downloads.push(d);
+    }
+    downloads.sort((a, b) => a.batchIndex - b.batchIndex);
+
     const totalChunks = chunks.length;
     for (let c = 0; c < totalChunks; c++) {
+      const batchIndex = c + 1;
+      if (resumeMap.has(batchIndex)) {
+        if (jobId) {
+          await updateJobProgress(
+            jobId,
+            Math.floor((batchIndex / totalChunks) * 100),
+            `Batch ${batchIndex}/${totalChunks} sudah ada di R2 — dilewati (resume).`
+          );
+          await updateJobPartialResult(jobId, {
+            success: true,
+            downloads: [...downloads],
+            total_files: validProducts.length,
+            chunked: true,
+            verification: zipVerification,
+          });
+        }
+        continue;
+      }
       const startItem = c * ZIP_CHUNK_SIZE + 1;
       const endItem = Math.min((c + 1) * ZIP_CHUNK_SIZE, validProducts.length);
       const batchLabel = `(batch ${c + 1} dari ${totalChunks})`;
@@ -1185,6 +1292,7 @@ async function executeZipGeneration(
         return {
           json: {
             success: true,
+            chunked: false,
             product_title,
             product_id,
             rootkey,
@@ -1329,6 +1437,11 @@ async function processZipJobInBackground(jobId: number): Promise<void> {
     return;
   }
 
+  const existingResult = job.result as { downloads?: ZipResumeDownload[] } | null;
+  const resumeDownloads = Array.isArray(existingResult?.downloads)
+    ? existingResult!.downloads!.filter((d) => d?.r2Key && d?.download_url)
+    : undefined;
+
   const zipOpts: ZipGenOpts = {
     bodyProductTitle: payload.productTitle,
     templateVariant: templateVariantJob,
@@ -1338,6 +1451,7 @@ async function processZipJobInBackground(jobId: number): Promise<void> {
     isGramRequest: validProducts.some((p) => p.isGram),
     includeRootKey: payload.includeRootKey !== false,
     jobId,
+    resumeDownloads,
   };
 
   try {
@@ -1355,6 +1469,8 @@ async function processZipJobInBackground(jobId: number): Promise<void> {
         where: { id: jobId },
         data: {
           status: "COMPLETED",
+          progressPercent: 100,
+          progressMessage: "ZIP selesai. Siap diunduh.",
           result: outcome.json as any,
           updatedAt: new Date(),
         },
@@ -1364,6 +1480,7 @@ async function processZipJobInBackground(jobId: number): Promise<void> {
         where: { id: jobId },
         data: {
           status: "FAILED",
+          progressMessage: "R2 tidak tersedia atau upload gagal",
           errorMessage: "R2 tidak tersedia atau upload gagal",
           updatedAt: new Date(),
         },

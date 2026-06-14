@@ -57,20 +57,31 @@ export async function GET(
     updatedAt: job.updatedAt,
   };
   payload.cacheKey = (job as any).cacheKey ?? null;
-  if (job.status === "PROCESSING" || job.status === "PENDING") {
+
+  if (job.status === "COMPLETED") {
+    payload.progressPercent = 100;
+    payload.progressMessage =
+      job.progressMessage?.trim() || "ZIP selesai. Mengunduh ke perangkat Anda...";
+  } else if (job.status === "FAILED") {
+    payload.progressPercent = job.progressPercent ?? 0;
+    payload.progressMessage = job.errorMessage || job.progressMessage || "Pembuatan ZIP gagal.";
+  } else {
     payload.progressPercent = job.progressPercent ?? 0;
     payload.progressMessage = job.progressMessage ?? null;
-    // Partial result (downloads per batch) agar frontend bisa auto-download tiap batch
-    if (result && typeof result === "object" && Array.isArray((result as any).downloads)) {
+  }
+
+  // Partial result while PROCESSING (chunked batches) or final result when COMPLETED
+  if (result && typeof result === "object") {
+    const hasDownloads = Array.isArray((result as any).downloads);
+    const hasDirectUrl =
+      typeof (result as any).download_url === "string" ||
+      typeof (result as any).downloadUrl === "string";
+    if (hasDownloads || hasDirectUrl || job.status === "COMPLETED") {
       payload.result = result as Record<string, unknown>;
-      (payload.result as any).success = true;
+      (payload.result as any).success = (result as any).success ?? true;
     }
   }
 
-  if (job.status === "COMPLETED" && result) {
-    payload.result = result as Record<string, unknown>;
-    (payload.result as any).success = true;
-  }
   if (job.status === "FAILED" && job.errorMessage) {
     payload.errorMessage = job.errorMessage;
   }

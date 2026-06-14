@@ -10,6 +10,8 @@ import {
 } from "@/lib/serticard-compose-spread-png";
 import { normalizeRootKeyForPill } from "@/lib/serticard-rootkey-display";
 import { getQrOnlyPngBufferForZip } from "@/lib/serticard-qr-only-buffer";
+import { getServerCanvasModule } from "@/lib/server-canvas";
+import { isSerticardPackagesVariant } from "@/utils/serticard-templates";
 
 /**
  * Generate a SINGLE Serticard PDF (front + back) for one QR code.
@@ -33,7 +35,7 @@ export async function POST(request: NextRequest) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const canvasMod = await import("canvas").catch(() => null);
+    const canvasMod = await getServerCanvasModule();
     if (!canvasMod) {
       return NextResponse.json(
         { error: "PDF generation is unavailable in this environment (canvas native bindings missing)." },
@@ -92,8 +94,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    /** Single PDF: pill root key hanya jika client explicitly `includeRootKey: true` (bulk ZIP tetap bisa kirim true). */
-    const includeRootKey = body?.includeRootKey === true;
+    /** Single PDF: root-key pill only when client sends `includeRootKey: true` (never for Packages). */
+    const includeRootKey =
+      body?.includeRootKey === true && !isSerticardPackagesVariant(templateVariant);
     let rootKeyValue: string | null = normalizeRootKeyForPill(
       product.rootKey != null && String(product.rootKey).trim() !== ""
         ? String(product.rootKey).trim()

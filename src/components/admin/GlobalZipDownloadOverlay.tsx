@@ -1,51 +1,167 @@
 "use client";
 
-import { useCallback } from "react";
-import { DownloadCard } from "@/components/admin/DownloadCard";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { DownloadCard, type ZipBatchUiRow } from "@/components/admin/DownloadCard";
 import { ZipBackgroundRunner } from "@/components/admin/ZipBackgroundRunner";
 import { useDownload } from "@/contexts/DownloadContext";
-import { clearZipBackgroundTask, readZipBackgroundTask } from "@/lib/zip-background-task-store";
+import {
+  readZipBackgroundTask,
+  subscribeZipBackgroundTask,
+  type ZipBackgroundTask,
+} from "@/lib/zip-background-task-store";
+import { finishAndClearZipBackgroundTask, cancelZipBackgroundMonitoringAndReset } from "@/lib/zip-background-task-lifecycle";
+import { toast } from "sonner";
+import { isChunkedZipResult } from "@/lib/serticard-zip-result";
+import { getDownloadedBatchIndices } from "@/lib/zip-batch-download-tracker";
+
+const AUTO_DISMISS_MS = 1200;
 
 export function GlobalZipDownloadOverlay() {
-  const { downloadState, cancelDownload, resetDownload, setIsDownloadMinimized } = useDownload();
+  const { downloadState, resetDownload, setIsDownloadMinimized } = useDownload();
+  const [task, setTask] = useState<ZipBackgroundTask | null>(null);
 
-  const handleDownloadCardCancel = useCallback(() => {
-    if (readZipBackgroundTask()) {
-      if (
-        !window.confirm(
-          "Jika Anda klik X, pemantauan ZIP di browser ini akan berhenti.\n\nProses pembuatan ZIP di server tetap bisa berjalan di background. Lanjut tutup?"
-        )
-      ) {
-        return;
-      }
-      clearZipBackgroundTask();
+  useEffect(() => {
+    const sync = () => setTask(readZipBackgroundTask());
+    sync();
+    return subscribeZipBackgroundTask(sync);
+  }, []);
+
+  useEffect(() => {
+    const onCancelled = () => {
+      setTask(null);
       resetDownload();
-      window.location.reload();
+    };
+    window.addEventListener("sk-zip-monitoring-cancelled", onCancelled);
+    return () => window.removeEventListener("sk-zip-monitoring-cancelled", onCancelled);
+  }, [resetDownload]);
+
+  const handleCancelMonitoring = useCallback(() => {
+    cancelZipBackgroundMonitoringAndReset(resetDownload);
+    toast.message("Pemantauan ZIP dibatalkan", {
+      description: "Progress di browser dihentikan. File di server (R2) tetap tersimpan.",
+      duration: 5000,
+    });
+  }, [resetDownload]);
+
+  const handleMinimize = useCallback(() => {
+    setIsDownloadMinimized(true);
+  }, [setIsDownloadMinimized]);
+
+  const handleDismissIfDone = useCallback(() => {
+    const t = readZipBackgroundTask();
+    if (!t) {
+      resetDownload();
       return;
     }
-    cancelDownload();
-    window.location.reload();
-  }, [cancelDownload, resetDownload]);
+    const chunked = isChunkedZipResult(t);
+    const allOnDevice = chunked
+      ? !t.downloads?.length || t.downloads.every((d) => d.downloaded)
+      : !!t.singleDownloaded;
+    if (t.status === "completed" && (allOnDevice || t.manualDownloadRequired)) {
+      finishAndClearZipBackgroundTask(resetDownload);
+      return;
+    }
+    handleMinimize();
+  }, [handleMinimize, resetDownload]);
 
   const handleOpenZipBatch = useCallback(() => {
-    const task = readZipBackgroundTask();
-    if (!task) return;
-    const target = `/admin/qr-preview/page2?openZip=1&zipBatchId=${encodeURIComponent(String(task.batchId))}`;
+    const t = readZipBackgroundTask();
+    if (!t) return;
+    const target = `/admin/qr-preview/page2?openZip=1&zipBatchId=${encodeURIComponent(String(t.batchId))}`;
     window.location.href = target;
   }, []);
 
+  const showCard = downloadState.percent !== null || task != null;
+
+  const chunked = task ? isChunkedZipResult(task) : false;
+  const allChunkedOnDevice =
+    !task?.downloads?.length || task.downloads.every((d) => d.downloaded);
+  const zipOnDevice = task
+    ? chunked
+      ? allChunkedOnDevice
+      : !!task.singleDownloaded
+    : false;
+  const serverDone = task?.status === "completed";
+  const isComplete = serverDone && zipOnDevice;
+  const percent = Math.max(
+    0,
+    Math.min(100, Math.round(downloadState.percent ?? task?.progressPercent ?? 0))
+  );
+  const label =
+    downloadState.label || task?.progressLabel || "ZIP diproses di background...";
+
+  const zipBatches: ZipBatchUiRow[] | undefined = useMemo(() => {
+    if (!chunked || !task?.downloads?.length) return undefined;
+    const browserDownloaded = task.cacheKey ? getDownloadedBatchIndices(task.cacheKey) : [];
+    return task.downloads.map((d) => ({
+      batchIndex: d.batchIndex,
+      totalBatches: d.totalBatches,
+      fileCount: d.fileCount,
+      downloaded: !!(d.downloaded || browserDownloaded.includes(d.batchIndex)),
+      failed: !!d.autoDownloadFailed,
+      ready: !!(d.download_url?.trim() || serverDone),
+      inProgress: !!d.downloadInFlight,
+    }));
+  }, [chunked, task?.downloads, task?.cacheKey, serverDone]);
+
+  const subtitle = useMemo(() => {
+    if (!task) return undefined;
+    if (chunked && task.downloads?.length) {
+      const total = task.downloads[0]?.totalBatches ?? task.downloads.length;
+      if (serverDone && !zipOnDevice) {
+        const pending =
+          zipBatches?.filter((b) => b.ready && !b.downloaded && !b.failed).length ?? 0;
+        return `ZIP ${task.totalFiles ?? "?"} file · ${total} batch di R2. Mengunduh otomatis${pending > 0 ? ` (${pending} batch tersisa)...` : "..."}`;
+      }
+      if (serverDone && zipOnDevice) {
+        return `Semua ${total} batch sudah di perangkat Anda.`;
+      }
+      return `Membuat ${total} batch ZIP di server...`;
+    }
+    if (serverDone && !zipOnDevice) {
+      return "Mengunduh ZIP ke perangkat Anda secara otomatis...";
+    }
+    return undefined;
+  }, [task, chunked, zipBatches, serverDone, zipOnDevice]);
+
+  // Auto-close floating UI when 100% and all files on device
+  useEffect(() => {
+    if (!isComplete) return;
+    const id = window.setTimeout(() => {
+      finishAndClearZipBackgroundTask(resetDownload);
+    }, AUTO_DISMISS_MS);
+    return () => window.clearTimeout(id);
+  }, [isComplete, resetDownload]);
+
+  // Also auto-close when auto-download failed — user unduh dari modal batch
+  useEffect(() => {
+    if (!task?.manualDownloadRequired || !serverDone) return;
+    const id = window.setTimeout(() => {
+      finishAndClearZipBackgroundTask(resetDownload);
+    }, 4000);
+    return () => window.clearTimeout(id);
+  }, [task?.manualDownloadRequired, serverDone, resetDownload]);
+
+  if (!showCard) {
+    return <ZipBackgroundRunner />;
+  }
+
   return (
     <>
-      {downloadState.percent !== null && (
-        <DownloadCard
-          percent={downloadState.percent}
-          label={downloadState.label}
-          onCancel={handleDownloadCardCancel}
-          isMinimized={downloadState.isMinimized}
-          onToggleMinimize={() => setIsDownloadMinimized(!downloadState.isMinimized)}
-          onCardClick={handleOpenZipBatch}
-        />
-      )}
+      <DownloadCard
+        percent={percent}
+        label={label}
+        subtitle={subtitle}
+        onCancel={handleCancelMonitoring}
+        onMinimize={handleMinimize}
+        onDismiss={handleDismissIfDone}
+        isMinimized={downloadState.isMinimized}
+        onToggleMinimize={() => setIsDownloadMinimized(!downloadState.isMinimized)}
+        onCardClick={task && !isComplete ? handleOpenZipBatch : undefined}
+        isComplete={isComplete}
+        zipBatches={zipBatches}
+        readOnlyBatches
+      />
       <ZipBackgroundRunner />
     </>
   );

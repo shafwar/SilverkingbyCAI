@@ -56,12 +56,14 @@ const QR_FOLDER = path.join(process.cwd(), "public", "qr");
 const QR_FONT_FAMILY = "LucidaSans";
 const QR_FONT_PATH = path.join(process.cwd(), "public", "fonts", "LucidaSans.ttf");
 
-let canvasModulePromise: Promise<null | typeof import("canvas")> | null = null;
+import { getServerCanvasModule, type ServerCanvasModule } from "@/lib/server-canvas";
+
+let canvasModulePromise: Promise<ServerCanvasModule | null> | null = null;
 let didAttemptFontRegistration = false;
 
-async function getCanvasModule(): Promise<null | typeof import("canvas")> {
+async function getCanvasModule(): Promise<ServerCanvasModule | null> {
   if (!canvasModulePromise) {
-    canvasModulePromise = import("canvas").catch(() => null);
+    canvasModulePromise = getServerCanvasModule();
   }
   const mod = await canvasModulePromise;
 
@@ -69,7 +71,7 @@ async function getCanvasModule(): Promise<null | typeof import("canvas")> {
   if (mod && !didAttemptFontRegistration) {
     didAttemptFontRegistration = true;
     try {
-      mod.registerFont(QR_FONT_PATH, { family: QR_FONT_FAMILY });
+      mod.registerFont?.(QR_FONT_PATH, { family: QR_FONT_FAMILY });
       console.log("[QR Config] Registered QR font:", {
         family: QR_FONT_FAMILY,
         path: QR_FONT_PATH,

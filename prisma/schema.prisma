@@ -387,6 +387,24 @@ model SerticardZipRenderIssue {
   @@index([jobId])
 }
 
+/// Status bundle ZIP per cacheKey: batch di R2, unduhan, freeze lock.
+model QrZipBundleState {
+  id                    Int       @id @default(autoincrement())
+  cacheKey              String    @unique
+  totalBatches          Int       @default(1)
+  totalFiles            Int       @default(0)
+  batchesOnR2           Json      @default("[]")
+  batchesDownloaded     Json      @default("[]")
+  allOnR2At             DateTime?
+  allDownloadedAt       DateTime?
+  frozenAt              DateTime?
+  lastJobId             Int?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([frozenAt])
+}
+
 /// Audit klik download admin (tidak bisa deteksi file benar-benar ada di folder lokal, tapi bisa catat "pernah diunduh").
 model QrZipDownloadAudit {
   id                Int      @id @default(autoincrement())
