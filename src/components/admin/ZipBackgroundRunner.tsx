@@ -9,7 +9,8 @@ import {
   type ZipBackgroundTask,
   type ZipTaskDownload,
 } from "@/lib/zip-background-task-store";
-import { finishAndClearZipBackgroundTask, cancelZipBackgroundMonitoringAndReset, ZIP_MONITORING_ABORT_EVENT } from "@/lib/zip-background-task-lifecycle";
+import { finishAndClearZipBackgroundTask, ZIP_MONITORING_ABORT_EVENT } from "@/lib/zip-background-task-lifecycle";
+import { applyBatchProgressToTask } from "@/lib/zip-batch-progress";
 import { triggerZipJobFileDownload } from "@/lib/zip-auto-download";
 import {
   markBatchDownloadedInBrowser,
@@ -24,19 +25,12 @@ import {
   type SerticardZipResultLike,
 } from "@/lib/serticard-zip-result";
 
-const POLL_INTERVAL_MS = 1500;
+const POLL_INTERVAL_MS = 1200;
 const UI_DISMISS_AFTER_SUCCESS_MS = 1200;
 const MAX_AUTO_DOWNLOAD_ATTEMPTS = 4;
 
 function safeBatchFilename(batchName: string): string {
   return (batchName || "batch").replace(/\s+/g, "-");
-}
-
-function isTaskFullyOnDevice(t: ZipBackgroundTask): boolean {
-  if (isTaskChunked(t) && Array.isArray(t.downloads) && t.downloads.length > 0) {
-    return t.downloads.every((d) => d.downloaded);
-  }
-  return !!t.singleDownloaded;
 }
 
 function mapJobResultToTask(
@@ -61,31 +55,12 @@ function mapJobResultToTask(
           ? "processing"
           : "pending";
 
-  let progressPercent = task.progressPercent;
-  if (nextStatus === "completed") {
-    progressPercent = isTaskFullyOnDevice(task) ? 100 : 95;
-  } else if (Number.isFinite(data.progressPercent)) {
-    progressPercent = Number(data.progressPercent);
-  }
-
-  let progressLabel = task.progressLabel;
-  if (nextStatus === "completed") {
-    if (isTaskFullyOnDevice(task)) {
-      progressLabel = isTaskChunked(task)
-        ? "Selesai — semua ZIP terunduh"
-        : "Selesai — ZIP terunduh";
-    } else if (isTaskChunked(task)) {
-      progressLabel = "Mengunduh batch ZIP ke perangkat...";
-    } else {
-      progressLabel = "Mengunduh ZIP ke perangkat...";
-    }
-  } else if (typeof data.progressMessage === "string" && data.progressMessage.trim()) {
-    progressLabel = data.progressMessage.trim();
-  } else if (nextStatus === "processing") {
-    progressLabel = "Membuat ZIP & mengunggah ke R2...";
-  } else if (nextStatus === "failed") {
-    progressLabel = data.errorMessage || progressLabel || "Pembuatan ZIP gagal.";
-  }
+  const serverMessage =
+    typeof data.progressMessage === "string" && data.progressMessage.trim()
+      ? data.progressMessage.trim()
+      : nextStatus === "failed"
+        ? data.errorMessage || "Pembuatan ZIP gagal."
+        : task.progressLabel;
 
   const chunked = isChunkedZipResult(result);
   const singleUrl = getSingleZipDownloadUrl(result);
@@ -109,21 +84,25 @@ function mapJobResultToTask(
         downloadInFlight: prev?.downloadInFlight ?? false,
       };
     });
+  } else if (task.downloads?.length) {
+    downloads = task.downloads;
   }
 
-  return {
+  const merged: ZipBackgroundTask = {
     ...task,
     cacheKey: typeof data.cacheKey === "string" ? data.cacheKey : task.cacheKey,
     status: nextStatus,
-    chunked,
-    progressPercent,
-    progressLabel,
+    chunked: chunked || task.chunked,
     totalFiles: result?.total_files ?? result?.fileCount ?? task.totalFiles,
     download_url: singleUrl ?? task.download_url,
     downloads,
     lastError: nextStatus === "failed" ? data.errorMessage || "Pembuatan ZIP gagal." : task.lastError,
     updatedAt: Date.now(),
+    progressPercent: task.progressPercent,
+    progressLabel: task.progressLabel,
   };
+
+  return applyBatchProgressToTask(merged, serverMessage);
 }
 
 function isTaskChunked(t: ZipBackgroundTask): boolean {
@@ -154,15 +133,15 @@ function shouldContinuePolling(t: ZipBackgroundTask | null): boolean {
   if (!t?.jobId) return false;
   if (t.status === "failed") return false;
   if (t.downloadInFlight || t.singleDownloadInFlight) return true;
+  if (t.status === "pending" || t.status === "processing") return true;
   return !allZipPartsHandled(t);
 }
 
 async function applyAutoDownloadsForTask(
   task: ZipBackgroundTask,
-  onBeforeDownload?: () => void,
   downloadSignal?: AbortSignal
 ): Promise<{ task: ZipBackgroundTask; changed: boolean }> {
-  const t: ZipBackgroundTask = { ...task };
+  let t: ZipBackgroundTask = { ...task };
   let changed = false;
   const safeName = safeBatchFilename(t.batchName);
 
@@ -172,11 +151,7 @@ async function applyAutoDownloadsForTask(
     Array.isArray(t.downloads) &&
     t.downloads.length > 0;
 
-  if (t.status !== "completed" && !canAutoDownloadChunked) {
-    return { task: t, changed: false };
-  }
-
-  if (isTaskChunked(t) && Array.isArray(t.downloads) && t.downloads.length > 0) {
+  if (isTaskChunked(t) && Array.isArray(t.downloads) && t.downloads.length > 0 && canAutoDownloadChunked) {
     const updatedDownloads: ZipTaskDownload[] = [];
     let downloadedOneThisTick = false;
 
@@ -190,13 +165,16 @@ async function applyAutoDownloadsForTask(
         continue;
       }
 
-      onBeforeDownload?.();
       const inFlightPart = { ...d, downloadInFlight: true };
       t.downloads = t.downloads.map((x) =>
         x.batchIndex === d.batchIndex ? inFlightPart : x
       );
       t.downloadInFlight = true;
-      writeZipBackgroundTask({ ...t, downloads: t.downloads, updatedAt: Date.now() });
+      t = applyBatchProgressToTask(
+        { ...t, downloads: t.downloads, updatedAt: Date.now() },
+        `Batch ${d.batchIndex}/${d.totalBatches} — mengunduh ke perangkat...`
+      );
+      writeZipBackgroundTask(t);
 
       const filename = `${safeName}-batch-${d.batchIndex}-of-${d.totalBatches}.zip`;
       const result = await triggerZipJobFileDownload(t.jobId, filename, {
@@ -224,10 +202,7 @@ async function applyAutoDownloadsForTask(
           }
         }
         updatedDownloads.push({ ...d, downloaded: true, downloadInFlight: false });
-        const doneCount = t.downloads.filter(
-          (x) => x.downloaded || (x.batchIndex === d.batchIndex)
-        ).length;
-        t.progressLabel = `Batch ${d.batchIndex}/${d.totalBatches} terunduh (${doneCount}/${t.downloads.length})...`;
+        toast.success(`Batch ${d.batchIndex}/${d.totalBatches} tersimpan di perangkat`);
       } else {
         changed = true;
         if (!d.autoDownloadFailNotified) {
@@ -243,13 +218,12 @@ async function applyAutoDownloadsForTask(
           downloadInFlight: false,
         });
         t.manualDownloadRequired = true;
-        t.progressLabel = `Batch ${d.batchIndex} gagal — buka batch untuk unduh manual`;
       }
       break;
     }
 
-    if (updatedDownloads.length < t.downloads.length) {
-      for (const d of t.downloads) {
+    if (updatedDownloads.length < (t.downloads?.length ?? 0)) {
+      for (const d of t.downloads ?? []) {
         if (!updatedDownloads.some((u) => u.batchIndex === d.batchIndex)) {
           updatedDownloads.push(d);
         }
@@ -261,17 +235,22 @@ async function applyAutoDownloadsForTask(
     t.downloadInFlight = false;
 
     if (t.downloads.every((d) => d.downloaded)) {
-      t.progressPercent = 100;
-      t.progressLabel = "Selesai — semua ZIP terunduh";
       t.manualDownloadRequired = false;
       changed = true;
-      toast.success("Semua batch ZIP terunduh");
     } else if (t.downloads.every((d) => d.downloaded || d.autoDownloadFailed)) {
       t.manualDownloadRequired = true;
       changed = true;
     }
 
+    t = applyBatchProgressToTask(t);
     return { task: t, changed };
+  }
+
+  if (
+    t.status !== "completed" &&
+    !canAutoDownloadChunked
+  ) {
+    return { task: applyBatchProgressToTask(t), changed: false };
   }
 
   if (
@@ -282,16 +261,16 @@ async function applyAutoDownloadsForTask(
   ) {
     const singleUrl = getSingleZipDownloadUrl(t);
     if (!singleUrl?.trim()) {
-      return { task: t, changed: false };
+      return { task: applyBatchProgressToTask(t), changed: false };
     }
 
     const attempts = (t.downloadAttempts ?? 0) + 1;
     t.downloadAttempts = attempts;
     t.singleDownloadInFlight = true;
     t.downloadInFlight = true;
+    t = applyBatchProgressToTask(t, "Mengunduh ZIP ke perangkat...");
     writeZipBackgroundTask({ ...t, updatedAt: Date.now() });
 
-    onBeforeDownload?.();
     const result = await triggerZipJobFileDownload(t.jobId, `${safeName}.zip`, {
       yieldBeforeClick: true,
       signal: downloadSignal,
@@ -318,14 +297,10 @@ async function applyAutoDownloadsForTask(
       }
       t.singleDownloaded = true;
       t.manualDownloadRequired = false;
-      t.progressPercent = 100;
-      t.progressLabel = "Selesai — ZIP terunduh";
       changed = true;
       toast.success("ZIP terunduh ke perangkat Anda");
     } else if (attempts >= MAX_AUTO_DOWNLOAD_ATTEMPTS) {
       t.manualDownloadRequired = true;
-      t.progressPercent = 100;
-      t.progressLabel = "ZIP siap di server — buka batch untuk unduh manual";
       changed = true;
       if (!t.singleAutoDownloadFailNotified) {
         toast.error("Unduh otomatis gagal", {
@@ -334,12 +309,10 @@ async function applyAutoDownloadsForTask(
         });
         t.singleAutoDownloadFailNotified = true;
       }
-    } else {
-      t.progressLabel = `Mengunduh ZIP... (${attempts}/${MAX_AUTO_DOWNLOAD_ATTEMPTS})`;
-      changed = true;
     }
   }
 
+  t = applyBatchProgressToTask(t);
   return { task: t, changed };
 }
 
@@ -348,11 +321,9 @@ async function applyAutoDownloadsForTask(
  * Floating UI is progress-only — no manual download buttons.
  */
 export function ZipBackgroundRunner() {
-  const { setDownloadPercent, setDownloadLabel, resetDownload, setIsDownloadMinimized } =
-    useDownload();
+  const { setDownloadPercent, setDownloadLabel, resetDownload } = useDownload();
   const pollInFlightRef = useRef(false);
   const dismissTimerRef = useRef<number | null>(null);
-  const successToastShownRef = useRef(false);
   const downloadAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -375,7 +346,6 @@ export function ZipBackgroundRunner() {
       if (!task) {
         setDownloadPercent(null);
         setDownloadLabel("");
-        successToastShownRef.current = false;
         return;
       }
       setDownloadPercent(Math.max(0, Math.min(100, Math.round(task.progressPercent))));
@@ -423,10 +393,7 @@ export function ZipBackgroundRunner() {
         if (!readZipBackgroundTask()) return;
 
         let next = mapJobResultToTask(current, data);
-
-        const minimizeForDownload = () => {
-          setIsDownloadMinimized(true);
-        };
+        writeZipBackgroundTask(next);
 
         downloadAbortRef.current?.abort();
         const dlAc = new AbortController();
@@ -434,7 +401,6 @@ export function ZipBackgroundRunner() {
 
         const { task: afterDl, changed: dlChanged } = await applyAutoDownloadsForTask(
           next,
-          minimizeForDownload,
           dlAc.signal
         );
         if (!readZipBackgroundTask()) return;
@@ -445,7 +411,7 @@ export function ZipBackgroundRunner() {
         if (dlChanged) {
           console.info("[ZipBackgroundRunner] Task updated", {
             jobId: next.jobId,
-            singleDownloaded: next.singleDownloaded,
+            label: next.progressLabel,
             progress: next.progressPercent,
           });
         }
@@ -457,6 +423,21 @@ export function ZipBackgroundRunner() {
         console.warn("[ZipBackgroundRunner] Poll error:", e instanceof Error ? e.message : e);
       } finally {
         pollInFlightRef.current = false;
+        const latest = readZipBackgroundTask();
+        const needsQuickFollowUp =
+          latest &&
+          isTaskChunked(latest) &&
+          latest.downloads?.some(
+            (d) =>
+              d.download_url?.trim() &&
+              !d.downloaded &&
+              !d.autoDownloadFailed &&
+              !d.downloadInFlight
+          ) &&
+          !allZipPartsHandled(latest);
+        if (needsQuickFollowUp) {
+          window.setTimeout(() => void pollOnce(), 350);
+        }
       }
     };
 
@@ -470,7 +451,7 @@ export function ZipBackgroundRunner() {
       window.clearInterval(intervalId);
       if (dismissTimerRef.current != null) window.clearTimeout(dismissTimerRef.current);
     };
-  }, [resetDownload, setIsDownloadMinimized]);
+  }, [resetDownload]);
 
   return null;
 }

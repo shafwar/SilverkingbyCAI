@@ -5,6 +5,8 @@ import {
   writeZipBackgroundTask,
   type ZipBackgroundTask,
 } from "@/lib/zip-background-task-store";
+import { clearZipDownloadSessionLock } from "@/lib/zip-download-session-lock";
+import { applyBatchProgressToTask } from "@/lib/zip-batch-progress";
 
 export const ZIP_MONITORING_ABORT_EVENT = "sk-zip-monitoring-abort";
 export const ZIP_MONITORING_CANCELLED_EVENT = "sk-zip-monitoring-cancelled";
@@ -25,6 +27,7 @@ function dispatchZipMonitoringCancelled(detail?: { reason?: string }): void {
 export function finishAndClearZipBackgroundTask(resetDownload?: () => void): void {
   dispatchZipMonitoringAbort();
   clearZipBackgroundTask();
+  clearZipDownloadSessionLock();
   resetDownload?.();
   dispatchZipMonitoringCancelled({ reason: "finished" });
 }
@@ -33,6 +36,7 @@ export function finishAndClearZipBackgroundTask(resetDownload?: () => void): voi
 export function cancelZipBackgroundMonitoringAndReset(resetDownload?: () => void): void {
   dispatchZipMonitoringAbort();
   clearZipBackgroundTask();
+  clearZipDownloadSessionLock();
   resetDownload?.();
   dispatchZipMonitoringCancelled({ reason: "user-cancel" });
 }
@@ -52,12 +56,13 @@ export function beginZipBackgroundTask(
   }
 ): ZipBackgroundTask {
   const now = Date.now();
-  const full: ZipBackgroundTask = {
+  const full = applyBatchProgressToTask({
     ...task,
     createdAt: task.createdAt ?? now,
     updatedAt: task.updatedAt ?? now,
-  };
+  });
   writeZipBackgroundTask(full);
+  clearZipDownloadSessionLock();
   if (syncUi) {
     syncUi.setDownloadPercent(Math.max(0, Math.min(100, Math.round(full.progressPercent))));
     syncUi.setDownloadLabel(full.progressLabel || "ZIP diproses di background...");

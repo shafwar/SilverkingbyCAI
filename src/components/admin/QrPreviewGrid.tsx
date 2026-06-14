@@ -25,6 +25,7 @@ import { LoadingSkeleton } from "./LoadingSkeleton";
 import { Modal } from "./Modal";
 import { AnimatedCard } from "./AnimatedCard";
 import { useDownload } from "@/contexts/DownloadContext";
+import { useZipDownloadSessionBusy } from "@/hooks/useZipDownloadSessionBusy";
 import { toast } from "sonner";
 import { SerticardTemplateSelectOptions } from "@/components/admin/SerticardTemplateSelectOptions";
 import { templateSelectToApiBody } from "@/utils/serticard-template-select";
@@ -116,6 +117,8 @@ export function QrPreviewGrid() {
     cancelDownload,
     resetDownload,
   } = useDownload();
+  const { isBusy: zipDownloadBusy, notifyIfBusy: notifyZipDownloadBusy } =
+    useZipDownloadSessionBusy();
 
   // Extract categories from products (first 3 letters of serial code)
   const categories = useMemo(() => {
@@ -191,6 +194,10 @@ export function QrPreviewGrid() {
 
   /** Single Serticard PDF: always server-rendered so fonts match production (no browser tofu). */
   const handleDownload = async (product: Product) => {
+    if (zipDownloadBusy) {
+      notifyZipDownloadBusy();
+      return;
+    }
     setIsDownloading(true);
     try {
       const tpl = templateSelectToApiBody(selectedTemplateVariant);
@@ -263,6 +270,10 @@ export function QrPreviewGrid() {
   };
 
   const handleDownloadAll = async () => {
+    if (zipDownloadBusy) {
+      notifyZipDownloadBusy();
+      return;
+    }
     if (!data?.products || data.products.length === 0) {
       toast.error(t("downloadAllFailed"));
       return;
@@ -699,6 +710,10 @@ export function QrPreviewGrid() {
   };
 
   const handleDownloadSelected = async () => {
+    if (zipDownloadBusy) {
+      notifyZipDownloadBusy();
+      return;
+    }
     if (selectedItems.size === 0) {
       toast.error(t("downloadSelectedFailed"));
       return;
@@ -1405,7 +1420,7 @@ export function QrPreviewGrid() {
             {selectedItems.size > 0 && (
               <motion.button
                 onClick={handleDownloadSelected}
-                disabled={isDownloadingSelected}
+                disabled={isDownloadingSelected || zipDownloadBusy}
                 className="group w-full sm:w-auto sm:self-start inline-flex items-center justify-center gap-2 rounded-full border border-[#FFD700]/60 bg-[#FFD700]/10 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-all hover:border-[#FFD700] hover:bg-[#FFD700]/20 hover:shadow-[0_0_20px_rgba(255,215,0,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
                 whileHover={{ scale: isDownloadingSelected ? 1 : 1.02 }}
                 whileTap={{ scale: isDownloadingSelected ? 1 : 0.98 }}
@@ -1456,7 +1471,7 @@ export function QrPreviewGrid() {
               {/* Download All Button */}
               <motion.button
                 onClick={handleDownloadAll}
-                disabled={isDownloadingAll}
+                disabled={isDownloadingAll || zipDownloadBusy}
                 className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-all hover:border-[#FFD700]/40 hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
                 whileHover={{ scale: isDownloadingAll ? 1 : 1.02 }}
                 whileTap={{ scale: isDownloadingAll ? 1 : 0.98 }}
@@ -1605,7 +1620,7 @@ export function QrPreviewGrid() {
                                 </motion.button>
                                 <motion.button
                                   onClick={() => handleDownload(product)}
-                                  disabled={isDownloading}
+                                  disabled={isDownloading || zipDownloadBusy}
                                   className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-medium text-white/90 transition hover:border-[#FFD700]/30 hover:bg-[#FFD700]/10 disabled:opacity-50 disabled:cursor-not-allowed"
                                   whileHover={{ scale: isDownloading ? 1 : 1.02 }}
                                   whileTap={{ scale: isDownloading ? 1 : 0.98 }}
@@ -1782,7 +1797,7 @@ export function QrPreviewGrid() {
                               </motion.button>
                               <motion.button
                                 onClick={() => handleDownload(product)}
-                                disabled={isDownloading}
+                                disabled={isDownloading || zipDownloadBusy}
                                 className="inline-flex items-center justify-center rounded-full border border-white/15 p-1.5 text-white/70 transition hover:border-white/40 hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 touch-manipulation"
                                 whileTap={{ scale: isDownloading ? 1 : 0.95 }}
                                 aria-label={t("download")}
@@ -1897,7 +1912,7 @@ export function QrPreviewGrid() {
                         </motion.button>
                         <motion.button
                           onClick={() => handleDownload(product)}
-                          disabled={isDownloading}
+                          disabled={isDownloading || zipDownloadBusy}
                           className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full border border-white/15 px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs text-white/80 transition hover:border-white/40 hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 touch-manipulation min-h-[36px] sm:min-h-[38px]"
                           whileHover={{ scale: isDownloading ? 1 : 1.05 }}
                           whileTap={{ scale: isDownloading ? 1 : 0.95 }}
@@ -1942,7 +1957,7 @@ export function QrPreviewGrid() {
             <p className="font-mono text-lg sm:text-xl text-white/70">{selected.serialCode}</p>
             <motion.button
               onClick={() => handleDownload(selected)}
-              disabled={isDownloading}
+              disabled={isDownloading || zipDownloadBusy}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-black/40 px-6 py-3 text-sm text-white/70 transition hover:border-[#FFD700]/40 hover:bg-black/60 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
               whileHover={{ scale: isDownloading ? 1 : 1.05 }}
               whileTap={{ scale: isDownloading ? 1 : 0.95 }}

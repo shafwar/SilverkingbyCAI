@@ -35,6 +35,12 @@ import {
   subscribeZipBackgroundTask,
 } from "@/lib/zip-background-task-store";
 import { beginZipBackgroundTask, cancelZipBackgroundMonitoringAndReset } from "@/lib/zip-background-task-lifecycle";
+import { isZipDownloadSessionActive } from "@/lib/zip-background-task-guard";
+import {
+  clearZipDownloadSessionLock,
+  tryAcquireZipDownloadSessionLock,
+} from "@/lib/zip-download-session-lock";
+import { useZipDownloadSessionBusy } from "@/hooks/useZipDownloadSessionBusy";
 import { useDownload } from "@/contexts/DownloadContext";
 import {
   getChunkedZipDownloadParts,
@@ -186,6 +192,8 @@ export function QrPreviewGridGram({ batches }: Props) {
   const router = useRouter();
   const { setDownloadPercent, setDownloadLabel, setIsDownloadMinimized, resetDownload } =
     useDownload();
+  const { isBusy: zipDownloadBusy, notifyIfBusy: notifyZipDownloadBusy } =
+    useZipDownloadSessionBusy();
   const [searchQuery, setSearchQuery] = useState("");
   const [layoutView, setLayoutView] = useState<"table" | "grid">("table");
   const [weightFilter, setWeightFilter] = useState<"ALL" | "SMALL" | "LARGE">("ALL");
@@ -252,8 +260,7 @@ export function QrPreviewGridGram({ batches }: Props) {
   >({});
   const [zipR2StatusLoading, setZipR2StatusLoading] = useState(false);
   const [selectedSingleTemplateId, setSelectedSingleTemplateId] = useState<string>("01");
-  /** Increment saat tombol segarkan modal / buka ulang agar zip-ready di-fetch ulang dari server. */
-  const [zipReadyRefreshNonce, setZipReadyRefreshNonce] = useState(0);
+  /** Hanya true saat user klik segarkan modal (bukan saat buka modal). */
   const [zipReadyListFetching, setZipReadyListFetching] = useState(false);
   const [zipPreDownloadChecking, setZipPreDownloadChecking] = useState(false);
   const [zipPreDownloadPrompt, setZipPreDownloadPrompt] = useState<ZipPreDownloadPrompt | null>(
@@ -285,21 +292,33 @@ export function QrPreviewGridGram({ batches }: Props) {
     setZipProgress(null);
   };
 
-  /** Reset state lokal setelah batal — refresh zip-ready tanpa router.refresh(). */
+  /** Reset state lokal setelah batal — tanpa auto-fetch zip-ready. */
   const resetZipUiAfterCancelMonitoring = () => {
     setDownloadingZipBatchId(null);
     setIsDownloadingBatchZip(false);
     setZipProgress(null);
     zipAutoResumeRef.current = null;
     setZipPendingJob(null);
-    if (downloadDropdownOpenRef.current != null) {
-      setZipReadyRefreshNonce((n) => n + 1);
-    } else {
+    setZipPreDownloadPrompt(null);
+    setZipReadyListFetching(false);
+    setZipPreDownloadChecking(false);
+    if (downloadDropdownOpenRef.current == null) {
       setZipDownloadResult(null);
       setZipBundleStatus(null);
       setZipR2Status({});
     }
+  };
+
+  /** Kosongkan hasil verifikasi ZIP di modal — tanpa memanggil API. */
+  const resetZipModalCheckState = () => {
+    setZipDownloadResult(null);
+    setZipR2Status({});
+    setZipPendingJob(null);
+    setZipBundleStatus(null);
+    zipAutoResumeRef.current = null;
     setZipPreDownloadPrompt(null);
+    setZipReadyListFetching(false);
+    setZipPreDownloadChecking(false);
   };
 
   /** Batalkan compile in-flight + background monitoring + clear UI. */
@@ -357,20 +376,6 @@ export function QrPreviewGridGram({ batches }: Props) {
     setZipPendingJob(null);
   };
 
-  /** Segarkan: kosongkan daftar siap unduh, hentikan ZIP yang sedang jalan, ambil ulang dari server. */
-  const handleModalZipRefresh = () => {
-    if (zipCompileAbortRef.current) {
-      abortZipCompileWithoutConfirm("refresh");
-    }
-    setZipDownloadResult(null);
-    setZipR2Status({});
-    setZipPendingJob(null);
-    setZipBundleStatus(null);
-    zipAutoResumeRef.current = null;
-    setZipReadyRefreshNonce((n) => n + 1);
-    router.refresh();
-  };
-
   /** Hapus ZIP di R2 + cache DB untuk signature ini (admin mulai dari awal). */
   const handleModalZipPurge = async () => {
     const ck = zipDownloadResult?.cacheKey;
@@ -420,7 +425,7 @@ export function QrPreviewGridGram({ batches }: Props) {
       setZipBundleStatus(null);
       zipAutoResumeRef.current = null;
       setZipBrowserTrackVersion((v) => v + 1);
-      setZipReadyRefreshNonce((n) => n + 1);
+      resetZipModalCheckState();
       router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Gagal menghapus ZIP.");
@@ -469,58 +474,13 @@ export function QrPreviewGridGram({ batches }: Props) {
 
       setDownloadingZipBatchId(monitoring ? task.batchId : null);
 
-      if (downloadDropdownOpenRef.current !== task.batchId) {
-        return;
-      }
-
-      setZipProgress({
-        percent: Math.round(task.progressPercent),
-        label: task.progressLabel || "ZIP diproses di background...",
-      });
-      const hasPartialOrFinalZip =
-        (Array.isArray(task.downloads) && task.downloads.length > 0) ||
-        Boolean(task.download_url?.trim());
-      if (
-        task.status === "completed" ||
-        ((task.status === "processing" || task.status === "pending") && hasPartialOrFinalZip)
-      ) {
-        setZipDownloadResult({
-          batchId: task.batchId,
-          product_title: task.batchName,
-          product_id: String(task.batchId),
-          rootkey: null,
-          ...(task.download_url ? { download_url: task.download_url } : {}),
-          total_files: task.totalFiles ?? 0,
-          cacheKey: task.cacheKey,
-          jobId: task.jobId,
-          cached: task.status === "completed",
-          linkBustMs: Date.now(),
-          ...(isChunkedZipResult({
-            chunked: task.downloads && task.downloads.length > 1,
-            downloads: task.downloads,
-            download_url: task.download_url,
-          })
-            ? {
-                downloads: getChunkedZipDownloadParts({
-                  chunked: true,
-                  downloads: task.downloads,
-                }).map((d) => ({
-                  batchIndex: d.batchIndex ?? 0,
-                  totalBatches: d.totalBatches ?? 0,
-                  download_url: d.download_url || d.downloadUrl || "",
-                  fileCount: d.fileCount ?? 0,
-                  r2Key: d.r2Key,
-                })),
-              }
-            : {}),
-        });
-      }
+      applyBackgroundZipTaskToModalUi(task);
     };
     sync();
     return subscribeZipBackgroundTask(sync);
   }, []);
 
-  // Selesai / dibatalkan: reset indikator; soft-refresh zip-ready hanya saat user batal.
+  // Selesai / dibatalkan: reset indikator tanpa auto-fetch zip-ready.
   useEffect(() => {
     const onZipMonitoringCleared = (ev: Event) => {
       const reason = (ev as CustomEvent<{ reason?: string }>).detail?.reason;
@@ -528,16 +488,7 @@ export function QrPreviewGridGram({ batches }: Props) {
       setIsDownloadingBatchZip(false);
       setZipProgress(null);
       if (reason !== "user-cancel") return;
-      zipAutoResumeRef.current = null;
-      setZipPendingJob(null);
-      setZipPreDownloadPrompt(null);
-      if (downloadDropdownOpenRef.current != null) {
-        setZipReadyRefreshNonce((n) => n + 1);
-      } else {
-        setZipDownloadResult(null);
-        setZipBundleStatus(null);
-        setZipR2Status({});
-      }
+      resetZipUiAfterCancelMonitoring();
     };
     window.addEventListener("sk-zip-monitoring-cancelled", onZipMonitoringCleared);
     return () =>
@@ -771,6 +722,93 @@ export function QrPreviewGridGram({ batches }: Props) {
     return (await res.json()) as Record<string, unknown>;
   };
 
+  const refreshZipReadyFromServer = async (batch: GramPreviewBatch) => {
+    resetZipModalCheckState();
+    setZipReadyListFetching(true);
+    try {
+      const json = await fetchZipReadyForBatch(batch);
+      if (json) applyZipReadyPayload(json, batch);
+    } catch {
+      // ignore
+    } finally {
+      setZipReadyListFetching(false);
+    }
+  };
+
+  const handleModalZipRefresh = () => {
+    if (zipCompileAbortRef.current) {
+      abortZipCompileWithoutConfirm("refresh");
+    }
+    const batchId = downloadDropdownOpenRef.current;
+    const batch = batchId != null ? batches.find((b) => b.batchId === batchId) : undefined;
+    router.refresh();
+    if (batch) {
+      void refreshZipReadyFromServer(batch);
+    } else {
+      resetZipModalCheckState();
+    }
+  };
+
+  const applyBackgroundZipTaskToModalUi = (task: ReturnType<typeof readZipBackgroundTask>) => {
+    if (!task || downloadDropdownOpenRef.current !== task.batchId) return;
+
+    setZipProgress({
+      percent: Math.round(task.progressPercent),
+      label: task.progressLabel || "ZIP diproses di background...",
+    });
+    const hasPartialOrFinalZip =
+      (Array.isArray(task.downloads) && task.downloads.length > 0) ||
+      Boolean(task.download_url?.trim());
+    if (
+      task.status === "completed" ||
+      ((task.status === "processing" || task.status === "pending") && hasPartialOrFinalZip)
+    ) {
+      setZipDownloadResult({
+        batchId: task.batchId,
+        product_title: task.batchName,
+        product_id: String(task.batchId),
+        rootkey: null,
+        ...(task.download_url ? { download_url: task.download_url } : {}),
+        total_files: task.totalFiles ?? 0,
+        cacheKey: task.cacheKey,
+        jobId: task.jobId,
+        cached: task.status === "completed",
+        linkBustMs: Date.now(),
+        ...(isChunkedZipResult({
+          chunked: task.downloads && task.downloads.length > 1,
+          downloads: task.downloads,
+          download_url: task.download_url,
+        })
+          ? {
+              downloads: getChunkedZipDownloadParts({
+                chunked: true,
+                downloads: task.downloads,
+              }).map((d) => ({
+                batchIndex: d.batchIndex ?? 0,
+                totalBatches: d.totalBatches ?? 0,
+                download_url: d.download_url || d.downloadUrl || "",
+                fileCount: d.fileCount ?? 0,
+                r2Key: d.r2Key,
+              })),
+            }
+          : {}),
+      });
+    }
+  };
+
+  const isActiveBackgroundZipTaskForBatch = (
+    task: ReturnType<typeof readZipBackgroundTask>,
+    batchId: number
+  ): task is NonNullable<typeof task> => {
+    if (!task || task.batchId !== batchId || task.status === "failed") return false;
+    const onDevice =
+      task.status === "completed" &&
+      (Array.isArray(task.downloads) && task.downloads.length > 0
+        ? task.downloads.every((d) => d.downloaded || d.autoDownloadFailed)
+        : !!(task.singleDownloaded || task.manualDownloadRequired));
+    return !onDevice;
+  };
+
   const buildPreDownloadPromptFromBundle = (
     bundle: ZipBundleStatus,
     batch: GramPreviewBatch,
@@ -846,46 +884,23 @@ export function QrPreviewGridGram({ batches }: Props) {
     return null;
   };
 
-  // Saat modal ZIP dibuka / template diganti: fetch zip-ready + bundle status.
+  // Buka modal / ganti template: reset verifikasi lokal — tidak fetch zip-ready otomatis.
   useEffect(() => {
     if (downloadDropdownOpen == null) return;
     const batch = batches.find((b) => b.batchId === downloadDropdownOpen);
     if (!batch) return;
 
-    setZipDownloadResult(null);
-    setZipR2Status({});
-    setZipPendingJob(null);
-    setZipBundleStatus(null);
-    zipAutoResumeRef.current = null;
-    setZipPreDownloadPrompt(null);
-
-    let cancelled = false;
-    setZipReadyListFetching(true);
-    (async () => {
-      try {
-        const tpl = templateSelectToApiBody(selectedZipTemplateId);
-        const cmsQ =
-          tpl.cmsTemplateId != null ? `&cmsTemplateId=${encodeURIComponent(String(tpl.cmsTemplateId))}` : "";
-        const res = await fetch(
-          `/api/qr/zip-ready?batchId=${batch.batchId}&itemCount=${batch.itemCount}&templateVariant=${encodeURIComponent(String(tpl.templateVariant))}&useCustom=${tpl.useCustomTemplate ? "1" : "0"}${cmsQ}&_nonce=${encodeURIComponent(String(zipReadyRefreshNonce))}`,
-          { cache: "no-store" }
-        );
-        if (!res.ok) return;
-        const json = await res.json();
-        if (!json || cancelled) return;
-        applyZipReadyPayload(json, batch);
-      } catch {
-        // ignore
-      } finally {
-        if (!cancelled) setZipReadyListFetching(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
+    const task = readZipBackgroundTask();
+    if (isActiveBackgroundZipTaskForBatch(task, batch.batchId)) {
+      setZipPreDownloadPrompt(null);
       setZipReadyListFetching(false);
-    };
-  }, [downloadDropdownOpen, batches, selectedZipTemplateId, zipReadyRefreshNonce]);
+      setZipPreDownloadChecking(false);
+      applyBackgroundZipTaskToModalUi(task);
+      return;
+    }
+
+    resetZipModalCheckState();
+  }, [downloadDropdownOpen, selectedZipTemplateId, batches]);
 
   // Close modal when clicking outside (backdrop); jangan tutup jika klik di dalam modal card
   useEffect(() => {
@@ -990,6 +1005,22 @@ export function QrPreviewGridGram({ batches }: Props) {
     options?: { includeRootKey?: boolean }
   ) => {
     if (!product) return;
+    if (zipDownloadBusy) {
+      notifyZipDownloadBusy();
+      return;
+    }
+    const lockBatchId = downloadDropdownOpen ?? 0;
+    if (
+      !tryAcquireZipDownloadSessionLock({
+        batchId: lockBatchId,
+        batchName: product.name,
+        startedAt: Date.now(),
+        kind: "single-pdf",
+      })
+    ) {
+      notifyZipDownloadBusy();
+      return;
+    }
     try {
       setDownloadingId(product.id);
 
@@ -1062,6 +1093,9 @@ export function QrPreviewGridGram({ batches }: Props) {
     } finally {
       setDownloadingId(null);
       setDownloadDropdownOpen(null);
+      if (!isZipDownloadSessionActive(readZipBackgroundTask())) {
+        clearZipDownloadSessionLock();
+      }
     }
   };
 
@@ -1074,8 +1108,24 @@ export function QrPreviewGridGram({ batches }: Props) {
     qrImageUrl: string | null;
     weightGroup: string | null;
     hasRootKey?: boolean;
-  }) => {
+  }  ) => {
     if (!product) return;
+    if (zipDownloadBusy) {
+      notifyZipDownloadBusy();
+      return;
+    }
+    const lockBatchId = downloadDropdownOpen ?? 0;
+    if (
+      !tryAcquireZipDownloadSessionLock({
+        batchId: lockBatchId,
+        batchName: product.name,
+        startedAt: Date.now(),
+        kind: "original-qr",
+      })
+    ) {
+      notifyZipDownloadBusy();
+      return;
+    }
     try {
       setDownloadingId(product.id);
 
@@ -1149,6 +1199,9 @@ export function QrPreviewGridGram({ batches }: Props) {
     } finally {
       setDownloadingId(null);
       setDownloadDropdownOpen(null);
+      if (!isZipDownloadSessionActive(readZipBackgroundTask())) {
+        clearZipDownloadSessionLock();
+      }
     }
   };
 
@@ -1205,17 +1258,35 @@ export function QrPreviewGridGram({ batches }: Props) {
     const isOpen = downloadDropdownOpen === batchId;
     const isLoading = downloadingId === product.id;
     const isZipLoading = downloadingZipBatchId === batchId;
+    const downloadBlocked = isLoading || isZipLoading || zipDownloadBusy;
 
     return (
       <div className="relative inline-block w-full">
         <button
-          onClick={() => setDownloadDropdownOpen(isOpen ? null : batchId)}
-          disabled={isLoading || isZipLoading}
+          onClick={() => {
+            if (zipDownloadBusy) {
+              notifyZipDownloadBusy();
+              return;
+            }
+            setDownloadDropdownOpen(isOpen ? null : batchId);
+          }}
+          disabled={downloadBlocked}
+          title={
+            zipDownloadBusy
+              ? "Selesaikan unduhan ZIP yang sedang berjalan terlebih dahulu"
+              : undefined
+          }
           className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-medium text-white/90 transition hover:border-[#FFD700]/30 hover:bg-[#FFD700]/10 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Download className="h-4 w-4 flex-shrink-0" />
           <span className="truncate">
-            {isZipLoading ? "ZIP..." : isLoading ? t("downloading") : t("download")}
+            {zipDownloadBusy && !isZipLoading
+              ? "ZIP aktif..."
+              : isZipLoading
+                ? "ZIP..."
+                : isLoading
+                  ? t("downloading")
+                  : t("download")}
           </span>
           <ChevronDown
             className={`h-4 w-4 flex-shrink-0 transition-transform duration-200 ${
@@ -1760,6 +1831,9 @@ export function QrPreviewGridGram({ batches }: Props) {
       if (compileAc != null && zipCompileAbortRef.current === compileAc) {
         zipCompileAbortRef.current = null;
       }
+      if (!isZipDownloadSessionActive(readZipBackgroundTask())) {
+        clearZipDownloadSessionLock();
+      }
       if (!readZipBackgroundTask()) {
         setDownloadingZipBatchId(null);
       }
@@ -1775,6 +1849,11 @@ export function QrPreviewGridGram({ batches }: Props) {
   ) => {
     if (zipBundleStatus?.frozen || zipBundleStatus?.phase === "FROZEN_DOWNLOADED") {
       toast.message(zipBundleStatus?.message ?? "Bundle sudah lengkap dan pernah diunduh.");
+      return;
+    }
+
+    if (zipDownloadBusy) {
+      notifyZipDownloadBusy();
       return;
     }
 
@@ -1795,8 +1874,23 @@ export function QrPreviewGridGram({ batches }: Props) {
       return;
     }
 
+    if (
+      !tryAcquireZipDownloadSessionLock({
+        batchId,
+        batchName: name,
+        startedAt: Date.now(),
+        kind: "verify",
+      })
+    ) {
+      notifyZipDownloadBusy();
+      return;
+    }
+
     const batch = batches.find((b) => b.batchId === batchId);
-    if (!batch) return;
+    if (!batch) {
+      clearZipDownloadSessionLock();
+      return;
+    }
 
     setZipPreDownloadPrompt(null);
     setZipPreDownloadChecking(true);
@@ -1867,6 +1961,9 @@ export function QrPreviewGridGram({ batches }: Props) {
       toast.error(error instanceof Error ? error.message : "Gagal memverifikasi status ZIP.");
     } finally {
       setZipPreDownloadChecking(false);
+      if (!isZipDownloadSessionActive(readZipBackgroundTask())) {
+        clearZipDownloadSessionLock();
+      }
       if (!readZipBackgroundTask() && !zipCompileAbortRef.current) {
         setDownloadingZipBatchId(null);
       }
@@ -2757,7 +2854,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                                 handleDownloadOriginal(product);
                                 setDownloadDropdownOpen(null);
                               }}
-                              disabled={isLoading}
+                              disabled={isLoading || zipDownloadBusy}
                               className="w-full px-3 py-2.5 rounded-lg text-left hover:bg-white/10 active:bg-white/15 transition-all disabled:opacity-50 disabled:cursor-not-allowed group border border-white/10"
                               whileHover={{ scale: 1.01 }}
                               whileTap={{ scale: 0.98 }}
@@ -2782,7 +2879,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                               <select
                                 value={selectedZipTemplateId}
                                 onChange={(e) => setSelectedZipTemplateId(e.target.value)}
-                                disabled={isZipLoading || zipFrozen}
+                                disabled={isZipLoading || zipFrozen || zipDownloadBusy}
                                 className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-white focus:border-[#FFD700]/50 focus:outline-none disabled:opacity-50"
                               >
                                 <SerticardTemplateSelectOptions
@@ -2792,6 +2889,19 @@ export function QrPreviewGridGram({ batches }: Props) {
                                 />
                               </select>
                             </div>
+                            {!zipDownloadResult &&
+                              !zipBundleStatus &&
+                              !zipPreDownloadChecking &&
+                              !zipReadyListFetching &&
+                              !zipFrozen &&
+                              !zipPendingJob &&
+                              !isZipLoading &&
+                              !zipPreDownloadPrompt && (
+                                <p className="mb-2 text-[10px] text-white/40 leading-relaxed">
+                                  Status ZIP belum diperiksa. Klik tombol di bawah untuk verifikasi
+                                  file di server (R2) dan riwayat unduh.
+                                </p>
+                              )}
                             {isZipLoading && !zipSingleCacheReady && !zipFrozen && (
                               <div className="relative mb-3 rounded-xl border border-[#FFD700]/20 bg-[#FFD700]/5 px-3 py-2.5 pr-10">
                                 <button
@@ -2822,7 +2932,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                             {zipReadyListFetching && !zipDownloadResult && !zipFrozen && (
                               <div className="mb-3 flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2.5 text-[11px] text-white/55">
                                 <RefreshCw className="h-3.5 w-3.5 animate-spin shrink-0 text-[#FFD700]" />
-                                Memeriksa ZIP tersimpan di server untuk template ini...
+                                Memuat ulang status ZIP dari server...
                               </div>
                             )}
                             {zipPreDownloadChecking && (
@@ -2920,8 +3030,8 @@ export function QrPreviewGridGram({ batches }: Props) {
                                   isLoading ||
                                   isZipLoading ||
                                   zipPreDownloadChecking ||
-                                  zipReadyListFetching ||
                                   zipFrozen ||
+                                  zipDownloadBusy ||
                                   Boolean(zipPreDownloadPrompt)
                                 }
                                 className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFD700]/40 bg-[#FFD700]/10 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/20 disabled:opacity-50"
@@ -2974,7 +3084,7 @@ export function QrPreviewGridGram({ batches }: Props) {
                               onClick={() =>
                                 handleDownloadSingle(product, selectedSingleTemplateId)
                               }
-                              disabled={isLoading}
+                              disabled={isLoading || zipDownloadBusy}
                               className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFD700]/30 bg-[#FFD700]/10 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/20 disabled:opacity-50"
                               whileHover={{ scale: 1.01 }}
                               whileTap={{ scale: 0.98 }}

@@ -12,6 +12,7 @@ import {
 import { finishAndClearZipBackgroundTask, cancelZipBackgroundMonitoringAndReset } from "@/lib/zip-background-task-lifecycle";
 import { toast } from "sonner";
 import { isChunkedZipResult } from "@/lib/serticard-zip-result";
+import { computeZipBatchProgressView } from "@/lib/zip-batch-progress";
 import { getDownloadedBatchIndices } from "@/lib/zip-batch-download-tracker";
 
 const AUTO_DISMISS_MS = 1200;
@@ -82,13 +83,25 @@ export function GlobalZipDownloadOverlay() {
       : !!task.singleDownloaded
     : false;
   const serverDone = task?.status === "completed";
-  const isComplete = serverDone && zipOnDevice;
+  const progressView = task ? computeZipBatchProgressView(task, task.progressLabel) : null;
+  const isComplete = progressView?.phase === "complete" || (serverDone && zipOnDevice);
   const percent = Math.max(
     0,
-    Math.min(100, Math.round(downloadState.percent ?? task?.progressPercent ?? 0))
+    Math.min(
+      100,
+      Math.round(
+        downloadState.percent ??
+          progressView?.percent ??
+          task?.progressPercent ??
+          0
+      )
+    )
   );
   const label =
-    downloadState.label || task?.progressLabel || "ZIP diproses di background...";
+    downloadState.label ||
+    progressView?.label ||
+    task?.progressLabel ||
+    "ZIP diproses di background...";
 
   const zipBatches: ZipBatchUiRow[] | undefined = useMemo(() => {
     if (!chunked || !task?.downloads?.length) return undefined;
@@ -106,23 +119,25 @@ export function GlobalZipDownloadOverlay() {
 
   const subtitle = useMemo(() => {
     if (!task) return undefined;
+    if (progressView && progressView.totalBatches > 1) {
+      const { currentBatchIndex, totalBatches, batchesCompletedOnDevice, phase } = progressView;
+      if (phase === "complete") {
+        return `Semua ${totalBatches} batch sudah di perangkat Anda.`;
+      }
+      return `Batch ${currentBatchIndex}/${totalBatches} · ${batchesCompletedOnDevice} sudah di perangkat · progress per batch 0–100%`;
+    }
     if (chunked && task.downloads?.length) {
       const total = task.downloads[0]?.totalBatches ?? task.downloads.length;
-      if (serverDone && !zipOnDevice) {
-        const pending =
-          zipBatches?.filter((b) => b.ready && !b.downloaded && !b.failed).length ?? 0;
-        return `ZIP ${task.totalFiles ?? "?"} file · ${total} batch di R2. Mengunduh otomatis${pending > 0 ? ` (${pending} batch tersisa)...` : "..."}`;
-      }
       if (serverDone && zipOnDevice) {
         return `Semua ${total} batch sudah di perangkat Anda.`;
       }
-      return `Membuat ${total} batch ZIP di server...`;
+      return `Total ${task.totalFiles ?? "?"} file · ${total} batch ZIP`;
     }
     if (serverDone && !zipOnDevice) {
       return "Mengunduh ZIP ke perangkat Anda secara otomatis...";
     }
     return undefined;
-  }, [task, chunked, zipBatches, serverDone, zipOnDevice]);
+  }, [task, chunked, progressView, serverDone, zipOnDevice]);
 
   // Auto-close floating UI when 100% and all files on device
   useEffect(() => {
