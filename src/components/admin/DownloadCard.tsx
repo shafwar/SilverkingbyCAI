@@ -14,6 +14,8 @@ export type ZipBatchUiRow = {
   ready: boolean;
   inProgress?: boolean;
   paused?: boolean;
+  /** Sudah di R2 tapi menunggu batch sebelumnya selesai. */
+  waitingTurn?: boolean;
 };
 
 export type ZipBatchProceedPrompt = {
@@ -39,8 +41,10 @@ interface DownloadCardProps {
   proceedPrompt?: ZipBatchProceedPrompt | null;
   onProceedBatch?: () => void;
   onPauseBatchDownloads?: () => void;
-  onRedownloadBatch?: (batchIndex: number) => void;
+  onSaveBatchToDevice?: (batchIndex: number) => void;
   onResumeBatchDownloads?: () => void;
+  /** Tampilkan tombol simpan ke laptop saat unduh otomatis macet. */
+  saveFallback?: { batchIndex: number; totalBatches: number } | null;
 }
 
 export const DownloadCard: React.FC<DownloadCardProps> = ({
@@ -58,8 +62,9 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
   proceedPrompt,
   onProceedBatch,
   onPauseBatchDownloads,
-  onRedownloadBatch,
+  onSaveBatchToDevice,
   onResumeBatchDownloads,
+  saveFallback,
 }) => {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const hasBatches = Array.isArray(zipBatches) && zipBatches.length > 1;
@@ -224,6 +229,23 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
                 {percent}%
               </div>
 
+              {saveFallback && !proceedPrompt && !isComplete && (
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-2">
+                  <p className="text-[11px] text-amber-100/90 leading-relaxed">
+                    File belum masuk ke laptop? Batch {saveFallback.batchIndex}/
+                    {saveFallback.totalBatches} sudah ada di server (R2) — klik untuk
+                    simpan ke komputer Anda.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onSaveBatchToDevice?.(saveFallback.batchIndex)}
+                    className="w-full rounded-lg border border-[#FFD700]/40 bg-[#FFD700]/15 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/25 transition"
+                  >
+                    Simpan Batch {saveFallback.batchIndex} ke laptop
+                  </button>
+                </div>
+              )}
+
               {proceedPrompt && !isComplete && (
                 <div className="space-y-3 rounded-xl border border-sky-500/35 bg-sky-500/10 p-4">
                   <p className="text-xs font-semibold text-sky-100">
@@ -247,10 +269,10 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
                       </button>
                       <button
                         type="button"
-                        onClick={() => onRedownloadBatch?.(proceedPrompt.completedBatchIndex)}
+                        onClick={() => onSaveBatchToDevice?.(proceedPrompt.completedBatchIndex)}
                         className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs font-medium text-white/70 hover:bg-white/10 transition"
                       >
-                        Unduh ulang Batch {proceedPrompt.completedBatchIndex}
+                        Simpan Batch {proceedPrompt.completedBatchIndex} ke laptop
                       </button>
                     </div>
                   ) : (
@@ -274,10 +296,10 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
                       )}
                       <button
                         type="button"
-                        onClick={() => onRedownloadBatch?.(proceedPrompt.completedBatchIndex)}
-                        className="w-full rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-100 hover:bg-amber-500/20 transition"
+                        onClick={() => onSaveBatchToDevice?.(proceedPrompt.completedBatchIndex)}
+                        className="w-full rounded-lg border border-[#FFD700]/40 bg-[#FFD700]/15 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/25 transition"
                       >
-                        File belum ada — unduh ulang Batch {proceedPrompt.completedBatchIndex}
+                        Simpan Batch {proceedPrompt.completedBatchIndex} ke laptop (dari R2)
                       </button>
                       <button
                         type="button"
@@ -294,8 +316,9 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
               {hasBatches && readOnlyBatches && (
                 <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.03] p-3">
                   <div className="text-[10px] text-white/55">
-                    {zipBatches!.length} batch ZIP · {downloadedBatchCount} dikonfirmasi di
-                    perangkat
+                    {zipBatches![0]?.totalBatches ?? zipBatches!.length} batch total ·{" "}
+                    {zipBatches!.filter((b) => b.ready || b.downloaded || b.pendingConfirm).length}{" "}
+                    di R2 · {downloadedBatchCount} dikonfirmasi di perangkat
                   </div>
                   <div
                     className={`space-y-1.5 ${isMinimized ? "max-h-36" : "max-h-52"} overflow-y-auto`}
@@ -316,14 +339,16 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
                               : b.pendingConfirm
                                 ? " · menunggu konfirmasi Anda"
                                 : b.inProgress
-                                  ? " · mengunduh..."
-                                  : b.failed
-                                    ? " · gagal unduh"
-                                    : b.paused
-                                      ? " · dijeda"
-                                      : b.ready
-                                        ? " · siap unduh"
-                                        : " · menunggu server"}
+                                  ? " · menyimpan ke laptop..."
+                                  : b.waitingTurn
+                                    ? " · sudah di R2 — menunggu giliran"
+                                    : b.failed
+                                      ? " · gagal simpan"
+                                      : b.paused
+                                        ? " · dijeda"
+                                        : b.ready
+                                          ? " · siap di R2"
+                                          : " · menunggu server"}
                           </div>
                         </div>
                         {b.downloaded ? (

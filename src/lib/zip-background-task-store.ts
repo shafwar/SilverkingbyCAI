@@ -55,6 +55,8 @@ export type ZipBackgroundTask = {
   awaitingProceed?: ZipAwaitingProceed;
   /** Admin chose "nanti dulu" — no further auto-download until resume. */
   downloadsPaused?: boolean;
+  /** Batch index currently being saved to device (only one at a time). */
+  activeDeviceBatchIndex?: number;
   lastError?: string;
   createdAt: number;
   updatedAt: number;

@@ -15,7 +15,7 @@ import {
   confirmZipBatchProceed,
   pauseZipBatchDownloads,
   resumeZipBatchDownloads,
-  requestRedownloadZipBatch,
+  saveZipBatchToDevice,
 } from "@/lib/zip-background-task-lifecycle";
 import { toast } from "sonner";
 import { isChunkedZipResult } from "@/lib/serticard-zip-result";
@@ -92,9 +92,12 @@ export function GlobalZipDownloadOverlay() {
     }
   }, []);
 
-  const handleRedownloadBatch = useCallback((batchIndex: number) => {
-    if (requestRedownloadZipBatch(batchIndex)) {
-      toast.message(`Mengunduh ulang Batch ${batchIndex}...`);
+  const handleSaveBatchToDevice = useCallback(async (batchIndex: number) => {
+    const ok = await saveZipBatchToDevice(batchIndex);
+    if (ok) {
+      toast.message(`Batch ${batchIndex} — pilih lokasi simpan di laptop`);
+    } else {
+      toast.error("Gagal mengambil file dari R2. Coba lagi.");
     }
   }, []);
 
@@ -139,18 +142,59 @@ export function GlobalZipDownloadOverlay() {
 
   const zipBatches: ZipBatchUiRow[] | undefined = useMemo(() => {
     if (!chunked || !task?.downloads?.length) return undefined;
-    return task.downloads.map((d) => ({
-      batchIndex: d.batchIndex,
-      totalBatches: d.totalBatches,
-      fileCount: d.fileCount,
-      downloaded: !!d.downloaded,
-      pendingConfirm: !!d.pendingSaveConfirm,
-      failed: !!d.autoDownloadFailed,
-      ready: !!(d.download_url?.trim() || serverDone),
-      inProgress: !!d.downloadInFlight,
-      paused: !!task.downloadsPaused && d.pendingSaveConfirm,
-    }));
-  }, [chunked, task?.downloads, task?.downloadsPaused, serverDone]);
+    const activeIdx =
+      task.activeDeviceBatchIndex ??
+      task.downloads.find((d) => d.downloadInFlight)?.batchIndex ??
+      null;
+    const totalBatches = task.downloads[0]?.totalBatches ?? task.downloads.length;
+
+    return task.downloads.map((d) => {
+      const onR2 = !!(d.download_url?.trim() || serverDone);
+      const isActive = activeIdx != null && d.batchIndex === activeIdx && !!d.downloadInFlight;
+      const waitingTurn =
+        onR2 &&
+        !d.downloaded &&
+        !d.pendingSaveConfirm &&
+        !d.autoDownloadFailed &&
+        activeIdx != null &&
+        d.batchIndex !== activeIdx &&
+        !task.awaitingProceed;
+
+      return {
+        batchIndex: d.batchIndex,
+        totalBatches: d.totalBatches || totalBatches,
+        fileCount: d.fileCount,
+        downloaded: !!d.downloaded,
+        pendingConfirm: !!d.pendingSaveConfirm,
+        failed: !!d.autoDownloadFailed,
+        ready: onR2 && !d.downloaded && !isActive && !waitingTurn,
+        inProgress: isActive,
+        paused: !!task.downloadsPaused && !!d.pendingSaveConfirm,
+        waitingTurn,
+      };
+    });
+  }, [
+    chunked,
+    task?.downloads,
+    task?.activeDeviceBatchIndex,
+    task?.awaitingProceed,
+    task?.downloadsPaused,
+    serverDone,
+  ]);
+
+  const saveFallback = useMemo(() => {
+    if (!task || proceedPrompt) return null;
+    const activeIdx =
+      task.activeDeviceBatchIndex ??
+      task.downloads?.find((d) => d.downloadInFlight)?.batchIndex;
+    if (activeIdx == null) return null;
+    const part = task.downloads?.find((d) => d.batchIndex === activeIdx);
+    if (!part?.download_url?.trim()) return null;
+    return {
+      batchIndex: activeIdx,
+      totalBatches: part.totalBatches || task.downloads?.[0]?.totalBatches || 1,
+    };
+  }, [task, proceedPrompt]);
 
   const subtitle = useMemo(() => {
     if (!task) return undefined;
@@ -217,8 +261,9 @@ export function GlobalZipDownloadOverlay() {
         proceedPrompt={proceedPrompt}
         onProceedBatch={handleProceedBatch}
         onPauseBatchDownloads={handlePauseBatchDownloads}
-        onRedownloadBatch={handleRedownloadBatch}
+        onSaveBatchToDevice={(idx) => void handleSaveBatchToDevice(idx)}
         onResumeBatchDownloads={handleResumeBatchDownloads}
+        saveFallback={saveFallback}
       />
       <ZipBackgroundRunner />
     </>

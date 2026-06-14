@@ -16,7 +16,6 @@ import {
 } from "@/lib/zip-background-task-lifecycle";
 import { applyBatchProgressToTask } from "@/lib/zip-batch-progress";
 import { triggerZipJobFileDownload } from "@/lib/zip-auto-download";
-import { r2KeyFromDownloadUrl } from "@/lib/zip-r2-key";
 import { toast } from "sonner";
 import {
   getSingleZipDownloadUrl,
@@ -140,7 +139,72 @@ function shouldContinuePolling(t: ZipBackgroundTask | null): boolean {
 }
 
 function canStartDeviceDownload(t: ZipBackgroundTask): boolean {
-  return !t.awaitingProceed && !t.downloadsPaused && !t.downloadInFlight;
+  return (
+    !t.awaitingProceed &&
+    !t.downloadsPaused &&
+    !t.downloadInFlight &&
+    !t.downloads?.some((d) => d.downloadInFlight)
+  );
+}
+
+/** Keep in-flight device save state when server poll refreshes partial downloads[]. */
+function preserveDeviceDownloadState(
+  current: ZipBackgroundTask,
+  next: ZipBackgroundTask
+): ZipBackgroundTask {
+  const deviceBusy =
+    current.downloadInFlight || current.downloads?.some((d) => d.downloadInFlight);
+  if (!deviceBusy && !current.awaitingProceed) return next;
+
+  return {
+    ...next,
+    downloadInFlight: current.downloadInFlight,
+    activeDeviceBatchIndex: current.activeDeviceBatchIndex,
+    awaitingProceed: current.awaitingProceed ?? next.awaitingProceed,
+    downloadsPaused: current.downloadsPaused,
+    downloads: (next.downloads ?? []).map((d) => {
+      const prev = current.downloads?.find((p) => p.batchIndex === d.batchIndex);
+      if (!prev) return d;
+      return {
+        ...d,
+        downloaded: prev.downloaded,
+        pendingSaveConfirm: prev.pendingSaveConfirm,
+        autoDownloadFailed: prev.autoDownloadFailed,
+        autoDownloadFailNotified: prev.autoDownloadFailNotified,
+        downloadInFlight: prev.downloadInFlight,
+      };
+    }),
+  };
+}
+
+function applyBatchSaveSuccessToTask(
+  t: ZipBackgroundTask,
+  batchIndex: number,
+  savedVia: "save-picker" | "blob",
+  savedBytes: number
+): ZipBackgroundTask {
+  const part = t.downloads?.find((d) => d.batchIndex === batchIndex);
+  const totalBatches = part?.totalBatches ?? t.downloads?.[0]?.totalBatches ?? 1;
+  const nextBatchIndex = batchIndex < totalBatches ? batchIndex + 1 : null;
+  const downloads = (t.downloads ?? []).map((d) =>
+    d.batchIndex === batchIndex
+      ? { ...d, downloadInFlight: false, pendingSaveConfirm: true }
+      : { ...d, downloadInFlight: false }
+  );
+  return applyBatchProgressToTask({
+    ...t,
+    downloads,
+    downloadInFlight: false,
+    activeDeviceBatchIndex: undefined,
+    awaitingProceed: {
+      completedBatchIndex: batchIndex,
+      nextBatchIndex,
+      totalBatches,
+      savedVia,
+      savedBytes,
+    },
+    updatedAt: Date.now(),
+  });
 }
 
 async function applyAutoDownloadsForTask(
@@ -186,6 +250,7 @@ async function applyAutoDownloadsForTask(
         x.batchIndex === d.batchIndex ? inFlightPart : x
       );
       t.downloadInFlight = true;
+      t.activeDeviceBatchIndex = d.batchIndex;
       t = applyBatchProgressToTask(
         { ...t, downloads: t.downloads, updatedAt: Date.now() },
         `Batch ${d.batchIndex}/${d.totalBatches} — mengunduh ke perangkat...`
@@ -203,20 +268,12 @@ async function applyAutoDownloadsForTask(
       if (result.ok) {
         changed = true;
         downloadedOneThisTick = true;
-        const nextBatchIndex =
-          d.batchIndex < d.totalBatches ? d.batchIndex + 1 : null;
         updatedDownloads.push({
           ...d,
           downloadInFlight: false,
           pendingSaveConfirm: true,
         });
-        t.awaitingProceed = {
-          completedBatchIndex: d.batchIndex,
-          nextBatchIndex,
-          totalBatches: d.totalBatches,
-          savedVia: result.method,
-          savedBytes: result.bytes,
-        };
+        t = applyBatchSaveSuccessToTask(t, d.batchIndex, result.method, result.bytes);
         t.downloadInFlight = false;
         toast.message(`Batch ${d.batchIndex}/${d.totalBatches} siap dikonfirmasi`, {
           description:
@@ -240,6 +297,8 @@ async function applyAutoDownloadsForTask(
           downloadInFlight: false,
         });
         t.manualDownloadRequired = true;
+        t.downloadInFlight = false;
+        t.activeDeviceBatchIndex = undefined;
       }
       break;
     }
@@ -396,11 +455,16 @@ export function ZipBackgroundRunner() {
         const data = await res.json();
         if (!readZipBackgroundTask()) return;
 
-        let next = mapJobResultToTask(current, data);
+        let next = preserveDeviceDownloadState(
+          current,
+          mapJobResultToTask(current, data)
+        );
         writeZipBackgroundTask(next);
 
-        if (canStartDeviceDownload(next)) {
-          downloadAbortRef.current?.abort();
+        const deviceBusy =
+          next.downloadInFlight || next.downloads?.some((d) => d.downloadInFlight);
+
+        if (!deviceBusy && canStartDeviceDownload(next)) {
           const dlAc = new AbortController();
           downloadAbortRef.current = dlAc;
 
@@ -420,6 +484,9 @@ export function ZipBackgroundRunner() {
               progress: next.progressPercent,
             });
           }
+        } else if (deviceBusy) {
+          next = applyBatchProgressToTask({ ...next, updatedAt: Date.now() });
+          writeZipBackgroundTask(next);
         }
 
         if (allZipPartsHandled(next)) {

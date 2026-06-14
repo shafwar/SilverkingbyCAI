@@ -146,13 +146,20 @@ export function computeZipBatchProgressView(
     };
   }
 
-  const readyToDownload = downloads.find(
-    (d) =>
-      d.download_url?.trim() &&
-      !d.downloaded &&
-      !d.pendingSaveConfirm &&
-      !d.autoDownloadFailed
-  );
+  const readyToDownload = (() => {
+    const blocked =
+      task.awaitingProceed ||
+      task.downloadsPaused ||
+      task.downloadInFlight ||
+      downloads.some((d) => d.downloadInFlight || d.pendingSaveConfirm);
+    if (blocked) return undefined;
+    return downloads
+      .filter(
+        (d) =>
+          d.download_url?.trim() && !d.downloaded && !d.autoDownloadFailed
+      )
+      .sort((a, b) => a.batchIndex - b.batchIndex)[0];
+  })();
   if (readyToDownload) {
     return {
       currentBatchIndex: readyToDownload.batchIndex,

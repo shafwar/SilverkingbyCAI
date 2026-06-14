@@ -2,15 +2,17 @@
 
 import {
   clearZipBackgroundTask,
+  readZipBackgroundTask,
   updateZipBackgroundTask,
   writeZipBackgroundTask,
   type ZipBackgroundTask,
 } from "@/lib/zip-background-task-store";
 import { clearZipDownloadSessionLock } from "@/lib/zip-download-session-lock";
 import { applyBatchProgressToTask } from "@/lib/zip-batch-progress";
-import { markBatchDownloadedInBrowser, unmarkBatchDownloadedInBrowser } from "@/lib/zip-batch-download-tracker";
+import { markBatchDownloadedInBrowser } from "@/lib/zip-batch-download-tracker";
 import { recordZipDownloadAuditClient } from "@/lib/zip-download-audit-client";
 import { r2KeyFromDownloadUrl } from "@/lib/zip-r2-key";
+import { triggerZipJobFileDownload } from "@/lib/zip-auto-download";
 
 export const ZIP_MONITORING_ABORT_EVENT = "sk-zip-monitoring-abort";
 export const ZIP_MONITORING_CANCELLED_EVENT = "sk-zip-monitoring-cancelled";
@@ -124,36 +126,101 @@ export function resumeZipBatchDownloads(): boolean {
   return true;
 }
 
-/** Re-download a batch — clears confirmed state for that batch. */
-export function requestRedownloadZipBatch(batchIndex: number): boolean {
-  const task = updateZipBackgroundTask((t) => {
+function safeBatchFilename(batchName: string): string {
+  return (batchName || "batch").replace(/\s+/g, "-");
+}
+
+function applyBatchSaveSuccess(
+  task: ZipBackgroundTask,
+  batchIndex: number,
+  savedVia: "save-picker" | "blob",
+  savedBytes: number
+): ZipBackgroundTask {
+  const part = task.downloads?.find((d) => d.batchIndex === batchIndex);
+  const totalBatches = part?.totalBatches ?? task.downloads?.[0]?.totalBatches ?? 1;
+  const nextBatchIndex = batchIndex < totalBatches ? batchIndex + 1 : null;
+  const downloads = (task.downloads ?? []).map((d) =>
+    d.batchIndex === batchIndex
+      ? { ...d, downloadInFlight: false, pendingSaveConfirm: true }
+      : { ...d, downloadInFlight: false }
+  );
+  return applyBatchProgressToTask({
+    ...task,
+    downloads,
+    downloadInFlight: false,
+    activeDeviceBatchIndex: undefined,
+    awaitingProceed: {
+      completedBatchIndex: batchIndex,
+      nextBatchIndex,
+      totalBatches,
+      savedVia,
+      savedBytes,
+    },
+    downloadsPaused: false,
+    updatedAt: Date.now(),
+  });
+}
+
+/**
+ * Simpan batch yang sudah ada di R2 ke laptop admin (bukan generate ulang di server).
+ */
+export async function saveZipBatchToDevice(batchIndex: number): Promise<boolean> {
+  const task = readZipBackgroundTask();
+  if (!task?.jobId) return false;
+  const part = task.downloads?.find((d) => d.batchIndex === batchIndex);
+  if (!part?.download_url?.trim()) {
+    return false;
+  }
+
+  dispatchZipMonitoringAbort();
+
+  updateZipBackgroundTask((t) => {
     if (!t) return t;
-    const downloads = (t.downloads ?? []).map((d) =>
-      d.batchIndex === batchIndex
-        ? {
-            ...d,
-            downloaded: false,
-            pendingSaveConfirm: false,
-            autoDownloadFailed: false,
-            autoDownloadFailNotified: false,
-            downloadInFlight: false,
-          }
-        : d
-    );
-    if (t.cacheKey) {
-      unmarkBatchDownloadedInBrowser(t.cacheKey, batchIndex);
-    }
     return applyBatchProgressToTask({
       ...t,
-      downloads,
+      downloadInFlight: true,
+      activeDeviceBatchIndex: batchIndex,
       awaitingProceed: undefined,
-      downloadsPaused: false,
-      manualDownloadRequired: false,
+      downloads: (t.downloads ?? []).map((d) => ({
+        ...d,
+        downloadInFlight: d.batchIndex === batchIndex,
+      })),
       updatedAt: Date.now(),
     });
   });
-  if (!task) return false;
+
+  const filename = `${safeBatchFilename(task.batchName)}-batch-${batchIndex}-of-${part.totalBatches}.zip`;
+  const result = await triggerZipJobFileDownload(task.jobId, filename, {
+    batchIndex,
+    preferSavePicker: true,
+    yieldBeforeClick: true,
+  });
+
+  if (!result.ok) {
+    updateZipBackgroundTask((t) => {
+      if (!t) return t;
+      return applyBatchProgressToTask({
+        ...t,
+        downloadInFlight: false,
+        activeDeviceBatchIndex: undefined,
+        downloads: (t.downloads ?? []).map((d) => ({ ...d, downloadInFlight: false })),
+        updatedAt: Date.now(),
+      });
+    });
+    return false;
+  }
+
+  updateZipBackgroundTask((t) => {
+    if (!t) return t;
+    return applyBatchSaveSuccess(t, batchIndex, result.method, result.bytes);
+  });
   dispatchZipBatchProceed();
+  return true;
+}
+
+/** @deprecated Use saveZipBatchToDevice — kept as alias for runner trigger. */
+export function requestRedownloadZipBatch(batchIndex: number): boolean {
+  void saveZipBatchToDevice(batchIndex);
   return true;
 }
 
