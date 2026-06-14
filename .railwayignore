@@ -1,0 +1,95 @@
+# Railway build context exclusions
+# Mirrors .dockerignore to reduce build context size sent to Railway
+
+# Dependencies (installed fresh by nixpacks)
+node_modules
+
+# Build outputs
+.next
+out
+build
+dist
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment files
+.env
+.env*.local
+.env.production
+
+# Testing
+coverage
+.nyc_output
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+**/__tests__/**
+
+# Development files
+.DS_Store
+*.pem
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.cursor
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+!README.md
+
+# Scripts - exclude all dev/utility scripts, keep only runtime scripts
+scripts/
+!scripts/migrate-and-start.js
+!scripts/create-database.js
+
+# Assets (large files not needed in build)
+assets/
+
+# Generated QR code images (generated at runtime)
+public/qr/**
+
+# Large media files (serve from R2/CDN)
+public/videos/**
+
+# Large images (serve from R2/CDN)
+public/images/**/*.jpg
+public/images/**/*.jpeg
+public/images/**/*.png
+!public/images/serticard/**
+!public/images/cai-logo.png
+!public/images/sertificate.jpeg
+!public/images/hero-fallback.jpg
+!public/images/DSC02998.JPG
+!public/images/merchandise-hero.png
+
+# Temporary files
+tmp/
+temp/
+*.log
+*.tmp
+
+# Prisma dev files
+prisma/dev.db
+prisma/*.db
+prisma/*.db-journal
+prisma/migrations/.migrate_lock.toml
+
+# Generated
+generated/
+.generated/
+
+# Railway / CI
+.railway/
+.github/
+
+# OS files
+Thumbs.db
+.DS_Store

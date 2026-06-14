@@ -34,7 +34,6 @@ const nextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
   },
-  swcMinify: true,
   reactStrictMode: true,
   // Keep native canvas bindings out of the webpack graph (API routes only).
   serverExternalPackages: ["canvas", "@napi-rs/canvas"],

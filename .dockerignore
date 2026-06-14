@@ -52,28 +52,19 @@ coverage
 !package.json
 !package-lock.json
 
-# Scripts - exclude development/testing scripts, keep runtime scripts
-scripts/check-db-migrations.js
-scripts/check-logs-by-month.js
-scripts/compress-videos.sh
-scripts/setup-railway-db.sh
-scripts/sync-r2-ssl-fix.ps1
-scripts/test-db-schema.js
-scripts/upload-all-serticard-templates.ts
-scripts/upload-r2-wrangler.ps1
-scripts/upload-serticard-template.ts
-scripts/upload-templates-to-r2.ts
-scripts/verify-db.js
-scripts/verify-purge-all-months.js
-scripts/verify-purge-deep-analysis.js
-scripts/verify-r2-config.ts
-scripts/verify-railway-vars.ts
-scripts/sync-r2.ts
-scripts/compress-videos-README.md
-# Keep runtime scripts: migrate-and-start.js and create-database.js
+# Scripts - exclude all development/testing scripts, keep only runtime scripts
+scripts/
+!scripts/migrate-and-start.js
+!scripts/create-database.js
 
 # Assets folder (large files, not needed in build)
 assets/
+
+# Exclude generated QR code images (generated at runtime, not needed in image)
+public/qr/**
+
+# Exclude public README
+public/README.md
 
 # Exclude large media files but keep essential files for runtime
 # Videos are large (71MB) and should be served from R2/CDN
