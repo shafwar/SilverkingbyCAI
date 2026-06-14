@@ -2,16 +2,26 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Minimize2, Maximize2, CheckCircle2, Loader2 } from "lucide-react";
+import { X, Minimize2, Maximize2, CheckCircle2, Loader2, PauseCircle } from "lucide-react";
 
 export type ZipBatchUiRow = {
   batchIndex: number;
   totalBatches: number;
   fileCount?: number;
   downloaded: boolean;
+  pendingConfirm?: boolean;
   failed?: boolean;
   ready: boolean;
   inProgress?: boolean;
+  paused?: boolean;
+};
+
+export type ZipBatchProceedPrompt = {
+  completedBatchIndex: number;
+  nextBatchIndex: number | null;
+  totalBatches: number;
+  savedVia: "save-picker" | "blob";
+  isPaused?: boolean;
 };
 
 interface DownloadCardProps {
@@ -22,12 +32,15 @@ interface DownloadCardProps {
   onDismiss?: () => void;
   isMinimized?: boolean;
   onToggleMinimize?: () => void;
-  onCardClick?: () => void;
   isComplete?: boolean;
   zipBatches?: ZipBatchUiRow[];
-  /** Status-only batch list — no download buttons (manual unduh di modal batch). */
   readOnlyBatches?: boolean;
   subtitle?: string;
+  proceedPrompt?: ZipBatchProceedPrompt | null;
+  onProceedBatch?: () => void;
+  onPauseBatchDownloads?: () => void;
+  onRedownloadBatch?: (batchIndex: number) => void;
+  onResumeBatchDownloads?: () => void;
 }
 
 export const DownloadCard: React.FC<DownloadCardProps> = ({
@@ -38,11 +51,15 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
   onDismiss,
   isMinimized = false,
   onToggleMinimize,
-  onCardClick,
   isComplete = false,
   zipBatches,
   readOnlyBatches = false,
   subtitle,
+  proceedPrompt,
+  onProceedBatch,
+  onPauseBatchDownloads,
+  onRedownloadBatch,
+  onResumeBatchDownloads,
 }) => {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const hasBatches = Array.isArray(zipBatches) && zipBatches.length > 1;
@@ -100,11 +117,8 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
           layout
           className={`relative rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] ${
             isMinimized ? "p-4 max-h-[70vh] overflow-y-auto" : "p-6 w-full max-w-lg mx-auto"
-          } ${onCardClick && !showCancelConfirm ? "cursor-pointer" : ""}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (!showCancelConfirm) onCardClick?.();
-          }}
+          }`}
+          onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-white">{title}</h3>
@@ -179,9 +193,6 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
               {subtitle && (
                 <p className="text-[10px] text-white/50 leading-relaxed">{subtitle}</p>
               )}
-              {onCardClick && !isComplete && (
-                <p className="text-[10px] text-white/45">Klik kotak untuk buka batch</p>
-              )}
               {label && (
                 <div
                   className={`text-center font-medium text-white ${
@@ -196,7 +207,9 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
                   className={`h-full rounded-xl transition-all duration-300 ${
                     isComplete
                       ? "bg-gradient-to-r from-emerald-500 via-green-400 to-emerald-300"
-                      : "bg-gradient-to-r from-[#FFD700] via-yellow-400 to-[#FDE68A]"
+                      : proceedPrompt && !proceedPrompt.isPaused
+                        ? "bg-gradient-to-r from-sky-500 via-sky-400 to-cyan-300"
+                        : "bg-gradient-to-r from-[#FFD700] via-yellow-400 to-[#FDE68A]"
                   }`}
                   initial={{ width: 0 }}
                   animate={{ width: `${percent}%` }}
@@ -211,10 +224,78 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
                 {percent}%
               </div>
 
+              {proceedPrompt && !isComplete && (
+                <div className="space-y-3 rounded-xl border border-sky-500/35 bg-sky-500/10 p-4">
+                  <p className="text-xs font-semibold text-sky-100">
+                    {proceedPrompt.isPaused ? "Unduh batch dijeda" : "Verifikasi batch selesai"}
+                  </p>
+                  <p className="text-[11px] text-white/75 leading-relaxed">
+                    Batch {proceedPrompt.completedBatchIndex}/{proceedPrompt.totalBatches}{" "}
+                    {proceedPrompt.savedVia === "save-picker"
+                      ? "disimpan via dialog simpan."
+                      : "dikirim ke unduhan browser."}{" "}
+                    Pastikan file ZIP sudah ada di komputer Anda sebelum melanjutkan.
+                  </p>
+                  {proceedPrompt.isPaused ? (
+                    <div className="flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onResumeBatchDownloads?.()}
+                        className="w-full rounded-lg border border-sky-400/40 bg-sky-500/20 px-3 py-2.5 text-xs font-semibold text-sky-100 hover:bg-sky-500/30 transition"
+                      >
+                        Lanjutkan unduh batch
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onRedownloadBatch?.(proceedPrompt.completedBatchIndex)}
+                        className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs font-medium text-white/70 hover:bg-white/10 transition"
+                      >
+                        Unduh ulang Batch {proceedPrompt.completedBatchIndex}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {proceedPrompt.nextBatchIndex != null ? (
+                        <button
+                          type="button"
+                          onClick={() => onProceedBatch?.()}
+                          className="w-full rounded-lg border border-emerald-400/40 bg-emerald-500/20 px-3 py-2.5 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/30 transition"
+                        >
+                          Ya — file sudah ada, lanjut Batch {proceedPrompt.nextBatchIndex}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => onProceedBatch?.()}
+                          className="w-full rounded-lg border border-emerald-400/40 bg-emerald-500/20 px-3 py-2.5 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/30 transition"
+                        >
+                          Ya — semua batch selesai diunduh
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => onRedownloadBatch?.(proceedPrompt.completedBatchIndex)}
+                        className="w-full rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-100 hover:bg-amber-500/20 transition"
+                      >
+                        File belum ada — unduh ulang Batch {proceedPrompt.completedBatchIndex}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onPauseBatchDownloads?.()}
+                        className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs font-medium text-white/70 hover:bg-white/10 transition"
+                      >
+                        Nanti dulu (jeda)
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {hasBatches && readOnlyBatches && (
                 <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.03] p-3">
                   <div className="text-[10px] text-white/55">
-                    {zipBatches!.length} batch ZIP · {downloadedBatchCount} sudah di perangkat
+                    {zipBatches!.length} batch ZIP · {downloadedBatchCount} dikonfirmasi di
+                    perangkat
                   </div>
                   <div
                     className={`space-y-1.5 ${isMinimized ? "max-h-36" : "max-h-52"} overflow-y-auto`}
@@ -231,18 +312,24 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
                           <div className="text-[10px] text-white/45">
                             {b.fileCount != null ? `${b.fileCount} file` : "ZIP"}
                             {b.downloaded
-                              ? " · sudah di perangkat"
-                              : b.inProgress
-                                ? " · mengunduh..."
-                                : b.failed
-                                  ? " · gagal otomatis"
-                                  : b.ready
-                                    ? " · antrian unduh"
-                                    : " · menunggu server"}
+                              ? " · dikonfirmasi di perangkat"
+                              : b.pendingConfirm
+                                ? " · menunggu konfirmasi Anda"
+                                : b.inProgress
+                                  ? " · mengunduh..."
+                                  : b.failed
+                                    ? " · gagal unduh"
+                                    : b.paused
+                                      ? " · dijeda"
+                                      : b.ready
+                                        ? " · siap unduh"
+                                        : " · menunggu server"}
                           </div>
                         </div>
                         {b.downloaded ? (
                           <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                        ) : b.pendingConfirm ? (
+                          <PauseCircle className="h-4 w-4 shrink-0 text-sky-400" />
                         ) : b.inProgress ? (
                           <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#FFD700]" />
                         ) : null}

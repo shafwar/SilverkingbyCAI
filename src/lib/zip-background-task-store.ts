@@ -6,12 +6,24 @@ export type ZipTaskDownload = {
   download_url: string;
   r2Key?: string;
   fileCount?: number;
+  /** Admin confirmed file is on device (after proceed prompt). */
   downloaded?: boolean;
+  /** File sent to browser; waiting admin to confirm before marking downloaded. */
+  pendingSaveConfirm?: boolean;
   autoDownloadFailed?: boolean;
   /** Set after user was notified (toast) so we do not spam. */
   autoDownloadFailNotified?: boolean;
   /** Prevents duplicate concurrent download for this batch part. */
   downloadInFlight?: boolean;
+};
+
+/** Pause after a batch save — admin must confirm before next batch downloads. */
+export type ZipAwaitingProceed = {
+  completedBatchIndex: number;
+  nextBatchIndex: number | null;
+  totalBatches: number;
+  savedVia: "save-picker" | "blob";
+  savedBytes: number;
 };
 
 export type ZipBackgroundTask = {
@@ -39,6 +51,10 @@ export type ZipBackgroundTask = {
   downloadInFlight?: boolean;
   /** Auto-download retry counter (transient R2 / browser blocks). */
   downloadAttempts?: number;
+  /** Batch N saved — waiting admin to confirm before batch N+1. */
+  awaitingProceed?: ZipAwaitingProceed;
+  /** Admin chose "nanti dulu" — no further auto-download until resume. */
+  downloadsPaused?: boolean;
   lastError?: string;
   createdAt: number;
   updatedAt: number;

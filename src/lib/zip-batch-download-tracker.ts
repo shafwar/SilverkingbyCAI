@@ -64,6 +64,21 @@ export function markBatchDownloadedInBrowser(cacheKey: string, batchIndex: numbe
   writeAll(all);
 }
 
+export function unmarkBatchDownloadedInBrowser(cacheKey: string, batchIndex: number): void {
+  if (!cacheKey || !Number.isFinite(batchIndex)) return;
+  const all = readAll();
+  const idx = all.findIndex((e) => e.cacheKey === cacheKey);
+  if (idx < 0) return;
+  const prev = all[idx]!;
+  const next: ZipDownloadTrackerEntry = {
+    ...prev,
+    downloadedBatches: prev.downloadedBatches.filter((b) => b !== batchIndex),
+    updatedAt: Date.now(),
+  };
+  all[idx] = next;
+  writeAll(all);
+}
+
 export function markSingleZipDownloadedInBrowser(cacheKey: string): void {
   if (!cacheKey) return;
   const all = readAll();

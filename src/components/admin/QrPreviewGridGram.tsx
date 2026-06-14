@@ -50,8 +50,6 @@ import {
 import { triggerZipJobFileDownload } from "@/lib/zip-auto-download";
 import {
   clearZipDownloadTrackerForCacheKey,
-  getDownloadedBatchIndices,
-  markBatchDownloadedInBrowser,
   markSingleZipDownloadedInBrowser,
 } from "@/lib/zip-batch-download-tracker";
 import type { ZipBundleStatus } from "@/lib/zip-bundle-status-types";
@@ -135,10 +133,10 @@ function analyzeZipBundleForDownload(
   pendingOnR2: number[];
   missingOnR2: number[];
 } {
-  const browserDl = new Set(getDownloadedBatchIndices(cacheKey));
+  /** Hanya riwayat audit server — localStorage bisa false-positive jika unduh gagal. */
   const downloaded = new Set<number>();
   for (const b of bundle.batches) {
-    if (b.downloaded || browserDl.has(b.batchIndex)) {
+    if (b.downloaded) {
       downloaded.add(b.batchIndex);
     }
   }
@@ -152,6 +150,7 @@ function analyzeZipBundleForDownload(
       missingOnR2.push(b.batchIndex);
     }
   }
+  void cacheKey;
   return {
     downloaded: Array.from(downloaded).sort((a, b) => a - b),
     pendingOnR2: pendingOnR2.sort((a, b) => a - b),
@@ -2666,9 +2665,6 @@ export function QrPreviewGridGram({ batches }: Props) {
                                 </div>
                               )}
                               {(() => {
-                                const linkBustMs = zipDownloadResult.linkBustMs;
-                                const hrefZip = (rawUrl: string) =>
-                                  linkBustMs ? withZipDownloadCacheBust(rawUrl, linkBustMs) : rawUrl;
                                 const allDl = isChunkedZipResult({
                                   chunked: (zipDownloadResult.downloads?.length ?? 0) > 1,
                                   downloads: zipDownloadResult.downloads,
@@ -2679,37 +2675,32 @@ export function QrPreviewGridGram({ batches }: Props) {
                                 const serverBatchMap = new Map(
                                   (zipBundleStatus?.batches ?? []).map((b) => [b.batchIndex, b])
                                 );
-                                const browserDownloaded = zipDownloadResult.cacheKey
-                                  ? getDownloadedBatchIndices(zipDownloadResult.cacheKey)
-                                  : [];
-                                const visibleDl = zipFrozen
-                                  ? []
-                                  : allDl.filter((d) => {
-                                      const srv = serverBatchMap.get(d.batchIndex);
-                                      if (srv?.downloaded) return false;
-                                      return !browserDownloaded.includes(d.batchIndex);
-                                    });
-                                const hiddenDl = allDl.length - visibleDl.length;
+                                const listDl = zipFrozen ? [] : allDl;
+                                const confirmedCount = listDl.filter((d) => {
+                                  const srv = serverBatchMap.get(d.batchIndex);
+                                  return !!srv?.downloaded;
+                                }).length;
                                 return (
                                   <>
                                     <p className="text-[10px] text-white/50">
                                       {zipDownloadResult.total_files} file · disimpan di R2
-                                      {allDl.length > 1 ? ` · ${allDl.length} batch total` : ""}
-                                      {hiddenDl > 0
-                                        ? ` · daftar: batch belum diunduh di browser ini (${hiddenDl} disembunyikan)`
+                                      {allDl.length > 1
+                                        ? ` · ${allDl.length} batch · ${confirmedCount} dikonfirmasi unduh (audit server)`
                                         : ""}
                                       {zipDownloadResult.cached ? " · tersedia (cache)" : ""}
                                     </p>
                                     {allDl.length > 1 ? (
-                                      visibleDl.length > 0 ? (
+                                      listDl.length > 0 ? (
                                         <div className="space-y-2">
-                                          {visibleDl.map((d) => {
+                                          {listDl.map((d) => {
                                             const r2Key =
                                               d.r2Key ??
                                               deriveR2KeyFromUrl(d.download_url) ??
                                               `batch-${d.batchIndex}`;
                                             const st = zipR2Status[r2Key];
                                             const exists = st?.exists ?? null;
+                                            const srv = serverBatchMap.get(d.batchIndex);
+                                            const serverConfirmed = !!srv?.downloaded;
                                             const statusLabel =
                                               exists === true
                                                 ? "R2: OK"
@@ -2718,73 +2709,56 @@ export function QrPreviewGridGram({ batches }: Props) {
                                                   : zipR2StatusLoading
                                                     ? "R2: cek..."
                                                     : "R2: ?";
+                                            const deviceLabel = serverConfirmed
+                                              ? "Sudah dikonfirmasi unduh (server)"
+                                              : "Belum dikonfirmasi di perangkat";
 
                                             return (
                                               <div key={d.batchIndex} className="space-y-1">
-                                                <a
-                                                  href={hrefZip(d.download_url)}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  download={`${(zipDownloadResult.product_title || "serticard").replace(/\s+/g, "-")}-batch-${d.batchIndex}-of-${d.totalBatches}.zip`}
-                                                  onClick={(e) => {
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
                                                     const ck = zipDownloadResult.cacheKey;
                                                     const jobId = zipDownloadResult.jobId;
                                                     const filename = `${(zipDownloadResult.product_title || "serticard").replace(/\s+/g, "-")}-batch-${d.batchIndex}-of-${d.totalBatches}.zip`;
-                                                    if (ck && jobId) {
-                                                      e.preventDefault();
-                                                      void (async () => {
-                                                        const res = await triggerZipJobFileDownload(
-                                                          jobId,
-                                                          filename,
-                                                          { batchIndex: d.batchIndex }
-                                                        );
-                                                        if (res.ok) {
-                                                          markBatchDownloadedInBrowser(
-                                                            ck,
-                                                            d.batchIndex
-                                                          );
-                                                          const rk =
-                                                            d.r2Key ??
-                                                            deriveR2KeyFromUrl(d.download_url);
-                                                          if (rk) {
-                                                            void recordZipDownloadAuditClient({
-                                                              cacheKey: ck,
-                                                              r2Key: rk,
-                                                              batchIndex: d.batchIndex,
-                                                              totalBatches: d.totalBatches,
-                                                            });
-                                                          }
-                                                          setZipBrowserTrackVersion((v) => v + 1);
-                                                        } else {
-                                                          toast.error(res.error);
-                                                        }
-                                                      })();
-                                                    } else if (ck) {
-                                                      markBatchDownloadedInBrowser(ck, d.batchIndex);
-                                                      setZipBrowserTrackVersion((v) => v + 1);
+                                                    if (!jobId) {
+                                                      toast.error("Job ZIP tidak ditemukan.");
+                                                      return;
                                                     }
+                                                    void (async () => {
+                                                      const res = await triggerZipJobFileDownload(
+                                                        jobId,
+                                                        filename,
+                                                        {
+                                                          batchIndex: d.batchIndex,
+                                                          preferSavePicker: true,
+                                                        }
+                                                      );
+                                                      if (!res.ok) {
+                                                        toast.error(res.error);
+                                                        return;
+                                                      }
+                                                      toast.success(
+                                                        `Batch ${d.batchIndex} disimpan — konfirmasi dari floating card jika unduh via background`
+                                                      );
+                                                    })();
                                                   }}
                                                   className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#FFD700]/40 bg-[#FFD700]/15 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/25 transition"
                                                 >
                                                   <Download className="h-4 w-4" />
-                                                  ZIP Batch {d.batchIndex} dari {d.totalBatches} (
-                                                  {d.fileCount} file)
-                                                </a>
+                                                  {serverConfirmed
+                                                    ? `Unduh ulang Batch ${d.batchIndex}/${d.totalBatches}`
+                                                    : `Unduh Batch ${d.batchIndex}/${d.totalBatches} (${d.fileCount} file)`}
+                                                </button>
                                                 <div className="flex items-center justify-between text-[10px] text-white/50 px-1">
                                                   <span className="tabular-nums">{statusLabel}</span>
-                                                  <span className="tabular-nums">Belum pernah diunduh</span>
+                                                  <span className="tabular-nums">{deviceLabel}</span>
                                                 </div>
                                               </div>
                                             );
                                           })}
                                         </div>
-                                      ) : (
-                                        <p className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2.5 text-[11px] leading-relaxed text-white/60">
-                                          Semua batch ZIP sudah diunduh di browser ini. Gunakan
-                                          tombol &quot;Unduh batch ZIP&quot; di bawah untuk unduh
-                                          ulang, atau segarkan bila ada ZIP baru.
-                                        </p>
-                                      )
+                                      ) : null
                                     ) : null}
                                   </>
                                 );

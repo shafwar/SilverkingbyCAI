@@ -37,6 +37,7 @@ export function isZipDownloadSessionActive(task: ZipBackgroundTask | null): bool
   if (!task) return false;
   if (task.status === "failed") return false;
   if (task.downloadInFlight || task.singleDownloadInFlight) return true;
+  if (task.awaitingProceed || task.downloadsPaused) return true;
   if (task.status === "pending" || task.status === "processing") return true;
   if (task.status === "completed") {
     return !isTaskFullyOnDevice(task);
@@ -83,7 +84,9 @@ export function hrefLeavesAdminArea(href: string): boolean {
  */
 export function isZipBackgroundTaskBlocking(task: ZipBackgroundTask | null): boolean {
   if (!task) return false;
-  if (task.status === "failed" || task.status === "completed") return false;
+  if (task.status === "failed") return false;
+  if (task.awaitingProceed || task.downloadsPaused) return true;
+  if (task.status === "completed") return false;
   return task.status === "pending" || task.status === "processing";
 }
 

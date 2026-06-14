@@ -1,7 +1,14 @@
 import type { ZipBackgroundTask, ZipTaskDownload } from "@/lib/zip-background-task-store";
 import { isChunkedZipResult } from "@/lib/serticard-zip-result";
 
-export type ZipBatchProgressPhase = "server" | "upload" | "download" | "complete" | "failed";
+export type ZipBatchProgressPhase =
+  | "server"
+  | "upload"
+  | "download"
+  | "awaiting_proceed"
+  | "paused"
+  | "complete"
+  | "failed";
 
 export type ZipBatchProgressView = {
   currentBatchIndex: number;
@@ -89,6 +96,44 @@ export function computeZipBatchProgressView(
     };
   }
 
+  if (task.awaitingProceed) {
+    const { completedBatchIndex, nextBatchIndex, totalBatches: tb, savedVia } =
+      task.awaitingProceed;
+    const via = savedVia === "save-picker" ? "disimpan via dialog" : "unduhan browser";
+    if (task.downloadsPaused) {
+      return {
+        currentBatchIndex: completedBatchIndex,
+        totalBatches: tb,
+        phase: "paused",
+        percent: 100,
+        label: `Batch ${completedBatchIndex}/${tb} selesai (${via}) — dijeda`,
+        batchesCompletedOnDevice: completedOnDevice,
+      };
+    }
+    return {
+      currentBatchIndex: completedBatchIndex,
+      totalBatches: tb,
+      phase: "awaiting_proceed",
+      percent: 100,
+      label:
+        nextBatchIndex != null
+          ? `Batch ${completedBatchIndex}/${tb} selesai (${via}) — konfirmasi untuk Batch ${nextBatchIndex}`
+          : `Batch ${completedBatchIndex}/${tb} selesai (${via}) — konfirmasi selesai`,
+      batchesCompletedOnDevice: completedOnDevice,
+    };
+  }
+
+  if (task.downloadsPaused) {
+    return {
+      currentBatchIndex: Math.min(completedOnDevice + 1, totalBatches),
+      totalBatches,
+      phase: "paused",
+      percent: 0,
+      label: `Unduh batch dijeda — ${completedOnDevice} batch dikonfirmasi`,
+      batchesCompletedOnDevice: completedOnDevice,
+    };
+  }
+
   const inFlight = downloads.find((d) => d.downloadInFlight);
   if (inFlight) {
     return {
@@ -102,7 +147,11 @@ export function computeZipBatchProgressView(
   }
 
   const readyToDownload = downloads.find(
-    (d) => d.download_url?.trim() && !d.downloaded && !d.autoDownloadFailed
+    (d) =>
+      d.download_url?.trim() &&
+      !d.downloaded &&
+      !d.pendingSaveConfirm &&
+      !d.autoDownloadFailed
   );
   if (readyToDownload) {
     return {

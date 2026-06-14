@@ -9,14 +9,13 @@ import {
   type ZipBackgroundTask,
   type ZipTaskDownload,
 } from "@/lib/zip-background-task-store";
-import { finishAndClearZipBackgroundTask, ZIP_MONITORING_ABORT_EVENT } from "@/lib/zip-background-task-lifecycle";
+import {
+  finishAndClearZipBackgroundTask,
+  ZIP_MONITORING_ABORT_EVENT,
+  ZIP_BATCH_PROCEED_EVENT,
+} from "@/lib/zip-background-task-lifecycle";
 import { applyBatchProgressToTask } from "@/lib/zip-batch-progress";
 import { triggerZipJobFileDownload } from "@/lib/zip-auto-download";
-import {
-  markBatchDownloadedInBrowser,
-  markSingleZipDownloadedInBrowser,
-} from "@/lib/zip-batch-download-tracker";
-import { recordZipDownloadAuditClient } from "@/lib/zip-download-audit-client";
 import { r2KeyFromDownloadUrl } from "@/lib/zip-r2-key";
 import { toast } from "sonner";
 import {
@@ -26,7 +25,7 @@ import {
 } from "@/lib/serticard-zip-result";
 
 const POLL_INTERVAL_MS = 1200;
-const UI_DISMISS_AFTER_SUCCESS_MS = 1200;
+const UI_DISMISS_AFTER_SUCCESS_MS = 2500;
 const MAX_AUTO_DOWNLOAD_ATTEMPTS = 4;
 
 function safeBatchFilename(batchName: string): string {
@@ -79,6 +78,7 @@ function mapJobResultToTask(
         r2Key: d.r2Key,
         fileCount: d.fileCount,
         downloaded: prev?.downloaded ?? false,
+        pendingSaveConfirm: prev?.pendingSaveConfirm ?? false,
         autoDownloadFailed: prev?.autoDownloadFailed ?? false,
         autoDownloadFailNotified: prev?.autoDownloadFailNotified ?? false,
         downloadInFlight: prev?.downloadInFlight ?? false,
@@ -115,6 +115,7 @@ function isTaskChunked(t: ZipBackgroundTask): boolean {
 
 function allZipPartsHandled(t: ZipBackgroundTask): boolean {
   if (t.status === "failed") return true;
+  if (t.awaitingProceed || t.downloadsPaused) return false;
   if (t.status !== "completed") return false;
 
   if (isTaskChunked(t) && Array.isArray(t.downloads) && t.downloads.length > 0) {
@@ -132,9 +133,14 @@ function allZipPartsHandled(t: ZipBackgroundTask): boolean {
 function shouldContinuePolling(t: ZipBackgroundTask | null): boolean {
   if (!t?.jobId) return false;
   if (t.status === "failed") return false;
+  if (t.awaitingProceed || t.downloadsPaused) return true;
   if (t.downloadInFlight || t.singleDownloadInFlight) return true;
   if (t.status === "pending" || t.status === "processing") return true;
   return !allZipPartsHandled(t);
+}
+
+function canStartDeviceDownload(t: ZipBackgroundTask): boolean {
+  return !t.awaitingProceed && !t.downloadsPaused && !t.downloadInFlight;
 }
 
 async function applyAutoDownloadsForTask(
@@ -144,6 +150,10 @@ async function applyAutoDownloadsForTask(
   let t: ZipBackgroundTask = { ...task };
   let changed = false;
   const safeName = safeBatchFilename(t.batchName);
+
+  if (!canStartDeviceDownload(t)) {
+    return { task: applyBatchProgressToTask(t), changed: false };
+  }
 
   const canAutoDownloadChunked =
     isTaskChunked(t) &&
@@ -156,7 +166,13 @@ async function applyAutoDownloadsForTask(
     let downloadedOneThisTick = false;
 
     for (const d of t.downloads) {
-      if (d.downloaded || d.autoDownloadFailed || d.downloadInFlight || !d.download_url?.trim()) {
+      if (
+        d.downloaded ||
+        d.pendingSaveConfirm ||
+        d.autoDownloadFailed ||
+        d.downloadInFlight ||
+        !d.download_url?.trim()
+      ) {
         updatedDownloads.push(d);
         continue;
       }
@@ -180,34 +196,40 @@ async function applyAutoDownloadsForTask(
       const result = await triggerZipJobFileDownload(t.jobId, filename, {
         batchIndex: d.batchIndex,
         yieldBeforeClick: true,
+        preferSavePicker: true,
         signal: downloadSignal,
       });
 
       if (result.ok) {
         changed = true;
         downloadedOneThisTick = true;
-        if (t.cacheKey) {
-          markBatchDownloadedInBrowser(t.cacheKey, d.batchIndex);
-          const rk =
-            d.r2Key ||
-            (d.download_url ? r2KeyFromDownloadUrl(d.download_url) : null) ||
-            undefined;
-          if (rk) {
-            void recordZipDownloadAuditClient({
-              cacheKey: t.cacheKey,
-              r2Key: rk,
-              batchIndex: d.batchIndex,
-              totalBatches: d.totalBatches,
-            });
-          }
-        }
-        updatedDownloads.push({ ...d, downloaded: true, downloadInFlight: false });
-        toast.success(`Batch ${d.batchIndex}/${d.totalBatches} tersimpan di perangkat`);
+        const nextBatchIndex =
+          d.batchIndex < d.totalBatches ? d.batchIndex + 1 : null;
+        updatedDownloads.push({
+          ...d,
+          downloadInFlight: false,
+          pendingSaveConfirm: true,
+        });
+        t.awaitingProceed = {
+          completedBatchIndex: d.batchIndex,
+          nextBatchIndex,
+          totalBatches: d.totalBatches,
+          savedVia: result.method,
+          savedBytes: result.bytes,
+        };
+        t.downloadInFlight = false;
+        toast.message(`Batch ${d.batchIndex}/${d.totalBatches} siap dikonfirmasi`, {
+          description:
+            result.method === "save-picker"
+              ? "File disimpan via dialog. Konfirmasi di floating card untuk lanjut batch berikutnya."
+              : "Periksa folder unduhan Anda, lalu konfirmasi di floating card.",
+          duration: 10_000,
+        });
       } else {
         changed = true;
         if (!d.autoDownloadFailNotified) {
-          toast.error("Unduh otomatis gagal", {
-            description: `Batch ${d.batchIndex}/${d.totalBatches}: ${result.error}. Unduh manual dari kotak ZIP siap di batch.`,
+          toast.error("Unduh batch gagal", {
+            description: `Batch ${d.batchIndex}/${d.totalBatches}: ${result.error}`,
             duration: 12_000,
           });
         }
@@ -246,10 +268,7 @@ async function applyAutoDownloadsForTask(
     return { task: t, changed };
   }
 
-  if (
-    t.status !== "completed" &&
-    !canAutoDownloadChunked
-  ) {
+  if (t.status !== "completed" && !canAutoDownloadChunked) {
     return { task: applyBatchProgressToTask(t), changed: false };
   }
 
@@ -273,28 +292,14 @@ async function applyAutoDownloadsForTask(
 
     const result = await triggerZipJobFileDownload(t.jobId, `${safeName}.zip`, {
       yieldBeforeClick: true,
+      preferSavePicker: true,
       signal: downloadSignal,
     });
 
     t.singleDownloadInFlight = false;
     t.downloadInFlight = false;
 
-    if (result.ok && result.method === "blob") {
-      if (t.cacheKey) {
-        markSingleZipDownloadedInBrowser(t.cacheKey);
-        const rk =
-          getSingleZipDownloadUrl(t) != null
-            ? r2KeyFromDownloadUrl(getSingleZipDownloadUrl(t)!)
-            : null;
-        if (rk) {
-          void recordZipDownloadAuditClient({
-            cacheKey: t.cacheKey,
-            r2Key: rk,
-            batchIndex: 1,
-            totalBatches: 1,
-          });
-        }
-      }
+    if (result.ok) {
       t.singleDownloaded = true;
       t.manualDownloadRequired = false;
       changed = true;
@@ -317,8 +322,7 @@ async function applyAutoDownloadsForTask(
 }
 
 /**
- * Headless ZIP job tracker: polls `/api/qr/download-job`, auto-downloads when ready.
- * Floating UI is progress-only — no manual download buttons.
+ * Headless ZIP job tracker: polls `/api/qr/download-job`, downloads batches with admin confirm between each.
  */
 export function ZipBackgroundRunner() {
   const { setDownloadPercent, setDownloadLabel, resetDownload } = useDownload();
@@ -395,25 +399,27 @@ export function ZipBackgroundRunner() {
         let next = mapJobResultToTask(current, data);
         writeZipBackgroundTask(next);
 
-        downloadAbortRef.current?.abort();
-        const dlAc = new AbortController();
-        downloadAbortRef.current = dlAc;
+        if (canStartDeviceDownload(next)) {
+          downloadAbortRef.current?.abort();
+          const dlAc = new AbortController();
+          downloadAbortRef.current = dlAc;
 
-        const { task: afterDl, changed: dlChanged } = await applyAutoDownloadsForTask(
-          next,
-          dlAc.signal
-        );
-        if (!readZipBackgroundTask()) return;
+          const { task: afterDl, changed: dlChanged } = await applyAutoDownloadsForTask(
+            next,
+            dlAc.signal
+          );
+          if (!readZipBackgroundTask()) return;
 
-        next = { ...afterDl, updatedAt: Date.now() };
-        writeZipBackgroundTask(next);
+          next = { ...afterDl, updatedAt: Date.now() };
+          writeZipBackgroundTask(next);
 
-        if (dlChanged) {
-          console.info("[ZipBackgroundRunner] Task updated", {
-            jobId: next.jobId,
-            label: next.progressLabel,
-            progress: next.progressPercent,
-          });
+          if (dlChanged) {
+            console.info("[ZipBackgroundRunner] Task updated", {
+              jobId: next.jobId,
+              label: next.progressLabel,
+              progress: next.progressPercent,
+            });
+          }
         }
 
         if (allZipPartsHandled(next)) {
@@ -426,11 +432,13 @@ export function ZipBackgroundRunner() {
         const latest = readZipBackgroundTask();
         const needsQuickFollowUp =
           latest &&
+          canStartDeviceDownload(latest) &&
           isTaskChunked(latest) &&
           latest.downloads?.some(
             (d) =>
               d.download_url?.trim() &&
               !d.downloaded &&
+              !d.pendingSaveConfirm &&
               !d.autoDownloadFailed &&
               !d.downloadInFlight
           ) &&
@@ -441,6 +449,11 @@ export function ZipBackgroundRunner() {
       }
     };
 
+    const onProceed = () => {
+      void pollOnce();
+    };
+    window.addEventListener(ZIP_BATCH_PROCEED_EVENT, onProceed);
+
     const intervalId = window.setInterval(() => {
       void pollOnce();
     }, POLL_INTERVAL_MS);
@@ -449,6 +462,7 @@ export function ZipBackgroundRunner() {
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
+      window.removeEventListener(ZIP_BATCH_PROCEED_EVENT, onProceed);
       if (dismissTimerRef.current != null) window.clearTimeout(dismissTimerRef.current);
     };
   }, [resetDownload]);
