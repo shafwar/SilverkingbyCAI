@@ -52,10 +52,34 @@ coverage
 !package.json
 !package-lock.json
 
-# Scripts - exclude all development/testing scripts, keep only runtime scripts
-scripts/
-!scripts/migrate-and-start.js
-!scripts/create-database.js
+# Scripts - exclude dev/utility scripts individually, keep runtime scripts
+scripts/build-merchandise-hero-video.sh
+scripts/check-db-migrations.js
+scripts/check-logs-by-month.js
+scripts/compress-and-upload-merchandise.ts
+scripts/compress-public-images.ts
+scripts/compress-public-videos.ts
+scripts/compress-videos-README.md
+scripts/compress-videos.sh
+scripts/ensure-distributor-hero-r2.ts
+scripts/mysql-railway-sort-buffer.sql
+scripts/seed-merchandise.ts
+scripts/setup-railway-db.sh
+scripts/sync-r2-ssl-fix.ps1
+scripts/sync-r2.ts
+scripts/test-db-schema.js
+scripts/upload-all-serticard-templates.ts
+scripts/upload-merchandise-hero-video.ts
+scripts/upload-packages-serticard.ts
+scripts/upload-r2-wrangler.ps1
+scripts/upload-serticard-template.ts
+scripts/upload-templates-to-r2.ts
+scripts/verify-db.js
+scripts/verify-purge-all-months.js
+scripts/verify-purge-deep-analysis.js
+scripts/verify-r2-config.ts
+scripts/verify-railway-vars.ts
+# Keep runtime scripts: migrate-and-start.js and create-database.js
 
 # Assets folder (large files, not needed in build)
 assets/
