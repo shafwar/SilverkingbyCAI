@@ -24,6 +24,8 @@ export type ZipBatchProceedPrompt = {
   totalBatches: number;
   savedVia: "save-picker" | "blob";
   isPaused?: boolean;
+  /** Tombol konfirmasi belum aktif — masih menunggu unduh otomatis. */
+  actionsEnabled?: boolean;
 };
 
 interface DownloadCardProps {
@@ -47,6 +49,8 @@ interface DownloadCardProps {
   saveFallback?: { batchIndex: number; totalBatches: number } | null;
   /** Fase progress per batch (untuk styling bar). */
   progressPhase?: string;
+  /** 100% di R2 / sedang kirim unduh otomatis — tampilkan notif tunggu. */
+  waitingForAutoDownload?: boolean;
 }
 
 export const DownloadCard: React.FC<DownloadCardProps> = ({
@@ -68,6 +72,7 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
   onResumeBatchDownloads,
   saveFallback,
   progressPhase,
+  waitingForAutoDownload = false,
 }) => {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const totalBatchesHint = zipBatches?.[0]?.totalBatches ?? zipBatches?.length ?? 0;
@@ -78,6 +83,13 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
   const downloadedBatchCount = hasBatches
     ? zipBatches!.filter((b) => b.downloaded).length
     : 0;
+  const proceedActionsEnabled = proceedPrompt?.actionsEnabled !== false;
+  const showAutoWaitNotice =
+    waitingForAutoDownload ||
+    progressPhase === "server_complete" ||
+    progressPhase === "device_save" ||
+    progressPhase === "device_auto_pending" ||
+    (proceedPrompt != null && !proceedActionsEnabled && !proceedPrompt.isPaused);
 
   const title = isComplete ? "ZIP selesai" : isMinimized ? "Mengunduh ZIP..." : "Mengunduh ZIP";
 
@@ -223,6 +235,7 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
                         ? "bg-gradient-to-r from-sky-500 via-sky-400 to-cyan-300"
                         : progressPhase === "server_complete" ||
                             progressPhase === "device_save" ||
+                            progressPhase === "device_auto_pending" ||
                             progressPhase === "manual_retry"
                           ? "bg-gradient-to-r from-emerald-500 via-green-400 to-emerald-300"
                           : "bg-gradient-to-r from-[#FFD700] via-yellow-400 to-[#FDE68A]"
@@ -239,6 +252,23 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
               >
                 {percent}%
               </div>
+
+              {showAutoWaitNotice && !isComplete && (
+                <div className="rounded-xl border border-cyan-500/35 bg-cyan-500/10 p-4 space-y-2">
+                  <div className="flex items-start gap-2.5">
+                    <Loader2 className="h-4 w-4 shrink-0 animate-spin text-cyan-300 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold text-cyan-100">
+                        Tunggu sebentar — file akan masuk secara otomatis
+                      </p>
+                      <p className="text-[11px] text-white/70 leading-relaxed">
+                        ZIP sudah 100% di server (R2). Browser sedang mengunduh ke folder Unduhan
+                        laptop Anda. Tombol lanjut batch akan aktif setelah proses ini selesai.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {saveFallback && !proceedPrompt && !isComplete && progressPhase === "manual_retry" && (
                 <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-2">
@@ -263,11 +293,21 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
                     {proceedPrompt.isPaused ? "Unduh batch dijeda" : "Verifikasi batch selesai"}
                   </p>
                   <p className="text-[11px] text-white/75 leading-relaxed">
-                    Batch {proceedPrompt.completedBatchIndex}/{proceedPrompt.totalBatches}{" "}
-                    {proceedPrompt.savedVia === "save-picker"
-                      ? "disimpan via dialog simpan."
-                      : "dikirim ke unduhan browser."}{" "}
-                    Pastikan file ZIP sudah ada di komputer, lalu klik tombol di bawah untuk melanjutkan.
+                    {proceedActionsEnabled ? (
+                      <>
+                        Batch {proceedPrompt.completedBatchIndex}/{proceedPrompt.totalBatches}{" "}
+                        {proceedPrompt.savedVia === "save-picker"
+                          ? "disimpan via dialog simpan."
+                          : "dikirim ke unduhan browser."}{" "}
+                        Pastikan file ZIP sudah ada di komputer, lalu klik tombol di bawah untuk
+                        melanjutkan.
+                      </>
+                    ) : (
+                      <>
+                        Batch {proceedPrompt.completedBatchIndex}/{proceedPrompt.totalBatches}{" "}
+                        sedang dikirim ke laptop Anda. Tunggu hingga file muncul di folder Unduhan.
+                      </>
+                    )}
                   </p>
                   {proceedPrompt.isPaused ? (
                     <div className="flex flex-col gap-2">
@@ -291,31 +331,35 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
                       {proceedPrompt.nextBatchIndex != null ? (
                         <button
                           type="button"
+                          disabled={!proceedActionsEnabled}
                           onClick={() => onProceedBatch?.()}
-                          className="w-full rounded-lg border border-emerald-400/40 bg-emerald-500/20 px-3 py-2.5 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/30 transition"
+                          className="w-full rounded-lg border border-emerald-400/40 bg-emerald-500/20 px-3 py-2.5 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/30 transition disabled:opacity-40 disabled:pointer-events-none disabled:cursor-not-allowed"
                         >
                           Lanjut unduh Batch {proceedPrompt.nextBatchIndex}
                         </button>
                       ) : (
                         <button
                           type="button"
+                          disabled={!proceedActionsEnabled}
                           onClick={() => onProceedBatch?.()}
-                          className="w-full rounded-lg border border-emerald-400/40 bg-emerald-500/20 px-3 py-2.5 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/30 transition"
+                          className="w-full rounded-lg border border-emerald-400/40 bg-emerald-500/20 px-3 py-2.5 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/30 transition disabled:opacity-40 disabled:pointer-events-none disabled:cursor-not-allowed"
                         >
                           Ya — semua batch selesai diunduh
                         </button>
                       )}
                       <button
                         type="button"
+                        disabled={!proceedActionsEnabled}
                         onClick={() => onSaveBatchToDevice?.(proceedPrompt.completedBatchIndex)}
-                        className="w-full rounded-lg border border-[#FFD700]/40 bg-[#FFD700]/15 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/25 transition"
+                        className="w-full rounded-lg border border-[#FFD700]/40 bg-[#FFD700]/15 px-3 py-2.5 text-xs font-semibold text-[#FFD700] hover:bg-[#FFD700]/25 transition disabled:opacity-40 disabled:pointer-events-none disabled:cursor-not-allowed"
                       >
                         Simpan Batch {proceedPrompt.completedBatchIndex} ke laptop (dari R2)
                       </button>
                       <button
                         type="button"
+                        disabled={!proceedActionsEnabled}
                         onClick={() => onPauseBatchDownloads?.()}
-                        className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs font-medium text-white/70 hover:bg-white/10 transition"
+                        className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs font-medium text-white/70 hover:bg-white/10 transition disabled:opacity-40 disabled:pointer-events-none disabled:cursor-not-allowed"
                       >
                         Nanti dulu (jeda)
                       </button>
@@ -347,11 +391,13 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
                             {b.fileCount != null ? `${b.fileCount} file` : "ZIP"}
                             {b.downloaded
                               ? " · dikonfirmasi di perangkat"
-                              : b.pendingConfirm
-                                ? " · menunggu konfirmasi Anda"
-                                : b.inProgress
-                                  ? " · menyimpan ke laptop..."
-                                  : b.waitingTurn
+                              : b.inProgress
+                                ? " · mengirim ke laptop otomatis..."
+                                : b.pendingConfirm && !proceedActionsEnabled
+                                  ? " · menunggu file masuk otomatis..."
+                                  : b.pendingConfirm
+                                    ? " · menunggu konfirmasi Anda"
+                                    : b.waitingTurn
                                     ? " · sudah di R2 — menunggu giliran"
                                     : b.failed
                                       ? " · gagal simpan"

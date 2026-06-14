@@ -15,6 +15,8 @@ export type ZipTaskDownload = {
   autoDownloadFailNotified?: boolean;
   /** Prevents duplicate concurrent download for this batch part. */
   downloadInFlight?: boolean;
+  /** Browser auto-download already triggered once for this batch. */
+  autoDownloadTriggered?: boolean;
 };
 
 /** Pause after a batch save — admin must confirm before next batch downloads. */
@@ -24,6 +26,8 @@ export type ZipAwaitingProceed = {
   totalBatches: number;
   savedVia: "save-picker" | "blob";
   savedBytes: number;
+  /** Tombol konfirmasi aktif setelah unduh otomatis dikirim + jeda singkat. */
+  readyForConfirmAt?: number;
 };
 
 export type ZipBackgroundTask = {

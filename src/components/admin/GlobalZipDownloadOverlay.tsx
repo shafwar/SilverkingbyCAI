@@ -26,6 +26,7 @@ const AUTO_DISMISS_MS = 2500;
 export function GlobalZipDownloadOverlay() {
   const { downloadState, resetDownload, setIsDownloadMinimized } = useDownload();
   const [task, setTask] = useState<ZipBackgroundTask | null>(null);
+  const [confirmUiTick, setConfirmUiTick] = useState(0);
 
   useEffect(() => {
     const sync = () => setTask(readZipBackgroundTask());
@@ -138,11 +139,28 @@ export function GlobalZipDownloadOverlay() {
 
   const proceedPrompt: ZipBatchProceedPrompt | null = useMemo(() => {
     if (!task?.awaitingProceed) return null;
+    const readyAt = task.awaitingProceed.readyForConfirmAt;
+    const actionsEnabled = readyAt == null || readyAt <= Date.now();
     return {
       ...task.awaitingProceed,
       isPaused: !!task.downloadsPaused,
+      actionsEnabled,
     };
-  }, [task?.awaitingProceed, task?.downloadsPaused]);
+  }, [task?.awaitingProceed, task?.downloadsPaused, confirmUiTick]);
+
+  useEffect(() => {
+    const readyAt = task?.awaitingProceed?.readyForConfirmAt;
+    if (readyAt == null || readyAt <= Date.now()) return;
+    const id = window.setTimeout(() => {
+      setConfirmUiTick((n) => n + 1);
+    }, readyAt - Date.now() + 30);
+    return () => window.clearTimeout(id);
+  }, [task?.awaitingProceed?.readyForConfirmAt]);
+
+  const waitingForAutoDownload =
+    progressView?.phase === "server_complete" ||
+    progressView?.phase === "device_save" ||
+    progressView?.phase === "device_auto_pending";
 
   const zipBatches: ZipBatchUiRow[] | undefined = useMemo(() => {
     if (!chunked || !task?.downloads?.length) return undefined;
@@ -193,6 +211,7 @@ export function GlobalZipDownloadOverlay() {
     if (
       progressView?.phase === "device_save" ||
       progressView?.phase === "server_complete" ||
+      progressView?.phase === "device_auto_pending" ||
       progressView?.phase === "awaiting_proceed"
     ) {
       return null;
@@ -217,6 +236,9 @@ export function GlobalZipDownloadOverlay() {
 
   const subtitle = useMemo(() => {
     if (!task) return undefined;
+    if (waitingForAutoDownload) {
+      return "100% di server — tunggu sebentar, file akan masuk secara otomatis ke folder Unduhan.";
+    }
     if (proceedPrompt && !proceedPrompt.isPaused) {
       return "Konfirmasi setiap batch sebelum lanjut — file harus benar-benar ada di komputer Anda.";
     }
@@ -241,7 +263,7 @@ export function GlobalZipDownloadOverlay() {
       return "Mengunduh ZIP ke perangkat Anda...";
     }
     return undefined;
-  }, [task, chunked, progressView, proceedPrompt, serverDone, zipOnDevice]);
+  }, [task, chunked, progressView, proceedPrompt, serverDone, zipOnDevice, waitingForAutoDownload]);
 
   useEffect(() => {
     if (!isComplete || proceedPrompt) return;
@@ -284,6 +306,7 @@ export function GlobalZipDownloadOverlay() {
         onResumeBatchDownloads={handleResumeBatchDownloads}
         saveFallback={saveFallback}
         progressPhase={progressView?.phase}
+        waitingForAutoDownload={waitingForAutoDownload}
       />
       <ZipBackgroundRunner />
     </>

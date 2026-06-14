@@ -6,6 +6,7 @@ export type ZipBatchProgressPhase =
   | "upload"
   | "server_complete"
   | "device_save"
+  | "device_auto_pending"
   | "awaiting_proceed"
   | "manual_retry"
   | "paused"
@@ -99,9 +100,11 @@ export function computeZipBatchProgressView(
   }
 
   if (task.awaitingProceed) {
-    const { completedBatchIndex, nextBatchIndex, totalBatches: tb, savedVia } =
+    const { completedBatchIndex, nextBatchIndex, totalBatches: tb, savedVia, readyForConfirmAt } =
       task.awaitingProceed;
     const via = savedVia === "save-picker" ? "disimpan via dialog" : "unduhan browser";
+    const waitingConfirm =
+      readyForConfirmAt != null && readyForConfirmAt > Date.now();
     if (task.downloadsPaused) {
       return {
         currentBatchIndex: completedBatchIndex,
@@ -109,6 +112,16 @@ export function computeZipBatchProgressView(
         phase: "paused",
         percent: 100,
         label: `Batch ${completedBatchIndex}/${tb} selesai (${via}) — dijeda`,
+        batchesCompletedOnDevice: completedOnDevice,
+      };
+    }
+    if (waitingConfirm) {
+      return {
+        currentBatchIndex: completedBatchIndex,
+        totalBatches: tb,
+        phase: "device_auto_pending",
+        percent: 100,
+        label: `Batch ${completedBatchIndex}/${tb} — 100%. Tunggu sebentar, file akan masuk secara otomatis...`,
         batchesCompletedOnDevice: completedOnDevice,
       };
     }
@@ -145,7 +158,7 @@ export function computeZipBatchProgressView(
       totalBatches: tb,
       phase: "device_save",
       percent: 100,
-      label: `Batch ${idx}/${tb} — menyimpan ke laptop...`,
+      label: `Batch ${idx}/${tb} — 100%. Tunggu sebentar, file akan masuk secara otomatis...`,
       batchesCompletedOnDevice: completedOnDevice,
     };
   }
@@ -172,7 +185,7 @@ export function computeZipBatchProgressView(
       totalBatches: readyToDownload.totalBatches || totalBatches,
       phase: "server_complete",
       percent: 100,
-      label: `Batch ${readyToDownload.batchIndex}/${readyToDownload.totalBatches || totalBatches} — selesai di R2 ✓, unduh otomatis...`,
+      label: `Batch ${readyToDownload.batchIndex}/${readyToDownload.totalBatches || totalBatches} — 100% di R2 ✓. Tunggu sebentar, file akan masuk secara otomatis...`,
       batchesCompletedOnDevice: completedOnDevice,
     };
   }

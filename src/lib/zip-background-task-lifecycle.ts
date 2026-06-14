@@ -72,9 +72,11 @@ export function cancelZipBackgroundMonitoringAndReset(resetDownload?: () => void
 
 /** Admin confirmed batch file is on device — mark complete and allow next batch. */
 export function confirmZipBatchProceed(): boolean {
+  let confirmed = false;
   const task = updateZipBackgroundTask((t) => {
     if (!t?.awaitingProceed) return t;
-    const { completedBatchIndex } = t.awaitingProceed;
+    confirmed = true;
+    const { completedBatchIndex, nextBatchIndex, totalBatches } = t.awaitingProceed;
     const downloads = (t.downloads ?? []).map((d) =>
       d.batchIndex === completedBatchIndex
         ? { ...d, downloaded: true, pendingSaveConfirm: false, downloadInFlight: false }
@@ -88,12 +90,18 @@ export function confirmZipBatchProceed(): boolean {
       downloads,
       awaitingProceed: undefined,
       downloadsPaused: false,
+      downloadInFlight: false,
+      activeDeviceBatchIndex: undefined,
       updatedAt: Date.now(),
     };
     auditConfirmedBatch(merged, completedBatchIndex);
-    return applyBatchProgressToTask(merged);
+    const nextLabel =
+      nextBatchIndex != null
+        ? `Batch ${nextBatchIndex}/${totalBatches} — melanjutkan ke server...`
+        : `Selesai — semua ${totalBatches} batch dikonfirmasi`;
+    return applyBatchProgressToTask(merged, nextLabel);
   });
-  if (!task) return false;
+  if (!confirmed || !task) return false;
   dispatchZipBatchProceed();
   return true;
 }
@@ -137,11 +145,13 @@ function applyBatchSaveSuccess(
   savedBytes: number
 ): ZipBackgroundTask {
   const part = task.downloads?.find((d) => d.batchIndex === batchIndex);
+  if (part?.downloaded) return task;
   const totalBatches = part?.totalBatches ?? task.downloads?.[0]?.totalBatches ?? 1;
   const nextBatchIndex = batchIndex < totalBatches ? batchIndex + 1 : null;
+  const now = Date.now();
   const downloads = (task.downloads ?? []).map((d) =>
     d.batchIndex === batchIndex
-      ? { ...d, downloadInFlight: false, pendingSaveConfirm: true }
+      ? { ...d, downloadInFlight: false, pendingSaveConfirm: true, autoDownloadTriggered: true }
       : { ...d, downloadInFlight: false }
   );
   return applyBatchProgressToTask({
@@ -155,9 +165,10 @@ function applyBatchSaveSuccess(
       totalBatches,
       savedVia,
       savedBytes,
+      readyForConfirmAt: now,
     },
     downloadsPaused: false,
-    updatedAt: Date.now(),
+    updatedAt: now,
   });
 }
 
@@ -221,6 +232,8 @@ export async function saveZipBatchToDevice(batchIndex: number): Promise<boolean>
 
   updateZipBackgroundTask((t) => {
     if (!t) return t;
+    const part = t.downloads?.find((d) => d.batchIndex === batchIndex);
+    if (part?.downloaded) return t;
     return applyBatchSaveSuccess(t, batchIndex, result.method, result.bytes);
   });
   return true;
