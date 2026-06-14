@@ -168,11 +168,9 @@ export async function saveZipBatchToDevice(batchIndex: number): Promise<boolean>
   const task = readZipBackgroundTask();
   if (!task?.jobId) return false;
   const part = task.downloads?.find((d) => d.batchIndex === batchIndex);
-  if (!part?.download_url?.trim()) {
+  if (!part?.download_url?.trim() && !part?.r2Key?.trim()) {
     return false;
   }
-
-  dispatchZipMonitoringAbort();
 
   updateZipBackgroundTask((t) => {
     if (!t) return t;
@@ -217,7 +215,6 @@ export async function saveZipBatchToDevice(batchIndex: number): Promise<boolean>
     if (!t) return t;
     return applyBatchSaveSuccess(t, batchIndex, result.method, result.bytes);
   });
-  dispatchZipBatchProceed();
   return true;
 }
 

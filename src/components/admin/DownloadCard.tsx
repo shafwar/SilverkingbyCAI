@@ -67,7 +67,11 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
   saveFallback,
 }) => {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const hasBatches = Array.isArray(zipBatches) && zipBatches.length > 1;
+  const totalBatchesHint = zipBatches?.[0]?.totalBatches ?? zipBatches?.length ?? 0;
+  const hasBatches =
+    Array.isArray(zipBatches) &&
+    zipBatches.length > 0 &&
+    (totalBatchesHint > 1 || zipBatches.length > 1);
   const downloadedBatchCount = hasBatches
     ? zipBatches!.filter((b) => b.downloaded).length
     : 0;

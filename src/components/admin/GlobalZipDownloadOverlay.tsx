@@ -103,7 +103,11 @@ export function GlobalZipDownloadOverlay() {
 
   const showCard = downloadState.percent !== null || task != null;
 
-  const chunked = task ? isChunkedZipResult(task) : false;
+  const chunked = task
+    ? task.chunked === true ||
+      (task.downloads?.[0]?.totalBatches ?? 0) > 1 ||
+      isChunkedZipResult(task)
+    : false;
   const allChunkedOnDevice =
     !task?.downloads?.length || task.downloads.every((d) => d.downloaded);
   const zipOnDevice = task
@@ -189,7 +193,7 @@ export function GlobalZipDownloadOverlay() {
       task.downloads?.find((d) => d.downloadInFlight)?.batchIndex;
     if (activeIdx == null) return null;
     const part = task.downloads?.find((d) => d.batchIndex === activeIdx);
-    if (!part?.download_url?.trim()) return null;
+    if (!part?.download_url?.trim() && !part?.r2Key?.trim()) return null;
     return {
       batchIndex: activeIdx,
       totalBatches: part.totalBatches || task.downloads?.[0]?.totalBatches || 1,
