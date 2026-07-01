@@ -1,23 +1,13 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Navbar from "@/components/layout/Navbar";
-import { useMerchStylePageHero } from "@/hooks/useMerchStylePageHero";
-import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
+import { CmsPageHeroBackground } from "@/components/hero/CmsPageHeroBackground";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
-import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
-import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
-import {
-  DEFAULT_HERO_POSTER,
-  HERO_PLACEHOLDER_BG,
-  HERO_MEDIA_SHELL_STYLE,
-  HERO_VIDEO_COVER_STYLE,
-  HERO_VIDEO_MERCH_PATTERN,
-} from "@/lib/hero-media-defaults";
-import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
+import { HERO_PLACEHOLDER_BG } from "@/lib/hero-media-defaults";
 import { ScrollRevealSection } from "@/components/shared/ScrollRevealSection";
 import { motion } from "framer-motion";
 import { ArrowRight, BookOpen, Pencil, Plus, Trash2 } from "lucide-react";
@@ -80,39 +70,16 @@ type AdminJournalItem = {
   publishedAt: string | null;
 };
 
-export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl }: JournalPageClientProps) {
+export default function JournalPageClient(_props: JournalPageClientProps) {
   const t = useTranslations("journal");
   const locale = useLocale();
   const isAdmin = useIsAdmin();
   const [items, setItems] = useState<JournalItem[]>([]);
   const [adminItems, setAdminItems] = useState<AdminJournalItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [heroImageError, setHeroImageError] = useState(false);
-  const [heroVideoError, setHeroVideoError] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const journalHeroVideoRef = useRef<HTMLVideoElement>(null);
   useReliableVideoAutoplay(journalHeroVideoRef, { mode: "background" });
-  const {
-    pageSections,
-    heroMediaType,
-    heroMediaUrl,
-    heroVideoPlayUrl,
-    heroPosterUrl,
-    heroVersion,
-    refetchPageSections,
-  } = useMerchStylePageHero("journal", {
-    initialHeroUrl: initialHeroUrl,
-    initialHeroMediaType: initialHeroMediaType,
-  });
-  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
-  const shouldRenderVideo = heroMediaType === "VIDEO" && !heroVideoError;
-
-  // When hero media changes (admin edit), reset error flags so new asset can show.
-  useEffect(() => {
-    setHeroImageError(false);
-    setHeroVideoError(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageSections.hero?.url, pageSections.hero?.mediaType, pageSections.hero?.version]);
 
   useEffect(() => {
     let cancelled = false;
@@ -211,42 +178,11 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
           className="absolute inset-0 z-0"
           style={{ background: HERO_PLACEHOLDER_BG }}
         />
-        <div className="absolute inset-0 z-10 overflow-hidden" style={HERO_MEDIA_SHELL_STYLE}>
-          {shouldRenderVideo ? (
-            <div className="absolute inset-0">
-              <VideoLoadGuard
-                ref={journalHeroVideoRef}
-                key={`journal-hero-${heroVideoPlayUrl}-${heroVersion ?? 0}`}
-                url={heroVideoPlayUrl}
-                version={heroVersion}
-                posterUrl={heroPosterUrl}
-                forcePoster={!shouldLoadHeroVideo}
-                {...HERO_VIDEO_MERCH_PATTERN}
-                containerClassName="absolute inset-0 h-full w-full"
-                className="absolute inset-0 h-full w-full object-cover"
-                style={HERO_VIDEO_COVER_STYLE}
-                autoPlay
-                loop
-                muted
-                playsInline
-                preload="auto"
-                onError={() => setHeroVideoError(true)}
-              />
-            </div>
-          ) : heroMediaType === "IMAGE" ? (
-            <ImageLoadGuard
-              key={heroMediaUrl}
-              url={heroImageError ? initialHeroUrl : heroMediaUrl}
-              version={heroVersion}
-              containerClassName="absolute inset-0 h-full w-full"
-              className="absolute inset-0 h-full w-full object-cover"
-              style={{ objectFit: "cover" }}
-              alt=""
-              priority
-              onError={() => setHeroImageError(true)}
-            />
-          ) : null}
-        </div>
+        <CmsPageHeroBackground
+          ref={journalHeroVideoRef}
+          page="journal"
+          containerClassName="absolute inset-0 z-10 h-full w-full"
+        />
         <div
           className="absolute inset-0 z-[11] pointer-events-none"
           style={{
@@ -264,15 +200,6 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
       </div>
 
       <Navbar />
-
-      <HeroEditPortal
-        page="journal"
-        section="hero"
-        type="video"
-        onUploadDone={refetchPageSections}
-        performanceMode="deferred"
-        editLabel="Edit hero"
-      />
 
       {/* Hero section */}
       <section className="relative flex min-h-screen flex-col justify-center px-4 pt-24 pb-16 sm:px-6 md:px-8">

@@ -7,6 +7,14 @@ export const DEFAULT_HERO_POSTER = "/images/hero-fallback.jpg";
 export const HERO_PLACEHOLDER_BG =
   "linear-gradient(180deg, #080808 0%, #050505 50%, #030303 100%), radial-gradient(ellipse 80% 60% at 50% 40%, rgba(212,175,55,0.05) 0%, transparent 55%)";
 
+/**
+ * Home hero vignette — pure CSS overlay (no JS). Darkens edges + left for headline readability.
+ */
+export const HOME_HERO_VIGNETTE_BG = [
+  "linear-gradient(90deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.18) 48%, transparent 76%)",
+  "linear-gradient(180deg, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.14) 42%, rgba(0,0,0,0.4) 68%, rgba(0,0,0,0.78) 100%)",
+].join(", ");
+
 /** CMS poster or same-origin fallback — merchandise first-paint pattern. */
 export function resolveHeroPoster(cmsPosterUrl?: string | null): string {
   const trimmed = cmsPosterUrl?.trim();

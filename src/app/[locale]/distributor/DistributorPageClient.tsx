@@ -5,24 +5,14 @@ import { createPortal } from "react-dom";
 import Navbar from "@/components/layout/Navbar";
 import { DistributorCard, type DistributorItem } from "@/components/distributor/DistributorCard";
 import { DistributorForm } from "@/components/admin/DistributorForm";
-import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
+import { CmsPageHeroBackground } from "@/components/hero/CmsPageHeroBackground";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Plus, X } from "lucide-react";
-import { useMerchStylePageHero } from "@/hooks/useMerchStylePageHero";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
-import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
-import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
-import {
-  DEFAULT_HERO_POSTER,
-  HERO_PLACEHOLDER_BG,
-  HERO_MEDIA_SHELL_STYLE,
-  HERO_VIDEO_COVER_STYLE,
-  HERO_VIDEO_MERCH_PATTERN,
-  HERO_VIDEO_POINTER_STYLE,
-} from "@/lib/hero-media-defaults";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { HERO_PLACEHOLDER_BG, HERO_MEDIA_SHELL_STYLE } from "@/lib/hero-media-defaults";
 import { PageFooter } from "@/components/footer/PageFooter";
-import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
@@ -36,8 +26,6 @@ const fontDistributor = Plus_Jakarta_Sans({
   variable: "--font-distributor",
   display: "swap",
 });
-
-const HERO_FALLBACK_PATH = DEFAULT_HERO_POSTER;
 
 const revealVariants: Variants = {
   initial: { opacity: 0, y: 48 },
@@ -69,27 +57,10 @@ export default function DistributorPageClient({
   const t = useTranslations("distributor");
   const [distributors, setDistributors] = useState<DistributorItem[]>(initialDistributors);
   const [loading, setLoading] = useState(initialDistributors.length === 0);
-  const [heroImageError, setHeroImageError] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = useIsAdmin();
   const [modalOpen, setModalOpen] = useState(false);
-  const {
-    pageSections,
-    heroMediaType,
-    heroMediaUrl,
-    heroVideoPlayUrl,
-    heroPosterUrl,
-    heroVersion,
-    refetchPageSections,
-  } = useMerchStylePageHero("distributor", {
-    initialHeroUrl: initialHeroImageUrl,
-    initialHeroMediaType: "IMAGE",
-  });
   const distributorHeroVideoRef = useRef<HTMLVideoElement | null>(null);
   useReliableVideoAutoplay(distributorHeroVideoRef, { mode: "background" });
-  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
-  const displayHeroUrl = heroImageError ? HERO_FALLBACK_PATH : heroMediaUrl;
-  const displayHeroMediaType = heroMediaType;
-  const displayHeroVideoUrl = heroVideoPlayUrl;
   const [editing, setEditing] = useState<DistributorItem | null>(null);
   const [saving, setSaving] = useState(false);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -135,24 +106,6 @@ export default function DistributorPageClient({
       cancelled = true;
     };
   }, [initialDistributors.length]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const loadAdmin = async () => {
-      try {
-        const res = await fetch("/api/admin/me");
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled && data?.isAdmin) setIsAdmin(true);
-      } catch {
-        // silent
-      }
-    };
-    void loadAdmin();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     if (!modalOpen) return;
@@ -272,36 +225,11 @@ export default function DistributorPageClient({
 
         {/* Hero: show image immediately (initialHeroImageUrl) so no black flash; CMS overlay when sections load */}
         <div className="absolute inset-[-6%] z-10 scale-90 md:scale-100 md:inset-0 origin-center overflow-hidden" style={HERO_MEDIA_SHELL_STYLE}>
-          {displayHeroMediaType === "VIDEO" ? (
-            <VideoLoadGuard
-              key={`dist-hero-${displayHeroVideoUrl}-${heroVersion ?? 0}`}
-              ref={distributorHeroVideoRef}
-              url={displayHeroVideoUrl}
-              version={heroVersion}
-              posterUrl={heroPosterUrl}
-              forcePoster={!shouldLoadHeroVideo}
-              {...HERO_VIDEO_MERCH_PATTERN}
-              containerClassName="absolute inset-0 w-full h-full"
-              className="absolute inset-0 w-full h-full object-cover"
-              style={HERO_VIDEO_COVER_STYLE}
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="auto"
-            />
-          ) : (
-            <ImageLoadGuard
-              url={displayHeroUrl}
-              version={heroVersion}
-              containerClassName="absolute inset-0 w-full h-full"
-              className="absolute inset-0 w-full h-full object-cover"
-              style={{ objectFit: "cover" }}
-            alt=""
-            priority
-            onError={() => setHeroImageError(true)}
+          <CmsPageHeroBackground
+            ref={distributorHeroVideoRef}
+            page="distributor"
+            containerClassName="absolute inset-0 w-full h-full"
           />
-          )}
         </div>
         {/* Overlay: darker center so title/subtitle don't clash with hero image; readable everywhere */}
         <div
@@ -320,16 +248,6 @@ export default function DistributorPageClient({
       </div>
 
       <Navbar />
-
-      {/* Hero edit: same pattern as Home (portal + delay, same Replace image pop-up) */}
-      <HeroEditPortal
-        page="distributor"
-        section="hero"
-        type="image"
-        onUploadDone={refetchPageSections}
-        performanceMode="deferred"
-        editLabel="Edit photo"
-      />
 
       {/* Hero Section – centered text so it doesn't clash with hero image; overlay keeps it readable */}
       <section className="relative flex h-screen min-h-0 flex-col justify-center overflow-hidden">

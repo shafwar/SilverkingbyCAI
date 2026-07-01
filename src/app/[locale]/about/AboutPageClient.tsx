@@ -7,15 +7,11 @@ import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { usePauseBackgroundVideoOnScrollAndHidden } from "@/hooks/usePauseBackgroundVideoOnScrollAndHidden";
-import { useMerchStylePageHero } from "@/hooks/useMerchStylePageHero";
+import { usePageHeroCms } from "@/hooks/usePageHeroCms";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
-import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
-import {
-  HERO_PLACEHOLDER_BG,
-  HERO_VIDEO_MERCH_PATTERN,
-  HERO_VIDEO_POINTER_STYLE,
-} from "@/lib/hero-media-defaults";
-import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
+import { CmsPageHeroBackground } from "@/components/hero/CmsPageHeroBackground";
+import { HERO_PLACEHOLDER_BG } from "@/lib/hero-media-defaults";
+import { MerchStyleHeroCopy } from "@/components/layout/MerchStyleHeroCopy";
 import { PageLoadingSkeleton } from "@/components/ui/PageLoadingSkeleton";
 // Lazy load CertificateCard to improve initial page load
 const CertificateCard = dynamic(() => import("@/components/ui/CertificateCard"), {
@@ -118,20 +114,11 @@ export default function AboutPageClient() {
   const tNav = useTranslations("nav");
   const locale = useLocale();
   const pageRef = useRef<HTMLDivElement | null>(null);
-  const heroRef = useRef<HTMLDivElement | null>(null);
   const noiseOverlay = useRef<HTMLDivElement | null>(null);
   const gradientOverlay = useRef<HTMLDivElement | null>(null);
   const heroVideoRef = useRef<HTMLVideoElement | null>(null);
   const holdHeroVideoPausedRef = useRef(false);
-  const {
-    pageSections,
-    heroMediaType,
-    heroMediaUrl,
-    heroVideoPlayUrl,
-    heroPosterUrl,
-    heroVersion,
-    refetchPageSections,
-  } = useMerchStylePageHero("about");
+  const { heroMediaType } = usePageHeroCms("about");
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
   // Ensure about-page hero video autoplays reliably on all devices
@@ -252,74 +239,23 @@ export default function AboutPageClient() {
       {/* Hero: fixed fullscreen — attach src immediately + preload for fast visible playback */}
       <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
         <div className="absolute inset-0 z-0" style={{ background: HERO_PLACEHOLDER_BG }} aria-hidden />
-        {heroMediaType === "VIDEO" ? (
-          <VideoLoadGuard
-            key={`about-hero-${heroVideoPlayUrl}-${heroVersion ?? 0}`}
-            ref={heroVideoRef}
-            url={heroVideoPlayUrl}
-            version={heroVersion}
-            posterUrl={heroPosterUrl}
-            forcePoster={!shouldLoadHeroVideo}
-            {...HERO_VIDEO_MERCH_PATTERN}
-            containerClassName="absolute inset-0 z-10 h-full w-full"
-            className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
-            style={HERO_VIDEO_POINTER_STYLE}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            disablePictureInPicture
-            disableRemotePlayback
-            onContextMenu={(e) => e.preventDefault()}
-            onPlay={(e) => {
-              const video = e.currentTarget;
-              if (video.paused) video.play().catch(() => {});
-            }}
-          />
-        ) : (
-          <ImageLoadGuard
-            url={heroMediaUrl}
-            version={heroVersion}
-            containerClassName="absolute inset-0 z-10 h-full w-full"
-            className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
-            style={{ pointerEvents: "none" }}
-            alt=""
-            priority
-          />
-        )}
+        <CmsPageHeroBackground
+          ref={heroVideoRef}
+          page="about"
+          containerClassName="absolute inset-0 z-10 h-full w-full"
+        />
         <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
       </div>
 
-      {/* Hero edit: same pattern as Home (portal + delay, same Replace video pop-up) */}
-      <HeroEditPortal
-        page="about"
-        section="hero"
-        type="video"
-        onUploadDone={refetchPageSections}
-        performanceMode="deferred"
-        editLabel="Edit video"
-      />
-
-      {/* Hero Section – same size & layout as Distributor (min-h-screen, left-aligned, scroll button) */}
-      <section className="relative flex min-h-screen items-center justify-start overflow-hidden">
-        <div className="relative z-20 w-full text-left pl-4 sm:pl-6 md:pl-8 lg:pl-12 xl:pl-16 2xl:pl-20 pr-4 sm:pr-6 md:pr-8 lg:pr-12">
-          {/* Static hero copy (no scroll-reveal opacity:0) so LCP can paint headline/subtitle immediately */}
-          <div ref={heroRef} className="space-y-6 sm:space-y-8 max-w-4xl">
-            <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-6 py-2 text-[12px] uppercase tracking-[0.45em] text-luxury-silver/60 backdrop-blur w-fit">
-              <span className="h-1 w-1 rounded-full bg-luxury-gold" />
-              {t("hero.badge")}
-              <span className="h-1 w-1 rounded-full bg-luxury-gold" />
-            </div>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-semibold md:font-bold leading-[1.1] tracking-tight text-white drop-shadow-sm">
-              {t("hero.title")}
-            </h1>
-            <p className="text-base sm:text-lg md:text-xl font-sans font-light leading-relaxed text-luxury-silver/90 max-w-2xl">
-              {t("hero.subtitle")}
-            </p>
-          </div>
-        </div>
-        {/* Scroll indicator – same as Distributor */}
+      {/* Hero Section — merchandise-style centered copy */}
+      <section className="relative min-h-[100dvh] overflow-hidden">
+        <MerchStyleHeroCopy
+          layout="upper"
+          title={t("hero.title")}
+          subtitle={t("hero.subtitle")}
+          secondarySubtitle={t("hero.secondarySubtitle")}
+          tagline={t("hero.tagline")}
+        />
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-3 pointer-events-none">
           <div className="relative w-5 h-8 border border-white/50 rounded-full flex items-start justify-center pt-2.5">
             <div className="w-1 h-1.5 bg-white/70 rounded-full" />

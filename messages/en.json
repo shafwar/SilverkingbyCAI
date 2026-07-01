@@ -47,22 +47,22 @@
       "headline4": "value.",
       "headline5": "Pure",
       "headline6": "precision.",
-      "subtitle": "Expert manufacturing of <gold>gold, silver, and palladium</gold> products. <custom>Custom bar fabrication</custom>, uncompromising purity, and <qr>QR-verified authenticity</qr>, redefining trust in precious metals.",
+      "subtitle": "Expert manufacturing of <gold>gold, silver, and palladium</gold> products. <custom>Custom bar fabrication</custom>, uncompromising purity, and <qr>QR verified authenticity</qr>, redefining trust in precious metals.",
       "features": {
         "chainOfCustody": {
-          "label": "Chain-of-Custody",
-          "title": "Ledger-locked traceability",
+          "label": "Chain of Custody",
+          "title": "Ledger locked traceability",
           "body": "Every gram is recorded with encrypted QR seals and mirrored audit trails."
         },
         "purityLab": {
           "label": "Purity Lab",
-          "title": "Spectrometry-backed assurance",
-          "body": "In-house molecular testing calibrates bullion batches to bespoke tolerances."
+          "title": "Spectrometry backed assurance",
+          "body": "In house molecular testing calibrates bullion batches to bespoke tolerances."
         },
         "globalTrust": {
           "label": "Global Trust",
           "title": "ISO 9001",
-          "body": "Audited facilities, transparent compliance, concierge-level documentation."
+          "body": "Audited facilities, transparent compliance, concierge level documentation."
         }
       },
       "qrCard": {
@@ -81,9 +81,10 @@
     "title": "Craft from raw bullion",
     "description": "We transform responsibly sourced gold, silver, and palladium into investment-grade bars using tightly controlled refining and casting lines.",
     "hero": {
-      "title": "Engineering the lifecycle",
-      "titleBold": "of every Silver King bar.",
-      "subtitle": "From ore selection and purification to serial coding, QR sealing, and verification, we choreograph each step so every bar carries a verifiable story of origin and custody."
+      "title": "What We Do",
+      "subtitle": "The full lifecycle of every Silver King bar",
+      "secondarySubtitle": "From refining and casting to serial coding, QR sealing, and verification.",
+      "tagline": "Precision you can trace. Trust you can verify."
     },
     "card1": {
       "label": "Gold fabrication lines",
@@ -154,6 +155,13 @@
     "authenticateYour": "Authenticate Your",
     "silverKingBar": "Silver King Bar",
     "heroDescription": "Scan the QR code or enter serial number to verify authenticity and view provenance details",
+    "hero": {
+      "title": "Authenticate Your",
+      "titleBold": "Silver King Bar",
+      "subtitle": "Scan the QR code or enter your serial number",
+      "secondarySubtitle": "to verify authenticity and view provenance details.",
+      "tagline": "Instant verification. Complete traceability."
+    },
     "scanQR": "Scan QR Code",
     "or": "or",
     "enterSerial": "Enter Serial",
@@ -207,9 +215,10 @@
     "title": "Products",
     "description": "Browse our collection of premium precious metal products.",
     "hero": {
-      "title": "Premium",
-      "titleBold": "Precious Metals",
-      "subtitle": "Investment-grade bars crafted with uncompromising precision and verified authenticity."
+      "title": "Products",
+      "subtitle": "Investment grade precious metal bars",
+      "secondarySubtitle": "Gold, silver, and palladium, certified, serialized, and QR verified.",
+      "tagline": "Premium quality. Verified authenticity."
     },
     "explore": "Explore our collection",
     "hoverToView": "Hover to view products",
@@ -313,7 +322,7 @@
     "hero": {
       "title": "Merchandise",
       "subtitle": "Official Silver King by CAI apparel",
-      "subtitleProducts": "Polo, Knitware, T-Shirts & Caps.",
+      "subtitleProducts": "Polo, Knitware, T Shirts & Caps.",
       "tagline": "Premium quality, timeless style."
     },
     "sections": {
@@ -405,7 +414,9 @@
     "hero": {
       "badge": "Est. 2024",
       "title": "The Legacy",
-      "subtitle": "Crafting excellence in precious metals since 2024 with uncompromising precision and ground-breaking verification technology."
+      "subtitle": "Crafting excellence in precious metals since 2024",
+      "secondarySubtitle": "Uncompromising precision and groundbreaking verification technology.",
+      "tagline": "Est. 2024"
     },
     "whyChoose": {
       "title": "Why Choose",
@@ -571,6 +582,7 @@
     "products": "Products",
     "distributor": "Distributor",
     "content": "Content",
+    "heroAssetsNav": "Hero assets",
     "journalNav": "News & journal",
     "serticardNav": "Serticard",
     "logout": "Logout",
@@ -853,6 +865,29 @@
       "saving": "Saving…",
       "saveFailed": "Failed to save",
       "deleteFailed": "Failed to delete"
+    },
+    "heroAssets": {
+      "eyebrow": "Website media",
+      "title": "Hero assets",
+      "description": "Upload hero video or photo per page. Files are compressed, stored on Cloudflare R2, and served via CDN. The public site keeps fast static fallbacks until CMS media loads.",
+      "hint": "Video max 20 MB · Photo max 3 MB. Video uploads are re-encoded for web (H.264) and a WebP poster is generated automatically. Restore default removes CMS override only.",
+      "refresh": "Refresh",
+      "loading": "Loading hero assets…",
+      "loadError": "Could not load hero assets.",
+      "uploadVideo": "Upload video",
+      "uploadPhoto": "Upload photo",
+      "uploading": "Uploading…",
+      "uploadSuccess": "Hero asset uploaded to R2.",
+      "uploadError": "Upload failed. Check file size and format.",
+      "restoreDefault": "Restore default",
+      "restoring": "Restoring…",
+      "restoreSuccess": "Default hero restored.",
+      "restoreError": "Could not restore default.",
+      "restoreConfirm": "Remove CMS hero and use the built-in default asset?",
+      "badgeCms": "CMS active",
+      "badgeDefault": "Default",
+      "typeVideo": "Video hero",
+      "typeImage": "Photo hero"
     },
     "contentDetail": {
       "title": "Content (Bilingual)",

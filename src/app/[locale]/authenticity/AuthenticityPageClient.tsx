@@ -25,20 +25,12 @@ import Navbar from "@/components/layout/Navbar";
 import { Scanner } from "@/components/shared/Scanner";
 import { useRouter } from "next/navigation";
 import { APP_NAME } from "@/utils/constants";
-import { getR2UrlClient } from "@/utils/r2-url";
-import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
-import { useMerchStylePageHero } from "@/hooks/useMerchStylePageHero";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
-import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
-import {
-  DEFAULT_HERO_POSTER,
-  HERO_PLACEHOLDER_BG,
-  HERO_VIDEO_COVER_STYLE,
-  HERO_VIDEO_MERCH_PATTERN,
-  HERO_VIDEO_POINTER_STYLE,
-} from "@/lib/hero-media-defaults";
-import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
+import { usePauseBackgroundVideoOnScrollAndHidden } from "@/hooks/usePauseBackgroundVideoOnScrollAndHidden";
+import { CmsPageHeroBackground } from "@/components/hero/CmsPageHeroBackground";
+import { HERO_PLACEHOLDER_BG } from "@/lib/hero-media-defaults";
+import { MerchStyleHeroCopy } from "@/components/layout/MerchStyleHeroCopy";
 import { ModalPortal } from "@/components/ui/ModalPortal";
 
 // workflowSteps will be created inside AuthenticityPage component using translations
@@ -297,19 +289,14 @@ export default function AuthenticityPageClient() {
   const [showManualInput, setShowManualInput] = useState(false);
   const [serialNumber, setSerialNumber] = useState("");
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
-  const heroRef = useRef<HTMLDivElement | null>(null);
+  const particlesRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const router = useRouter();
-  const {
-    pageSections,
-    heroMediaType,
-    heroMediaUrl,
-    heroVideoPlayUrl,
-    heroPosterUrl,
-    heroVersion,
-    refetchPageSections,
-  } = useMerchStylePageHero("authenticity");
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
+  usePauseBackgroundVideoOnScrollAndHidden(videoRef, {
+    enabled: shouldLoadHeroVideo,
+    scrollPastVH: 0.42,
+  });
 
   // Register ScrollTrigger only on the client to avoid SSR/window issues
   useEffect(() => {
@@ -326,24 +313,11 @@ export default function AuthenticityPageClient() {
 
   useGSAP(
     () => {
-      if (!heroRef.current) return;
+      if (!particlesRef.current) return;
 
       try {
         const ctx = gsap.context(() => {
-          gsap.fromTo(
-            heroRef.current?.querySelectorAll("[data-hero]") || [],
-            { opacity: 0, y: 40 },
-            {
-              opacity: 1,
-              y: 0,
-              duration: 1,
-              stagger: 0.1,
-              ease: "power2.out",
-            }
-          );
-
-          // Minimal floating particles animation
-          const particles = heroRef.current?.querySelectorAll("[data-particle]");
+          const particles = particlesRef.current?.querySelectorAll("[data-particle]");
           if (particles) {
             particles.forEach((particle, index) => {
               gsap.to(particle, {
@@ -357,14 +331,14 @@ export default function AuthenticityPageClient() {
               });
             });
           }
-        }, heroRef);
+        }, particlesRef);
 
         return () => ctx.revert();
       } catch (error) {
         console.error("GSAP animation error:", error);
       }
     },
-    { scope: heroRef }
+    { scope: particlesRef }
   );
 
   // Video loaded state - autoplay is handled by useReliableVideoAutoplay hook
@@ -515,43 +489,16 @@ export default function AuthenticityPageClient() {
       {/* Hero background media — fixed behind content */}
       <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
         <div className="absolute inset-0 z-0" style={{ background: HERO_PLACEHOLDER_BG }} aria-hidden />
-        {heroMediaType === "VIDEO" ? (
-          <VideoLoadGuard
-            key={`auth-hero-${heroVideoPlayUrl}-${heroVersion ?? 0}`}
-            ref={videoRef}
-            url={heroVideoPlayUrl}
-            version={heroVersion}
-            posterUrl={heroPosterUrl}
-            forcePoster={!shouldLoadHeroVideo}
-            {...HERO_VIDEO_MERCH_PATTERN}
-            containerClassName="absolute inset-0 h-full w-full z-10"
-            className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
-            style={HERO_VIDEO_POINTER_STYLE}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            disablePictureInPicture
-            disableRemotePlayback
-            onContextMenu={(e) => e.preventDefault()}
-          />
-        ) : (
-          <ImageLoadGuard
-            url={heroMediaUrl}
-            version={heroVersion}
-            containerClassName="absolute inset-0 h-full w-full z-10"
-            className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
-            style={{ pointerEvents: "none" }}
-            alt=""
-            priority
-          />
-        )}
+        <CmsPageHeroBackground
+          ref={videoRef}
+          page="authenticity"
+          containerClassName="absolute inset-0 h-full w-full z-10"
+        />
         {/* Multi-layer overlays for text readability */}
         <div className="absolute inset-0 z-[11] pointer-events-none" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 35%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.35) 75%, rgba(0,0,0,0.7) 100%)" }} />
         <div className="absolute inset-0 z-[12] pointer-events-none" style={{ background: "linear-gradient(90deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.15) 50%, transparent 100%)" }} />
         {/* Subtle gold particles */}
-        <div className="absolute inset-0 pointer-events-none z-[15]">
+        <div ref={particlesRef} className="absolute inset-0 pointer-events-none z-[15]">
           {Array.from({ length: 5 }).map((_, i) => (
             <motion.div
               key={i}
@@ -566,89 +513,46 @@ export default function AuthenticityPageClient() {
         </div>
       </div>
 
-      {/* Hero edit button */}
-      <HeroEditPortal
-        page="authenticity"
-        section="hero"
-        type="video"
-        onUploadDone={refetchPageSections}
-        performanceMode="deferred"
-        editLabel="Edit video"
-      />
-
-      {/* Hero Section */}
+      {/* Hero Section — merchandise-style centered copy */}
       <section
         ref={(element) => {
-          const divElement = element as HTMLDivElement | null;
-          sectionsRef.current[0] = divElement;
-          heroRef.current = divElement;
+          sectionsRef.current[0] = element as HTMLDivElement | null;
         }}
-        className="relative flex min-h-screen flex-col justify-center overflow-hidden"
+        className="relative min-h-[100dvh] overflow-hidden"
       >
-        <div className="relative z-20 mx-auto w-full max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 xl:px-20">
-          <motion.div data-hero className="max-w-2xl space-y-7">
-            {/* Refined badge */}
-            <div data-hero className="inline-flex items-center gap-3 rounded-full border border-luxury-gold/20 bg-black/30 px-4 py-2 backdrop-blur-sm">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-luxury-gold/15">
-                <QrCode className="h-4 w-4 text-luxury-gold" />
-              </div>
-              <span className="text-[11px] font-medium uppercase tracking-[0.25em] text-luxury-gold/80">
-                {t("authenticateYour")}
-              </span>
-            </div>
+        <MerchStyleHeroCopy
+          layout="upper"
+          title={t("hero.title")}
+          titleBold={t("hero.titleBold")}
+          subtitle={t("hero.subtitle")}
+          secondarySubtitle={t("hero.secondarySubtitle")}
+          tagline={t("hero.tagline")}
+        >
+          <motion.button
+            type="button"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={handleOpenScanner}
+            className="group relative inline-flex items-center justify-center gap-2.5 overflow-hidden rounded-xl bg-gradient-to-r from-luxury-gold to-luxury-lightGold px-8 py-3.5 text-sm font-bold tracking-wide text-black transition-shadow duration-300 hover:shadow-[0_12px_32px_-8px_rgba(212,175,55,0.45)] cursor-pointer"
+          >
+            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700 pointer-events-none" />
+            <QrCode className="relative z-10 h-4 w-4" />
+            <span className="relative z-10">{t("scanQR")}</span>
+          </motion.button>
 
-            {/* Headline */}
-            <motion.h1
-              data-hero
-              className="text-4xl sm:text-5xl md:text-6xl lg:text-[4.25rem] font-sans font-bold leading-[1.08] tracking-tight text-white"
-            >
-              {t("authenticateYour")}{" "}
-              <span className="bg-gradient-to-r from-luxury-gold via-luxury-lightGold to-luxury-gold bg-clip-text text-transparent">
-                {t("silverKingBar")}
-              </span>
-            </motion.h1>
+          <span className="text-xs font-light text-white/30">{t("or")}</span>
 
-            {/* Description */}
-            <motion.p
-              data-hero
-              className="text-base sm:text-lg font-light leading-[1.75] text-white/70 max-w-xl"
-            >
-              {t("heroDescription")}
-            </motion.p>
-
-            {/* Action buttons */}
-            <motion.div
-              data-hero
-              className="flex flex-col items-start gap-3 pt-1 sm:flex-row sm:items-center sm:gap-4"
-            >
-              <motion.button
-                type="button"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={handleOpenScanner}
-                className="group relative inline-flex items-center justify-center gap-2.5 overflow-hidden rounded-xl bg-gradient-to-r from-luxury-gold to-luxury-lightGold px-8 py-3.5 text-sm font-bold tracking-wide text-black transition-shadow duration-300 hover:shadow-[0_12px_32px_-8px_rgba(212,175,55,0.45)] cursor-pointer"
-              >
-                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700 pointer-events-none" />
-                <QrCode className="relative z-10 h-4 w-4" />
-                <span className="relative z-10">{t("scanQR")}</span>
-              </motion.button>
-
-              <span className="hidden sm:inline text-xs text-white/30 font-light">{t("or")}</span>
-              <span className="sm:hidden text-xs text-white/30 font-light pl-1">{t("or")}</span>
-
-              <motion.button
-                type="button"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={handleOpenManualInput}
-                className="inline-flex items-center justify-center gap-2.5 rounded-xl border border-white/15 bg-white/[0.06] px-8 py-3.5 text-sm font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:border-white/25 hover:bg-white/[0.1] cursor-pointer"
-              >
-                <Search className="h-4 w-4" />
-                {t("enterSerial")}
-              </motion.button>
-            </motion.div>
-          </motion.div>
-        </div>
+          <motion.button
+            type="button"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={handleOpenManualInput}
+            className="inline-flex items-center justify-center gap-2.5 rounded-xl border border-white/15 bg-white/[0.06] px-8 py-3.5 text-sm font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:border-white/25 hover:bg-white/[0.1] cursor-pointer"
+          >
+            <Search className="h-4 w-4" />
+            {t("enterSerial")}
+          </motion.button>
+        </MerchStyleHeroCopy>
 
         {/* Bottom area: scroll indicator + "Learn process" */}
         <div className="absolute bottom-10 inset-x-0 z-30 flex flex-col items-center gap-3 pointer-events-auto">

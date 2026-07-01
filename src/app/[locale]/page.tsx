@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { generatePageMetadata } from "@/lib/seo";
+import { ServerHeroSeo } from "@/components/seo/ServerHeroSeo";
 import HomePageClient from "./HomePageClient";
 
 /** ISR shell lets CDN/origin reuse HTML between rebuilds — client hero still loads from CMS APIs */
@@ -18,7 +19,7 @@ export async function generateMetadata({
     title: t("title") || "Silver King by CAI",
     description:
       t("hero.subtitle") ||
-      "Expert manufacturing of gold, silver, and palladium products. Custom bar fabrication, uncompromising purity, and QR-verified authenticity, redefining trust in precious metals.",
+      "Expert manufacturing of gold, silver, and palladium products. Custom bar fabrication, uncompromising purity, and QR verified authenticity, redefining trust in precious metals.",
     path: "",
     locale,
     keywords: [
@@ -34,10 +35,12 @@ export async function generateMetadata({
   });
 }
 
-export default function HomePage() {
+export default async function HomePage({ params }: { params: { locale: string } }) {
+  const { locale } = params;
   return (
     <>
-      <link rel="preload" href="/images/hero-fallback.jpg" as="image" fetchPriority="high" />
+      <link rel="preload" href="/images/home/home-hero-poster.webp" as="image" fetchPriority="high" />
+      <ServerHeroSeo locale={locale} namespace="home" homeHeadlines subtitleKey="hero.subtitle" taglineKey="" />
       <HomePageClient />
     </>
   );

@@ -7,7 +7,6 @@ import { Pencil, RotateCcw } from "lucide-react";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { usePageSections, getCacheBustedMediaUrl } from "@/hooks/usePageSections";
 import { getR2UrlClient } from "@/utils/r2-url";
-import { useHomeHeroSectionsContext } from "@/components/layout/HomeHeroSectionsContext";
 import { VideoLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import {
@@ -73,15 +72,8 @@ export function EditableMedia({
   reduceOverlayChromeCost = false,
 }: EditableMediaProps) {
   const isAdmin = useIsAdmin();
-  const homeHeroCtx = useHomeHeroSectionsContext();
-  const skipInternalPageFetch = Boolean(
-    overlayOnly && page === "home" && homeHeroCtx != null
-  );
-  const pageKeyForSections = skipInternalPageFetch ? "" : page;
-  const { sections: hookSections, loading: sectionsLoading, refetch: hookRefetch } =
-    usePageSections(pageKeyForSections);
-  const sections = skipInternalPageFetch && homeHeroCtx ? homeHeroCtx.sections : hookSections;
-  const refetchPageSections = skipInternalPageFetch && homeHeroCtx ? homeHeroCtx.refetch : hookRefetch;
+  const { sections, loading: sectionsLoading, refetch: refetchPageSections } =
+    usePageSections(page);
   const refetchAll = async () => {
     await refetchPageSections();
     onUploadDone?.();

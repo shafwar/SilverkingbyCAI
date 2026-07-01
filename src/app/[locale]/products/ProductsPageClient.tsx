@@ -14,18 +14,12 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import ProductModal, { type Product } from "@/components/ui/ProductModal";
 import ProductCard, { type ProductWithPricing } from "@/components/ui/ProductCard";
-import { getR2UrlClient } from "@/utils/r2-url";
-import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
-import { useMerchStylePageHero } from "@/hooks/useMerchStylePageHero";
+import { ProductsHeroVideo } from "@/components/products/ProductsHeroVideo";
+import { MerchStyleHeroCopy } from "@/components/layout/MerchStyleHeroCopy";
+import { HERO_PLACEHOLDER_BG } from "@/lib/hero-media-defaults";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
-import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
-import {
-  HERO_PLACEHOLDER_BG,
-  HERO_VIDEO_COVER_STYLE,
-  HERO_VIDEO_MERCH_PATTERN,
-  HERO_VIDEO_POINTER_STYLE,
-} from "@/lib/hero-media-defaults";
-import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
+import { usePauseBackgroundVideoOnScrollAndHidden } from "@/hooks/usePauseBackgroundVideoOnScrollAndHidden";
 import Image from "next/image";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -274,32 +268,23 @@ export default function ProductsPageClient() {
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const pageRef = useRef<HTMLDivElement | null>(null);
-  const heroRef = useRef<HTMLDivElement | null>(null);
   const scrollIndicatorRef = useRef<HTMLDivElement | null>(null);
   const sectionsRef = useRef<(HTMLElement | null)[]>([]);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const fadeOverlayRef = useRef<HTMLDivElement | null>(null);
+  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
+  usePauseBackgroundVideoOnScrollAndHidden(videoRef, {
+    enabled: shouldLoadHeroVideo,
+    scrollPastVH: 0.45,
+  });
   const bottomSectionRef = useRef<HTMLDivElement | null>(null);
   const readingTextRef = useRef<HTMLDivElement | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
   const [isMounted, setIsMounted] = useState(false);
   const [visibleProductCount, setVisibleProductCount] = useState(INITIAL_PRODUCT_GRID);
-  const {
-    pageSections,
-    heroMediaType,
-    heroMediaUrl,
-    heroVideoPlayUrl,
-    heroPosterUrl,
-    heroVersion,
-    refetchPageSections,
-  } = useMerchStylePageHero("products");
-  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
-
-  useReliableVideoAutoplay(videoRef, { mode: "background" });
 
   useEffect(() => {
     setIsMounted(true);
@@ -321,35 +306,6 @@ export default function ProductsPageClient() {
       };
     }
   }, []);
-
-  // CRITICAL: Prefetch other pages when this page loads
-  // This ensures fast navigation when user clicks nav links
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const paths = ["/", "/what-we-do", "/authenticity", "/about", "/contact"];
-      paths.forEach((path) => {
-        try {
-          const fullPath = locale === "en" ? path : `/${locale}${path === "/" ? "" : path}`;
-          // Prefetch using link element
-          const link = document.createElement("link");
-          link.rel = "prefetch";
-          link.as = "document";
-          link.href = fullPath;
-          document.head.appendChild(link);
-
-          // Also prefetch RSC payload
-          const rscLink = document.createElement("link");
-          rscLink.rel = "prefetch";
-          rscLink.as = "fetch";
-          rscLink.href = `${fullPath}?_rsc=`;
-          rscLink.crossOrigin = "anonymous";
-          document.head.appendChild(rscLink);
-        } catch (error) {
-          // Silently fail
-        }
-      });
-    }
-  }, [locale]);
 
   // Product categories with translations
   const productCategories = useMemo<ProductCategory[]>(
@@ -402,7 +358,7 @@ export default function ProductsPageClient() {
 
   // All products with translations - Grouped products with multiple images
   const [cmsProducts, setCmsProducts] = useState<ProductWithPricing[] | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = useIsAdmin();
 
   type CmsEditingProduct = {
     id?: number;
@@ -488,27 +444,6 @@ export default function ProductsPageClient() {
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
     return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   };
-
-  // Load admin flag
-  useEffect(() => {
-    let cancelled = false;
-    const loadAdmin = async () => {
-      try {
-        const res = await fetch("/api/admin/me");
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled && data?.isAdmin) {
-          setIsAdmin(true);
-        }
-      } catch {
-        // silent
-      }
-    };
-    void loadAdmin();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // Load CMS products (if any) from server - this will override default static list
   useEffect(() => {
@@ -770,32 +705,7 @@ export default function ProductsPageClient() {
           // Video is now full screen with no zoom - no GSAP animation needed
           // Video styling is handled via CSS (transform: none, width: 100vw, height: 100vh)
 
-          // Hero animation with stagger
-          if (heroRef.current) {
-            const heroElements = heroRef.current.querySelectorAll("[data-hero]");
-            const heroAccentElements = heroRef.current.querySelectorAll("[data-hero-accent]");
-
-            if (heroElements.length > 0 || heroAccentElements.length > 0) {
-              const heroTimeline = gsap.timeline({ defaults: { ease: "power3.out" } });
-
-              if (heroElements.length > 0) {
-                heroTimeline.fromTo(
-                  heroElements,
-                  { autoAlpha: 0, y: 60, scale: 0.95 },
-                  { autoAlpha: 1, y: 0, scale: 1, duration: 1, stagger: 0.2 }
-                );
-              }
-
-              if (heroAccentElements.length > 0) {
-                heroTimeline.fromTo(
-                  heroAccentElements,
-                  { scale: 0, rotate: -180 },
-                  { scale: 1, rotate: 0, duration: 0.8, ease: "back.out(1.7)" },
-                  "<0.3"
-                );
-              }
-            }
-          }
+          // Hero copy entrance handled by MerchStyleHeroCopy (framer-motion)
 
           // Scroll Indicator Animation - Fluid scroll effect with GSAP
           if (scrollIndicatorRef.current && sectionsRef.current[0] && sectionsRef.current[1]) {
@@ -893,51 +803,22 @@ export default function ProductsPageClient() {
               end: "bottom top",
               scrub: 0.5,
               onUpdate: (self) => {
-                const progress = self.progress;
-                // Fade overlay to black
                 if (fadeOverlayRef.current) {
-                  gsap.to(fadeOverlayRef.current, {
-                    opacity: progress,
-                    duration: 0.1,
-                    ease: "none",
-                  });
-                }
-                // Also fade video opacity gradually
-                if (videoRef.current) {
-                  const videoOpacity = Math.max(0.1, 1 - progress * 0.9);
-                  gsap.to(videoRef.current, {
-                    opacity: videoOpacity,
-                    duration: 0.1,
-                    ease: "none",
-                  });
+                  fadeOverlayRef.current.style.opacity = String(self.progress);
                 }
               },
             });
 
-            // Additional fade when product section comes into view
             ScrollTrigger.create({
               trigger: productSection,
               start: "top center",
               end: "top top",
               scrub: 0.5,
               onUpdate: (self) => {
-                const progress = self.progress;
-                // Complete fade to black
                 if (fadeOverlayRef.current) {
-                  gsap.to(fadeOverlayRef.current, {
-                    opacity: Math.min(1, 0.5 + progress * 0.5),
-                    duration: 0.1,
-                    ease: "none",
-                  });
-                }
-                // Fade video completely
-                if (videoRef.current) {
-                  const videoOpacity = Math.max(0.05, 0.1 - progress * 0.05);
-                  gsap.to(videoRef.current, {
-                    opacity: videoOpacity,
-                    duration: 0.1,
-                    ease: "none",
-                  });
+                  fadeOverlayRef.current.style.opacity = String(
+                    Math.min(1, 0.5 + self.progress * 0.5)
+                  );
                 }
               },
             });
@@ -1095,7 +976,7 @@ export default function ProductsPageClient() {
         setTimeout(initAnimations, 100);
       }
     },
-    { scope: pageRef, dependencies: [isMounted, isVideoLoaded] }
+    { scope: pageRef, dependencies: [isMounted] }
   );
 
   return (
@@ -1121,53 +1002,7 @@ export default function ProductsPageClient() {
           aria-hidden
         />
 
-        {heroMediaType === "VIDEO" ? (
-          <VideoLoadGuard
-            key={`products-hero-${heroVideoPlayUrl}-${heroVersion ?? 0}`}
-            ref={videoRef}
-            url={heroVideoPlayUrl}
-            version={heroVersion}
-            posterUrl={heroPosterUrl}
-            forcePoster={!shouldLoadHeroVideo}
-            {...HERO_VIDEO_MERCH_PATTERN}
-            containerClassName="absolute inset-0 w-screen h-screen z-10"
-            className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
-            style={{
-              ...HERO_VIDEO_COVER_STYLE,
-              ...HERO_VIDEO_POINTER_STYLE,
-              transform: "translateZ(0)",
-              WebkitTransform: "translateZ(0)",
-            }}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            disablePictureInPicture
-            disableRemotePlayback
-            onContextMenu={(e) => e.preventDefault()}
-            onPlay={(e) => {
-              const video = e.currentTarget;
-              if (video.paused) video.play().catch(() => {});
-            }}
-          />
-        ) : (
-          <ImageLoadGuard
-            url={heroMediaUrl}
-            version={heroVersion}
-            containerClassName="absolute inset-0 w-screen h-screen z-10"
-            className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
-            style={{
-              objectFit: "cover",
-              objectPosition: "center center",
-              width: "100%",
-              height: "100%",
-              pointerEvents: "none",
-            }}
-            alt=""
-            priority
-          />
-        )}
+        <ProductsHeroVideo ref={videoRef} />
         {/* Fade to Black Overlay - Controlled by ScrollTrigger */}
         <div
           ref={fadeOverlayRef}
@@ -1178,45 +1013,21 @@ export default function ProductsPageClient() {
 
       <Navbar />
 
-      {/* Hero edit: same pattern as Home (portal + delay, same Replace video pop-up) */}
-      <HeroEditPortal
-        page="products"
-        section="hero"
-        type="video"
-        onUploadDone={refetchPageSections}
-        performanceMode="deferred"
-        editLabel="Edit video"
-      />
-
-      {/* ENHANCED: Hero Section - Full Screen, matching What We Do exactly */}
+      {/* Hero Section — merchandise-style centered copy */}
       <section
         ref={(element) => {
           sectionsRef.current[0] = element;
         }}
-        className="relative flex min-h-screen items-center justify-start overflow-hidden"
+        className="relative min-h-[100dvh] overflow-hidden"
       >
-        {/* Hero Content - Full left alignment, flush to left edge - Matching What We Do */}
-        <div className="relative z-20 w-full text-left pl-4 sm:pl-6 md:pl-8 lg:pl-12 xl:pl-16 2xl:pl-20 pr-4 sm:pr-6 md:pr-8 lg:pr-12">
-          <div ref={heroRef} className="relative space-y-6 sm:space-y-8 max-w-4xl">
-            <h1
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-sans font-bold md:font-extrabold leading-[1.1] tracking-tight text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.95),0_4px_28px_rgba(0,0,0,0.7),0_0_1px_rgba(0,0,0,1)]"
-              data-hero
-            >
-              {t("hero.title")}
-              <br />
-              <span className="font-sans font-bold md:font-extrabold">{t("hero.titleBold")}</span>
-            </h1>
-            <p
-              data-hero
-              className="text-base sm:text-lg md:text-xl font-sans font-semibold md:font-bold leading-relaxed text-white max-w-2xl [text-shadow:0_1px_3px_rgba(0,0,0,0.9),0_2px_16px_rgba(0,0,0,0.55)]"
-            >
-              {t("hero.subtitle") ||
-                "Discover our premium collection of certified precious metals, each bar crafted with precision and verified authenticity."}
-            </p>
-          </div>
-        </div>
+        <MerchStyleHeroCopy
+          title={t("hero.title")}
+          subtitle={t("hero.subtitle")}
+          secondarySubtitle={t("hero.secondarySubtitle")}
+          tagline={t("hero.tagline")}
+        />
 
-        {/* Scroll indicator – same as Distributor */}
+        {/* Scroll indicator */}
         <div
           ref={scrollIndicatorRef}
           className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-3 pointer-events-none"

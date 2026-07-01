@@ -160,6 +160,36 @@ html[data-window-blurred] .sk-home-orb-d2 {
   [data-splash-screen] .letter {
     opacity: 0;
   }
+  [data-splash-screen] .splash-tagline,
+  [data-splash-screen] .splash-line {
+    opacity: 0;
+    animation: splash-tagline-in 0.75s ease-out 0.85s forwards;
+  }
+  [data-splash-screen] .splash-line {
+    animation-delay: 1s;
+    transform: scaleX(0);
+    animation-name: splash-line-in;
+  }
+  @keyframes splash-tagline-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 0.85;
+      transform: translateY(0);
+    }
+  }
+  @keyframes splash-line-in {
+    from {
+      opacity: 0;
+      transform: scaleX(0);
+    }
+    to {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+  }
   /* Home page content: Geist only */
   body.home-page main,
   body.home-page [data-home-content] {

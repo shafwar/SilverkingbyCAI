@@ -10,6 +10,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/routing";
 import { routing } from "@/i18n/routing";
 import LanguageSwitcher from "./LanguageSwitcher";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -17,7 +18,7 @@ export default function Navbar() {
   const [isVisible, setIsVisible] = useState(true);
   /** Ref avoids re-subscribing scroll listener on every pixel scrolled (was killing INP / main thread). */
   const lastScrollYRef = useRef(0);
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const isAdmin = useIsAdmin();
   const t = useTranslations("nav");
   const locale = useLocale();
   const pathname = usePathname();
@@ -84,46 +85,6 @@ export default function Navbar() {
     return () => observer.disconnect();
   }, []);
 
-  // Check if user is admin - ultra-optimized with instant cache + deferred background refresh
-  useEffect(() => {
-    // IMMEDIATE: Check cache first (synchronous, instant, 0ms delay)
-    const cached = sessionStorage.getItem("isAdmin");
-    if (cached !== null) {
-      setIsAdmin(cached === "true");
-    }
-
-    // DEFERRED: Refresh admin status in idle time (non-blocking, low priority)
-    const checkAdmin = async () => {
-      try {
-        const res = await fetch("/api/admin/me", {
-          cache: "no-store",
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const adminStatus = data?.isAdmin === true;
-          
-          // Always update state and cache
-          setIsAdmin(adminStatus);
-          sessionStorage.setItem("isAdmin", String(adminStatus));
-        } else {
-          setIsAdmin(false);
-          sessionStorage.setItem("isAdmin", "false");
-        }
-      } catch (error) {
-        // Silently fail - user is not admin
-        setIsAdmin(false);
-        sessionStorage.setItem("isAdmin", "false");
-      }
-    };
-    
-    // Defer check to idle time using requestIdleCallback or setTimeout fallback
-    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-      requestIdleCallback(() => checkAdmin(), { timeout: 2000 });
-    } else {
-      setTimeout(checkAdmin, 100);
-    }
-  }, []);
-
   // Lock body scroll when mobile menu is open - PRODUCTION-SAFE
   useEffect(() => {
     // PRODUCTION-SAFE: Ensure document exists
@@ -152,36 +113,6 @@ export default function Navbar() {
     ],
     [t]
   );
-
-  /** One idle pass of router.prefetch — avoids triple DOM prefetch + duplicate <link> tags (better INP). */
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const allLinks = [...navLinks, { name: "contact", href: "/contact" as const }];
-    const run = () => {
-      allLinks.forEach((link) => {
-        try {
-          router.prefetch(link.href);
-        } catch {
-          /* ignore */
-        }
-      });
-    };
-
-    const w = window;
-    let ricId: number | undefined;
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    if ("requestIdleCallback" in w) {
-      ricId = w.requestIdleCallback(run, { timeout: 2200 });
-    } else {
-      timeoutId = setTimeout(run, 600);
-    }
-
-    return () => {
-      if (ricId != null) w.cancelIdleCallback(ricId);
-      if (timeoutId != null) clearTimeout(timeoutId);
-    };
-  }, [locale, router, navLinks]);
 
   const handleNavClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
     // Allow default navigation for special keys (open in new tab, etc.)

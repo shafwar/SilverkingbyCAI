@@ -5,8 +5,7 @@ import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import "@/styles/globals.css";
 import { Providers } from "../providers";
-import { PagePrefetchClient } from "@/components/layout/PagePrefetchClient";
-import { PersistentHomeHeroVideo } from "@/components/layout/PersistentHomeHeroVideo";
+import { AdminStatusProvider } from "@/contexts/AdminStatusProvider";
 import { StructuredData } from "@/components/seo/StructuredData";
 import { SetDocumentLang } from "@/components/layout/SetDocumentLang";
 
@@ -16,7 +15,7 @@ export function generateStaticParams() {
 
 const getCachedIntlMessages = unstable_cache(
   async (locale: string) => getMessages({ locale }),
-  ["locale-layout-intl-messages"],
+  ["locale-layout-intl-messages-v2"],
   { revalidate: 3600 }
 );
 
@@ -39,7 +38,10 @@ export default async function LocaleLayout({
 
   let messages;
   try {
-    messages = await getCachedIntlMessages(locale);
+    messages =
+      process.env.NODE_ENV === "development"
+        ? await getMessages({ locale })
+        : await getCachedIntlMessages(locale);
   } catch (error) {
     console.error(`[LocaleLayout] Error loading messages for locale "${locale}":`, error);
     messages = {};
@@ -48,11 +50,11 @@ export default async function LocaleLayout({
   return (
     <NextIntlClientProvider messages={messages}>
       <Providers>
-        <SetDocumentLang locale={locale} />
-        <StructuredData type="Organization" locale={locale} />
-        <PagePrefetchClient />
-        <PersistentHomeHeroVideo />
-        {children}
+        <AdminStatusProvider>
+          <SetDocumentLang locale={locale} />
+          <StructuredData type="Organization" locale={locale} />
+          {children}
+        </AdminStatusProvider>
       </Providers>
       <div
         id="cms-modal-root"

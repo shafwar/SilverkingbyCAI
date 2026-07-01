@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { generatePageMetadata } from "@/lib/seo";
+import { ServerHeroSeo } from "@/components/seo/ServerHeroSeo";
 import AboutPageClient from "./AboutPageClient";
 
 export async function generateMetadata({
@@ -15,7 +16,7 @@ export async function generateMetadata({
     title: t("title") || "About Us",
     description:
       t("hero.subtitle") ||
-      "Crafting excellence in precious metals since 2024 with uncompromising precision and ground-breaking verification technology.",
+      "Crafting excellence in precious metals since 2024 with uncompromising precision and groundbreaking verification technology.",
     path: "/about",
     locale,
     keywords: [
@@ -29,6 +30,12 @@ export async function generateMetadata({
   });
 }
 
-export default function AboutPage() {
-  return <AboutPageClient />;
+export default async function AboutPage({ params }: { params: { locale: string } }) {
+  const { locale } = params;
+  return (
+    <>
+      <ServerHeroSeo locale={locale} namespace="about" />
+      <AboutPageClient />
+    </>
+  );
 }

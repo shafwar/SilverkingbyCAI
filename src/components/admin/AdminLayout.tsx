@@ -22,6 +22,7 @@ import {
   Edit3,
   MessageSquare,
   BookOpen,
+  ImageIcon,
   LayoutTemplate,
   AlertTriangle,
   ChevronLeft,
@@ -139,6 +140,12 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
             icon: MessageSquare,
           },
           { label: safeT(t, "journalNav", "Journal"), href: "/admin/journal", icon: BookOpen },
+          {
+            label: safeT(t, "heroAssetsNav", "Hero assets"),
+            href: "/admin/hero-assets",
+            icon: ImageIcon,
+          },
+          { label: safeT(t, "content", "Content"), href: "/admin/content", icon: Edit3 },
         ],
       },
     ],
@@ -161,6 +168,8 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
       "/admin/feedback",
       "/admin/journal",
       "/admin/journal/new",
+      "/admin/hero-assets",
+      "/admin/content",
     ];
 
     // Prefetch all admin routes immediately

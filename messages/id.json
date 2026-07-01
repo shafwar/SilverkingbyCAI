@@ -81,9 +81,10 @@
     "title": "Membuat dari bullion mentah",
     "description": "Kami mengubah emas, perak, dan paladium yang bersumber secara bertanggung jawab menjadi batangan kelas investasi menggunakan jalur pemurnian dan pengecoran yang dikontrol ketat.",
     "hero": {
-      "title": "Merekayasa siklus hidup",
-      "titleBold": "dari setiap batangan Silver King.",
-      "subtitle": "Dari pemilihan bijih dan pemurnian hingga pengkodean serial, penyegelan QR, dan verifikasi, kami mengkoreografikan setiap langkah sehingga setiap batangan membawa cerita yang dapat diverifikasi tentang asal usul dan kepemilikan."
+      "title": "Apa Yang Kami Lakukan",
+      "subtitle": "Siklus hidup penuh setiap batangan Silver King",
+      "secondarySubtitle": "Dari pemurnian dan pengecoran hingga pengkodean serial, QR, dan verifikasi.",
+      "tagline": "Presisi yang dapat dilacak. Kepercayaan yang dapat diverifikasi."
     },
     "card1": {
       "label": "Jalur fabrikasi emas",
@@ -154,6 +155,13 @@
     "authenticateYour": "Verifikasi",
     "silverKingBar": "Batangan Silver King Anda",
     "heroDescription": "Pindai kode QR atau masukkan nomor seri untuk memverifikasi keaslian dan melihat detail asal usul",
+    "hero": {
+      "title": "Verifikasi",
+      "titleBold": "Batangan Silver King Anda",
+      "subtitle": "Pindai kode QR atau masukkan nomor seri Anda",
+      "secondarySubtitle": "untuk memverifikasi keaslian dan melihat detail asal usul.",
+      "tagline": "Verifikasi instan. Pelacakan lengkap."
+    },
     "scanQR": "Pindai Kode QR",
     "or": "atau",
     "enterSerial": "Masukkan Nomor Seri",
@@ -207,9 +215,10 @@
     "title": "Produk",
     "description": "Jelajahi koleksi produk logam mulia premium kami.",
     "hero": {
-      "title": "Logam Mulia",
-      "titleBold": "Premium",
-      "subtitle": "Batangan kelas investasi yang dibuat dengan presisi tanpa kompromi dan keaslian terverifikasi."
+      "title": "Produk",
+      "subtitle": "Batangan logam mulia kelas investasi",
+      "secondarySubtitle": "Emas, perak, dan paladium, bersertifikat, bernomor seri, dan terverifikasi QR.",
+      "tagline": "Kualitas premium. Keaslian terverifikasi."
     },
     "explore": "Jelajahi koleksi kami",
     "hoverToView": "Arahkan untuk melihat produk",
@@ -405,7 +414,9 @@
     "hero": {
       "badge": "Didirikan 2024",
       "title": "Warisan",
-      "subtitle": "Menciptakan keunggulan dalam logam mulia sejak 2024 dengan presisi tanpa kompromi dan teknologi verifikasi yang revolusioner."
+      "subtitle": "Menciptakan keunggulan dalam logam mulia sejak 2024",
+      "secondarySubtitle": "Presisi tanpa kompromi dan teknologi verifikasi yang revolusioner.",
+      "tagline": "Didirikan 2024"
     },
     "whyChoose": {
       "title": "Mengapa Memilih",
@@ -571,6 +582,7 @@
     "products": "Produk",
     "distributor": "Distributor",
     "content": "Konten",
+    "heroAssetsNav": "Aset hero",
     "journalNav": "Berita & jurnal",
     "serticardNav": "Serticard",
     "qrPreview": "Pratinjau QR",
@@ -857,6 +869,29 @@
       "saving": "Menyimpan…",
       "saveFailed": "Gagal menyimpan",
       "deleteFailed": "Gagal menghapus"
+    },
+    "heroAssets": {
+      "eyebrow": "Media website",
+      "title": "Aset hero",
+      "description": "Unggah video atau foto hero per halaman. File dikompresi, disimpan di Cloudflare R2, dan disajikan via CDN. Situs publik tetap cepat dengan fallback statis sampai media CMS dimuat.",
+      "hint": "Video maks 20 MB · Foto maks 3 MB. Video di-encode ulang untuk web (H.264) dan poster WebP dibuat otomatis. Pulihkan default hanya menghapus override CMS.",
+      "refresh": "Muat ulang",
+      "loading": "Memuat aset hero…",
+      "loadError": "Gagal memuat aset hero.",
+      "uploadVideo": "Unggah video",
+      "uploadPhoto": "Unggah foto",
+      "uploading": "Mengunggah…",
+      "uploadSuccess": "Aset hero diunggah ke R2.",
+      "uploadError": "Unggah gagal. Periksa ukuran dan format file.",
+      "restoreDefault": "Pulihkan default",
+      "restoring": "Memulihkan…",
+      "restoreSuccess": "Hero default dipulihkan.",
+      "restoreError": "Gagal memulihkan default.",
+      "restoreConfirm": "Hapus hero CMS dan gunakan aset default bawaan?",
+      "badgeCms": "CMS aktif",
+      "badgeDefault": "Default",
+      "typeVideo": "Hero video",
+      "typeImage": "Hero foto"
     },
     "contentDetail": {
       "title": "Konten (Bilingual)",

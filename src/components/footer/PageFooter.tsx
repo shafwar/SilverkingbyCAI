@@ -3,14 +3,10 @@
 import { Link } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import { motion, useInView } from "framer-motion";
-import { useRef, useEffect } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useRef } from "react";
 import { Instagram } from "lucide-react";
 import { APP_NAME, getSilverKingInstagramUrl, getSilverKingWhatsAppUrl } from "@/utils/constants";
 import { DEFAULT_HERO_POSTER } from "@/lib/hero-media-defaults";
-
-gsap.registerPlugin(ScrollTrigger);
 
 const navItems = [
   { navKey: "whatWeDo" as const, href: "/what-we-do" },
@@ -40,7 +36,6 @@ export function PageFooter() {
   const tNav = useTranslations("nav");
   const tFooter = useTranslations("footer");
   const footerRef = useRef<HTMLElement>(null);
-  const linksRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(footerRef, { once: true, amount: 0.2 });
 
   const bgImageUrl =
@@ -51,29 +46,12 @@ export function PageFooter() {
   const instagramHref = getSilverKingInstagramUrl();
   const whatsappHref = getSilverKingWhatsAppUrl();
 
-  useEffect(() => {
-    const el = linksRef.current;
-    if (!el || !isInView) return;
-    const links = el.querySelectorAll("a");
-    gsap.fromTo(
-      links,
-      { opacity: 0, y: 12 },
-      {
-        opacity: 1,
-        y: 0,
-        duration: 0.5,
-        stagger: 0.05,
-        ease: "power2.out",
-      }
-    );
-  }, [isInView]);
-
   return (
     <motion.footer
       ref={footerRef}
       initial={{ opacity: 0 }}
       animate={isInView ? { opacity: 1 } : { opacity: 0 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
       className="relative overflow-hidden border-t border-white/5"
     >
       {/* Optional photo layer — dark overlay keeps text readable */}
@@ -98,8 +76,9 @@ export function PageFooter() {
 
       <div className="relative z-10 mx-auto max-w-[1320px] px-5 py-14 sm:px-6 md:px-8 md:py-16 lg:px-12 lg:py-20">
         <div
-          ref={linksRef}
-          className="flex flex-col gap-10 md:flex-row md:items-end md:justify-between md:gap-12"
+          className={`flex flex-col gap-10 md:flex-row md:items-end md:justify-between md:gap-12 transition-all duration-500 ${
+            isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
+          }`}
         >
           <nav
             aria-label="Site"
@@ -109,7 +88,7 @@ export function PageFooter() {
               <Link
                 key={navKey}
                 href={href}
-                prefetch={true}
+                prefetch={false}
                 className="inline-flex min-h-[44px] items-center py-2 text-sm font-medium text-white/75 transition-colors duration-300 hover:text-luxury-gold sm:text-base md:min-h-0"
               >
                 {tNav(navKey)}
@@ -143,7 +122,7 @@ export function PageFooter() {
           className="mt-12 border-t border-white/10 pt-8"
           initial={{ opacity: 0 }}
           animate={isInView ? { opacity: 1 } : { opacity: 0 }}
-          transition={{ delay: 0.25, duration: 0.5 }}
+          transition={{ delay: 0.15, duration: 0.45 }}
         >
           <p className="text-xs text-white/45">
             © {new Date().getFullYear()} {APP_NAME}. All rights reserved.
