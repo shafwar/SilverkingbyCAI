@@ -51,13 +51,7 @@ export default function HomePageClient() {
         <SplashScreen onComplete={handleSplashComplete} />
       ) : null}
 
-      <div
-        className={[
-          "home-page-shell",
-          splashComplete ? "home-page-shell--ready" : "home-page-shell--splash",
-        ].join(" ")}
-        aria-hidden={showSplash}
-      >
+      <div className="home-page-shell" aria-hidden={showSplash}>
         <Navbar />
         <main className="home-page-content relative min-h-screen overflow-hidden bg-transparent">
           <HeroSection shouldAnimate={splashComplete} priorityLcp={splashComplete} />

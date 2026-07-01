@@ -5,12 +5,7 @@ import dynamic from "next/dynamic";
 import Navbar from "@/components/layout/Navbar";
 import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
-import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
-import { usePauseBackgroundVideoOnScrollAndHidden } from "@/hooks/usePauseBackgroundVideoOnScrollAndHidden";
-import { usePageHeroCms } from "@/hooks/usePageHeroCms";
-import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { CmsPageHeroBackground } from "@/components/hero/CmsPageHeroBackground";
-import { HERO_PLACEHOLDER_BG } from "@/lib/hero-media-defaults";
 import { MerchStyleHeroCopy } from "@/components/layout/MerchStyleHeroCopy";
 import { PageLoadingSkeleton } from "@/components/ui/PageLoadingSkeleton";
 // Lazy load CertificateCard to improve initial page load
@@ -116,22 +111,6 @@ export default function AboutPageClient() {
   const pageRef = useRef<HTMLDivElement | null>(null);
   const noiseOverlay = useRef<HTMLDivElement | null>(null);
   const gradientOverlay = useRef<HTMLDivElement | null>(null);
-  const heroVideoRef = useRef<HTMLVideoElement | null>(null);
-  const holdHeroVideoPausedRef = useRef(false);
-  const { heroMediaType } = usePageHeroCms("about");
-  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
-
-  // Ensure about-page hero video autoplays reliably on all devices
-  useReliableVideoAutoplay(heroVideoRef, {
-    mode: "background",
-    holdPausedRef: holdHeroVideoPausedRef,
-  });
-  usePauseBackgroundVideoOnScrollAndHidden(heroVideoRef, {
-    enabled: heroMediaType === "VIDEO" && shouldLoadHeroVideo,
-    scrollPastVH: 0.42,
-    holdPausedRef: holdHeroVideoPausedRef,
-    pauseOnWindowBlur: true,
-  });
 
   const featureItems = useMemo<FeatureItem[]>(
     () => [
@@ -236,26 +215,28 @@ export default function AboutPageClient() {
       {/* Navbar */}
       <Navbar />
 
-      {/* Hero: fixed fullscreen — attach src immediately + preload for fast visible playback */}
-      <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
-        <div className="absolute inset-0 z-0" style={{ background: HERO_PLACEHOLDER_BG }} aria-hidden />
+      {/* Hero — merchandise pattern: static video + optional CMS swap after idle */}
+      <section className="relative isolate min-h-[100dvh] overflow-hidden">
         <CmsPageHeroBackground
-          ref={heroVideoRef}
           page="about"
-          containerClassName="absolute inset-0 z-10 h-full w-full"
+          containerClassName="absolute inset-0 h-full w-full"
+          objectPosition="center 32%"
+          overlay={
+            <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-black/30 via-transparent to-black/50" />
+          }
         />
-        <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/30 via-transparent to-black/50 pointer-events-none" />
-      </div>
+        <div
+          className="absolute bottom-0 left-0 right-0 z-[1] h-[3px] bg-luxury-black pointer-events-none"
+          aria-hidden
+        />
 
-      {/* Hero Section — merchandise-style centered copy */}
-      <section className="relative min-h-[100dvh] overflow-hidden">
         <MerchStyleHeroCopy
-          layout="upper"
           title={t("hero.title")}
           subtitle={t("hero.subtitle")}
           secondarySubtitle={t("hero.secondarySubtitle")}
           tagline={t("hero.tagline")}
         />
+
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-3 pointer-events-none">
           <div className="relative w-5 h-8 border border-white/50 rounded-full flex items-start justify-center pt-2.5">
             <div className="w-1 h-1.5 bg-white/70 rounded-full" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useEffect, useState, useMemo } from "react";
+import { useRef, useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Navbar from "@/components/layout/Navbar";
 import { DistributorCard, type DistributorItem } from "@/components/distributor/DistributorCard";
@@ -9,9 +9,7 @@ import { CmsPageHeroBackground } from "@/components/hero/CmsPageHeroBackground";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Plus, X } from "lucide-react";
-import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
-import { HERO_PLACEHOLDER_BG, HERO_MEDIA_SHELL_STYLE } from "@/lib/hero-media-defaults";
 import { PageFooter } from "@/components/footer/PageFooter";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -47,20 +45,16 @@ const sectionVariants: Variants = {
 
 type DistributorPageClientProps = {
   initialDistributors?: DistributorItem[];
-  heroImageUrl: string;
 };
 
 export default function DistributorPageClient({
   initialDistributors = [],
-  heroImageUrl: initialHeroImageUrl,
 }: DistributorPageClientProps) {
   const t = useTranslations("distributor");
   const [distributors, setDistributors] = useState<DistributorItem[]>(initialDistributors);
   const [loading, setLoading] = useState(initialDistributors.length === 0);
   const isAdmin = useIsAdmin();
   const [modalOpen, setModalOpen] = useState(false);
-  const distributorHeroVideoRef = useRef<HTMLVideoElement | null>(null);
-  useReliableVideoAutoplay(distributorHeroVideoRef, { mode: "background" });
   const [editing, setEditing] = useState<DistributorItem | null>(null);
   const [saving, setSaving] = useState(false);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -210,85 +204,75 @@ export default function DistributorPageClient({
       ref={pageRef}
       className={`min-h-screen w-full max-w-full overflow-x-hidden bg-luxury-black text-white selection:bg-luxury-gold/20 selection:text-white ${fontDistributor.variable}`}
     >
-      {/* Hero background: selalu gambar public/images/DSC02998.JPG (via R2 atau path lokal) */}
-      <div
-        className="fixed inset-0 z-0 w-screen h-screen overflow-hidden"
-        style={{
-          willChange: "transform",
-          backfaceVisibility: "hidden",
-          WebkitBackfaceVisibility: "hidden",
-          transform: "translateZ(0)",
-          WebkitTransform: "translateZ(0)",
-        }}
-      >
-        <div className="absolute inset-0 z-0" style={{ background: HERO_PLACEHOLDER_BG }} aria-hidden />
-
-        {/* Hero: show image immediately (initialHeroImageUrl) so no black flash; CMS overlay when sections load */}
-        <div className="absolute inset-[-6%] z-10 scale-90 md:scale-100 md:inset-0 origin-center overflow-hidden" style={HERO_MEDIA_SHELL_STYLE}>
-          <CmsPageHeroBackground
-            ref={distributorHeroVideoRef}
-            page="distributor"
-            containerClassName="absolute inset-0 w-full h-full"
-          />
-        </div>
-        {/* Overlay: darker center so title/subtitle don't clash with hero image; readable everywhere */}
-        <div
-          className="absolute inset-0 z-[11] pointer-events-none"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.4) 100%)",
-          }}
-        />
-        <div
-          className="absolute inset-0 z-[11] pointer-events-none"
-          style={{
-            background: "radial-gradient(ellipse 70% 60% at 50% 50%, rgba(0,0,0,0.25) 0%, transparent 70%)",
-          }}
-        />
-      </div>
-
       <Navbar />
 
-      {/* Hero Section – centered text so it doesn't clash with hero image; overlay keeps it readable */}
-      <section className="relative flex h-screen min-h-0 flex-col justify-center overflow-hidden">
-        <div className="relative z-20 w-full flex-1 flex items-center justify-center px-4 sm:px-6 md:px-8 lg:px-12 pb-24 overflow-hidden">
-          <motion.div
-            variants={revealVariants}
-            initial="initial"
-            animate="animate"
-            className="relative text-center max-w-4xl font-[family-name:var(--font-distributor)] overflow-hidden min-h-0"
-          >
-            {/* Subtle backdrop so text never clashes with busy hero image */}
-            <div
-              className="absolute inset-0 -inset-x-8 rounded-2xl pointer-events-none"
-              style={{
-                background:
-                  "radial-gradient(ellipse 100% 100% at 50% 50%, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.08) 50%, transparent 70%)",
-              }}
-            />
-            <div className="relative space-y-4 sm:space-y-6">
-              <motion.h1
-                variants={revealVariants}
-                className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold leading-[1.08] tracking-tight drop-shadow-[0_2px_24px_rgba(0,0,0,0.6)]"
-              >
-                <span className="bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent">
-            {t("hero.title")}
-                </span>
-          </motion.h1>
-          <motion.p
-                variants={revealVariants}
-                className="text-lg sm:text-xl md:text-2xl font-medium leading-relaxed text-white/95 max-w-2xl mx-auto drop-shadow-[0_1px_16px_rgba(0,0,0,0.5)]"
-          >
-            {t("hero.subtitle")}
-          </motion.p>
-            </div>
-          </motion.div>
-        </div>
+      {/* Hero — merchandise pattern: static image + optional CMS swap after idle */}
+      <section className="relative isolate min-h-[100dvh] overflow-hidden">
+        <CmsPageHeroBackground
+          page="distributor"
+          containerClassName="absolute inset-0 h-full w-full"
+          overlay={
+            <>
+              <div
+                className="pointer-events-none absolute inset-0 z-[1]"
+                style={{
+                  background:
+                    "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.4) 100%)",
+                }}
+              />
+              <div
+                className="pointer-events-none absolute inset-0 z-[1]"
+                style={{
+                  background:
+                    "radial-gradient(ellipse 70% 60% at 50% 50%, rgba(0,0,0,0.25) 0%, transparent 70%)",
+                }}
+              />
+            </>
+          }
+        />
+        <div
+          className="absolute bottom-0 left-0 right-0 z-[1] h-[3px] bg-luxury-black pointer-events-none"
+          aria-hidden
+        />
 
-        {/* Scroll indicator – same as Products */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-3 pointer-events-none shrink-0">
-          <div className="relative w-5 h-8 border border-white/50 rounded-full flex items-start justify-center pt-2.5">
-            <div className="w-1 h-1.5 bg-white/70 rounded-full" />
+        <div className="relative z-10 flex h-screen min-h-0 flex-col justify-center overflow-hidden">
+          <div className="relative w-full flex-1 flex items-center justify-center px-4 sm:px-6 md:px-8 lg:px-12 pb-24 overflow-hidden">
+            <motion.div
+              variants={revealVariants}
+              initial="initial"
+              animate="animate"
+              className="relative text-center max-w-4xl font-[family-name:var(--font-distributor)] overflow-hidden min-h-0"
+            >
+              <div
+                className="absolute inset-0 -inset-x-8 rounded-2xl pointer-events-none"
+                style={{
+                  background:
+                    "radial-gradient(ellipse 100% 100% at 50% 50%, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.08) 50%, transparent 70%)",
+                }}
+              />
+              <div className="relative space-y-4 sm:space-y-6">
+                <motion.h1
+                  variants={revealVariants}
+                  className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold leading-[1.08] tracking-tight drop-shadow-[0_2px_24px_rgba(0,0,0,0.6)]"
+                >
+                  <span className="bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent">
+                    {t("hero.title")}
+                  </span>
+                </motion.h1>
+                <motion.p
+                  variants={revealVariants}
+                  className="text-lg sm:text-xl md:text-2xl font-medium leading-relaxed text-white/95 max-w-2xl mx-auto drop-shadow-[0_1px_16px_rgba(0,0,0,0.5)]"
+                >
+                  {t("hero.subtitle")}
+                </motion.p>
+              </div>
+            </motion.div>
+          </div>
+
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-3 pointer-events-none shrink-0">
+            <div className="relative w-5 h-8 border border-white/50 rounded-full flex items-start justify-center pt-2.5">
+              <div className="w-1 h-1.5 bg-white/70 rounded-full" />
+            </div>
           </div>
         </div>
       </section>

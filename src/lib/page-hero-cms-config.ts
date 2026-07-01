@@ -68,9 +68,9 @@ export const PAGE_HERO_CMS_CONFIG: Record<PageHeroCmsSlug, PageHeroCmsConfig> = 
   about: {
     label: "About Us",
     mediaType: "VIDEO",
-    videoPath: "/videos/hero/gold-footage.mp4",
+    videoPath: "/videos/hero/molten%20metal%20slow%20motion.mp4",
     posterPath: "/images/hero-fallback.jpg",
-    assetVersion: 1,
+    assetVersion: 2,
   },
   journal: {
     label: "Journal",

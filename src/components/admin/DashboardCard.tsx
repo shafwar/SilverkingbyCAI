@@ -48,9 +48,8 @@ export function DashboardCard({
         className={[
           "relative block w-full text-left",
           onClick
-            ? "cursor-pointer rounded-[inherit] transition hover:ring-1 hover:ring-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD700]/60"
+            ? "cursor-pointer rounded-[inherit] transition hover:bg-white/[0.02] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/25"
             : "",
-          active ? "ring-1 ring-[#FFD700]/50" : "",
         ]
           .filter(Boolean)
           .join(" ")}
