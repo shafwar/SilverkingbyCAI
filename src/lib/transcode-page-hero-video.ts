@@ -13,9 +13,8 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 
 const MAX_W = 1920;
-const MAX_H = 1080;
-/** Slightly sharper than CRF 23; still efficient for fullscreen hero loops */
-const CRF = 22;
+/** Sharper hero loops while staying under 20 MB on typical uploads */
+const CRF = 19;
 const FFMPEG_TIMEOUT_MS = 120_000;
 
 /**
@@ -48,9 +47,13 @@ export async function transcodePageHeroVideoForWeb(
         "-crf",
         String(CRF),
         "-preset",
-        "veryfast",
+        "fast",
         "-vf",
-        `scale='min(iw,${MAX_W})':'min(ih,${MAX_H})'`,
+        `scale='min(${MAX_W},iw)':-2:flags=lanczos`,
+        "-pix_fmt",
+        "yuv420p",
+        "-profile:v",
+        "high",
         "-movflags",
         "+faststart",
         "-an",

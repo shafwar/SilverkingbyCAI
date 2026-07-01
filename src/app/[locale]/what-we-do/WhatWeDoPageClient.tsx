@@ -556,7 +556,6 @@ export default function WhatWeDoPageClient() {
         />
 
         <MerchStyleHeroCopy
-          layout="upper"
           title={t("hero.title")}
           subtitle={t("hero.subtitle")}
           secondarySubtitle={t("hero.secondarySubtitle")}

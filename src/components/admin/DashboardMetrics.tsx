@@ -6,22 +6,30 @@ import { Shield, QrCode, Activity, Zap } from "lucide-react";
 import { DashboardCard } from "./DashboardCard";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import { fetcher } from "@/lib/fetcher";
+import { nextScanPeriod, type ScanPeriodMode } from "./scan-dashboard-types";
 
 type StatsResponse = {
   totalProducts: number;
   totalQrCodes: number;
   totalScans: number;
   scansToday: number;
-  // Page 2 data
+  scansLast7Days?: number;
+  scansLast30Days?: number;
+  scansThisMonth?: number;
   gramBatches?: number;
   gramItems?: number;
   gramTotalScans?: number;
   gramScansToday?: number;
-  // Combined totals
+  gramScansLast7Days?: number;
+  gramScansLast30Days?: number;
+  gramScansThisMonth?: number;
   combinedTotalProducts?: number;
   combinedTotalQrCodes?: number;
   combinedTotalScans?: number;
   combinedScansToday?: number;
+  combinedScansLast7Days?: number;
+  combinedScansLast30Days?: number;
+  combinedScansThisMonth?: number;
 };
 
 const icons = {
@@ -31,7 +39,23 @@ const icons = {
   today: <Zap className="h-5 w-5" />,
 };
 
-export function DashboardMetrics() {
+type DashboardMetricsProps = {
+  scanPeriod: ScanPeriodMode;
+  onScanPeriodChange: (period: ScanPeriodMode) => void;
+};
+
+function pageBreakdown(
+  page1: number,
+  page2: number | undefined,
+  fallback: string
+): string {
+  if (page2 !== undefined) {
+    return `${page1} Page 1 + ${page2} Page 2`;
+  }
+  return fallback;
+}
+
+export function DashboardMetrics({ scanPeriod, onScanPeriodChange }: DashboardMetricsProps) {
   const t = useTranslations("admin.metrics");
   const { data, error, isLoading } = useSWR<StatsResponse>("/api/admin/stats", fetcher, {
     refreshInterval: 45000,
@@ -49,11 +73,46 @@ export function DashboardMetrics() {
     return <p className="text-sm text-red-400">{t("unableToLoad")}</p>;
   }
 
-  // Use combined totals if available, otherwise fallback to page1 only
   const displayProducts = stats.combinedTotalProducts ?? stats.totalProducts;
   const displayQrCodes = stats.combinedTotalQrCodes ?? stats.totalQrCodes;
   const displayScans = stats.combinedTotalScans ?? stats.totalScans;
-  const displayScansToday = stats.combinedScansToday ?? stats.scansToday;
+
+  const scanCardByPeriod = {
+    today: {
+      title: t("scansToday"),
+      value: stats.combinedScansToday ?? stats.scansToday,
+      delta: pageBreakdown(stats.scansToday, stats.gramScansToday, t("liveInteractions")),
+    },
+    "7d": {
+      title: t("scansLast7Days"),
+      value: stats.combinedScansLast7Days ?? stats.scansLast7Days ?? 0,
+      delta: pageBreakdown(
+        stats.scansLast7Days ?? 0,
+        stats.gramScansLast7Days,
+        t("rollingSevenDays")
+      ),
+    },
+    "30d": {
+      title: t("scansLast30Days"),
+      value: stats.combinedScansLast30Days ?? stats.scansLast30Days ?? 0,
+      delta: pageBreakdown(
+        stats.scansLast30Days ?? 0,
+        stats.gramScansLast30Days,
+        t("rollingThirtyDays")
+      ),
+    },
+    month: {
+      title: t("scansThisMonth"),
+      value: stats.combinedScansThisMonth ?? stats.scansThisMonth ?? 0,
+      delta: pageBreakdown(
+        stats.scansThisMonth ?? 0,
+        stats.gramScansThisMonth,
+        t("monthToDate")
+      ),
+    },
+  } as const;
+
+  const scanCard = scanCardByPeriod[scanPeriod];
 
   return (
     <div className="grid gap-3 sm:gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
@@ -94,16 +153,15 @@ export function DashboardMetrics() {
         delay={0.15}
       />
       <DashboardCard
-        title={t("scansToday")}
-        value={displayScansToday.toLocaleString()}
-        delta={
-          stats.gramScansToday
-            ? `${stats.scansToday} Page 1 + ${stats.gramScansToday} Page 2`
-            : t("liveInteractions")
-        }
+        title={scanCard.title}
+        value={scanCard.value.toLocaleString()}
+        delta={scanCard.delta}
         icon={icons.today}
         accent="blue"
         delay={0.2}
+        active
+        onClick={() => onScanPeriodChange(nextScanPeriod(scanPeriod))}
+        hint={t("scanPeriodHint")}
       />
     </div>
   );

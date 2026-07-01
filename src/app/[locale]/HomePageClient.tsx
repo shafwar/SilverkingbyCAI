@@ -6,13 +6,14 @@ import SplashScreen from "@/components/sections/SplashScreen";
 import HeroSection from "@/components/sections/HeroSection";
 
 export default function HomePageClient() {
-  const [showSplash, setShowSplash] = useState(false);
-  const [splashComplete, setSplashComplete] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
+  const [splashComplete, setSplashComplete] = useState(false);
 
   useEffect(() => {
     document.body.classList.add("home-page");
     return () => {
       document.body.classList.remove("home-page");
+      document.body.classList.remove("splash-complete");
     };
   }, []);
 
@@ -24,8 +25,7 @@ export default function HomePageClient() {
         setSplashComplete(true);
         document.body.classList.add("splash-complete");
       } else {
-        setShowSplash(true);
-        setSplashComplete(false);
+        document.body.classList.remove("splash-complete");
       }
     } catch {
       setShowSplash(false);
@@ -47,16 +47,22 @@ export default function HomePageClient() {
 
   return (
     <>
-      <Navbar />
-      <main className="home-page-content relative min-h-screen overflow-hidden bg-transparent">
-        <HeroSection shouldAnimate={splashComplete} priorityLcp />
-      </main>
-
       {showSplash ? (
-        <div className="fixed inset-0 z-[9999] pointer-events-auto">
-          <SplashScreen onComplete={handleSplashComplete} />
-        </div>
+        <SplashScreen onComplete={handleSplashComplete} />
       ) : null}
+
+      <div
+        className={[
+          "home-page-shell",
+          splashComplete ? "home-page-shell--ready" : "home-page-shell--splash",
+        ].join(" ")}
+        aria-hidden={showSplash}
+      >
+        <Navbar />
+        <main className="home-page-content relative min-h-screen overflow-hidden bg-transparent">
+          <HeroSection shouldAnimate={splashComplete} priorityLcp={splashComplete} />
+        </main>
+      </div>
     </>
   );
 }

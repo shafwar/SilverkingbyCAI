@@ -11,6 +11,9 @@ type DashboardCardProps = {
   icon?: ReactNode;
   accent?: "gold" | "silver" | "emerald" | "blue";
   delay?: number;
+  onClick?: () => void;
+  active?: boolean;
+  hint?: string;
 };
 
 const accentMap: Record<
@@ -30,40 +33,65 @@ export function DashboardCard({
   icon,
   accent = "gold",
   delay = 0,
+  onClick,
+  active = false,
+  hint,
 }: DashboardCardProps) {
   const accentDefinition = accentMap[accent];
+  const Wrapper = onClick ? "button" : "div";
+
   return (
     <AnimatedCard delay={delay} className="relative overflow-hidden">
-      <div
-        className={`pointer-events-none absolute inset-0 ${accentDefinition.bgClass}`}
-        aria-hidden="true"
-      />
-      <div className="relative flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="text-[9px] sm:text-[10px] uppercase tracking-[0.3em] sm:tracking-[0.35em] text-white/50 truncate">{title}</p>
-          <motion.p
-            className={`mt-1.5 sm:mt-2 text-2xl sm:text-3xl font-semibold ${accentDefinition.text} break-words`}
-            layout
-            key={value}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            {value}
-          </motion.p>
-          {delta && <p className="mt-1 text-[10px] sm:text-xs text-white/60 line-clamp-2">{delta}</p>}
+      <Wrapper
+        type={onClick ? "button" : undefined}
+        onClick={onClick}
+        className={[
+          "relative block w-full text-left",
+          onClick
+            ? "cursor-pointer rounded-[inherit] transition hover:ring-1 hover:ring-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD700]/60"
+            : "",
+          active ? "ring-1 ring-[#FFD700]/50" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        aria-pressed={onClick ? active : undefined}
+      >
+        <div
+          className={`pointer-events-none absolute inset-0 ${accentDefinition.bgClass}`}
+          aria-hidden="true"
+        />
+        <div className="relative flex items-start justify-between gap-3 p-0">
+          <div className="flex-1 min-w-0">
+            <p className="text-[9px] sm:text-[10px] uppercase tracking-[0.3em] sm:tracking-[0.35em] text-white/50 truncate">
+              {title}
+            </p>
+            <motion.p
+              className={`mt-1.5 sm:mt-2 text-2xl sm:text-3xl font-semibold ${accentDefinition.text} break-words`}
+              layout
+              key={String(value)}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              {value}
+            </motion.p>
+            {delta && (
+              <p className="mt-1 text-[10px] sm:text-xs text-white/60 line-clamp-2">{delta}</p>
+            )}
+            {hint && <p className="mt-1.5 text-[10px] text-white/40">{hint}</p>}
+          </div>
+          {icon && (
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: delay + 0.1 }}
+              className="rounded-full border border-white/10 bg-[#141414] p-2 sm:p-3 text-white flex-shrink-0"
+            >
+              {icon}
+            </motion.div>
+          )}
         </div>
-        {icon && (
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: delay + 0.1 }}
-            className="rounded-full border border-white/10 bg-[#141414] p-2 sm:p-3 text-white flex-shrink-0"
-          >
-            {icon}
-          </motion.div>
-        )}
-      </div>
+      </Wrapper>
     </AnimatedCard>
   );
 }

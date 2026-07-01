@@ -20,6 +20,8 @@ import { AnimatedCard } from "./AnimatedCard";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import { MonthYearPicker } from "./MonthYearPicker";
 
+import { type ScanChartViewMode } from "./scan-dashboard-types";
+
 type TrendResponse = {
   range: number;
   month?: number | null;
@@ -27,13 +29,15 @@ type TrendResponse = {
   data: { date: string; count: number; page1Count?: number; page2Count?: number }[];
 };
 
-type ViewMode = "7d" | "30d" | "month";
+type LineChartScansProps = {
+  viewMode: ScanChartViewMode;
+  onViewModeChange: (mode: ScanChartViewMode) => void;
+};
 
-export function LineChartScans() {
+export function LineChartScans({ viewMode, onViewModeChange }: LineChartScansProps) {
   const t = useTranslations("admin.charts");
   const now = new Date();
-  const [viewMode, setViewMode] = useState<ViewMode>("month");
-  const [month, setMonth] = useState(now.getMonth() + 1); // 1-indexed
+  const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
 
   // Build API URL based on view mode
@@ -68,13 +72,12 @@ export function LineChartScans() {
   const handleMonthYearChange = (newMonth: number, newYear: number) => {
     setMonth(newMonth);
     setYear(newYear);
-    setViewMode("month"); // Switch to month view when using month picker
-    // Immediately fetch new data when month changes
+    onViewModeChange("month");
     mutate();
   };
 
-  const handleViewModeChange = (mode: ViewMode) => {
-    setViewMode(mode);
+  const handleViewModeChange = (mode: ScanChartViewMode) => {
+    onViewModeChange(mode);
     mutate();
   };
 

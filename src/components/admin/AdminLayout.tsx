@@ -145,7 +145,6 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
             href: "/admin/hero-assets",
             icon: ImageIcon,
           },
-          { label: safeT(t, "content", "Content"), href: "/admin/content", icon: Edit3 },
         ],
       },
     ],
@@ -169,7 +168,6 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
       "/admin/journal",
       "/admin/journal/new",
       "/admin/hero-assets",
-      "/admin/content",
     ];
 
     // Prefetch all admin routes immediately

@@ -196,17 +196,20 @@ html[data-window-blurred] .sk-home-orb-d2 {
     font-family: var(--font-geist-sans), sans-serif;
   }
 
-  /* Hide body content until splash screen completes - REMOVED: Too aggressive, blocks interactions */
-  /* body:not(.splash-complete) > *:not([data-splash-screen]) {
-    opacity: 0;
+  /* Splash first: hide home shell until splash completes (home route only) */
+  body.home-page:not(.splash-complete) .home-page-shell {
     visibility: hidden;
+    pointer-events: none;
   }
 
-  body.splash-complete > *:not([data-splash-screen]) {
-    opacity: 1;
+  body.home-page.splash-complete .home-page-shell {
     visibility: visible;
-    transition: opacity 0.3s ease-in, visibility 0.3s ease-in;
-  } */
+    pointer-events: auto;
+  }
+
+  body.home-page:not(.splash-complete) {
+    background-color: #000;
+  }
 
   body::-webkit-scrollbar {
     /* Chrome, Safari, Opera, Edge */

@@ -42,7 +42,7 @@ export const PAGE_HERO_CMS_CONFIG: Record<PageHeroCmsSlug, PageHeroCmsConfig> = 
     mediaType: "VIDEO",
     videoPath: "/videos/hero/WhatWeDo-SilverKing.mp4",
     posterPath: "/images/what-we-do/what-we-do-hero-poster.webp",
-    assetVersion: 1,
+    assetVersion: 2,
   },
   products: {
     label: "Products",
@@ -89,3 +89,9 @@ export const PAGE_HERO_CMS_CONFIG: Record<PageHeroCmsSlug, PageHeroCmsConfig> = 
 };
 
 export const HERO_POSTER_SECTION_KEY = "hero_poster";
+
+/** public/ path → R2 object key (static/ prefix). */
+export function publicPathToCanonicalR2Key(publicPath: string): string {
+  const clean = publicPath.startsWith("/") ? publicPath.slice(1) : publicPath;
+  return `static/${clean}`;
+}

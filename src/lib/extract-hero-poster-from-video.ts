@@ -11,8 +11,8 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 
 const FFMPEG_TIMEOUT_MS = 60_000;
-const POSTER_MAX_WIDTH = 1280;
-const POSTER_QUALITY = 88;
+const POSTER_MAX_WIDTH = 1920;
+const POSTER_QUALITY = 92;
 
 export async function extractHeroPosterWebpFromVideo(
   videoBuffer: Buffer,
@@ -34,7 +34,7 @@ export async function extractHeroPosterWebpFromVideo(
         "error",
         "-y",
         "-ss",
-        "00:00:01",
+        "00:00:00.5",
         "-i",
         inPath,
         "-vframes",

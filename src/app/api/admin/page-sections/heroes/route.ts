@@ -61,20 +61,27 @@ export async function GET() {
         | "VIDEO"
         | "IMAGE";
 
+      const posterUrl = posterRow?.r2Key
+        ? getPublicUrl(posterRow.r2Key)
+        : heroRow?.mediaType?.toUpperCase() === "IMAGE" && heroRow.r2Key
+          ? getPublicUrl(heroRow.r2Key)
+          : null;
+      const fallbackPoster = fallbackPosterUrl(slug);
+      const fallbackMedia = fallbackMediaUrl(slug);
+      const activeMediaUrl = heroRow?.r2Key ? getPublicUrl(heroRow.r2Key) : null;
+
       return {
         page: slug,
         label: cfg.label,
         defaultMediaType: cfg.mediaType,
         mediaType,
         cmsActive,
-        mediaUrl: heroRow?.r2Key ? getPublicUrl(heroRow.r2Key) : null,
-        posterUrl: posterRow?.r2Key
-          ? getPublicUrl(posterRow.r2Key)
-          : heroRow?.mediaType === "IMAGE" && heroRow.r2Key
-            ? getPublicUrl(heroRow.r2Key)
-            : null,
-        fallbackMediaUrl: fallbackMediaUrl(slug),
-        fallbackPosterUrl: fallbackPosterUrl(slug),
+        mediaUrl: activeMediaUrl,
+        posterUrl,
+        previewPosterUrl: posterUrl ?? fallbackPoster,
+        previewMediaUrl: cmsActive && activeMediaUrl ? activeMediaUrl : fallbackMedia,
+        fallbackMediaUrl: fallbackMedia,
+        fallbackPosterUrl: fallbackPoster,
         updatedAt: heroRow?.updatedAt?.toISOString() ?? null,
         version: heroRow?.updatedAt?.getTime() ?? cfg.assetVersion,
       };

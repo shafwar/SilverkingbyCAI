@@ -6,6 +6,7 @@ import {
   GetObjectCommand,
   ListObjectsV2Command,
   HeadObjectCommand,
+  CopyObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -59,6 +60,22 @@ export async function uploadToR2(
     console.error("Error uploading to R2:", error);
     throw new Error(
       `Failed to upload file to R2: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+  }
+}
+
+export async function copyInR2(sourceKey: string, destKey: string): Promise<void> {
+  try {
+    const command = new CopyObjectCommand({
+      Bucket: BUCKET_NAME,
+      CopySource: `${BUCKET_NAME}/${sourceKey}`,
+      Key: destKey,
+    });
+    await r2Client.send(command);
+  } catch (error) {
+    console.error("Error copying in R2:", error);
+    throw new Error(
+      `Failed to copy file in R2: ${error instanceof Error ? error.message : "Unknown error"}`
     );
   }
 }

@@ -1,12 +1,5 @@
-import { Suspense } from "react";
-import { ContentPageClient } from "./ContentPageClient";
-
-export const dynamic = "force-dynamic";
+import { redirect } from "next/navigation";
 
 export default function AdminContentPage() {
-  return (
-    <Suspense fallback={<div className="p-6 text-white/50">Loading…</div>}>
-      <ContentPageClient />
-    </Suspense>
-  );
+  redirect("/admin/hero-assets");
 }

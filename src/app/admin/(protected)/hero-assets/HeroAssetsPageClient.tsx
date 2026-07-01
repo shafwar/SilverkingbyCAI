@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
-import { Film, ImageIcon, RefreshCw, RotateCcw, Upload } from "lucide-react";
+import { Film, ImageIcon, Pin, RefreshCw, RotateCcw, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 type HeroRow = {
@@ -14,6 +14,8 @@ type HeroRow = {
   cmsActive: boolean;
   mediaUrl: string | null;
   posterUrl: string | null;
+  previewPosterUrl: string;
+  previewMediaUrl: string;
   fallbackMediaUrl: string;
   fallbackPosterUrl: string;
   updatedAt: string | null;
@@ -26,6 +28,7 @@ export function HeroAssetsPageClient() {
   const [loading, setLoading] = useState(true);
   const [uploadingPage, setUploadingPage] = useState<string | null>(null);
   const [restoringPage, setRestoringPage] = useState<string | null>(null);
+  const [promotingPage, setPromotingPage] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const load = useCallback(async () => {
@@ -93,6 +96,29 @@ export function HeroAssetsPageClient() {
     }
   };
 
+  const handlePromote = async (page: string) => {
+    if (!confirm(t("promoteConfirm"))) return;
+    setPromotingPage(page);
+    try {
+      const res = await fetch("/api/admin/page-sections/heroes/promote-default", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ page }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error ?? t("promoteError"));
+        return;
+      }
+      toast.success(t("promoteSuccess"));
+      await load();
+    } catch {
+      toast.error(t("promoteError"));
+    } finally {
+      setPromotingPage(null);
+    }
+  };
+
   const openFilePicker = (page: string, type: "image" | "video") => {
     const input = fileInputRefs.current[page];
     if (!input) return;
@@ -127,12 +153,12 @@ export function HeroAssetsPageClient() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {heroes.map((hero) => {
-            const previewUrl =
-              hero.posterUrl ??
-              (hero.mediaType === "IMAGE" ? hero.mediaUrl : null) ??
-              hero.fallbackPosterUrl;
+            const posterForPreview = hero.previewPosterUrl || hero.fallbackPosterUrl;
+            const videoForPreview =
+              hero.mediaType === "VIDEO" ? hero.previewMediaUrl || hero.fallbackMediaUrl : null;
             const isUploading = uploadingPage === hero.page;
             const isRestoring = restoringPage === hero.page;
+            const isPromoting = promotingPage === hero.page;
 
             return (
               <article
@@ -140,12 +166,28 @@ export function HeroAssetsPageClient() {
                 className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]"
               >
                 <div className="relative aspect-video bg-black/40">
-                  {previewUrl ? (
+                  {hero.mediaType === "VIDEO" && videoForPreview ? (
+                    <video
+                      key={`${hero.page}-${videoForPreview}-${hero.version}`}
+                      src={videoForPreview}
+                      poster={posterForPreview}
+                      muted
+                      playsInline
+                      preload="metadata"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : posterForPreview ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={previewUrl}
+                      src={posterForPreview}
                       alt=""
                       className="h-full w-full object-cover"
+                      onError={(e) => {
+                        const img = e.currentTarget;
+                        if (img.src !== hero.fallbackPosterUrl) {
+                          img.src = hero.fallbackPosterUrl;
+                        }
+                      }}
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center text-white/30">
@@ -197,7 +239,7 @@ export function HeroAssetsPageClient() {
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      disabled={isUploading || isRestoring}
+                      disabled={isUploading || isRestoring || isPromoting}
                       onClick={() => openFilePicker(hero.page, "video")}
                       className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-luxury-gold px-3 py-2 text-xs font-semibold text-black disabled:opacity-50"
                     >
@@ -206,7 +248,7 @@ export function HeroAssetsPageClient() {
                     </button>
                     <button
                       type="button"
-                      disabled={isUploading || isRestoring}
+                      disabled={isUploading || isRestoring || isPromoting}
                       onClick={() => openFilePicker(hero.page, "image")}
                       className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/15 px-3 py-2 text-xs text-white/85 disabled:opacity-50"
                     >
@@ -216,15 +258,26 @@ export function HeroAssetsPageClient() {
                   </div>
 
                   {hero.cmsActive ? (
-                    <button
-                      type="button"
-                      disabled={isUploading || isRestoring}
-                      onClick={() => void handleRestore(hero.page)}
-                      className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-2 text-xs text-red-300/90 disabled:opacity-50"
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" />
-                      {isRestoring ? t("restoring") : t("restoreDefault")}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        disabled={isUploading || isRestoring || isPromoting}
+                        onClick={() => void handlePromote(hero.page)}
+                        className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-luxury-gold/40 bg-luxury-gold/10 px-3 py-2 text-xs text-luxury-gold disabled:opacity-50"
+                      >
+                        <Pin className="h-3.5 w-3.5" />
+                        {isPromoting ? t("promoting") : t("promoteDefault")}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isUploading || isRestoring || isPromoting}
+                        onClick={() => void handleRestore(hero.page)}
+                        className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-2 text-xs text-red-300/90 disabled:opacity-50"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        {isRestoring ? t("restoring") : t("restoreDefault")}
+                      </button>
+                    </>
                   ) : null}
                 </div>
               </article>

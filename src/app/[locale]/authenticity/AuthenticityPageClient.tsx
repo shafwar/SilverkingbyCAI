@@ -493,6 +493,7 @@ export default function AuthenticityPageClient() {
           ref={videoRef}
           page="authenticity"
           containerClassName="absolute inset-0 h-full w-full z-10"
+          objectPosition="center 32%"
         />
         {/* Multi-layer overlays for text readability */}
         <div className="absolute inset-0 z-[11] pointer-events-none" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 35%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.35) 75%, rgba(0,0,0,0.7) 100%)" }} />
@@ -521,7 +522,6 @@ export default function AuthenticityPageClient() {
         className="relative min-h-[100dvh] overflow-hidden"
       >
         <MerchStyleHeroCopy
-          layout="upper"
           title={t("hero.title")}
           titleBold={t("hero.titleBold")}
           subtitle={t("hero.subtitle")}
