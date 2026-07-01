@@ -15,7 +15,7 @@ import { VideoLoadGuard } from "@/components/section-media/SectionMediaLoadGuard
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
-import { CmsPageHeroBackground } from "@/components/hero/CmsPageHeroBackground";
+import { PageHeroSection } from "@/components/hero/PageHeroSection";
 import {
   FOOTER_VIDEO_MERCH_PATTERN,
   resolveHeroPoster,
@@ -444,25 +444,7 @@ export default function MerchandisePageClient() {
       <Navbar />
 
       {/* Hero: full-viewport (100dvh), 15s loop MP4 + WebP poster; R2 via proxiedHeroVideoSrc */}
-      <section className="relative isolate min-h-[100dvh] overflow-hidden">
-        <div
-          className="absolute inset-0 overflow-hidden"
-          style={{ transform: "translateZ(0)", WebkitBackfaceVisibility: "hidden" }}
-        >
-          <CmsPageHeroBackground
-            ref={heroVideoRef}
-            page="merchandise"
-            containerClassName="absolute inset-0 h-full w-full"
-            overlay={
-              <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-luxury-black via-luxury-black/60 to-luxury-black/40" />
-            }
-          />
-        </div>
-        {/* Seam cover: hides subpixel line at hero bottom (flicker fix) */}
-        <div
-          className="absolute bottom-0 left-0 right-0 z-[1] h-[3px] bg-luxury-black pointer-events-none"
-          aria-hidden
-        />
+      <PageHeroSection page="merchandise" videoRef={heroVideoRef} showScrollIndicator={false}>
         <div className="relative z-10 flex min-h-[100dvh] flex-col items-center justify-center px-6 pb-[max(5rem,env(safe-area-inset-bottom))] pt-[max(5rem,env(safe-area-inset-top))] text-center font-[family-name:var(--font-merch)]">
           <motion.h1
             className="text-4xl font-semibold tracking-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.5)] md:text-5xl lg:text-6xl xl:text-7xl"
@@ -497,7 +479,7 @@ export default function MerchandisePageClient() {
             {t("hero.tagline")}
           </motion.p>
         </div>
-      </section>
+      </PageHeroSection>
 
       <div className="mx-auto max-w-7xl px-4 pb-24 md:px-6">
         {CATEGORY_ORDER.map((category, sectionIndex) => {

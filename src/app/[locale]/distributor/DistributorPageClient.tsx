@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import Navbar from "@/components/layout/Navbar";
 import { DistributorCard, type DistributorItem } from "@/components/distributor/DistributorCard";
 import { DistributorForm } from "@/components/admin/DistributorForm";
-import { CmsPageHeroBackground } from "@/components/hero/CmsPageHeroBackground";
+import { PageHeroSection } from "@/components/hero/PageHeroSection";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Plus, X } from "lucide-react";
@@ -206,35 +206,28 @@ export default function DistributorPageClient({
     >
       <Navbar />
 
-      {/* Hero — merchandise pattern: static image + optional CMS swap after idle */}
-      <section className="relative isolate min-h-[100dvh] overflow-hidden">
-        <CmsPageHeroBackground
-          page="distributor"
-          containerClassName="absolute inset-0 h-full w-full"
-          overlay={
-            <>
-              <div
-                className="pointer-events-none absolute inset-0 z-[1]"
-                style={{
-                  background:
-                    "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.4) 100%)",
-                }}
-              />
-              <div
-                className="pointer-events-none absolute inset-0 z-[1]"
-                style={{
-                  background:
-                    "radial-gradient(ellipse 70% 60% at 50% 50%, rgba(0,0,0,0.25) 0%, transparent 70%)",
-                }}
-              />
-            </>
-          }
-        />
-        <div
-          className="absolute bottom-0 left-0 right-0 z-[1] h-[3px] bg-luxury-black pointer-events-none"
-          aria-hidden
-        />
-
+      <PageHeroSection
+        page="distributor"
+        showScrollIndicator={false}
+        overlay={
+          <>
+            <div
+              className="pointer-events-none absolute inset-0 z-[1]"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.4) 100%)",
+              }}
+            />
+            <div
+              className="pointer-events-none absolute inset-0 z-[1]"
+              style={{
+                background:
+                  "radial-gradient(ellipse 70% 60% at 50% 50%, rgba(0,0,0,0.25) 0%, transparent 70%)",
+              }}
+            />
+          </>
+        }
+      >
         <div className="relative z-10 flex h-screen min-h-0 flex-col justify-center overflow-hidden">
           <div className="relative w-full flex-1 flex items-center justify-center px-4 sm:px-6 md:px-8 lg:px-12 pb-24 overflow-hidden">
             <motion.div
@@ -275,7 +268,7 @@ export default function DistributorPageClient({
             </div>
           </div>
         </div>
-      </section>
+      </PageHeroSection>
 
       {/* Description Section – merchandise-style: gradient, tagline, no scroll */}
       <section

@@ -14,12 +14,8 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import ProductModal, { type Product } from "@/components/ui/ProductModal";
 import ProductCard, { type ProductWithPricing } from "@/components/ui/ProductCard";
-import { ProductsHeroVideo } from "@/components/products/ProductsHeroVideo";
-import { MerchStyleHeroCopy } from "@/components/layout/MerchStyleHeroCopy";
-import { HERO_PLACEHOLDER_BG } from "@/lib/hero-media-defaults";
+import { PageHeroSection } from "@/components/hero/PageHeroSection";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
-import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
-import { usePauseBackgroundVideoOnScrollAndHidden } from "@/hooks/usePauseBackgroundVideoOnScrollAndHidden";
 import Image from "next/image";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -270,13 +266,6 @@ export default function ProductsPageClient() {
   const pageRef = useRef<HTMLDivElement | null>(null);
   const scrollIndicatorRef = useRef<HTMLDivElement | null>(null);
   const sectionsRef = useRef<(HTMLElement | null)[]>([]);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const fadeOverlayRef = useRef<HTMLDivElement | null>(null);
-  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
-  usePauseBackgroundVideoOnScrollAndHidden(videoRef, {
-    enabled: shouldLoadHeroVideo,
-    scrollPastVH: 0.45,
-  });
   const bottomSectionRef = useRef<HTMLDivElement | null>(null);
   const readingTextRef = useRef<HTMLDivElement | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -789,41 +778,6 @@ export default function ProductsPageClient() {
             });
           }
 
-          // Fade to black effect when scrolling from hero to product section
-          if (fadeOverlayRef.current && sectionsRef.current[0] && sectionsRef.current[1]) {
-            const heroSection = sectionsRef.current[0];
-            const productSection = sectionsRef.current[1];
-
-            // Initialize overlay opacity
-            gsap.set(fadeOverlayRef.current, { opacity: 0 });
-
-            ScrollTrigger.create({
-              trigger: heroSection,
-              start: "bottom center",
-              end: "bottom top",
-              scrub: 0.5,
-              onUpdate: (self) => {
-                if (fadeOverlayRef.current) {
-                  fadeOverlayRef.current.style.opacity = String(self.progress);
-                }
-              },
-            });
-
-            ScrollTrigger.create({
-              trigger: productSection,
-              start: "top center",
-              end: "top top",
-              scrub: 0.5,
-              onUpdate: (self) => {
-                if (fadeOverlayRef.current) {
-                  fadeOverlayRef.current.style.opacity = String(
-                    Math.min(1, 0.5 + self.progress * 0.5)
-                  );
-                }
-              },
-            });
-          }
-
           // Section reveal with ScrollTrigger
           sectionsRef.current.forEach((section) => {
             if (!section) return;
@@ -984,62 +938,21 @@ export default function ProductsPageClient() {
       ref={pageRef}
       className="min-h-screen bg-luxury-black text-white selection:bg-luxury-gold/20 selection:text-white"
     >
-      {/* Full Screen Video Background - No Zoom, High Quality */}
-      <div
-        className="fixed inset-0 z-0 w-screen h-screen overflow-hidden"
-        style={{
-          willChange: "transform",
-          backfaceVisibility: "hidden",
-          WebkitBackfaceVisibility: "hidden",
-          transform: "translateZ(0)",
-          WebkitTransform: "translateZ(0)",
-        }}
-      >
-        <div className="absolute inset-0 z-0" style={{ background: HERO_PLACEHOLDER_BG }} aria-hidden />
-        <div className="absolute inset-0 z-[11] bg-gradient-to-b from-black/35 via-black/10 to-black/55 pointer-events-none" />
-        <div
-          className="absolute inset-0 z-[11] bg-gradient-to-r from-black/50 via-black/20 to-transparent pointer-events-none md:from-black/40 md:via-black/12"
-          aria-hidden
-        />
-
-        <ProductsHeroVideo ref={videoRef} />
-        {/* Fade to Black Overlay - Controlled by ScrollTrigger */}
-        <div
-          ref={fadeOverlayRef}
-          className="absolute inset-0 bg-luxury-black pointer-events-none z-30"
-          style={{ opacity: 0 }}
-        />
-      </div>
-
       <Navbar />
 
-      {/* Hero Section — merchandise-style centered copy */}
-      <section
-        ref={(element) => {
+      <PageHeroSection
+        sectionRef={(element) => {
           sectionsRef.current[0] = element;
         }}
-        className="relative min-h-[100dvh] overflow-hidden"
-      >
-        <MerchStyleHeroCopy
-          title={t("hero.title")}
-          subtitle={t("hero.subtitle")}
-          secondarySubtitle={t("hero.secondarySubtitle")}
-          tagline={t("hero.tagline")}
-        />
-
-        {/* Scroll indicator */}
-        <div
-          ref={scrollIndicatorRef}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-3 pointer-events-none"
-        >
-          <div
-            data-mouse-icon
-            className="relative w-5 h-8 border border-white/50 rounded-full flex items-start justify-center pt-2.5"
-          >
-            <div data-scroll-wheel className="w-1 h-1.5 bg-white/70 rounded-full" />
-          </div>
-        </div>
-      </section>
+        page="products"
+        objectPosition="center 30%"
+        copy={{
+          title: t("hero.title"),
+          subtitle: t("hero.subtitle"),
+          secondarySubtitle: t("hero.secondarySubtitle"),
+          tagline: t("hero.tagline"),
+        }}
+      />
 
       {/* Products Section - Minimalist Style */}
       <section

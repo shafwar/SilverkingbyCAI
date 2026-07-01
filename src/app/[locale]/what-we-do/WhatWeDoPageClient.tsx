@@ -13,8 +13,7 @@ import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { EditableMedia } from "@/components/editable-media";
 import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
-import { WhatWeDoHeroVideo } from "@/components/what-we-do/WhatWeDoHeroVideo";
-import { MerchStyleHeroCopy } from "@/components/layout/MerchStyleHeroCopy";
+import { PageHeroSection } from "@/components/hero/PageHeroSection";
 import {
   DEFAULT_HERO_POSTER,
   HERO_PLACEHOLDER_BG,
@@ -543,32 +542,19 @@ export default function WhatWeDoPageClient() {
       <Navbar />
 
       {/* Hero — merchandise pattern: static MP4 + WebP poster (WhatWeDo-SilverKing.mp4) */}
-      <section
-        ref={(element) => {
+      <PageHeroSection
+        sectionRef={(element) => {
           sectionsRef.current[0] = element as HTMLDivElement | null;
         }}
-        className="relative isolate min-h-[100dvh] overflow-hidden"
-      >
-        <WhatWeDoHeroVideo />
-        <div
-          className="absolute bottom-0 left-0 right-0 z-[1] h-[3px] bg-luxury-black pointer-events-none"
-          aria-hidden
-        />
-
-        <MerchStyleHeroCopy
-          title={t("hero.title")}
-          subtitle={t("hero.subtitle")}
-          secondarySubtitle={t("hero.secondarySubtitle")}
-          tagline={t("hero.tagline")}
-        />
-
-        {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-3 pointer-events-none">
-          <div className="relative w-5 h-8 border border-white/50 rounded-full flex items-start justify-center pt-2.5">
-            <div className="w-1 h-1.5 bg-white/70 rounded-full" />
-          </div>
-        </div>
-      </section>
+        page="what-we-do"
+        objectPosition="center 32%"
+        copy={{
+          title: t("hero.title"),
+          subtitle: t("hero.subtitle"),
+          secondarySubtitle: t("hero.secondarySubtitle"),
+          tagline: t("hero.tagline"),
+        }}
+      />
 
       {/* Narrative + Image Grid – no card media until section data loaded (prevents flash) */}
       <NarrativeImageSection

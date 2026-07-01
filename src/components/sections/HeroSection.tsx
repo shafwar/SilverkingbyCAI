@@ -7,7 +7,8 @@ import { QrCode, BookOpen } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import { OptimizedLink } from "@/components/ui/OptimizedLink";
-import { HomeHeroVideo } from "@/components/home/HomeHeroVideo";
+import { PageHeroMedia } from "@/components/hero/PageHeroSection";
+import { HOME_HERO_VIGNETTE_BG } from "@/lib/hero-media-defaults";
 
 interface HeroSectionProps {
   shouldAnimate?: boolean;
@@ -253,7 +254,16 @@ export default function HeroSection({
         pointerEvents: "auto",
       }}
     >
-      <HomeHeroVideo />
+      <PageHeroMedia
+        page="home"
+        overlay={
+          <div
+            className="pointer-events-none absolute inset-0 z-[1]"
+            style={{ backgroundImage: HOME_HERO_VIGNETTE_BG }}
+            aria-hidden
+          />
+        }
+      />
       <div
         className="absolute bottom-0 left-0 right-0 z-[1] h-[3px] bg-luxury-black pointer-events-none"
         aria-hidden

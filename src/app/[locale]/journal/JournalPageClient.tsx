@@ -5,9 +5,8 @@ import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Navbar from "@/components/layout/Navbar";
-import { CmsPageHeroBackground } from "@/components/hero/CmsPageHeroBackground";
+import { PageHeroSection } from "@/components/hero/PageHeroSection";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
-import { HERO_PLACEHOLDER_BG } from "@/lib/hero-media-defaults";
 import { ScrollRevealSection } from "@/components/shared/ScrollRevealSection";
 import { motion } from "framer-motion";
 import { ArrowRight, BookOpen, Pencil, Plus, Trash2 } from "lucide-react";
@@ -172,37 +171,32 @@ export default function JournalPageClient(_props: JournalPageClientProps) {
       className={`min-h-screen w-full overflow-x-hidden bg-[#050505] text-white ${fontJournal.variable}`}
       style={{ fontFamily: "var(--font-journal), system-ui, sans-serif" }}
     >
-      {/* Hero background — always show base gradient so never plain black; asset loads on top */}
-      <div className="fixed inset-0 z-0 h-screen w-full overflow-hidden">
-        <div
-          className="absolute inset-0 z-0"
-          style={{ background: HERO_PLACEHOLDER_BG }}
-        />
-        <CmsPageHeroBackground
-          ref={journalHeroVideoRef}
-          page="journal"
-          containerClassName="absolute inset-0 z-10 h-full w-full"
-        />
-        <div
-          className="absolute inset-0 z-[11] pointer-events-none"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.6) 100%)",
-          }}
-        />
-        <div
-          className="absolute inset-0 z-[11] pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(ellipse 70% 50% at 50% 40%, rgba(212,175,55,0.07) 0%, transparent 60%)",
-          }}
-        />
-      </div>
-
       <Navbar />
 
-      {/* Hero section */}
-      <section className="relative flex min-h-screen flex-col justify-center px-4 pt-24 pb-16 sm:px-6 md:px-8">
+      <PageHeroSection
+        page="journal"
+        videoRef={journalHeroVideoRef}
+        showScrollIndicator={false}
+        overlay={
+          <>
+            <div
+              className="pointer-events-none absolute inset-0 z-[1]"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.6) 100%)",
+              }}
+            />
+            <div
+              className="pointer-events-none absolute inset-0 z-[1]"
+              style={{
+                background:
+                  "radial-gradient(ellipse 70% 50% at 50% 40%, rgba(212,175,55,0.07) 0%, transparent 60%)",
+              }}
+            />
+          </>
+        }
+      >
+      <div className="relative z-10 flex min-h-[100dvh] flex-col justify-center px-4 pt-24 pb-16 sm:px-6 md:px-8">
         <motion.div
           initial={{ opacity: 0, y: 32 }}
           animate={{ opacity: 1, y: 0 }}
@@ -231,7 +225,8 @@ export default function JournalPageClient(_props: JournalPageClientProps) {
             <div className="h-1.5 w-1 rounded-full bg-white/70" />
           </motion.div>
         </div>
-      </section>
+      </div>
+      </PageHeroSection>
 
       {/* Journal list — featured + asymmetric grid */}
       <section

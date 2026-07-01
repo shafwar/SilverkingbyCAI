@@ -5,8 +5,7 @@ import dynamic from "next/dynamic";
 import Navbar from "@/components/layout/Navbar";
 import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
-import { CmsPageHeroBackground } from "@/components/hero/CmsPageHeroBackground";
-import { MerchStyleHeroCopy } from "@/components/layout/MerchStyleHeroCopy";
+import { PageHeroSection } from "@/components/hero/PageHeroSection";
 import { PageLoadingSkeleton } from "@/components/ui/PageLoadingSkeleton";
 // Lazy load CertificateCard to improve initial page load
 const CertificateCard = dynamic(() => import("@/components/ui/CertificateCard"), {
@@ -216,33 +215,16 @@ export default function AboutPageClient() {
       <Navbar />
 
       {/* Hero — merchandise pattern: static video + optional CMS swap after idle */}
-      <section className="relative isolate min-h-[100dvh] overflow-hidden">
-        <CmsPageHeroBackground
-          page="about"
-          containerClassName="absolute inset-0 h-full w-full"
-          objectPosition="center 32%"
-          overlay={
-            <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-black/30 via-transparent to-black/50" />
-          }
-        />
-        <div
-          className="absolute bottom-0 left-0 right-0 z-[1] h-[3px] bg-luxury-black pointer-events-none"
-          aria-hidden
-        />
-
-        <MerchStyleHeroCopy
-          title={t("hero.title")}
-          subtitle={t("hero.subtitle")}
-          secondarySubtitle={t("hero.secondarySubtitle")}
-          tagline={t("hero.tagline")}
-        />
-
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-3 pointer-events-none">
-          <div className="relative w-5 h-8 border border-white/50 rounded-full flex items-start justify-center pt-2.5">
-            <div className="w-1 h-1.5 bg-white/70 rounded-full" />
-          </div>
-        </div>
-      </section>
+      <PageHeroSection
+        page="about"
+        objectPosition="center 32%"
+        copy={{
+          title: t("hero.title"),
+          subtitle: t("hero.subtitle"),
+          secondarySubtitle: t("hero.secondarySubtitle"),
+          tagline: t("hero.tagline"),
+        }}
+      />
 
       {/* Why Choose Us Section */}
       <section className="relative overflow-hidden py-28 md:py-36 px-6">

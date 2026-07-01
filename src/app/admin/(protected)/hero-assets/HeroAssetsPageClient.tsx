@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
-import { Film, ImageIcon, Pin, RefreshCw, RotateCcw, Upload } from "lucide-react";
+import { HeroAdminPreview } from "@/components/admin/HeroAdminPreview";
+import { ImageIcon, Pin, RefreshCw, RotateCcw, Upload } from "lucide-react";
+import type { PageHeroCmsSlug } from "@/lib/page-hero-cms-config";
 import { toast } from "sonner";
 
 type HeroRow = {
@@ -153,9 +155,6 @@ export function HeroAssetsPageClient() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {heroes.map((hero) => {
-            const posterForPreview = hero.previewPosterUrl || hero.fallbackPosterUrl;
-            const videoForPreview =
-              hero.mediaType === "VIDEO" ? hero.previewMediaUrl || hero.fallbackMediaUrl : null;
             const isUploading = uploadingPage === hero.page;
             const isRestoring = restoringPage === hero.page;
             const isPromoting = promotingPage === hero.page;
@@ -166,34 +165,13 @@ export function HeroAssetsPageClient() {
                 className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]"
               >
                 <div className="relative aspect-video bg-black/40">
-                  {hero.mediaType === "VIDEO" && videoForPreview ? (
-                    <video
-                      key={`${hero.page}-${videoForPreview}-${hero.version}`}
-                      src={videoForPreview}
-                      poster={posterForPreview}
-                      muted
-                      playsInline
-                      preload="metadata"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : posterForPreview ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={posterForPreview}
-                      alt=""
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        const img = e.currentTarget;
-                        if (img.src !== hero.fallbackPosterUrl) {
-                          img.src = hero.fallbackPosterUrl;
-                        }
-                      }}
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-white/30">
-                      <Film className="h-10 w-10" />
-                    </div>
-                  )}
+                  <HeroAdminPreview
+                    page={hero.page as PageHeroCmsSlug}
+                    mediaType={hero.mediaType}
+                    cmsPosterUrl={hero.previewPosterUrl}
+                    cmsMediaUrl={hero.previewMediaUrl}
+                    version={hero.version}
+                  />
                   <span
                     className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${
                       hero.cmsActive

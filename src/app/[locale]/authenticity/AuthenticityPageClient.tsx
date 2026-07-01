@@ -28,8 +28,7 @@ import { APP_NAME } from "@/utils/constants";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
 import { usePauseBackgroundVideoOnScrollAndHidden } from "@/hooks/usePauseBackgroundVideoOnScrollAndHidden";
-import { CmsPageHeroBackground } from "@/components/hero/CmsPageHeroBackground";
-import { HERO_PLACEHOLDER_BG } from "@/lib/hero-media-defaults";
+import { PageHeroSection } from "@/components/hero/PageHeroSection";
 import { MerchStyleHeroCopy } from "@/components/layout/MerchStyleHeroCopy";
 import { ModalPortal } from "@/components/ui/ModalPortal";
 
@@ -482,44 +481,47 @@ export default function AuthenticityPageClient() {
 
   return (
     <div ref={pageRef} className="min-h-screen bg-luxury-black text-white">
-      <div className="pointer-events-none fixed inset-0" style={{ background: HERO_PLACEHOLDER_BG }} />
-
       <Navbar />
 
-      {/* Hero background media — fixed behind content */}
-      <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
-        <div className="absolute inset-0 z-0" style={{ background: HERO_PLACEHOLDER_BG }} aria-hidden />
-        <CmsPageHeroBackground
-          ref={videoRef}
-          page="authenticity"
-          containerClassName="absolute inset-0 h-full w-full z-10"
-          objectPosition="center 32%"
-        />
-        {/* Multi-layer overlays for text readability */}
-        <div className="absolute inset-0 z-[11] pointer-events-none" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 35%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.35) 75%, rgba(0,0,0,0.7) 100%)" }} />
-        <div className="absolute inset-0 z-[12] pointer-events-none" style={{ background: "linear-gradient(90deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.15) 50%, transparent 100%)" }} />
-        {/* Subtle gold particles */}
-        <div ref={particlesRef} className="absolute inset-0 pointer-events-none z-[15]">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <motion.div
-              key={i}
-              data-particle
-              className="absolute h-1 w-1 rounded-full bg-luxury-gold/20"
-              style={{
-                left: `${((i * 17) % 85) + 8}%`,
-                top: `${((i * 23) % 75) + 12}%`,
-              }}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Hero Section — merchandise-style centered copy */}
-      <section
-        ref={(element) => {
+      <PageHeroSection
+        sectionRef={(element) => {
           sectionsRef.current[0] = element as HTMLDivElement | null;
         }}
-        className="relative min-h-[100dvh] overflow-hidden"
+        videoRef={videoRef}
+        page="authenticity"
+        objectPosition="center 32%"
+        showScrollIndicator={false}
+        overlay={
+          <>
+            <div
+              className="pointer-events-none absolute inset-0 z-[1]"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 35%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.35) 75%, rgba(0,0,0,0.7) 100%)",
+              }}
+            />
+            <div
+              className="pointer-events-none absolute inset-0 z-[1]"
+              style={{
+                background:
+                  "linear-gradient(90deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.15) 50%, transparent 100%)",
+              }}
+            />
+            <div ref={particlesRef} className="pointer-events-none absolute inset-0 z-[2]">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <motion.div
+                  key={i}
+                  data-particle
+                  className="absolute h-1 w-1 rounded-full bg-luxury-gold/20"
+                  style={{
+                    left: `${((i * 17) % 85) + 8}%`,
+                    top: `${((i * 23) % 75) + 12}%`,
+                  }}
+                />
+              ))}
+            </div>
+          </>
+        }
       >
         <MerchStyleHeroCopy
           title={t("hero.title")}
@@ -573,7 +575,7 @@ export default function AuthenticityPageClient() {
 
         {/* Bottom gradient fade */}
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-transparent pointer-events-none z-20" />
-      </section>
+      </PageHeroSection>
 
       {/* Verification Workflow Section - ALWAYS VISIBLE */}
       <section
