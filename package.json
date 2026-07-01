@@ -23,6 +23,7 @@
     "r2:upload": "powershell -ExecutionPolicy Bypass -File scripts/upload-r2-wrangler.ps1",
     "r2:upload-serticards": "ts-node -r dotenv/config --project tsconfig.scripts.json scripts/upload-all-serticard-templates.ts",
     "r2:ensure-hero": "ts-node -r dotenv/config --project tsconfig.scripts.json scripts/ensure-distributor-hero-r2.ts",
+    "r2:ensure-certificate": "ts-node -r dotenv/config --project tsconfig.scripts.json scripts/ensure-certificate-r2.ts",
     "merchandise:compress-upload": "ts-node -r dotenv/config --project tsconfig.scripts.json scripts/compress-and-upload-merchandise.ts",
     "merchandise:build-hero-video": "bash scripts/build-merchandise-hero-video.sh",
     "merchandise:upload-hero-video": "ts-node -r dotenv/config --project tsconfig.scripts.json scripts/upload-merchandise-hero-video.ts",

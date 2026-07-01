@@ -90,6 +90,7 @@ public/images/**/*.png
 !public/images/serticard/**
 !public/images/cai-logo.png
 !public/images/sertificate.jpeg
+!public/images/certificate.jpeg
 !public/images/hero-fallback.jpg
 !public/images/DSC02998.JPG
 !public/images/merchandise-hero.png
