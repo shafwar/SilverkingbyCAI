@@ -19,8 +19,8 @@ export const maxDuration = 120;
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm"];
-export const MAX_IMAGE_BYTES = 3 * 1024 * 1024; // 3 MB
-export const MAX_VIDEO_BYTES = 20 * 1024 * 1024; // 20 MB
+const MAX_IMAGE_BYTES = 3 * 1024 * 1024; // 3 MB
+const MAX_VIDEO_BYTES = 20 * 1024 * 1024; // 20 MB
 const IMAGE_MAX_WIDTH = 1920;
 const IMAGE_QUALITY = 88;
 const IMAGE_MAX_PIXELS = 1920 * 1920 * 4;
