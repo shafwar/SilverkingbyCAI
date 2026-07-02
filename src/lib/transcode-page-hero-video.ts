@@ -22,13 +22,35 @@ export type HeroVideoProbe = {
   durationSeconds: number | null;
 };
 
+export type HeroVideoTranscodeFailure =
+  | "ffmpeg_missing"
+  | "duration_exceeded"
+  | "transcode_failed"
+  | "output_too_large";
+
 export type HeroVideoTranscodeResult = {
   buffer: Buffer | null;
   sourceDurationSeconds: number | null;
   outputDurationSeconds: number | null;
   trimmed: boolean;
   finalCrf: number | null;
+  failure?: HeroVideoTranscodeFailure;
 };
+
+let ffmpegAvailableCache: boolean | null = null;
+
+/** Cached check — hero upload needs ffmpeg + ffprobe on the server (Railway, etc.). */
+export async function isFfmpegAvailable(): Promise<boolean> {
+  if (ffmpegAvailableCache != null) return ffmpegAvailableCache;
+  try {
+    await execFileAsync("ffmpeg", ["-version"], { timeout: 10_000 });
+    await execFileAsync("ffprobe", ["-version"], { timeout: 10_000 });
+    ffmpegAvailableCache = true;
+  } catch {
+    ffmpegAvailableCache = false;
+  }
+  return ffmpegAvailableCache;
+}
 
 function parseDurationSeconds(raw: string): number | null {
   const n = Number(raw);
@@ -87,6 +109,18 @@ export async function transcodePageHeroVideoForWeb(
   inputBuffer: Buffer,
   inputFilename: string
 ): Promise<HeroVideoTranscodeResult> {
+  if (!(await isFfmpegAvailable())) {
+    console.error("[transcodePageHeroVideoForWeb] ffmpeg/ffprobe not found on server");
+    return {
+      buffer: null,
+      sourceDurationSeconds: null,
+      outputDurationSeconds: null,
+      trimmed: false,
+      finalCrf: null,
+      failure: "ffmpeg_missing",
+    };
+  }
+
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sk-hero-vid-"));
   const ext = path.extname(inputFilename) || ".mp4";
   const inPath = path.join(dir, `input${ext}`);
@@ -105,6 +139,7 @@ export async function transcodePageHeroVideoForWeb(
         outputDurationSeconds: null,
         trimmed: false,
         finalCrf: null,
+        failure: "duration_exceeded",
       };
     }
 
@@ -165,6 +200,28 @@ export async function transcodePageHeroVideoForWeb(
       }
     }
 
+    if (!chosenBuffer?.length) {
+      return {
+        buffer: null,
+        sourceDurationSeconds,
+        outputDurationSeconds: null,
+        trimmed,
+        finalCrf: null,
+        failure: "transcode_failed",
+      };
+    }
+
+    if (chosenBuffer.length > OUTPUT_TARGET_BYTES) {
+      return {
+        buffer: null,
+        sourceDurationSeconds,
+        outputDurationSeconds,
+        trimmed,
+        finalCrf: chosenCrf,
+        failure: "output_too_large",
+      };
+    }
+
     return {
       buffer: chosenBuffer,
       sourceDurationSeconds,
@@ -180,6 +237,7 @@ export async function transcodePageHeroVideoForWeb(
       outputDurationSeconds: null,
       trimmed: false,
       finalCrf: null,
+      failure: "transcode_failed",
     };
   } finally {
     try {

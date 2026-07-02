@@ -132,8 +132,23 @@ export async function POST(request: NextRequest) {
 
       if (isHero) {
         const transcoded = await transcodePageHeroVideoForWeb(originalBuf, file.name);
+        if (transcoded.failure === "ffmpeg_missing") {
+          return NextResponse.json(
+            {
+              error:
+                "Server belum siap memproses video (ffmpeg tidak tersedia). Hubungi admin atau deploy ulang dengan ffmpeg.",
+            },
+            { status: 503 }
+          );
+        }
+        if (transcoded.failure === "duration_exceeded") {
+          return NextResponse.json(
+            { error: "Video terlalu panjang. Maksimal 1 menit." },
+            { status: 400 }
+          );
+        }
         if (transcoded.buffer && transcoded.buffer.length > 0) {
-          if (transcoded.buffer.length > MAX_VIDEO_OUTPUT_BYTES) {
+          if (transcoded.failure === "output_too_large" || transcoded.buffer.length > MAX_VIDEO_OUTPUT_BYTES) {
             return NextResponse.json(
               {
                 error:
@@ -146,10 +161,11 @@ export async function POST(request: NextRequest) {
           ext = "mp4";
           contentType = "video/mp4";
         } else {
-          return NextResponse.json(
-            { error: "Video gagal dioptimasi. Coba file MP4/WebM lain." },
-            { status: 400 }
-          );
+          const detail =
+            transcoded.failure === "output_too_large"
+              ? "Video terlalu berat setelah optimasi (maks 30 MB)."
+              : "Video gagal dioptimasi. Coba file MP4/WebM lain.";
+          return NextResponse.json({ error: detail }, { status: 400 });
         }
       }
 
