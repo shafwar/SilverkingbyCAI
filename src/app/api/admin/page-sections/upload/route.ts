@@ -1,7 +1,7 @@
 /**
  * Admin API: upload section media. File stored in R2, key saved in PageSection.
- * Images: compressed with sharp (quality preserved, max 1920px) then uploaded to R2.
- * Hero video: re-encoded (ffmpeg H.264 CRF 22, max 1080p, faststart) + WebP poster → R2.
+ * Images: HD WebP compression for CMS / hero usage.
+ * Hero video: duration-validated, trimmed for web hero usage, then H.264 1080p transcode + WebP poster.
  * POST formData: page, section, type (image|video), file
  */
 
@@ -10,20 +10,25 @@ import sharp from "sharp";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { uploadToR2, getPublicUrl } from "@/lib/r2-client";
-import { transcodePageHeroVideoForWeb } from "@/lib/transcode-page-hero-video";
+import {
+  probeHeroVideo,
+  transcodePageHeroVideoForWeb,
+} from "@/lib/transcode-page-hero-video";
 import { extractHeroPosterWebpFromVideo } from "@/lib/extract-hero-poster-from-video";
 import { HERO_POSTER_SECTION_KEY } from "@/lib/page-hero-cms-config";
 
 /** Allow hero ffmpeg pass on slow hosts (Railway, etc.) */
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm"];
-const MAX_IMAGE_BYTES = 3 * 1024 * 1024; // 3 MB
-const MAX_VIDEO_BYTES = 20 * 1024 * 1024; // 20 MB
-const IMAGE_MAX_WIDTH = 1920;
-const IMAGE_QUALITY = 88;
-const IMAGE_MAX_PIXELS = 1920 * 1920 * 4;
+const MAX_IMAGE_BYTES = 25 * 1024 * 1024; // 25 MB input
+const MAX_IMAGE_OUTPUT_BYTES = 8 * 1024 * 1024; // keep HD, avoid overly tiny output
+const MAX_VIDEO_DURATION_SECONDS = 60;
+const MAX_VIDEO_OUTPUT_BYTES = 30 * 1024 * 1024;
+const IMAGE_MAX_WIDTH = 2400;
+const IMAGE_QUALITY = 90;
+const IMAGE_MAX_PIXELS = 5000 * 5000;
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -48,14 +53,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    const maxBytes = type === "image" ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
-    if (file.size > maxBytes) {
+    if (type === "image" && file.size > MAX_IMAGE_BYTES) {
       return NextResponse.json(
         {
-          error:
-            type === "image"
-              ? "Image too large. Max 3 MB."
-              : "Video too large. Max 20 MB.",
+          error: "Image too large. Max 25 MB.",
         },
         { status: 400 }
       );
@@ -84,30 +85,23 @@ export async function POST(request: NextRequest) {
     if (type === "image") {
       const buf = Buffer.from(await file.arrayBuffer());
       const isDistributorHero = isHero && page.toLowerCase() === "distributor";
-      const maxW = isDistributorHero ? 1400 : isHero ? 1600 : IMAGE_MAX_WIDTH;
-      const quality = isDistributorHero ? 82 : isHero ? 85 : IMAGE_QUALITY;
+      const maxW = isDistributorHero ? 2200 : isHero ? IMAGE_MAX_WIDTH : 2000;
+      const quality = isDistributorHero ? 92 : isHero ? 90 : IMAGE_QUALITY;
       const pipeline = sharp(buf, { limitInputPixels: IMAGE_MAX_PIXELS })
         .resize(maxW, undefined, { withoutEnlargement: true })
         .rotate();
-      const preferWebpForHero = isHero && file.type !== "image/png";
-      const outFormat =
-        file.type === "image/png"
-          ? "png"
-          : preferWebpForHero
-            ? "webp"
-            : file.type === "image/webp"
-              ? "webp"
-              : "jpeg";
-      const ext = outFormat === "png" ? "png" : outFormat === "webp" ? "webp" : "jpg";
-      key = `static/page-media/${page}/${safeSection}_${ts}.${ext}`;
-      const outBuf =
-        outFormat === "png"
-          ? await pipeline.png({ compressionLevel: 4 }).toBuffer()
-          : outFormat === "webp"
-            ? await pipeline.webp({ quality }).toBuffer()
-            : await pipeline.jpeg({ quality, mozjpeg: true }).toBuffer();
-      const contentType =
-        outFormat === "png" ? "image/png" : outFormat === "webp" ? "image/webp" : "image/jpeg";
+      key = `static/page-media/${page}/${safeSection}_${ts}.webp`;
+      const contentType = "image/webp";
+      let outBuf = await pipeline
+        .clone()
+        .webp({ quality, alphaQuality: quality, effort: 5 })
+        .toBuffer();
+      if (outBuf.length > MAX_IMAGE_OUTPUT_BYTES) {
+        outBuf = await pipeline
+          .clone()
+          .webp({ quality: Math.max(84, quality - 4), alphaQuality: Math.max(84, quality - 4), effort: 5 })
+          .toBuffer();
+      }
       url = await uploadToR2(key, outBuf, contentType, {
         originalName: file.name,
         uploadedAt: new Date().toISOString(),
@@ -120,19 +114,41 @@ export async function POST(request: NextRequest) {
       }
     } else {
       const originalBuf = Buffer.from(await file.arrayBuffer());
+      const videoProbe = await probeHeroVideo(originalBuf, file.name);
+
+      if (
+        videoProbe.durationSeconds != null &&
+        videoProbe.durationSeconds > MAX_VIDEO_DURATION_SECONDS
+      ) {
+        return NextResponse.json(
+          { error: "Video terlalu panjang. Maksimal 1 menit." },
+          { status: 400 }
+        );
+      }
+
       let uploadBuf = originalBuf;
       let ext = file.name.toLowerCase().endsWith(".webm") ? "webm" : "mp4";
       let contentType: string = ext === "webm" ? "video/webm" : "video/mp4";
 
       if (isHero) {
         const transcoded = await transcodePageHeroVideoForWeb(originalBuf, file.name);
-        if (transcoded && transcoded.length > 0 && transcoded.length <= MAX_VIDEO_BYTES) {
-          uploadBuf = Buffer.from(transcoded);
+        if (transcoded.buffer && transcoded.buffer.length > 0) {
+          if (transcoded.buffer.length > MAX_VIDEO_OUTPUT_BYTES) {
+            return NextResponse.json(
+              {
+                error:
+                  "Video terlalu berat setelah optimasi. Gunakan klip yang lebih sederhana atau resolusi sumber yang lebih ringan.",
+              },
+              { status: 400 }
+            );
+          }
+          uploadBuf = Buffer.from(transcoded.buffer);
           ext = "mp4";
           contentType = "video/mp4";
-        } else if (transcoded && transcoded.length > MAX_VIDEO_BYTES) {
-          console.warn(
-            "[ADMIN_PAGE_SECTIONS_UPLOAD] Transcoded hero exceeds max size; using original file"
+        } else {
+          return NextResponse.json(
+            { error: "Video gagal dioptimasi. Coba file MP4/WebM lain." },
+            { status: 400 }
           );
         }
       }

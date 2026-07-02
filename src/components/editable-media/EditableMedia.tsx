@@ -16,11 +16,10 @@ import {
   resolveHeroPoster,
 } from "@/lib/hero-media-defaults";
 
-const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
-const MAX_VIDEO_BYTES = 20 * 1024 * 1024; // 20 MB
+const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
 const UPLOAD_PROGRESS_CAP = 90; // 100% only after server confirms success
 const IMAGE_UPLOAD_TIMEOUT_MS = 90_000; // 90s
-const VIDEO_UPLOAD_TIMEOUT_MS = 120_000; // 120s
+const VIDEO_UPLOAD_TIMEOUT_MS = 300_000; // 300s
 const UPLOAD_MAX_ATTEMPTS = 3; // initial + 2 retries
 const UPLOAD_RETRY_DELAY_MS = 1500;
 
@@ -176,9 +175,8 @@ export function EditableMedia({
       }
       return;
     }
-    const limit = uploadType === "image" ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
-    if (file.size > limit) {
-      setError(uploadType === "image" ? "Image max 3 MB." : "Video max 20 MB.");
+    if (uploadType === "image" && file.size > MAX_IMAGE_BYTES) {
+      setError("Image max 25 MB.");
       e.target.value = "";
       if (autoOpenFilePicker) {
         setModalOpenAttribute();
@@ -675,7 +673,7 @@ function EditableMediaModal({
         {!progressOnly && (
           <>
             <p className="text-sm text-white/50 mb-4">
-              Pilih foto atau video yang ingin ditampilkan. Image: JPEG, PNG, WebP (maks. 3 MB). Video: MP4, WebM (maks. 20 MB).
+              Pilih foto atau video yang ingin ditampilkan. Image: JPEG, PNG, WebP (maks. 25 MB, dikonversi ke WebP HD). Video: MP4, WebM (maks. 1 menit, ukuran upload fleksibel, lalu dioptimasi untuk hero web).
             </p>
             <input
               ref={fileInputRef as React.RefObject<HTMLInputElement>}

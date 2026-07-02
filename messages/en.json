@@ -877,7 +877,7 @@
       "eyebrow": "Website media",
       "title": "Hero assets",
       "description": "Upload hero video or photo per page. Files are compressed, stored on Cloudflare R2, and served via CDN. The public site keeps fast static fallbacks until CMS media loads.",
-      "hint": "Video max 20 MB · Photo max 3 MB. Re-encoded to HD H.264 + WebP poster. Use “Set as site default” to pin the current CMS hero as the built-in default. “Restore default” reverts to that pinned file.",
+      "hint": "Video max 1 minute (upload size is flexible). Long hero videos are trimmed to 20 seconds and optimized to HD H.264 under 30 MB with a WebP poster. Photos are converted to HD WebP with gentle compression. Use “Set as site default” to pin the current CMS hero as the built-in default. “Restore default” reverts to that pinned file.",
       "refresh": "Refresh",
       "loading": "Loading hero assets…",
       "loadError": "Could not load hero assets.",
