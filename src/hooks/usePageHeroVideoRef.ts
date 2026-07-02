@@ -21,7 +21,9 @@ export function usePageHeroVideoRef(forwardedRef?: Ref<HTMLVideoElement>) {
   const internalRef = useRef<HTMLVideoElement | null>(null);
   useReliableVideoAutoplay(internalRef, { mode: "background" });
   const setVideoRef = useCallback(
-    mergeVideoRefs(internalRef, forwardedRef),
+    (node: HTMLVideoElement | null) => {
+      mergeVideoRefs(internalRef, forwardedRef)(node);
+    },
     [forwardedRef]
   );
   return { internalRef, setVideoRef };

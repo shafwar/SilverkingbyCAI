@@ -30,7 +30,11 @@ export default function AdminDashboard() {
         <section className="space-y-4 sm:space-y-5 md:space-y-6">
           <LineChartScans
             viewMode={chartViewMode}
-            onViewModeChange={(mode) => setScanPeriod(mode)}
+            onViewModeChange={(mode) => {
+              if (mode === "7d" || mode === "30d") {
+                setScanPeriod(mode);
+              }
+            }}
           />
           <div className="grid gap-4 sm:gap-5 md:gap-6 grid-cols-1 lg:grid-cols-2">
             <BarChartTopProducts />
