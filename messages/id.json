@@ -683,11 +683,13 @@
       "verificationHeat": "Panas verifikasi",
       "realTimeFeed": "Umpan waktu nyata",
       "viewMode": {
+        "today": "Hari Ini",
         "7d": "7 Hari",
         "30d": "30 Hari",
         "month": "Bulan",
         "current": "Saat Ini"
-      }
+      },
+      "scansLabel": "Pemindaian"
     },
     "activity": {
       "liveFeed": "Umpan langsung",

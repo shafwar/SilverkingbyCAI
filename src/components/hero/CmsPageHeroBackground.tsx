@@ -21,7 +21,7 @@ export type CmsPageHeroBackgroundProps = {
 };
 
 /**
- * Unified CMS hero media layer — static R2 fallback, optional CMS swap after idle.
+ * Unified CMS hero media layer — single video source after CMS resolution.
  */
 export const CmsPageHeroBackground = forwardRef<HTMLVideoElement, CmsPageHeroBackgroundProps>(
   function CmsPageHeroBackground(
@@ -43,6 +43,7 @@ export const CmsPageHeroBackground = forwardRef<HTMLVideoElement, CmsPageHeroBac
       heroVideoPlayUrl,
       heroVersion,
       posterVersion,
+      cmsResolved,
     } = usePageHeroCms(page);
 
     const setVideoRef = useCallback(
@@ -76,6 +77,7 @@ export const CmsPageHeroBackground = forwardRef<HTMLVideoElement, CmsPageHeroBac
             posterUrl={heroPosterUrl}
             posterVersion={posterVersion}
             forcePoster={!shouldLoadHeroVideo}
+            suspendSrc={!cmsResolved || !heroVideoPlayUrl}
             {...HERO_VIDEO_MERCH_PATTERN}
             containerClassName={containerClassName}
             className={videoClassName}

@@ -31,7 +31,7 @@ export default function AdminDashboard() {
           <LineChartScans
             viewMode={chartViewMode}
             onViewModeChange={(mode) => {
-              if (mode === "7d" || mode === "30d") {
+              if (mode === "today" || mode === "7d" || mode === "30d") {
                 setScanPeriod(mode);
               }
             }}

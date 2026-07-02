@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { rollingWindowStart, startOfLocalDay } from "@/lib/scan-period-utils";
 
 export async function GET() {
   try {
@@ -10,16 +11,9 @@ export async function GET() {
     }
 
     const now = new Date();
-    const startOfDay = new Date(now);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const start7d = new Date(now);
-    start7d.setDate(now.getDate() - 6);
-    start7d.setHours(0, 0, 0, 0);
-
-    const start30d = new Date(now);
-    start30d.setDate(now.getDate() - 29);
-    start30d.setHours(0, 0, 0, 0);
+    const startOfDay = startOfLocalDay(now);
+    const start7d = rollingWindowStart(now, 7);
+    const start30d = rollingWindowStart(now, 30);
 
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
 
