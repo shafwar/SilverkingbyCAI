@@ -18,19 +18,18 @@ function uniqueUrls(urls: (string | null | undefined)[]): string[] {
   return out;
 }
 
-/** Poster candidates for admin preview — same-origin before R2 when bundled in deploy. */
+/** Poster candidates for admin preview — local bundled WebP first when on default; CMS poster first when overridden. */
 export function heroPreviewPosterCandidates(
   slug: PageHeroCmsSlug,
   cmsPosterUrl?: string | null
 ): string[] {
   const cfg = PAGE_HERO_CMS_CONFIG[slug];
   const localPoster = cfg.posterPath.startsWith("/") ? cfg.posterPath : `/${cfg.posterPath}`;
-  return uniqueUrls([
-    cmsPosterUrl,
-    localPoster,
-    getR2UrlClient(cfg.posterPath),
-    DEFAULT_HERO_POSTER,
-  ]);
+  const r2Poster = getR2UrlClient(cfg.posterPath);
+  if (cmsPosterUrl?.trim()) {
+    return uniqueUrls([cmsPosterUrl, localPoster, r2Poster, DEFAULT_HERO_POSTER]);
+  }
+  return uniqueUrls([localPoster, r2Poster, DEFAULT_HERO_POSTER]);
 }
 
 /** Video/image candidates for admin preview. */

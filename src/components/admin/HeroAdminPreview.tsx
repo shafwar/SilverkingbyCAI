@@ -2,10 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Film } from "lucide-react";
-import {
-  heroPreviewMediaCandidates,
-  heroPreviewPosterCandidates,
-} from "@/lib/hero-preview-urls";
+import { heroPreviewPosterCandidates } from "@/lib/hero-preview-urls";
 import type { PageHeroCmsSlug } from "@/lib/page-hero-cms-config";
 
 type HeroAdminPreviewProps = {
@@ -17,7 +14,8 @@ type HeroAdminPreviewProps = {
 };
 
 /**
- * Admin hero card preview — poster image first (merchandise pattern), then media fallbacks.
+ * Admin hero card preview — poster image only (no video decode in the grid).
+ * Matches the merchandise first-paint pattern: WebP poster loads instantly from deploy.
  */
 export function HeroAdminPreview({
   page,
@@ -30,20 +28,12 @@ export function HeroAdminPreview({
     () => heroPreviewPosterCandidates(page, cmsPosterUrl),
     [page, cmsPosterUrl]
   );
-  const mediaCandidates = useMemo(
-    () => heroPreviewMediaCandidates(page, cmsMediaUrl),
-    [page, cmsMediaUrl]
-  );
 
   const [posterIndex, setPosterIndex] = useState(0);
-  const [mediaIndex, setMediaIndex] = useState(0);
-  const [videoReady, setVideoReady] = useState(false);
-
   const posterSrc = posterCandidates[posterIndex] ?? null;
-  const mediaSrc = mediaCandidates[mediaIndex] ?? null;
 
   if (mediaType === "IMAGE") {
-    const src = cmsMediaUrl ?? mediaSrc ?? posterSrc;
+    const src = cmsMediaUrl ?? posterSrc;
     if (!src) {
       return (
         <div className="flex h-full items-center justify-center text-white/30">
@@ -57,55 +47,41 @@ export function HeroAdminPreview({
         key={`${page}-img-${src}-${version}`}
         src={src}
         alt=""
+        loading="eager"
+        fetchPriority="high"
+        decoding="async"
         className="h-full w-full object-cover"
-        onError={() => setMediaIndex((i) => Math.min(i + 1, mediaCandidates.length - 1))}
+        onError={() =>
+          setPosterIndex((i) => Math.min(i + 1, posterCandidates.length - 1))
+        }
       />
     );
   }
 
+  if (!posterSrc) {
+    return (
+      <div className="flex h-full items-center justify-center text-white/30">
+        <Film className="h-10 w-10" />
+      </div>
+    );
+  }
+
   return (
-    <div className="relative h-full w-full bg-black/40">
-      {posterSrc ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          key={`${page}-poster-${posterSrc}-${version}`}
-          src={posterSrc}
-          alt=""
-          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
-            videoReady ? "opacity-0" : "opacity-100"
-          }`}
-          onError={() =>
-            setPosterIndex((i) => {
-              const next = i + 1;
-              return next < posterCandidates.length ? next : i;
-            })
-          }
-        />
-      ) : null}
-      {mediaSrc ? (
-        <video
-          key={`${page}-vid-${mediaSrc}-${version}`}
-          src={mediaSrc}
-          muted
-          playsInline
-          preload="metadata"
-          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
-            videoReady ? "opacity-100" : "opacity-0"
-          }`}
-          onLoadedData={() => setVideoReady(true)}
-          onError={() =>
-            setMediaIndex((i) => {
-              const next = i + 1;
-              return next < mediaCandidates.length ? next : i;
-            })
-          }
-        />
-      ) : null}
-      {!posterSrc && !mediaSrc ? (
-        <div className="flex h-full items-center justify-center text-white/30">
-          <Film className="h-10 w-10" />
-        </div>
-      ) : null}
-    </div>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      key={`${page}-poster-${posterSrc}-${version}`}
+      src={posterSrc}
+      alt=""
+      loading="eager"
+      fetchPriority="high"
+      decoding="async"
+      className="h-full w-full object-cover"
+      onError={() =>
+        setPosterIndex((i) => {
+          const next = i + 1;
+          return next < posterCandidates.length ? next : i;
+        })
+      }
+    />
   );
 }

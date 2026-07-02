@@ -24,14 +24,77 @@ type HeroRow = {
   version: number;
 };
 
+type UploadPhase = "uploading" | "processing";
+
+type UploadState = {
+  page: string;
+  type: "image" | "video";
+  progress: number;
+  phase: UploadPhase;
+} | null;
+
+const VIDEO_BYTES_WEIGHT = 55;
+const IMAGE_BYTES_WEIGHT = 85;
+const PROCESSING_CAP = 94;
+const IMAGE_UPLOAD_TIMEOUT_MS = 90_000;
+const VIDEO_UPLOAD_TIMEOUT_MS = 300_000;
+
+function HeroUploadProgress({
+  progress,
+  phase,
+  type,
+  labels,
+}: {
+  progress: number;
+  phase: UploadPhase;
+  type: "image" | "video";
+  labels: {
+    uploading: string;
+    processingVideo: string;
+    processingImage: string;
+  };
+}) {
+  const phaseLabel =
+    phase === "processing"
+      ? type === "video"
+        ? labels.processingVideo
+        : labels.processingImage
+      : labels.uploading;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex justify-between text-[11px] text-white/60">
+        <span>{phaseLabel}</span>
+        <span className="tabular-nums font-medium text-white/80">{progress}%</span>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+        <div
+          className="h-full rounded-full bg-luxury-gold transition-[width] duration-300 ease-out"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function HeroAssetsPageClient() {
   const t = useTranslations("admin.heroAssets");
   const [heroes, setHeroes] = useState<HeroRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploadingPage, setUploadingPage] = useState<string | null>(null);
+  const [uploadState, setUploadState] = useState<UploadState>(null);
   const [restoringPage, setRestoringPage] = useState<string | null>(null);
   const [promotingPage, setPromotingPage] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const processingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const clearProcessingTimer = useCallback(() => {
+    if (processingTimerRef.current) {
+      clearInterval(processingTimerRef.current);
+      processingTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => clearProcessingTimer(), [clearProcessingTimer]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,29 +115,105 @@ export function HeroAssetsPageClient() {
     void load();
   }, [load]);
 
-  const handleUpload = async (page: string, type: "image" | "video", file: File) => {
-    setUploadingPage(page);
-    try {
-      const fd = new FormData();
-      fd.append("page", page);
-      fd.append("section", "hero");
-      fd.append("type", type);
-      fd.append("file", file);
+  const startProcessingProgress = useCallback(
+    (page: string, type: "image" | "video", fromProgress: number) => {
+      clearProcessingTimer();
+      setUploadState({ page, type, progress: fromProgress, phase: "processing" });
+      processingTimerRef.current = setInterval(() => {
+        setUploadState((prev) => {
+          if (!prev || prev.page !== page) return prev;
+          if (prev.progress >= PROCESSING_CAP) return prev;
+          const step = type === "video" ? 0.6 : 1.2;
+          return { ...prev, progress: Math.min(PROCESSING_CAP, Math.round(prev.progress + step)) };
+        });
+      }, 400);
+    },
+    [clearProcessingTimer]
+  );
 
-      const res = await fetch("/api/admin/page-sections/upload", { method: "POST", body: fd });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        toast.error(data.error ?? t("uploadError"));
-        return;
-      }
-      toast.success(t("uploadSuccess"));
-      await load();
-    } catch {
-      toast.error(t("uploadError"));
-    } finally {
-      setUploadingPage(null);
-    }
-  };
+  const handleUpload = useCallback(
+    (page: string, type: "image" | "video", file: File) => {
+      clearProcessingTimer();
+      const bytesWeight = type === "video" ? VIDEO_BYTES_WEIGHT : IMAGE_BYTES_WEIGHT;
+      setUploadState({ page, type, progress: 0, phase: "uploading" });
+
+      const formData = new FormData();
+      formData.set("page", page);
+      formData.set("section", "hero");
+      formData.set("type", type);
+      formData.set("file", file);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/admin/page-sections/upload");
+      xhr.timeout = type === "video" ? VIDEO_UPLOAD_TIMEOUT_MS : IMAGE_UPLOAD_TIMEOUT_MS;
+
+      let uploadBytesComplete = false;
+
+      xhr.upload.addEventListener("progress", (ev) => {
+        if (ev.lengthComputable) {
+          const pct = Math.round((ev.loaded / ev.total) * bytesWeight);
+          setUploadState({ page, type, progress: Math.min(pct, bytesWeight), phase: "uploading" });
+          if (ev.loaded >= ev.total && !uploadBytesComplete) {
+            uploadBytesComplete = true;
+            startProcessingProgress(page, type, Math.min(pct, bytesWeight));
+          }
+        } else {
+          setUploadState((prev) => {
+            if (!prev || prev.page !== page) return prev;
+            const next = Math.min(prev.progress + 4, bytesWeight - 1);
+            return { ...prev, progress: next };
+          });
+        }
+      });
+
+      xhr.addEventListener("load", async () => {
+        clearProcessingTimer();
+        try {
+          const data: { url?: string; error?: string } = (() => {
+            try {
+              return JSON.parse(xhr.responseText || "{}");
+            } catch {
+              return {};
+            }
+          })();
+          const ok = xhr.status >= 200 && xhr.status < 300 && typeof data?.url === "string";
+          if (ok) {
+            setUploadState({ page, type, progress: 100, phase: "processing" });
+            toast.success(t("uploadSuccess"));
+            await load();
+            setUploadState(null);
+            return;
+          }
+          toast.error(data?.error ?? t("uploadError"));
+        } catch {
+          toast.error(t("uploadError"));
+        } finally {
+          setUploadState(null);
+        }
+      });
+
+      xhr.addEventListener("error", () => {
+        clearProcessingTimer();
+        toast.error(t("uploadError"));
+        setUploadState(null);
+      });
+
+      xhr.addEventListener("timeout", () => {
+        clearProcessingTimer();
+        xhr.abort();
+        toast.error(t("uploadTimeout"));
+        setUploadState(null);
+      });
+
+      xhr.addEventListener("abort", () => {
+        clearProcessingTimer();
+        setUploadState(null);
+      });
+
+      xhr.send(formData);
+    },
+    [clearProcessingTimer, load, startProcessingProgress, t]
+  );
 
   const handleRestore = async (page: string) => {
     if (!confirm(t("restoreConfirm"))) return;
@@ -129,6 +268,12 @@ export function HeroAssetsPageClient() {
     input.click();
   };
 
+  const progressLabels = {
+    uploading: t("progressUploading"),
+    processingVideo: t("progressProcessingVideo"),
+    processingImage: t("progressProcessingImage"),
+  };
+
   return (
     <AdminPageLayout
       eyebrow={t("eyebrow")}
@@ -155,7 +300,8 @@ export function HeroAssetsPageClient() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {heroes.map((hero) => {
-            const isUploading = uploadingPage === hero.page;
+            const cardUpload = uploadState?.page === hero.page ? uploadState : null;
+            const isUploading = cardUpload != null;
             const isRestoring = restoringPage === hero.page;
             const isPromoting = promotingPage === hero.page;
 
@@ -168,8 +314,8 @@ export function HeroAssetsPageClient() {
                   <HeroAdminPreview
                     page={hero.page as PageHeroCmsSlug}
                     mediaType={hero.mediaType}
-                    cmsPosterUrl={hero.previewPosterUrl}
-                    cmsMediaUrl={hero.previewMediaUrl}
+                    cmsPosterUrl={hero.cmsActive ? hero.posterUrl : null}
+                    cmsMediaUrl={hero.cmsActive ? hero.mediaUrl : null}
                     version={hero.version}
                   />
                   <span
@@ -208,11 +354,20 @@ export function HeroAssetsPageClient() {
                         | "video"
                         | undefined;
                       if (file && uploadType) {
-                        void handleUpload(hero.page, uploadType, file);
+                        handleUpload(hero.page, uploadType, file);
                       }
                       e.target.value = "";
                     }}
                   />
+
+                  {cardUpload ? (
+                    <HeroUploadProgress
+                      progress={cardUpload.progress}
+                      phase={cardUpload.phase}
+                      type={cardUpload.type}
+                      labels={progressLabels}
+                    />
+                  ) : null}
 
                   <div className="flex flex-wrap gap-2">
                     <button
@@ -222,7 +377,9 @@ export function HeroAssetsPageClient() {
                       className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-luxury-gold px-3 py-2 text-xs font-semibold text-black disabled:opacity-50"
                     >
                       <Upload className="h-3.5 w-3.5" />
-                      {isUploading ? t("uploading") : t("uploadVideo")}
+                      {isUploading && cardUpload?.type === "video"
+                        ? `${cardUpload.progress}%`
+                        : t("uploadVideo")}
                     </button>
                     <button
                       type="button"
@@ -231,7 +388,9 @@ export function HeroAssetsPageClient() {
                       className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/15 px-3 py-2 text-xs text-white/85 disabled:opacity-50"
                     >
                       <ImageIcon className="h-3.5 w-3.5" />
-                      {t("uploadPhoto")}
+                      {isUploading && cardUpload?.type === "image"
+                        ? `${cardUpload.progress}%`
+                        : t("uploadPhoto")}
                     </button>
                   </div>
 
