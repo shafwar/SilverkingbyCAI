@@ -1,6 +1,6 @@
 /**
- * Re-encode uploaded hero videos for web: H.264, capped 1080p, faststart, no audio.
- * Admin can upload a larger master, but the published hero stays short and web-friendly.
+ * Re-encode uploaded hero videos for web — Merchandise CMS standard.
+ * H.264 1080p, 15s loop, ~5–6 MB target, faststart, no audio.
  */
 
 import { execFile } from "node:child_process";
@@ -8,15 +8,9 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { promisify } from "node:util";
+import { HERO_CMS_VIDEO } from "@/lib/hero-cms-spec";
 
 const execFileAsync = promisify(execFile);
-
-const MAX_W = 1920;
-const MAX_VIDEO_DURATION_SECONDS = 60;
-const TRIM_TARGET_SECONDS = 20;
-const OUTPUT_TARGET_BYTES = 30 * 1024 * 1024;
-const CRF_STEPS = [19, 21, 23] as const;
-const FFMPEG_TIMEOUT_MS = 300_000;
 
 export type HeroVideoProbe = {
   durationSeconds: number | null;
@@ -131,7 +125,7 @@ export async function transcodePageHeroVideoForWeb(
 
     if (
       sourceDurationSeconds != null &&
-      sourceDurationSeconds > MAX_VIDEO_DURATION_SECONDS
+      sourceDurationSeconds > HERO_CMS_VIDEO.maxInputDurationSeconds
     ) {
       return {
         buffer: null,
@@ -143,12 +137,13 @@ export async function transcodePageHeroVideoForWeb(
       };
     }
 
-    const trimmed = (sourceDurationSeconds ?? 0) > TRIM_TARGET_SECONDS;
+    const publishSeconds = HERO_CMS_VIDEO.publishDurationSeconds;
+    const trimmed = (sourceDurationSeconds ?? 0) > publishSeconds;
     let chosenBuffer: Buffer | null = null;
     let chosenCrf: number | null = null;
     let outputDurationSeconds: number | null = null;
 
-    for (const crf of CRF_STEPS) {
+    for (const crf of HERO_CMS_VIDEO.crfSteps) {
       const outPath = path.join(dir, `output-crf-${crf}.mp4`);
       const ffmpegArgs = [
         "-hide_banner",
@@ -160,7 +155,7 @@ export async function transcodePageHeroVideoForWeb(
       ];
 
       if (trimmed) {
-        ffmpegArgs.push("-t", String(TRIM_TARGET_SECONDS));
+        ffmpegArgs.push("-t", String(publishSeconds));
       }
 
       ffmpegArgs.push(
@@ -169,9 +164,9 @@ export async function transcodePageHeroVideoForWeb(
         "-crf",
         String(crf),
         "-preset",
-        "fast",
+        HERO_CMS_VIDEO.preset,
         "-vf",
-        `scale='min(${MAX_W},iw)':-2:flags=lanczos`,
+        `scale='min(${HERO_CMS_VIDEO.maxWidth},iw)':-2:flags=lanczos`,
         "-pix_fmt",
         "yuv420p",
         "-profile:v",
@@ -184,7 +179,7 @@ export async function transcodePageHeroVideoForWeb(
 
       await execFileAsync("ffmpeg", ffmpegArgs, {
         maxBuffer: 100 * 1024 * 1024,
-        timeout: FFMPEG_TIMEOUT_MS,
+        timeout: HERO_CMS_VIDEO.ffmpegTimeoutMs,
       });
 
       if (!fs.existsSync(outPath)) continue;
@@ -195,7 +190,7 @@ export async function transcodePageHeroVideoForWeb(
       chosenCrf = crf;
       outputDurationSeconds = await probeDurationSeconds(outPath);
 
-      if (out.length <= OUTPUT_TARGET_BYTES) {
+      if (out.length <= HERO_CMS_VIDEO.idealOutputBytes) {
         break;
       }
     }
@@ -211,7 +206,7 @@ export async function transcodePageHeroVideoForWeb(
       };
     }
 
-    if (chosenBuffer.length > OUTPUT_TARGET_BYTES) {
+    if (chosenBuffer.length > HERO_CMS_VIDEO.maxOutputBytes) {
       return {
         buffer: null,
         sourceDurationSeconds,

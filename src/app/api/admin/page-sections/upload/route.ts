@@ -1,7 +1,7 @@
 /**
  * Admin API: upload section media. File stored in R2, key saved in PageSection.
  * Images: HD WebP compression for CMS / hero usage.
- * Hero video: duration-validated, trimmed for web hero usage, then H.264 1080p transcode + WebP poster.
+ * Hero video: Merchandise standard — trim to 15s, H.264 1080p, ~5–6 MB, WebP poster.
  * POST formData: page, section, type (image|video), file
  */
 
@@ -16,18 +16,19 @@ import {
 } from "@/lib/transcode-page-hero-video";
 import { extractHeroPosterWebpFromVideo } from "@/lib/extract-hero-poster-from-video";
 import { HERO_POSTER_SECTION_KEY } from "@/lib/page-hero-cms-config";
+import { HERO_CMS_IMAGE, HERO_CMS_VIDEO } from "@/lib/hero-cms-spec";
 
 /** Allow hero ffmpeg pass on slow hosts (Railway, etc.) */
 export const maxDuration = 300;
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm"];
-const MAX_IMAGE_BYTES = 25 * 1024 * 1024; // 25 MB input
-const MAX_IMAGE_OUTPUT_BYTES = 8 * 1024 * 1024; // keep HD, avoid overly tiny output
-const MAX_VIDEO_DURATION_SECONDS = 60;
-const MAX_VIDEO_OUTPUT_BYTES = 30 * 1024 * 1024;
-const IMAGE_MAX_WIDTH = 2400;
-const IMAGE_QUALITY = 90;
+const MAX_IMAGE_BYTES = HERO_CMS_IMAGE.maxInputBytes;
+const MAX_IMAGE_OUTPUT_BYTES = HERO_CMS_IMAGE.maxOutputBytes;
+const MAX_VIDEO_DURATION_SECONDS = HERO_CMS_VIDEO.maxInputDurationSeconds;
+const MAX_VIDEO_OUTPUT_BYTES = HERO_CMS_VIDEO.maxOutputBytes;
+const IMAGE_MAX_WIDTH = HERO_CMS_IMAGE.maxWidth;
+const IMAGE_QUALITY = HERO_CMS_IMAGE.quality;
 const IMAGE_MAX_PIXELS = 5000 * 5000;
 
 export async function POST(request: NextRequest) {
@@ -163,7 +164,7 @@ export async function POST(request: NextRequest) {
         } else {
           const detail =
             transcoded.failure === "output_too_large"
-              ? "Video terlalu berat setelah optimasi (maks 30 MB)."
+              ? "Video terlalu berat setelah optimasi (standar hero maks ~8 MB, target ~6 MB seperti Merchandise)."
               : "Video gagal dioptimasi. Coba file MP4/WebM lain.";
           return NextResponse.json({ error: detail }, { status: 400 });
         }

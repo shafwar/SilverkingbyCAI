@@ -7,12 +7,10 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { promisify } from "node:util";
+import { HERO_CMS_IMAGE } from "@/lib/hero-cms-spec";
 
 const execFileAsync = promisify(execFile);
-
 const FFMPEG_TIMEOUT_MS = 60_000;
-const POSTER_MAX_WIDTH = 1920;
-const POSTER_QUALITY = 92;
 
 export async function extractHeroPosterWebpFromVideo(
   videoBuffer: Buffer,
@@ -40,11 +38,11 @@ export async function extractHeroPosterWebpFromVideo(
         "-vframes",
         "1",
         "-vf",
-        `scale=${POSTER_MAX_WIDTH}:-2:flags=lanczos`,
+        `scale=${HERO_CMS_IMAGE.posterMaxWidth}:-2:flags=lanczos`,
         "-c:v",
         "libwebp",
         "-quality",
-        String(POSTER_QUALITY),
+        String(HERO_CMS_IMAGE.posterQuality),
         outPath,
       ],
       { maxBuffer: 20 * 1024 * 1024, timeout: FFMPEG_TIMEOUT_MS }

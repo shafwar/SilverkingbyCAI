@@ -15,21 +15,18 @@ type StatsResponse = {
   scansToday: number;
   scansLast7Days?: number;
   scansLast30Days?: number;
-  scansThisMonth?: number;
   gramBatches?: number;
   gramItems?: number;
   gramTotalScans?: number;
   gramScansToday?: number;
   gramScansLast7Days?: number;
   gramScansLast30Days?: number;
-  gramScansThisMonth?: number;
   combinedTotalProducts?: number;
   combinedTotalQrCodes?: number;
   combinedTotalScans?: number;
   combinedScansToday?: number;
   combinedScansLast7Days?: number;
   combinedScansLast30Days?: number;
-  combinedScansThisMonth?: number;
 };
 
 const icons = {
@@ -44,22 +41,10 @@ type DashboardMetricsProps = {
   onScanPeriodChange: (period: ScanPeriodMode) => void;
 };
 
-function pageBreakdown(
-  page1: number,
-  page2: number | undefined,
-  fallback: string
-): string {
-  if (page2 !== undefined) {
-    return `${page1} Page 1 + ${page2} Page 2`;
-  }
-  return fallback;
-}
-
 const scanPeriodSubtitle: Record<ScanPeriodMode, string> = {
   today: "liveInteractions",
   "7d": "rollingSevenDays",
   "30d": "rollingThirtyDays",
-  month: "monthToDate",
 };
 
 export function DashboardMetrics({ scanPeriod, onScanPeriodChange }: DashboardMetricsProps) {
@@ -97,10 +82,6 @@ export function DashboardMetrics({ scanPeriod, onScanPeriodChange }: DashboardMe
       title: t("scansLast30Days"),
       value: stats.combinedScansLast30Days ?? stats.scansLast30Days ?? 0,
     },
-    month: {
-      title: t("scansThisMonth"),
-      value: stats.combinedScansThisMonth ?? stats.scansThisMonth ?? 0,
-    },
   } as const;
 
   const scanCard = scanCardByPeriod[scanPeriod];
@@ -110,11 +91,7 @@ export function DashboardMetrics({ scanPeriod, onScanPeriodChange }: DashboardMe
       <DashboardCard
         title={t("totalProducts")}
         value={displayProducts.toLocaleString()}
-        delta={
-          stats.gramBatches
-            ? `${stats.totalProducts} Page 1 + ${stats.gramBatches} Page 2`
-            : t("curatedBars")
-        }
+        delta={t("curatedBars")}
         icon={icons.products}
         accent="gold"
         delay={0.05}
@@ -122,11 +99,7 @@ export function DashboardMetrics({ scanPeriod, onScanPeriodChange }: DashboardMe
       <DashboardCard
         title={t("totalQrCodes")}
         value={displayQrCodes.toLocaleString()}
-        delta={
-          stats.gramItems
-            ? `${stats.totalQrCodes} Page 1 + ${stats.gramItems} Page 2`
-            : t("mirroredSecure")
-        }
+        delta={t("mirroredSecure")}
         icon={icons.qr}
         accent="silver"
         delay={0.1}
@@ -134,11 +107,7 @@ export function DashboardMetrics({ scanPeriod, onScanPeriodChange }: DashboardMe
       <DashboardCard
         title={t("totalScans")}
         value={displayScans.toLocaleString()}
-        delta={
-          stats.gramTotalScans
-            ? `${stats.totalScans} Page 1 + ${stats.gramTotalScans} Page 2`
-            : t("lifetimeVerifications")
-        }
+        delta={t("lifetimeVerifications")}
         icon={icons.scans}
         accent="emerald"
         delay={0.15}

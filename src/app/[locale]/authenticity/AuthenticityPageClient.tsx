@@ -25,9 +25,6 @@ import Navbar from "@/components/layout/Navbar";
 import { Scanner } from "@/components/shared/Scanner";
 import { useRouter } from "next/navigation";
 import { APP_NAME } from "@/utils/constants";
-import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
-import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
-import { usePauseBackgroundVideoOnScrollAndHidden } from "@/hooks/usePauseBackgroundVideoOnScrollAndHidden";
 import { PageHeroSection } from "@/components/hero/PageHeroSection";
 import { MerchStyleHeroCopy } from "@/components/layout/MerchStyleHeroCopy";
 import { ModalPortal } from "@/components/ui/ModalPortal";
@@ -287,15 +284,8 @@ export default function AuthenticityPageClient() {
   const [showScanner, setShowScanner] = useState(false);
   const [showManualInput, setShowManualInput] = useState(false);
   const [serialNumber, setSerialNumber] = useState("");
-  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const particlesRef = useRef<HTMLDivElement | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
   const router = useRouter();
-  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
-  usePauseBackgroundVideoOnScrollAndHidden(videoRef, {
-    enabled: shouldLoadHeroVideo,
-    scrollPastVH: 0.42,
-  });
 
   // Register ScrollTrigger only on the client to avoid SSR/window issues
   useEffect(() => {
@@ -306,9 +296,6 @@ export default function AuthenticityPageClient() {
       console.warn("GSAP ScrollTrigger registration failed:", error);
     }
   }, []);
-
-  // Ensure authenticity hero background video always autoplays reliably
-  useReliableVideoAutoplay(videoRef, { mode: "background" });
 
   useGSAP(
     () => {
@@ -339,40 +326,6 @@ export default function AuthenticityPageClient() {
     },
     { scope: particlesRef }
   );
-
-  // Video loaded state - autoplay is handled by useReliableVideoAutoplay hook
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const handleCanPlay = () => {
-      setIsVideoLoaded(true);
-    };
-
-    const handleLoadedData = () => {
-      setIsVideoLoaded(true);
-    };
-
-    const handleError = () => {
-      setIsVideoLoaded(false);
-      console.warn("[AuthenticityPage] Video error occurred");
-    };
-
-    // Check if video is already loaded
-    if (video.readyState >= 2) {
-      setIsVideoLoaded(true);
-    }
-
-    video.addEventListener("canplay", handleCanPlay);
-    video.addEventListener("loadeddata", handleLoadedData);
-    video.addEventListener("error", handleError);
-
-    return () => {
-      video.removeEventListener("canplay", handleCanPlay);
-      video.removeEventListener("loadeddata", handleLoadedData);
-      video.removeEventListener("error", handleError);
-    };
-  }, []);
 
   const handleScanSuccess = async (decodedText: string) => {
     try {
@@ -487,10 +440,8 @@ export default function AuthenticityPageClient() {
         sectionRef={(element) => {
           sectionsRef.current[0] = element as HTMLDivElement | null;
         }}
-        videoRef={videoRef}
         page="authenticity"
         objectPosition="center 32%"
-        showScrollIndicator={false}
         overlay={
           <>
             <div

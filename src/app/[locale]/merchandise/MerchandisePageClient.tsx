@@ -195,7 +195,6 @@ export default function MerchandisePageClient() {
   const pageRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
   const footerVideoRef = useRef<HTMLVideoElement | null>(null);
-  const heroVideoRef = useRef<HTMLVideoElement | null>(null);
   const [byCategory, setByCategory] = useState<Record<string, MerchandiseItemType[]>>({
     polo: [],
     knitware: [],
@@ -274,7 +273,6 @@ export default function MerchandisePageClient() {
     return () => ctx.revert();
   }, [isMounted, byCategory]);
 
-  useReliableVideoAutoplay(heroVideoRef, { mode: "background" });
   useReliableVideoAutoplay(footerVideoRef, { mode: "background" });
 
   const openAdd = (category: MerchandiseCategory) => {
@@ -444,7 +442,7 @@ export default function MerchandisePageClient() {
       <Navbar />
 
       {/* Hero: full-viewport (100dvh), 15s loop MP4 + WebP poster; R2 via proxiedHeroVideoSrc */}
-      <PageHeroSection page="merchandise" videoRef={heroVideoRef} showScrollIndicator={false}>
+      <PageHeroSection page="merchandise" showScrollIndicator={false}>
         <div className="relative z-10 flex min-h-[100dvh] flex-col items-center justify-center px-6 pb-[max(5rem,env(safe-area-inset-bottom))] pt-[max(5rem,env(safe-area-inset-top))] text-center font-[family-name:var(--font-merch)]">
           <motion.h1
             className="text-4xl font-semibold tracking-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.5)] md:text-5xl lg:text-6xl xl:text-7xl"

@@ -7,7 +7,7 @@ import { QrCode, BookOpen } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import { OptimizedLink } from "@/components/ui/OptimizedLink";
-import { PageHeroMedia } from "@/components/hero/PageHeroSection";
+import { PageHeroSection } from "@/components/hero/PageHeroSection";
 import { HOME_HERO_VIGNETTE_BG } from "@/lib/hero-media-defaults";
 
 interface HeroSectionProps {
@@ -247,30 +247,24 @@ export default function HeroSection({
   }, [shouldAnimate, animationsReady, priorityLcp]);
 
   return (
-    <section
-      ref={containerRef}
-      className="relative isolate h-screen w-full overflow-hidden hero-section-transition bg-transparent"
-      style={{
-        pointerEvents: "auto",
-      }}
+    <PageHeroSection
+      page="home"
+      sectionRef={containerRef}
+      showScrollIndicator={false}
+      className="bg-transparent"
+      overlay={
+        <div
+          className="pointer-events-none absolute inset-0 z-[1]"
+          style={{ backgroundImage: HOME_HERO_VIGNETTE_BG }}
+          aria-hidden
+        />
+      }
     >
-      <PageHeroMedia
-        page="home"
-        overlay={
-          <div
-            className="pointer-events-none absolute inset-0 z-[1]"
-            style={{ backgroundImage: HOME_HERO_VIGNETTE_BG }}
-            aria-hidden
-          />
-        }
-      />
-      <div
-        className="absolute bottom-0 left-0 right-0 z-[1] h-[3px] bg-luxury-black pointer-events-none"
-        aria-hidden
-      />
-
       {/* Content - UNIVERSAL untuk SEMUA device mobile */}
-      <div className="relative z-10 flex h-full items-center pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:pt-8 md:pt-0 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-16 md:pb-0 pointer-events-none">
+      <div
+        className="relative z-10 flex min-h-[100dvh] items-center pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:pt-8 md:pt-0 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-16 md:pb-0 pointer-events-none"
+        style={{ pointerEvents: "auto" }}
+      >
         <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 md:px-10 lg:px-14 xl:px-20 pointer-events-none">
           {/* Main content - Optimized untuk semua mobile */}
           <div className="max-w-[900px] -translate-y-2 sm:-translate-y-3 md:translate-y-0 pointer-events-auto">
@@ -434,6 +428,6 @@ export default function HeroSection({
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-black" aria-hidden />
       </motion.div>
-    </section>
+    </PageHeroSection>
   );
 }

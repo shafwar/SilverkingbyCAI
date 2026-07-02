@@ -673,7 +673,7 @@ function EditableMediaModal({
         {!progressOnly && (
           <>
             <p className="text-sm text-white/50 mb-4">
-              Pilih foto atau video yang ingin ditampilkan. Image: JPEG, PNG, WebP (maks. 25 MB, dikonversi ke WebP HD). Video: MP4, WebM (maks. 1 menit, ukuran upload fleksibel, lalu dioptimasi untuk hero web).
+              Pilih foto atau video yang ingin ditampilkan. Image: JPEG, PNG, WebP (maks. 25 MB, dikonversi ke WebP HD). Video hero: MP4, WebM (maks. 1 menit, dipotong 15 detik, dioptimasi ~6 MB H.264 1080p — standar Merchandise).
             </p>
             <input
               ref={fileInputRef as React.RefObject<HTMLInputElement>}

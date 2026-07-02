@@ -6,7 +6,6 @@ import { Link } from "@/i18n/routing";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Navbar from "@/components/layout/Navbar";
 import { PageHeroSection } from "@/components/hero/PageHeroSection";
-import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 import { ScrollRevealSection } from "@/components/shared/ScrollRevealSection";
 import { motion } from "framer-motion";
 import { ArrowRight, BookOpen, Pencil, Plus, Trash2 } from "lucide-react";
@@ -77,8 +76,6 @@ export default function JournalPageClient(_props: JournalPageClientProps) {
   const [adminItems, setAdminItems] = useState<AdminJournalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const listRef = useRef<HTMLDivElement>(null);
-  const journalHeroVideoRef = useRef<HTMLVideoElement>(null);
-  useReliableVideoAutoplay(journalHeroVideoRef, { mode: "background" });
 
   useEffect(() => {
     let cancelled = false;
@@ -175,8 +172,6 @@ export default function JournalPageClient(_props: JournalPageClientProps) {
 
       <PageHeroSection
         page="journal"
-        videoRef={journalHeroVideoRef}
-        showScrollIndicator={false}
         overlay={
           <>
             <div

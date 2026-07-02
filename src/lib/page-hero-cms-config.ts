@@ -1,4 +1,6 @@
-/** CMS-managed page heroes — static R2 fallbacks + optional PageSection override. */
+/** CMS-managed page heroes — static R2 fallbacks + optional PageSection override.
+ *  Video/image CMS output follows HERO_CMS_VIDEO / HERO_CMS_IMAGE (Merchandise standard).
+ */
 export type PageHeroCmsSlug =
   | "home"
   | "what-we-do"
@@ -35,49 +37,49 @@ export const PAGE_HERO_CMS_CONFIG: Record<PageHeroCmsSlug, PageHeroCmsConfig> = 
     mediaType: "VIDEO",
     videoPath: "/videos/hero/hero-background.mp4",
     posterPath: "/images/home/home-hero-poster.webp",
-    assetVersion: 2,
+    assetVersion: 3,
   },
   "what-we-do": {
     label: "What We Do",
     mediaType: "VIDEO",
     videoPath: "/videos/hero/WhatWeDo-SilverKing.mp4",
     posterPath: "/images/what-we-do/what-we-do-hero-poster.webp",
-    assetVersion: 2,
+    assetVersion: 3,
   },
   products: {
     label: "Products",
     mediaType: "VIDEO",
     videoPath: "/videos/hero/Products-SilverKing.mp4",
     posterPath: "/images/products/products-hero-poster.webp",
-    assetVersion: 1,
+    assetVersion: 3,
   },
   merchandise: {
     label: "Merchandise",
     mediaType: "VIDEO",
     videoPath: "/videos/hero/merchandise-hero.mp4",
     posterPath: "/images/merchandise/merch-hero-poster.webp",
-    assetVersion: 1,
+    assetVersion: 3,
   },
   authenticity: {
     label: "Authenticity",
     mediaType: "VIDEO",
     videoPath: "/videos/hero/mobile scanning qr.mp4",
-    posterPath: "/images/hero-fallback.jpg",
-    assetVersion: 1,
+    posterPath: "/images/authenticity/authenticity-hero-poster.webp",
+    assetVersion: 3,
   },
   about: {
     label: "About Us",
     mediaType: "VIDEO",
     videoPath: "/videos/hero/molten%20metal%20slow%20motion.mp4",
-    posterPath: "/images/hero-fallback.jpg",
-    assetVersion: 2,
+    posterPath: "/images/about/about-hero-poster.webp",
+    assetVersion: 3,
   },
   journal: {
     label: "Journal",
     mediaType: "VIDEO",
     videoPath: "/videos/hero/Jurnal%20Silverking.mp4",
-    posterPath: "/images/hero-fallback.jpg",
-    assetVersion: 2,
+    posterPath: "/images/journal/journal-hero-poster.webp",
+    assetVersion: 3,
   },
   distributor: {
     label: "Distributor",

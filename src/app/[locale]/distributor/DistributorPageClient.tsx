@@ -208,7 +208,6 @@ export default function DistributorPageClient({
 
       <PageHeroSection
         page="distributor"
-        showScrollIndicator={false}
         overlay={
           <>
             <div

@@ -25,6 +25,7 @@
     "r2:ensure-hero": "ts-node -r dotenv/config --project tsconfig.scripts.json scripts/ensure-distributor-hero-r2.ts",
     "r2:ensure-certificate": "ts-node -r dotenv/config --project tsconfig.scripts.json scripts/ensure-certificate-r2.ts",
     "merchandise:compress-upload": "ts-node -r dotenv/config --project tsconfig.scripts.json scripts/compress-and-upload-merchandise.ts",
+    "heroes:sync-merch-standard": "ts-node -r tsconfig-paths/register -r dotenv/config --project tsconfig.scripts.json scripts/sync-all-hero-videos-merch-standard.ts",
     "merchandise:build-hero-video": "bash scripts/build-merchandise-hero-video.sh",
     "merchandise:upload-hero-video": "ts-node -r dotenv/config --project tsconfig.scripts.json scripts/upload-merchandise-hero-video.ts",
     "merchandise:seed": "ts-node -r dotenv/config --project tsconfig.scripts.json scripts/seed-merchandise.ts",

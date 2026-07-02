@@ -622,7 +622,7 @@
       "rollingSevenDays": "Last 7 days total",
       "rollingThirtyDays": "Last 30 days total",
       "monthToDate": "Month to date",
-      "scanPeriodHint": "Tap to cycle: today → 7d → 30d → month",
+      "scanPeriodHint": "Tap to cycle: today → 7d → 30d",
       "unableToLoad": "Unable to load dashboard metrics."
     },
     "dashboard": {
@@ -877,7 +877,7 @@
       "eyebrow": "Website media",
       "title": "Hero assets",
       "description": "Upload hero video or photo per page. Files are compressed, stored on Cloudflare R2, and served via CDN. The public site keeps fast static fallbacks until CMS media loads.",
-      "hint": "Video max 1 minute (upload size is flexible). Long hero videos are trimmed to 20 seconds and optimized to HD H.264 under 30 MB with a WebP poster. Photos are converted to HD WebP with gentle compression. Use “Set as site default” to pin the current CMS hero as the built-in default. “Restore default” reverts to that pinned file.",
+      "hint": "Video max 1 minute (flexible upload size). Heroes are trimmed to 15 seconds and optimized to ~6 MB HD H.264 (1080p, Merchandise standard) with a WebP poster. Photos are converted to HD WebP with gentle compression. Use “Set as site default” to pin the current CMS hero as the built-in default. “Restore default” reverts to that pinned file.",
       "refresh": "Refresh",
       "loading": "Loading hero assets…",
       "loadError": "Could not load hero assets.",

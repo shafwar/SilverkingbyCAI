@@ -626,7 +626,7 @@
       "rollingSevenDays": "Total 7 hari terakhir",
       "rollingThirtyDays": "Total 30 hari terakhir",
       "monthToDate": "Bulan berjalan",
-      "scanPeriodHint": "Ketuk untuk ganti: hari ini → 7h → 30h → bulan",
+      "scanPeriodHint": "Ketuk untuk ganti: hari ini → 7h → 30h",
       "unableToLoad": "Tidak dapat memuat metrik dasbor."
     },
     "dashboard": {
@@ -881,7 +881,7 @@
       "eyebrow": "Media website",
       "title": "Aset hero",
       "description": "Unggah video atau foto hero per halaman. File dikompresi, disimpan di Cloudflare R2, dan disajikan via CDN. Situs publik tetap cepat dengan fallback statis sampai media CMS dimuat.",
-      "hint": "Video maks 1 menit (ukuran upload fleksibel). Video hero yang panjang dipotong jadi 20 detik lalu dioptimasi ke HD H.264 di bawah 30 MB dengan poster WebP. Foto diubah ke WebP HD dengan kompresi ringan. Gunakan “Jadikan default situs” untuk menetapkan hero CMS saat ini sebagai default bawaan. “Pulihkan default” kembali ke file default tersebut.",
+      "hint": "Video maks 1 menit (ukuran upload fleksibel). Video hero dipotong jadi 15 detik lalu dioptimasi ke HD H.264 ~6 MB (1080p, standar Merchandise) dengan poster WebP. Foto diubah ke WebP HD dengan kompresi ringan. Gunakan “Jadikan default situs” untuk menetapkan hero CMS saat ini sebagai default bawaan. “Pulihkan default” kembali ke file default tersebut.",
       "refresh": "Muat ulang",
       "loading": "Memuat aset hero…",
       "loadError": "Gagal memuat aset hero.",

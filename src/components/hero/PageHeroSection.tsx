@@ -2,6 +2,7 @@
 
 import { forwardRef, type ReactNode, type Ref } from "react";
 import { CmsPageHeroBackground } from "@/components/hero/CmsPageHeroBackground";
+import { usePageHeroVideoRef } from "@/hooks/usePageHeroVideoRef";
 import {
   MerchStyleHeroCopy,
   type MerchStyleHeroCopyProps,
@@ -78,7 +79,7 @@ export type PageHeroSectionProps = {
   children?: ReactNode;
 };
 
-/** Unified full-viewport hero section — merchandise foundation. */
+/** Unified full-viewport hero section — Merchandise foundation (all public page heroes). */
 export function PageHeroSection({
   page,
   sectionRef,
@@ -86,18 +87,20 @@ export function PageHeroSection({
   objectPosition,
   overlay,
   showSeam = true,
-  showScrollIndicator = true,
+  showScrollIndicator = false,
   className = "",
   copy,
   children,
 }: PageHeroSectionProps) {
+  const { setVideoRef } = usePageHeroVideoRef(videoRef);
+
   return (
     <section
       ref={sectionRef}
       className={`relative isolate min-h-[100dvh] overflow-hidden ${className}`.trim()}
     >
       <PageHeroMedia
-        ref={videoRef}
+        ref={setVideoRef}
         page={page}
         objectPosition={objectPosition}
         overlay={overlay}

@@ -43,7 +43,7 @@ export const HERO_MEDIA_SHELL_STYLE: CSSProperties = {
   WebkitBackfaceVisibility: "hidden",
 };
 
-/** Above-the-fold hero video — full merchandise hero props (spread onto VideoLoadGuard). */
+/** Above-the-fold hero video — Merchandise pattern (see HERO_CMS_VIDEO + hero-cms-spec.ts). */
 export const HERO_VIDEO_MERCH_PATTERN = {
   posterPriority: true as const,
   lcpFriendlyPoster: true as const,
