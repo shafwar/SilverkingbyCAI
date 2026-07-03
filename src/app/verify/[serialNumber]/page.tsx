@@ -14,7 +14,6 @@ import {
   Scale,
   Layers,
   Calendar,
-  Hash,
   Banknote,
   KeyRound,
 } from "lucide-react";
@@ -166,44 +165,19 @@ function VerifiedBackgroundSvg({ seed }: { seed: string }) {
       <defs>
         <linearGradient id="verify_g1" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#050505" />
-          <stop offset="0.55" stopColor="#0b0b0b" />
+          <stop offset="0.55" stopColor="#0a0a0a" />
           <stop offset="1" stopColor="#050505" />
         </linearGradient>
-        <radialGradient id="verify_glow" cx="50%" cy="18%" r="62%">
-          <stop offset="0" stopColor="#22c55e" stopOpacity="0.12" />
-          <stop offset="0.55" stopColor="#d4af37" stopOpacity="0.08" />
+        <radialGradient id="verify_glow" cx="50%" cy="22%" r="55%">
+          <stop offset="0" stopColor="#22c55e" stopOpacity="0.14" />
+          <stop offset="0.5" stopColor="#d4af37" stopOpacity="0.06" />
           <stop offset="1" stopColor="#000000" stopOpacity="0" />
         </radialGradient>
-        <filter id="verify_noise">
-          <feTurbulence
-            type="fractalNoise"
-            baseFrequency="0.9"
-            numOctaves="2"
-            stitchTiles="stitch"
-            seed="7"
-          />
-          <feColorMatrix
-            type="matrix"
-            values="
-              0 0 0 0 0.60
-              0 0 0 0 0.52
-              0 0 0 0 0.10
-              0 0 0 0.18 0
-            "
-          />
-        </filter>
-        <filter id="verify_blur">
-          <feGaussianBlur stdDeviation="22" />
-        </filter>
       </defs>
       <rect width="1600" height="900" fill="url(#verify_g1)" />
       <rect width="1600" height="900" fill="url(#verify_glow)" />
-      <g opacity="0.55" filter="url(#verify_blur)">
-        <circle cx="240" cy="760" r="220" fill="#d4af37" fillOpacity="0.10" />
-        <circle cx="1340" cy="720" r="260" fill="#22c55e" fillOpacity="0.08" />
-        <circle cx="860" cy="130" r="220" fill="#d4af37" fillOpacity="0.06" />
-      </g>
-      <rect width="1600" height="900" filter="url(#verify_noise)" opacity="0.9" />
+      <circle cx="200" cy="780" r="180" fill="#d4af37" fillOpacity="0.05" />
+      <circle cx="1380" cy="740" r="200" fill="#22c55e" fillOpacity="0.04" />
       <text
         x="1500"
         y="860"
@@ -211,7 +185,7 @@ function VerifiedBackgroundSvg({ seed }: { seed: string }) {
         fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
         fontSize="18"
         fill="#ffffff"
-        opacity="0.06"
+        opacity="0.05"
       >
         {s}
       </text>
@@ -539,10 +513,13 @@ export default function VerifyPage() {
                 key={effectiveVerifiedBgUrl}
                 src={effectiveVerifiedBgUrl}
                 alt=""
-                className="absolute inset-0 h-full w-full object-cover"
+                className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-700 ease-out data-[loaded=true]:opacity-[0.88]"
                 loading="eager"
                 decoding="async"
                 fetchPriority="low"
+                onLoad={(e) => {
+                  e.currentTarget.dataset.loaded = "true";
+                }}
                 onError={handleVerifiedBgError}
                 aria-hidden
               />
@@ -557,12 +534,12 @@ export default function VerifyPage() {
               aria-hidden
             />
           )}
-          {/* Overlay: darker so Product Verified text and table stay readable on all devices */}
+          {/* Overlay — vignette for readable text without hiding poster entirely */}
           <div
             className="pointer-events-none fixed inset-0 z-[2] min-h-full"
             style={{
               background:
-                "linear-gradient(180deg, rgba(0,0,0,0.70) 0%, rgba(0,0,0,0.64) 50%, rgba(0,0,0,0.74) 100%)",
+                "linear-gradient(180deg, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.38) 42%, rgba(0,0,0,0.58) 100%)",
             }}
             aria-hidden
           />
@@ -725,124 +702,75 @@ export default function VerifyPage() {
             </motion.div>
           ) : result?.verified ? (
             /* ---------- VERIFIED SUCCESS ---------- */
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              className="space-y-5"
-            >
-              {/* Success header — strong contrast so "Product Verified" never clashes with bg */}
-              <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0} className="text-center pt-2 pb-1">
-                <div className="relative mx-auto mb-6 h-28 w-28 sm:h-32 sm:w-32">
-                  <motion.div
-                    className="absolute inset-0 rounded-full border-2 border-emerald-500/30"
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: [0.8, 1.2, 1.2], opacity: [0, 0.5, 0] }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
-                  />
-                  <motion.div
-                    className="absolute inset-0 flex items-center justify-center rounded-full"
-                    style={{
-                      background:
-                        "radial-gradient(circle, rgba(34,197,94,0.12) 0%, rgba(34,197,94,0.03) 70%, transparent 100%)",
-                    }}
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                  >
-                    <motion.div
-                      initial={{ scale: 0, rotate: -45 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ duration: 0.4, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                    >
-                      <CheckCircle2 className="h-20 w-20 sm:h-24 sm:w-24 text-emerald-500" />
-                    </motion.div>
-                  </motion.div>
-                </div>
-
-                {/* Title + subtitle on dark bar — readable on any background; responsive */}
-                <div className="mx-auto inline-block max-w-[90vw] rounded-xl bg-black/60 px-4 py-3 shadow-lg ring-1 ring-white/10 backdrop-blur-sm sm:max-w-none sm:rounded-2xl sm:px-6 sm:py-4">
-                  <motion.h1
-                    className="font-serif text-[1.9rem] sm:text-[2.25rem] font-extrabold tracking-tight text-white"
-                    style={{
-                      textShadow:
-                        "0 0 20px rgba(0,0,0,0.9), 0 2px 4px rgba(0,0,0,0.8), 0 1px 2px rgba(0,0,0,0.9)",
-                    }}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                  >
-                    Product Verified
-                  </motion.h1>
-                  <motion.p
-                    className="mt-2 text-sm font-semibold text-white/95"
-                    style={{
-                      textShadow: "0 1px 8px rgba(0,0,0,0.85), 0 1px 2px rgba(0,0,0,0.8)",
-                    }}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.5, delay: 0.45 }}
-                  >
-                    This product is officially verified by Silver King by CAI
-                  </motion.p>
-                </div>
-
-                <motion.div
-                  className="mx-auto mt-5 flex items-center justify-center gap-2.5"
-                  initial={{ opacity: 0, scaleX: 0 }}
-                  animate={{ opacity: 1, scaleX: 1 }}
-                  transition={{ duration: 0.6, delay: 0.5 }}
-                >
-                  <div className="h-px w-10 bg-gradient-to-r from-transparent to-emerald-500/20" />
-                  <div className="h-1 w-1 rounded-full bg-emerald-500/30" />
-                  <div className="h-px w-10 bg-gradient-to-l from-transparent to-emerald-500/20" />
-                </motion.div>
-              </motion.div>
-
-              {/* Product info card — bold panel so text is clear over background image */}
+            <motion.div initial="hidden" animate="visible" className="space-y-6">
+              {/* Success header — compact, professional, single-pass animation */}
               <motion.div
                 variants={fadeUp}
                 initial="hidden"
                 animate="visible"
-                custom={0.25}
-                className="rounded-2xl border-2 border-white/30 bg-black/98 shadow-2xl shadow-black/60 p-6 sm:p-7"
+                custom={0}
+                className="text-center pt-1"
               >
-                <div className="flex items-center gap-2.5 mb-5">
-                  <Shield className="h-[18px] w-[18px] text-luxury-gold" />
-                  <h2 className="text-[13px] font-bold uppercase tracking-[0.15em] text-luxury-gold">
-                    Product Information
-                  </h2>
+                <div className="mx-auto mb-5 flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full border border-emerald-400/35 bg-emerald-500/[0.08] shadow-[0_0_40px_rgba(34,197,94,0.12)]">
+                  <CheckCircle2 className="h-9 w-9 text-emerald-400" strokeWidth={1.75} />
                 </div>
-                <motion.div variants={staggerContainer} initial="hidden" animate="visible">
-                  <InfoRow bold icon={Package} label="Product Name" value={result.product?.name || "—"} />
-                  <InfoRow bold icon={Scale} label="Weight" value={getWeightLabel(result.product?.weight)} />
-                  {typeof result.product?.stock === "number" && (
-                    <InfoRow bold icon={Layers} label="Quantity" value={`${result.product.stock} pcs`} />
-                  )}
-                  <InfoRow
-                    bold
-                    icon={Calendar}
-                    label="Manufacturing Date"
-                    value={new Date(result.product?.createdAt || "").toLocaleDateString()}
-                  />
-                </motion.div>
+
+                <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-emerald-400/90">
+                  Authentic Product
+                </p>
+                <h1 className="mt-2 font-serif text-[2rem] font-semibold leading-tight tracking-tight text-white sm:text-[2.35rem]">
+                  Product Verified
+                </h1>
+                <p className="mx-auto mt-2.5 max-w-sm text-sm leading-relaxed text-white/65">
+                  This item is officially registered and verified by Silver King by CAI.
+                </p>
               </motion.div>
 
-              {/* Serial & Price card */}
-              {!result.requiresRootKey && (
-                <motion.div
-                  variants={fadeUp}
-                  initial="hidden"
-                  animate="visible"
-                  custom={0.4}
-                  className="rounded-2xl border-2 border-white/30 bg-black/98 shadow-2xl shadow-black/60 p-6 sm:p-7"
-                >
+              {/* Unified product card — glass panel, serial highlight, all details in one place */}
+              <motion.div
+                variants={fadeUp}
+                initial="hidden"
+                animate="visible"
+                custom={0.12}
+                className="overflow-hidden rounded-2xl border border-white/12 bg-black/50 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+              >
+                {!result.requiresRootKey && result.product?.serialCode ? (
+                  <div className="border-b border-white/10 bg-gradient-to-r from-emerald-500/[0.08] via-black/20 to-luxury-gold/[0.06] px-5 py-4 sm:px-6">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/45">
+                      Serial Number
+                    </p>
+                    <p className="mt-1 font-mono text-lg font-semibold tracking-[0.12em] text-white sm:text-xl">
+                      {result.product.serialCode}
+                    </p>
+                  </div>
+                ) : null}
+
+                <div className="px-5 py-5 sm:px-6 sm:py-6">
+                  <div className="mb-5 flex items-start gap-3 border-b border-white/8 pb-5">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-luxury-gold/10">
+                      <Shield className="h-5 w-5 text-luxury-gold" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-luxury-gold/80">
+                        Product
+                      </p>
+                      <h2 className="mt-1 font-serif text-xl font-medium leading-snug text-white sm:text-2xl">
+                        {result.product?.name || "—"}
+                      </h2>
+                      <p className="mt-1 text-xs text-white/45">99.99% purity · Precious metal</p>
+                    </div>
+                  </div>
+
                   <motion.div variants={staggerContainer} initial="hidden" animate="visible">
+                    <InfoRow bold icon={Scale} label="Weight" value={getWeightLabel(result.product?.weight)} />
+                    {typeof result.product?.stock === "number" && (
+                      <InfoRow bold icon={Layers} label="Quantity" value={`${result.product.stock} pcs`} />
+                    )}
                     <InfoRow
                       bold
-                      icon={Hash}
-                      label="Serial Number"
-                      value={result.product?.serialCode || "—"}
-                      mono
+                      icon={Calendar}
+                      label="Manufacturing Date"
+                      value={new Date(result.product?.createdAt || "").toLocaleDateString()}
                     />
                     {typeof result.product?.price === "number" && (
                       <InfoRow
@@ -853,20 +781,26 @@ export default function VerifyPage() {
                       />
                     )}
                   </motion.div>
-                </motion.div>
-              )}
+                </div>
 
-              {/* Back button */}
+                <div className="flex items-center justify-center gap-2 border-t border-white/8 bg-white/[0.02] px-5 py-3">
+                  <div className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
+                  <span className="text-[11px] font-medium tracking-wide text-white/50">
+                    Verification record saved securely
+                  </span>
+                </div>
+              </motion.div>
+
               <motion.div
                 variants={fadeUp}
                 initial="hidden"
                 animate="visible"
-                custom={0.55}
-                className="flex justify-center pt-2"
+                custom={0.28}
+                className="flex justify-center pt-1"
               >
                 <Link
                   href="/"
-                  className="group inline-flex items-center gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-7 py-3 text-[13px] font-medium text-white/60 transition-all duration-300 hover:border-white/[0.15] hover:text-white hover:bg-white/[0.06]"
+                  className="group inline-flex items-center gap-2.5 rounded-full border border-white/12 bg-white/[0.04] px-8 py-3 text-[13px] font-medium text-white/70 transition-all duration-300 hover:border-luxury-gold/35 hover:bg-white/[0.07] hover:text-white"
                 >
                   <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
                   Back to Home
