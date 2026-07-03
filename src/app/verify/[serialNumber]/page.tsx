@@ -308,7 +308,7 @@ export default function VerifyPage() {
           const apiList = Array.isArray(data?.urls) ? data.urls.filter((u) => u && u.startsWith("http")) : [];
           const seen = new Set<string>();
           const merged: string[] = [];
-          for (const u of [...apiList, ...staticUrls]) {
+          for (const u of [...staticUrls, ...apiList]) {
             if (u && !seen.has(u)) {
               seen.add(u);
               merged.push(u);
@@ -542,9 +542,9 @@ export default function VerifyPage() {
                 className="absolute inset-0 h-full w-full object-cover"
                 loading="eager"
                 decoding="async"
+                fetchPriority="low"
                 onError={handleVerifiedBgError}
                 aria-hidden
-                fetchPriority="high"
               />
             </div>
           ) : !verifiedBgError ? null : (
