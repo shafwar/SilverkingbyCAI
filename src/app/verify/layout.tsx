@@ -4,8 +4,8 @@ import { routing } from "@/i18n/routing";
 import { getMessages } from "next-intl/server";
 import { Providers } from "../providers";
 
-// Layout khusus untuk verify route
-// Menyediakan NavigationTransitionProvider yang diperlukan oleh Navbar
+// Layout khusus untuk verify route — QR scan landing (/verify/SKA…)
+// Wajib: <Providers> (SessionProvider + AdminStatusProvider) karena Navbar memakai useIsAdmin.
 export default async function VerifyLayout({
   children,
 }: {

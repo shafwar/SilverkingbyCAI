@@ -5,7 +5,6 @@ import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import "@/styles/globals.css";
 import { Providers } from "../providers";
-import { AdminStatusProvider } from "@/contexts/AdminStatusProvider";
 import { StructuredData } from "@/components/seo/StructuredData";
 import { SetDocumentLang } from "@/components/layout/SetDocumentLang";
 
@@ -50,11 +49,9 @@ export default async function LocaleLayout({
   return (
     <NextIntlClientProvider messages={messages}>
       <Providers>
-        <AdminStatusProvider>
-          <SetDocumentLang locale={locale} />
-          <StructuredData type="Organization" locale={locale} />
-          {children}
-        </AdminStatusProvider>
+        <SetDocumentLang locale={locale} />
+        <StructuredData type="Organization" locale={locale} />
+        {children}
       </Providers>
       <div
         id="cms-modal-root"

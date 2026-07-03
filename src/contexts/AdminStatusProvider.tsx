@@ -75,3 +75,8 @@ export function useAdminStatus(): AdminStatusContextValue {
   }
   return ctx;
 }
+
+/** Safe read — returns null when provider is missing (e.g. mis-wired layout). */
+export function useOptionalAdminStatus(): AdminStatusContextValue | null {
+  return useContext(AdminStatusContext) ?? null;
+}
