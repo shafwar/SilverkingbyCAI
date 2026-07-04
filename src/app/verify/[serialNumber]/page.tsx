@@ -150,6 +150,14 @@ function InfoRow({
   );
 }
 
+/** Force viewport to top — mobile Safari may keep prior scroll after QR / SPA nav. */
+function scrollVerifyPageToTop() {
+  if (typeof window === "undefined") return;
+  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+}
+
 /** Soft gradient backdrop only — no photo/image layer. */
 function VerifiedAmbientBackdrop({ seed }: { seed: string }) {
   const s = seed.slice(0, 10);
@@ -201,6 +209,25 @@ export default function VerifyPage() {
   const [rootKey, setRootKey] = useState("");
   const [verifyingRootKey, setVerifyingRootKey] = useState(false);
   const [rootKeyError, setRootKeyError] = useState<string | null>(null);
+
+  // Always start at top when opening / changing a serial (QR scan, SPA nav).
+  useEffect(() => {
+    scrollVerifyPageToTop();
+    const raf = requestAnimationFrame(scrollVerifyPageToTop);
+    return () => cancelAnimationFrame(raf);
+  }, [serialNumber]);
+
+  // Product Verified: pin to top after result paints (content height change can leave scroll at bottom).
+  useEffect(() => {
+    if (loading || !result?.verified || result.requiresRootKey) return;
+    scrollVerifyPageToTop();
+    const raf = requestAnimationFrame(scrollVerifyPageToTop);
+    const t = window.setTimeout(scrollVerifyPageToTop, 80);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(t);
+    };
+  }, [loading, result?.verified, result?.requiresRootKey, serialNumber]);
 
   // ---------- Verification: reset on serial change so new QR scan gets fresh UI (no stale root key / buffering) ----------
 
