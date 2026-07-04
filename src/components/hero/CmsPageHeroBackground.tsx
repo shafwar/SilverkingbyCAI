@@ -60,7 +60,8 @@ export const CmsPageHeroBackground = forwardRef<HTMLVideoElement, CmsPageHeroBac
 
     useReliableVideoAutoplay(videoRef, {
       mode: "background",
-      reattachKey: heroVideoPlayUrl,
+      // Include cmsResolved so listeners rebind when src attaches after poster-only mount
+      reattachKey: `${cmsResolved ? "ready" : "wait"}:${heroVideoPlayUrl}:${heroVersion ?? 0}`,
     });
 
     return (

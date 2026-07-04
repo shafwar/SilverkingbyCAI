@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { isMobileHeroAutoplayEnv } from "@/utils/device";
 
 export type ReliableVideoAutoplayMode = "default" | "background";
 
@@ -10,9 +11,12 @@ export type ReliableVideoAutoplayMode = "default" | "background";
  * Ensures background videos try to autoplay without native controls UI.
  *
  * - default: stronger retries + periodic checks (modals, secondary heroes).
- * - background: no video.load(), no preload override, longer watchdog interval, no scroll/click
- *   listeners (they caused jank), skip play() when already playing or when video has no src,
- *   styles applied without replacing the entire style attribute (preserves opacity fades).
+ * - background (desktop): no video.load(), no preload override, longer watchdog interval,
+ *   no scroll/click listeners (they caused jank), skip play() when already playing or when
+ *   video has no src, styles applied without replacing the entire style attribute
+ *   (preserves opacity fades).
+ * - background (mobile): same muted/playsInline path, plus iOS/Android unlock — defaultMuted,
+ *   webkit-playsinline, one load(), passive touch retry, faster watchdog. Desktop path unchanged.
  *
  * - reattachKey: increment when the <video> DOM is recreated (e.g. leave home → return). The ref
  *   object is stable so React would otherwise not re-run this effect, leaving the new element
@@ -41,9 +45,16 @@ export function useReliableVideoAutoplay(
     let detach: (() => void) | undefined;
 
     const attachTo = (video: HTMLVideoElement) => {
+      const isMobile = isMobileHeroAutoplayEnv();
+      /** Mobile needs unlock even in background mode; desktop background stays light. */
+      const mobileUnlock = isBackground && isMobile;
+      let loadedOnce = false;
+      let touchUnlockAttached = false;
+
       const enforceMobileAutoplayAttributes = () => {
         if (!video || cancelled) return;
 
+        video.defaultMuted = true;
         video.muted = true;
         video.volume = 0;
 
@@ -52,10 +63,15 @@ export function useReliableVideoAutoplay(
           (video as HTMLVideoElement & { webkitPlaysInline?: boolean }).webkitPlaysInline = true;
         }
 
+        video.setAttribute("playsinline", "");
+        video.setAttribute("webkit-playsinline", "");
+        video.setAttribute("muted", "");
+        video.setAttribute("autoplay", "");
+
         video.controls = false;
         video.removeAttribute("controls");
 
-        if (!isBackground) {
+        if (!isBackground || mobileUnlock) {
           video.preload = "auto";
         }
 
@@ -66,19 +82,35 @@ export function useReliableVideoAutoplay(
         video.style.setProperty("user-select", "none", "important");
       };
 
-      enforceMobileAutoplayAttributes();
+      const hasSrc = () => {
+        const srcAttr = video.getAttribute("src");
+        return Boolean((srcAttr && srcAttr.trim()) || video.currentSrc);
+      };
+
+      const ensureLoaded = () => {
+        if (!mobileUnlock || loadedOnce || !hasSrc()) return;
+        loadedOnce = true;
+        // Only start resource selection when idle — avoid restarting an in-flight fetch.
+        if (
+          video.networkState === HTMLMediaElement.NETWORK_EMPTY ||
+          video.readyState === HTMLMediaElement.HAVE_NOTHING
+        ) {
+          try {
+            video.load();
+          } catch {
+            /* ignore */
+          }
+        }
+      };
 
       const tryPlay = async (force = false) => {
         if (cancelled || !video) return;
         if (holdPausedRef?.current) return;
-
-        const srcAttr = video.getAttribute("src");
-        if (!(srcAttr && srcAttr.trim()) && !video.currentSrc) {
-          return;
-        }
+        if (!hasSrc()) return;
 
         try {
           enforceMobileAutoplayAttributes();
+          ensureLoaded();
 
           if (!video.paused && !video.ended && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
             return;
@@ -98,7 +130,8 @@ export function useReliableVideoAutoplay(
           }
         } catch {
           retryCountRef.current += 1;
-          const delay = Math.min(100 * Math.pow(2, retryCountRef.current), isBackground ? 3000 : 2000);
+          const maxDelay = isBackground && !mobileUnlock ? 3000 : 2000;
+          const delay = Math.min(100 * Math.pow(2, retryCountRef.current), maxDelay);
 
           setTimeout(() => {
             if (!cancelled && video && video.paused) {
@@ -122,6 +155,7 @@ export function useReliableVideoAutoplay(
 
       const handlePlay = () => {
         retryCountRef.current = 0;
+        removeTouchUnlock();
       };
 
       const handlePause = () => {
@@ -132,7 +166,7 @@ export function useReliableVideoAutoplay(
             if (!cancelled && video && video.paused && !video.ended) {
               void tryPlay(true);
             }
-          }, isBackground ? 250 : 100);
+          }, isBackground && !mobileUnlock ? 250 : 100);
         }
       };
 
@@ -151,7 +185,7 @@ export function useReliableVideoAutoplay(
             if (!cancelled && video && video.paused) {
               void tryPlay(true);
             }
-          }, isBackground ? 400 : 200);
+          }, isBackground && !mobileUnlock ? 400 : 200);
         }
       };
 
@@ -168,9 +202,27 @@ export function useReliableVideoAutoplay(
         }
       };
 
+      const removeTouchUnlock = () => {
+        if (!touchUnlockAttached) return;
+        touchUnlockAttached = false;
+        window.removeEventListener("touchstart", handleUserInteraction);
+        window.removeEventListener("touchend", handleUserInteraction);
+        window.removeEventListener("pointerdown", handleUserInteraction);
+      };
+
+      const attachTouchUnlock = () => {
+        if (touchUnlockAttached) return;
+        touchUnlockAttached = true;
+        window.addEventListener("touchstart", handleUserInteraction, { passive: true });
+        window.addEventListener("touchend", handleUserInteraction, { passive: true });
+        window.addEventListener("pointerdown", handleUserInteraction, { passive: true });
+      };
+
+      enforceMobileAutoplayAttributes();
+      ensureLoaded();
       void tryPlay(true);
 
-      const intervalMs = isBackground ? 20000 : 2000;
+      const intervalMs = isBackground && !mobileUnlock ? 20000 : 2000;
       playCheckIntervalRef.current = setInterval(() => {
         if (cancelled || !video) return;
         if (holdPausedRef?.current) return;
@@ -194,10 +246,14 @@ export function useReliableVideoAutoplay(
         window.addEventListener("touchend", handleUserInteraction, { passive: true });
         window.addEventListener("click", handleUserInteraction);
         window.addEventListener("scroll", handleUserInteraction, { passive: true });
-      }
-
-      if (!isBackground) {
-        video.load();
+        try {
+          video.load();
+        } catch {
+          /* ignore */
+        }
+      } else if (mobileUnlock) {
+        // Passive only — unlock autoplay on first gesture (Low Power Mode / strict policies).
+        attachTouchUnlock();
       }
 
       detach = () => {
@@ -219,6 +275,8 @@ export function useReliableVideoAutoplay(
           window.removeEventListener("touchend", handleUserInteraction);
           window.removeEventListener("click", handleUserInteraction);
           window.removeEventListener("scroll", handleUserInteraction);
+        } else {
+          removeTouchUnlock();
         }
       };
     };

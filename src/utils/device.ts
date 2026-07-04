@@ -22,6 +22,30 @@ export function isMobileDevice(): boolean {
 }
 
 /**
+ * Phones/tablets where muted autoplay needs extra unlock (iOS Safari, Android Chrome).
+ * Intentionally excludes large touch laptops so desktop hero path stays unchanged.
+ */
+export function isMobileHeroAutoplayEnv(): boolean {
+  if (typeof window === "undefined") return false;
+
+  const ua = navigator.userAgent || "";
+  if (/iPhone|iPod|iPad/i.test(ua)) return true;
+  // iPadOS desktop-mode Safari reports MacIntel + touch
+  if (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) return true;
+  if (/Android/i.test(ua)) return true;
+
+  try {
+    if (window.matchMedia("(pointer: coarse)").matches && window.innerWidth < 768) {
+      return true;
+    }
+  } catch {
+    /* ignore */
+  }
+
+  return false;
+}
+
+/**
  * Check if user prefers reduced motion
  * Respects CSS prefers-reduced-motion media query
  */

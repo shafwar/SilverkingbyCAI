@@ -4,6 +4,7 @@ import { forwardRef, useEffect, useLayoutEffect, useRef, useState } from "react"
 import Image from "next/image";
 import { getCacheBustedMediaUrl } from "@/hooks/usePageSections";
 import { HERO_PLACEHOLDER_BG } from "@/lib/hero-media-defaults";
+import { isMobileHeroAutoplayEnv } from "@/utils/device";
 
 type VideoGuardProps = Omit<React.ComponentPropsWithoutRef<"video">, "src"> & {
   url: string;
@@ -101,11 +102,18 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
     });
     const [idleReady, setIdleReady] = useState(!deferAttachUntilIdle);
     const containerRef = useRef<HTMLDivElement>(null);
+    const videoElRef = useRef<HTMLVideoElement | null>(null);
     const src = getCacheBustedMediaUrl(url, version);
     const bustedPoster =
       posterUrl && posterUrl.length > 0
         ? getCacheBustedMediaUrl(posterUrl, posterVersion)
         : null;
+
+    const setVideoNode = (node: HTMLVideoElement | null) => {
+      videoElRef.current = node;
+      if (typeof ref === "function") ref(node);
+      else if (ref) (ref as React.MutableRefObject<HTMLVideoElement | null>).current = node;
+    };
 
     /** Prime inView when container gets size (fixed heroes on iOS). */
     useLayoutEffect(() => {
@@ -223,6 +231,85 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
       return () => w.clearTimeout(t);
     }, [effectiveAttach, src]);
 
+    /**
+     * Mobile-only: enforce autoplay attributes + kick play() once src is attached.
+     * Desktop path unchanged (autoplay hook + native autoPlay are sufficient there).
+     */
+    useEffect(() => {
+      if (!effectiveAttach || forcePoster || suspendSrc) return;
+      if (typeof window === "undefined" || !isMobileHeroAutoplayEnv()) return;
+
+      const video = videoElRef.current;
+      if (!video) return;
+
+      let cancelled = false;
+
+      const unlock = () => {
+        if (cancelled || !video) return;
+        video.defaultMuted = true;
+        video.muted = true;
+        video.volume = 0;
+        video.playsInline = true;
+        video.setAttribute("playsinline", "");
+        video.setAttribute("webkit-playsinline", "");
+        video.setAttribute("muted", "");
+        video.setAttribute("autoplay", "");
+      };
+
+      const kickPlay = () => {
+        if (cancelled || !video) return;
+        unlock();
+        const srcAttr = video.getAttribute("src");
+        if (!(srcAttr && srcAttr.trim()) && !video.currentSrc) return;
+        void video
+          .play()
+          .then(() => {
+            if (!cancelled) markReady();
+          })
+          .catch(() => {});
+      };
+
+      const onGesture = () => kickPlay();
+      const dropGestureUnlock = () => {
+        window.removeEventListener("touchstart", onGesture);
+        window.removeEventListener("touchend", onGesture);
+      };
+      const onPlaying = () => {
+        markReady();
+        dropGestureUnlock();
+      };
+
+      unlock();
+      kickPlay();
+
+      video.addEventListener("loadedmetadata", kickPlay);
+      video.addEventListener("loadeddata", kickPlay);
+      video.addEventListener("canplay", kickPlay);
+      video.addEventListener("playing", onPlaying);
+
+      const w = globalThis as Window & typeof globalThis;
+      const t1 = w.setTimeout(kickPlay, 120);
+      const t2 = w.setTimeout(kickPlay, 480);
+      const t3 = w.setTimeout(kickPlay, 1200);
+
+      window.addEventListener("touchstart", onGesture, { passive: true });
+      window.addEventListener("touchend", onGesture, { passive: true });
+
+      return () => {
+        cancelled = true;
+        video.removeEventListener("loadedmetadata", kickPlay);
+        video.removeEventListener("loadeddata", kickPlay);
+        video.removeEventListener("canplay", kickPlay);
+        video.removeEventListener("playing", onPlaying);
+        w.clearTimeout(t1);
+        w.clearTimeout(t2);
+        w.clearTimeout(t3);
+        dropGestureUnlock();
+      };
+      // markReady is stable enough for this attach cycle (only sets ready/fade state).
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [effectiveAttach, src, forcePoster, suspendSrc]);
+
     const handleProgress = (e: React.SyntheticEvent<HTMLVideoElement>) => {
       onProgressProp?.(e);
       /** First decodable frames arrive earlier than loadeddata on slow networks — removes long “black” waits */
@@ -314,7 +401,7 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
 
         {/* Include version in key so CMS replace at same R2 path forces a fresh decoder (no 1-frame old video). */}
         <video
-          ref={ref}
+          ref={setVideoNode}
           key={effectiveAttach ? `${src}::v${version ?? "na"}` : "pending"}
           src={effectiveAttach ? src : undefined}
           poster={bustedPoster ?? undefined}
@@ -324,6 +411,10 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
           onPlaying={markReady}
           onProgress={handleProgress}
           {...videoProps}
+          // Keep after spread so callers cannot drop mobile autoplay requirements
+          muted
+          playsInline
+          {...{ "webkit-playsinline": "" }}
           {...(resolvedFetchPriority ? { fetchPriority: resolvedFetchPriority } : {})}
           style={{
             ...style,
