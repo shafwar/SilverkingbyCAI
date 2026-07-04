@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState, type MutableRefObject, type Ref } from "react";
+import { useCallback, useRef, type MutableRefObject, type Ref } from "react";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
 
 /** Merge forwarded ref + internal ref (merchandise hero video ref pattern). */
@@ -16,20 +16,15 @@ export function mergeVideoRefs<T>(...refs: (Ref<T> | undefined)[]) {
 
 /**
  * Merchandise-pattern hero video ref — paired with PageHeroSection (site-wide standard).
- * reattachKey bumps when the <video> DOM node is replaced (CMS attach / SPA return)
- * so mobile autoplay listeners bind to the live element.
+ * Autoplay reattach for CMS src attach is owned by CmsPageHeroBackground (reattachKey).
+ * Do not setState inside this ref callback — unstable child refs would loop forever.
  */
 export function usePageHeroVideoRef(forwardedRef?: Ref<HTMLVideoElement>) {
   const internalRef = useRef<HTMLVideoElement | null>(null);
-  const [reattachKey, setReattachKey] = useState(0);
-  useReliableVideoAutoplay(internalRef, { mode: "background", reattachKey });
+  useReliableVideoAutoplay(internalRef, { mode: "background" });
   const setVideoRef = useCallback(
     (node: HTMLVideoElement | null) => {
-      const prev = internalRef.current;
       mergeVideoRefs(internalRef, forwardedRef)(node);
-      if (node && node !== prev) {
-        setReattachKey((k) => k + 1);
-      }
     },
     [forwardedRef]
   );

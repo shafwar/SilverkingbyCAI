@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { getCacheBustedMediaUrl } from "@/hooks/usePageSections";
 import { HERO_PLACEHOLDER_BG } from "@/lib/hero-media-defaults";
@@ -109,11 +109,14 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
         ? getCacheBustedMediaUrl(posterUrl, posterVersion)
         : null;
 
-    const setVideoNode = (node: HTMLVideoElement | null) => {
-      videoElRef.current = node;
-      if (typeof ref === "function") ref(node);
-      else if (ref) (ref as React.MutableRefObject<HTMLVideoElement | null>).current = node;
-    };
+    const setVideoNode = useCallback(
+      (node: HTMLVideoElement | null) => {
+        videoElRef.current = node;
+        if (typeof ref === "function") ref(node);
+        else if (ref) (ref as React.MutableRefObject<HTMLVideoElement | null>).current = node;
+      },
+      [ref]
+    );
 
     /** Prime inView when container gets size (fixed heroes on iOS). */
     useLayoutEffect(() => {
@@ -414,7 +417,6 @@ export const VideoLoadGuard = forwardRef<HTMLVideoElement, VideoGuardProps>(
           // Keep after spread so callers cannot drop mobile autoplay requirements
           muted
           playsInline
-          {...{ "webkit-playsinline": "" }}
           {...(resolvedFetchPriority ? { fetchPriority: resolvedFetchPriority } : {})}
           style={{
             ...style,
