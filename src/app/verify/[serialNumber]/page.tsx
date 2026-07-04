@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -14,12 +14,10 @@ import {
   Scale,
   Layers,
   Calendar,
+  Hash,
   Banknote,
   KeyRound,
 } from "lucide-react";
-import { VERIFIED_BG_IMAGES } from "@/assets/verified-bg";
-import { getR2UrlClient } from "@/utils/r2-url";
-import { useRichMediaNetwork } from "@/hooks/useRichMediaNetwork";
 
 interface VerificationResult {
   verified: boolean;
@@ -152,7 +150,8 @@ function InfoRow({
   );
 }
 
-function VerifiedBackgroundSvg({ seed }: { seed: string }) {
+/** Soft gradient backdrop only — no photo/image layer. */
+function VerifiedAmbientBackdrop({ seed }: { seed: string }) {
   const s = seed.slice(0, 10);
   return (
     <svg
@@ -164,20 +163,20 @@ function VerifiedBackgroundSvg({ seed }: { seed: string }) {
     >
       <defs>
         <linearGradient id="verify_g1" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#050505" />
-          <stop offset="0.55" stopColor="#0a0a0a" />
-          <stop offset="1" stopColor="#050505" />
+          <stop offset="0" stopColor="#070707" />
+          <stop offset="0.5" stopColor="#0c0c0c" />
+          <stop offset="1" stopColor="#060606" />
         </linearGradient>
-        <radialGradient id="verify_glow" cx="50%" cy="22%" r="55%">
-          <stop offset="0" stopColor="#22c55e" stopOpacity="0.14" />
-          <stop offset="0.5" stopColor="#d4af37" stopOpacity="0.06" />
+        <radialGradient id="verify_glow" cx="50%" cy="20%" r="58%">
+          <stop offset="0" stopColor="#22c55e" stopOpacity="0.11" />
+          <stop offset="0.45" stopColor="#d4af37" stopOpacity="0.05" />
           <stop offset="1" stopColor="#000000" stopOpacity="0" />
         </radialGradient>
       </defs>
       <rect width="1600" height="900" fill="url(#verify_g1)" />
       <rect width="1600" height="900" fill="url(#verify_glow)" />
-      <circle cx="200" cy="780" r="180" fill="#d4af37" fillOpacity="0.05" />
-      <circle cx="1380" cy="740" r="200" fill="#22c55e" fillOpacity="0.04" />
+      <circle cx="220" cy="780" r="200" fill="#d4af37" fillOpacity="0.04" />
+      <circle cx="1360" cy="720" r="220" fill="#22c55e" fillOpacity="0.035" />
       <text
         x="1500"
         y="860"
@@ -185,7 +184,7 @@ function VerifiedBackgroundSvg({ seed }: { seed: string }) {
         fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
         fontSize="18"
         fill="#ffffff"
-        opacity="0.05"
+        opacity="0.04"
       >
         {s}
       </text>
@@ -202,126 +201,11 @@ export default function VerifyPage() {
   const [rootKey, setRootKey] = useState("");
   const [verifyingRootKey, setVerifyingRootKey] = useState(false);
   const [rootKeyError, setRootKeyError] = useState<string | null>(null);
-  const shouldLoadRichMedia = useRichMediaNetwork();
-
-  /** Guaranteed pool: static URLs always included so we never have empty; try next on error until one loads. */
-  const staticUrls = useMemo(
-    () => VERIFIED_BG_IMAGES.map((p) => getR2UrlClient(p)),
-    []
-  );
-
-  const [verifiedBgDisplayUrl, setVerifiedBgDisplayUrl] = useState<string | null>(null);
-  const [verifiedBgError, setVerifiedBgError] = useState(false);
-  const verifiedBgFallbackUrls = useRef<string[]>([]);
-  const preloadSeqIdRef = useRef(0);
-  const currentVerifiedBgUrlRef = useRef<string | null>(null);
-
-  // Background image: load ONLY after "Product Verified" text has painted (deferred). Prefer static URLs first (easiest/closest).
-  useEffect(() => {
-    if (!result?.verified || !shouldLoadRichMedia) {
-      setVerifiedBgDisplayUrl(null);
-      setVerifiedBgError(false);
-      verifiedBgFallbackUrls.current = [];
-      return;
-    }
-    // Do NOT set any image here — first paint is text + SVG only (sacred for client).
-    setVerifiedBgDisplayUrl(null);
-    setVerifiedBgError(false);
-    verifiedBgFallbackUrls.current = [];
-    const mySeq = ++preloadSeqIdRef.current;
-
-    const preloadAndSwap = async (pool: string[]) => {
-      const seen = new Set<string>();
-      const ordered = pool.filter((u) => (u ? !seen.has(u) && (seen.add(u), true) : false));
-      for (const url of ordered) {
-        if (preloadSeqIdRef.current !== mySeq) return;
-        if (url === currentVerifiedBgUrlRef.current) continue;
-        try {
-          await new Promise<void>((resolve, reject) => {
-            const img = new window.Image();
-            const t = window.setTimeout(() => reject(new Error("timeout")), 4500);
-            img.onload = () => {
-              window.clearTimeout(t);
-              resolve();
-            };
-            img.onerror = () => {
-              window.clearTimeout(t);
-              reject(new Error("error"));
-            };
-            img.decoding = "async";
-            img.src = url;
-          });
-          if (preloadSeqIdRef.current !== mySeq) return;
-          currentVerifiedBgUrlRef.current = url;
-          setVerifiedBgDisplayUrl(url);
-          setVerifiedBgError(false);
-          verifiedBgFallbackUrls.current = ordered.filter((u) => u !== url);
-          return;
-        } catch {
-          // try next
-        }
-      }
-      if (preloadSeqIdRef.current === mySeq) setVerifiedBgError(true);
-    };
-
-    // Defer so "Product Verified" text and table paint first; then load image (static first = easiest).
-    const deferMs = 180;
-    const tid = window.setTimeout(() => {
-      if (preloadSeqIdRef.current !== mySeq) return;
-      // Static list first (closest / easiest to load), then API adds more options
-      void preloadAndSwap(staticUrls);
-    }, deferMs);
-
-    let cancelled = false;
-    const apiTid = window.setTimeout(() => {
-      if (cancelled) return;
-      fetch("/api/verified-bg-images")
-        .then((r) => r.json())
-        .then((data: { urls?: string[] }) => {
-          if (cancelled || preloadSeqIdRef.current !== mySeq) return;
-          const apiList = Array.isArray(data?.urls) ? data.urls.filter((u) => u && u.startsWith("http")) : [];
-          const seen = new Set<string>();
-          const merged: string[] = [];
-          for (const u of [...staticUrls, ...apiList]) {
-            if (u && !seen.has(u)) {
-              seen.add(u);
-              merged.push(u);
-            }
-          }
-          if (merged.length === 0) return;
-          void preloadAndSwap(merged);
-        })
-        .catch(() => {});
-    }, deferMs + 80);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(tid);
-      window.clearTimeout(apiTid);
-    };
-  }, [result?.verified, staticUrls, shouldLoadRichMedia]);
-
-  const effectiveVerifiedBgUrl = verifiedBgDisplayUrl;
-
-  const handleVerifiedBgError = () => {
-    const fallbacks = verifiedBgFallbackUrls.current;
-    if (fallbacks.length > 0) {
-      verifiedBgFallbackUrls.current = fallbacks.slice(1);
-      setVerifiedBgDisplayUrl(fallbacks[0]);
-    } else {
-      setVerifiedBgError(true);
-    }
-  };
 
   // ---------- Verification: reset on serial change so new QR scan gets fresh UI (no stale root key / buffering) ----------
 
   useEffect(() => {
-    // Hard reset when serial changes: show loading and clear previous result/background (no stale root key / buffering)
-    setVerifiedBgDisplayUrl(null);
-    setVerifiedBgError(false);
-    verifiedBgFallbackUrls.current = [];
-    currentVerifiedBgUrlRef.current = null;
-    preloadSeqIdRef.current += 1;
+    // Hard reset when serial changes: show loading and clear previous result (no stale root key / buffering)
     recoveryRetryRef.current = null;
 
     if (!serialNumber) {
@@ -485,7 +369,7 @@ export default function VerifyPage() {
 
   // ---------- END UNCHANGED LOGIC ----------
 
-  const showVerifiedBackground = Boolean(result?.verified && !result?.requiresRootKey);
+  const showVerifiedSuccess = Boolean(result?.verified && !result?.requiresRootKey);
 
   const showRootKeyMode = Boolean(result?.requiresRootKey);
 
@@ -497,63 +381,17 @@ export default function VerifyPage() {
           : "bg-[#050505]"
       }`}
     >
-      {/* Background only when product is verified (not on root-key input screen). */}
-      {showVerifiedBackground && (
-        <>
-          <VerifiedBackgroundSvg seed={serialNumber || "SK"} />
+      {/* Soft gradient only — no photo background */}
+      {showVerifiedSuccess && <VerifiedAmbientBackdrop seed={serialNumber || "SK"} />}
 
-          {!verifiedBgError && effectiveVerifiedBgUrl ? (
-            <div
-              key={effectiveVerifiedBgUrl}
-              className="pointer-events-none fixed inset-0 z-[1] overflow-hidden bg-[#0a0a0a]"
-              aria-hidden
-            >
-              {/* Use a real <img> (not CSS background-image) for deterministic loading + onError across browsers */}
-              <img
-                key={effectiveVerifiedBgUrl}
-                src={effectiveVerifiedBgUrl}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-700 ease-out data-[loaded=true]:opacity-[0.88]"
-                loading="eager"
-                decoding="async"
-                fetchPriority="low"
-                onLoad={(e) => {
-                  e.currentTarget.dataset.loaded = "true";
-                }}
-                onError={handleVerifiedBgError}
-                aria-hidden
-              />
-            </div>
-          ) : !verifiedBgError ? null : (
-            <div
-              className="pointer-events-none fixed inset-0 z-[1] bg-[#0a0a0a]"
-              style={{
-                background:
-                  "linear-gradient(180deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.78) 50%, rgba(0,0,0,0.9) 100%)",
-              }}
-              aria-hidden
-            />
-          )}
-          {/* Overlay — vignette for readable text without hiding poster entirely */}
-          <div
-            className="pointer-events-none fixed inset-0 z-[2] min-h-full"
-            style={{
-              background:
-                "linear-gradient(180deg, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.38) 42%, rgba(0,0,0,0.58) 100%)",
-            }}
-            aria-hidden
-          />
-        </>
-      )}
-
-      {/* Background ambient — only tint when verified success; root key stays clean */}
+      {/* Ambient tint by state */}
       <div
-        className="pointer-events-none fixed inset-0 z-[3]"
+        className="pointer-events-none fixed inset-0 z-[1]"
         style={{
           background: result?.requiresRootKey
             ? "none"
-            : showVerifiedBackground
-              ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(34,197,94,0.04) 0%, transparent 60%), radial-gradient(ellipse 50% 35% at 50% 80%, rgba(212,175,55,0.03) 0%, transparent 50%)"
+            : showVerifiedSuccess
+              ? "radial-gradient(ellipse 55% 38% at 50% 18%, rgba(34,197,94,0.06) 0%, transparent 62%), radial-gradient(ellipse 48% 32% at 50% 82%, rgba(212,175,55,0.04) 0%, transparent 55%)"
               : result && !result.verified && !result.requiresRootKey
                 ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(239,68,68,0.04) 0%, transparent 60%)"
                 : "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(212,175,55,0.04) 0%, transparent 60%)",
@@ -701,76 +539,115 @@ export default function VerifyPage() {
               </motion.div>
             </motion.div>
           ) : result?.verified ? (
-            /* ---------- VERIFIED SUCCESS ---------- */
-            <motion.div initial="hidden" animate="visible" className="space-y-6">
-              {/* Success header — compact, professional, single-pass animation */}
+            /* ---------- VERIFIED SUCCESS (classic layout, no photo background) ---------- */
+            <motion.div initial="hidden" animate="visible" className="space-y-5">
               <motion.div
                 variants={fadeUp}
                 initial="hidden"
                 animate="visible"
                 custom={0}
-                className="text-center pt-1"
+                className="text-center pt-2 pb-1"
               >
-                <div className="mx-auto mb-5 flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full border border-emerald-400/35 bg-emerald-500/[0.08] shadow-[0_0_40px_rgba(34,197,94,0.12)]">
-                  <CheckCircle2 className="h-9 w-9 text-emerald-400" strokeWidth={1.75} />
+                <div className="relative mx-auto mb-6 h-24 w-24 sm:h-28 sm:w-28">
+                  <motion.div
+                    className="absolute inset-0 rounded-full border border-emerald-400/25"
+                    initial={{ scale: 0.85, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  />
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center rounded-full"
+                    style={{
+                      background:
+                        "radial-gradient(circle, rgba(34,197,94,0.14) 0%, rgba(34,197,94,0.04) 65%, transparent 100%)",
+                    }}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <motion.div
+                      initial={{ scale: 0, rotate: -45 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ duration: 0.4, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <CheckCircle2 className="h-16 w-16 sm:h-20 sm:w-20 text-emerald-400" strokeWidth={1.5} />
+                    </motion.div>
+                  </motion.div>
                 </div>
 
-                <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-emerald-400/90">
-                  Authentic Product
-                </p>
-                <h1 className="mt-2 font-serif text-[2rem] font-semibold leading-tight tracking-tight text-white sm:text-[2.35rem]">
+                <motion.h1
+                  className="font-serif text-[1.9rem] font-semibold tracking-tight text-white sm:text-[2.25rem]"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.45, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                >
                   Product Verified
-                </h1>
-                <p className="mx-auto mt-2.5 max-w-sm text-sm leading-relaxed text-white/65">
-                  This item is officially registered and verified by Silver King by CAI.
-                </p>
+                </motion.h1>
+                <motion.p
+                  className="mx-auto mt-2.5 max-w-md text-sm font-medium leading-relaxed text-white/70"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.45, delay: 0.35 }}
+                >
+                  This product is officially verified by Silver King by CAI
+                </motion.p>
+
+                <motion.div
+                  className="mx-auto mt-5 flex items-center justify-center gap-2.5"
+                  initial={{ opacity: 0, scaleX: 0 }}
+                  animate={{ opacity: 1, scaleX: 1 }}
+                  transition={{ duration: 0.5, delay: 0.4 }}
+                >
+                  <div className="h-px w-10 bg-gradient-to-r from-transparent to-emerald-400/30" />
+                  <div className="h-1 w-1 rounded-full bg-emerald-400/50" />
+                  <div className="h-px w-10 bg-gradient-to-l from-transparent to-emerald-400/30" />
+                </motion.div>
               </motion.div>
 
-              {/* Unified product card — glass panel, serial highlight, all details in one place */}
+              {/* Product Information — classic two-card layout */}
               <motion.div
                 variants={fadeUp}
                 initial="hidden"
                 animate="visible"
-                custom={0.12}
-                className="overflow-hidden rounded-2xl border border-white/12 bg-black/50 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+                custom={0.2}
+                className="rounded-2xl border border-white/12 bg-white/[0.04] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)] sm:p-7"
               >
-                {!result.requiresRootKey && result.product?.serialCode ? (
-                  <div className="border-b border-white/10 bg-gradient-to-r from-emerald-500/[0.08] via-black/20 to-luxury-gold/[0.06] px-5 py-4 sm:px-6">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/45">
-                      Serial Number
-                    </p>
-                    <p className="mt-1 font-mono text-lg font-semibold tracking-[0.12em] text-white sm:text-xl">
-                      {result.product.serialCode}
-                    </p>
-                  </div>
-                ) : null}
+                <div className="mb-5 flex items-center gap-2.5">
+                  <Shield className="h-[18px] w-[18px] text-luxury-gold" />
+                  <h2 className="text-[13px] font-bold uppercase tracking-[0.15em] text-luxury-gold">
+                    Product Information
+                  </h2>
+                </div>
+                <motion.div variants={staggerContainer} initial="hidden" animate="visible">
+                  <InfoRow bold icon={Package} label="Product Name" value={result.product?.name || "—"} />
+                  <InfoRow bold icon={Scale} label="Weight" value={getWeightLabel(result.product?.weight)} />
+                  {typeof result.product?.stock === "number" && (
+                    <InfoRow bold icon={Layers} label="Quantity" value={`${result.product.stock} pcs`} />
+                  )}
+                  <InfoRow
+                    bold
+                    icon={Calendar}
+                    label="Manufacturing Date"
+                    value={new Date(result.product?.createdAt || "").toLocaleDateString()}
+                  />
+                </motion.div>
+              </motion.div>
 
-                <div className="px-5 py-5 sm:px-6 sm:py-6">
-                  <div className="mb-5 flex items-start gap-3 border-b border-white/8 pb-5">
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-luxury-gold/10">
-                      <Shield className="h-5 w-5 text-luxury-gold" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-luxury-gold/80">
-                        Product
-                      </p>
-                      <h2 className="mt-1 font-serif text-xl font-medium leading-snug text-white sm:text-2xl">
-                        {result.product?.name || "—"}
-                      </h2>
-                      <p className="mt-1 text-xs text-white/45">99.99% purity · Precious metal</p>
-                    </div>
-                  </div>
-
+              {!result.requiresRootKey && (
+                <motion.div
+                  variants={fadeUp}
+                  initial="hidden"
+                  animate="visible"
+                  custom={0.35}
+                  className="rounded-2xl border border-white/12 bg-white/[0.04] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)] sm:p-7"
+                >
                   <motion.div variants={staggerContainer} initial="hidden" animate="visible">
-                    <InfoRow bold icon={Scale} label="Weight" value={getWeightLabel(result.product?.weight)} />
-                    {typeof result.product?.stock === "number" && (
-                      <InfoRow bold icon={Layers} label="Quantity" value={`${result.product.stock} pcs`} />
-                    )}
                     <InfoRow
                       bold
-                      icon={Calendar}
-                      label="Manufacturing Date"
-                      value={new Date(result.product?.createdAt || "").toLocaleDateString()}
+                      icon={Hash}
+                      label="Serial Number"
+                      value={result.product?.serialCode || "—"}
+                      mono
                     />
                     {typeof result.product?.price === "number" && (
                       <InfoRow
@@ -781,26 +658,19 @@ export default function VerifyPage() {
                       />
                     )}
                   </motion.div>
-                </div>
-
-                <div className="flex items-center justify-center gap-2 border-t border-white/8 bg-white/[0.02] px-5 py-3">
-                  <div className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
-                  <span className="text-[11px] font-medium tracking-wide text-white/50">
-                    Verification record saved securely
-                  </span>
-                </div>
-              </motion.div>
+                </motion.div>
+              )}
 
               <motion.div
                 variants={fadeUp}
                 initial="hidden"
                 animate="visible"
-                custom={0.28}
-                className="flex justify-center pt-1"
+                custom={0.5}
+                className="flex justify-center pt-2"
               >
                 <Link
                   href="/"
-                  className="group inline-flex items-center gap-2.5 rounded-full border border-white/12 bg-white/[0.04] px-8 py-3 text-[13px] font-medium text-white/70 transition-all duration-300 hover:border-luxury-gold/35 hover:bg-white/[0.07] hover:text-white"
+                  className="group inline-flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.03] px-7 py-3 text-[13px] font-medium text-white/65 transition-all duration-300 hover:border-luxury-gold/30 hover:bg-white/[0.06] hover:text-white"
                 >
                   <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
                   Back to Home
