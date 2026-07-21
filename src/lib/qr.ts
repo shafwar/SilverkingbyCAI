@@ -56,7 +56,7 @@ const QR_FOLDER = path.join(process.cwd(), "public", "qr");
 const QR_FONT_FAMILY = "LucidaSans";
 const QR_FONT_PATH = path.join(process.cwd(), "public", "fonts", "LucidaSans.ttf");
 
-import { getServerCanvasModule, type ServerCanvasModule } from "@/lib/server-canvas";
+import { getServerCanvasModule, type ServerCanvasModule } from "./server-canvas";
 
 let canvasModulePromise: Promise<ServerCanvasModule | null> | null = null;
 let didAttemptFontRegistration = false;

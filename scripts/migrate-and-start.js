@@ -37,7 +37,17 @@ async function runMigration() {
     await createDatabaseIfNotExists();
     
     // Run Prisma migration
-    console.log('Step 2: Running Prisma migrations...\n');
+    console.log('Step 2: Resolving stuck migrations and deploying...\n');
+    try {
+      execSync('npx prisma migrate resolve --rolled-back 20260213000000_add_distributors', {
+        stdio: 'inherit',
+        env: process.env,
+      });
+      console.log('✅ Stuck migration resolved successfully.\n');
+    } catch (e) {
+      console.log('ℹ️ No stuck migration found or already resolved.\n');
+    }
+
     execSync('npx prisma migrate deploy', {
       stdio: 'inherit',
       env: process.env,

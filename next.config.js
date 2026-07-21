@@ -36,7 +36,7 @@ const nextConfig = {
   },
   reactStrictMode: true,
   // Keep native canvas bindings out of the webpack graph (API routes only).
-  serverExternalPackages: ["canvas", "@napi-rs/canvas"],
+  serverComponentsExternalPackages: ["canvas", "@napi-rs/canvas"],
   // Optimize page loading and prefetching
   poweredByHeader: false,
   compress: true,
