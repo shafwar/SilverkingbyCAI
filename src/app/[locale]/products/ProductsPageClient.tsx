@@ -199,6 +199,7 @@ const CategoryGridItem = ({
                   className="object-cover"
                   placeholder="blur"
                   blurDataURL={CATEGORY_BLUR}
+                  unoptimized={true} // Offload heavy resizing to Edge
                   priority={idx === 0 && index < 2}
                 />
               ) : (

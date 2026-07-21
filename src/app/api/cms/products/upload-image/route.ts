@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { uploadFileToR2 } from "@/lib/r2-client";
+import { uploadToR2 } from "@/lib/r2-client";
+import sharp from "sharp";
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,12 +26,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const buffer = Buffer.from(await file.arrayBuffer());
+    
+    // Compress and resize image using sharp to ensure optimal loading
+    const optimizedBuffer = await sharp(buffer)
+      .resize({ width: 800, height: 1066, fit: "inside", withoutEnlargement: true }) // Maintain ~3:4 aspect ratio limit
+      .webp({ quality: 80 })
+      .toBuffer();
+
     const originalName = file.name.toLowerCase().replace(/\s+/g, "-");
     const baseName = originalName.replace(/\.(jpe?g|png|webp|gif|bmp|tiff)$/i, "");
     const timestamp = Date.now();
-    const key = `static/images/products/${timestamp}-${baseName}.jpg`;
+    const key = `static/images/products/${timestamp}-${baseName}.webp`;
 
-    const url = await uploadFileToR2(file, key);
+    const url = await uploadToR2(key, optimizedBuffer, "image/webp");
 
     return NextResponse.json({ url }, { status: 201 });
   } catch (error) {

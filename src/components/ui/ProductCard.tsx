@@ -122,6 +122,7 @@ export default function ProductCard({ product, onProductSelect, index = 0 }: Pro
                     priority={idx === 0 && index < 2}
                     placeholder="blur"
                     blurDataURL={PLACEHOLDER_BLUR}
+                    unoptimized={true} // Offload heavy resizing from Next.js to Cloudflare Edge
                     onLoadingComplete={() => handleImageLoaded(idx)}
                     loading={idx === currentImageIndex ? "eager" : "lazy"}
                   />
