@@ -95,6 +95,55 @@ export async function GET() {
       }
     }
 
+    // --- Compress Merchandise Items ---
+    const merchItems = await db.merchandiseItem.findMany();
+    for (const item of merchItems) {
+      if (!item.imageUrl) continue;
+      
+      const imgUrl = item.imageUrl;
+      if (imgUrl.endsWith(".webp") || !imgUrl.includes("assets.cahayasilverking.id")) {
+        skippedCount++;
+        continue;
+      }
+
+      try {
+        console.log(`[COMPRESS MERCH] Fetching ${imgUrl}`);
+        const res = await fetch(imgUrl);
+        if (!res.ok) throw new Error(`Failed to fetch ${imgUrl} - Status: ${res.status}`);
+
+        const arrayBuffer = await res.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        const optimizedBuffer = await sharp(buffer)
+          .resize({ width: 1200, fit: "inside", withoutEnlargement: true })
+          .webp({ quality: 80 })
+          .toBuffer();
+
+        const urlParts = imgUrl.split("/");
+        const filename = urlParts[urlParts.length - 1];
+        const baseName = filename.replace(/\.(jpe?g|png|gif|bmp|tiff)$/i, "");
+        const key = `static/images/merchandise/compressed-${Date.now()}-${baseName}.webp`;
+
+        const newUrl = await uploadToR2(key, optimizedBuffer, "image/webp");
+        
+        await db.merchandiseItem.update({
+          where: { id: item.id },
+          data: { imageUrl: newUrl }
+        });
+        
+        compressedCount++;
+        results.push({
+          old: imgUrl,
+          new: newUrl,
+          oldSizeKb: (buffer.length / 1024).toFixed(2),
+          newSizeKb: (optimizedBuffer.length / 1024).toFixed(2)
+        });
+      } catch (err: any) {
+        console.error(`[COMPRESS MERCH] Error processing ${imgUrl}:`, err);
+        errors.push(`Error on Merch ${imgUrl}: ${err.message}`);
+      }
+    }
+
     return NextResponse.json({
       message: "Compression completed",
       compressed: compressedCount,
