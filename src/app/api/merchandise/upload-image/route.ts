@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
 import { auth } from "@/lib/auth";
 import { uploadToR2 } from "@/lib/r2-client";
+import { logR2Event } from "@/utils/monitoring";
 
 const IMAGE_MAX_WIDTH = 1600;
 const IMAGE_QUALITY = 85; // good quality, smaller file size
@@ -43,14 +44,29 @@ export async function POST(request: NextRequest) {
       .jpeg({ quality: IMAGE_QUALITY, mozjpeg: true })
       .toBuffer();
 
+    const uploadStart = Date.now();
     const url = await uploadToR2(key, outBuf, "image/jpeg", {
       originalName: file.name,
       uploadedAt: new Date().toISOString(),
+    });
+    logR2Event({
+      operation: "upload",
+      key,
+      sizeBytes: outBuf.byteLength,
+      contentType: "image/jpeg",
+      durationMs: Date.now() - uploadStart,
+      success: true,
     });
 
     return NextResponse.json({ url }, { status: 201 });
   } catch (error) {
     console.error("[MERCHANDISE_UPLOAD_IMAGE]", error);
+    logR2Event({
+      operation: "upload",
+      key: `static/images/merchandise/<failed>`,
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: "Failed to upload image. Please try again." },
       { status: 500 }

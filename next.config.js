@@ -21,6 +21,11 @@ const nextConfig = {
     minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days cache
     dangerouslyAllowSVG: false,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    // Log invalid image requests instead of silently returning null — surfaces
+    // broken asset paths (e.g. hero-fallback.jpg) without causing 5xx responses.
+    onError(err) {
+      console.error("[next/image] validation error:", err.message, "| url:", err.url ?? "unknown");
+    },
   },
   experimental: {
     serverActions: {
