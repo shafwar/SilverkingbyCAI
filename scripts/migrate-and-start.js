@@ -9,34 +9,18 @@ if (!process.env.FONTCONFIG_PATH) {
 
 console.log('🚀 Starting application...\n');
 
-// Function to run seed
-async function runSeed() {
-  console.log('🌱 Running database seed...');
-  try {
-    execSync('npm run prisma:seed', {
-      stdio: 'inherit',
-      env: process.env,
-      cwd: process.cwd(),
-    });
-    console.log('✅ Database seed completed successfully!\n');
-    return true;
-  } catch (error) {
-    console.error('❌ Seed failed:', error.message);
-    console.log('⚠️  Continuing without seed (database may already be seeded)...\n');
-    // Don't exit - seed failure should not prevent app from starting
-    return false;
-  }
-}
-
-// Function to run migration
+// Function to run migration ONLY — seed is intentionally excluded from auto-start.
+// Seed used to delete all data on first run, which is dangerous in production.
+// To reset admin user: railway run node scripts/reset-admin.js
+// To seed manually:    railway run npm run prisma:seed
 async function runMigration() {
   console.log('📦 Running database migrations...');
   try {
     // First ensure database exists
     console.log('Step 1: Ensuring database exists...\n');
     await createDatabaseIfNotExists();
-    
-    // Run Prisma migration
+
+    // Resolve any stuck migrations (safe — only marks as rolled-back, no data change)
     console.log('Step 2: Resolving stuck migrations and deploying...\n');
     try {
       execSync('npx prisma migrate resolve --rolled-back 20260213000000_add_distributors', {
@@ -48,38 +32,28 @@ async function runMigration() {
       console.log('ℹ️ No stuck migration found or already resolved.\n');
     }
 
+    // Deploy pending migrations (safe — only applies schema changes, never deletes rows)
     execSync('npx prisma migrate deploy', {
       stdio: 'inherit',
       env: process.env,
     });
     console.log('✅ Database migrations completed successfully!\n');
-    
-    // Run seed after migration
-    console.log('Step 3: Seeding database...\n');
-    await runSeed();
-    
+
     return true;
   } catch (error) {
     console.error('❌ Migration failed:', error.message);
-    console.log('⚠️  Attempting to create database and retry migration...\n');
-    
-    // Try to create database and retry
+    console.log('⚠️  Attempting to create schema with db push as fallback...\n');
+
     try {
-      // Use db push as fallback to create schema
-      console.log('🔄 Trying Prisma db push as fallback...');
       execSync('npx prisma db push --accept-data-loss', {
         stdio: 'inherit',
         env: process.env,
       });
       console.log('✅ Database schema created successfully!\n');
-      
-      // Try to seed after push
-      await runSeed();
-      
       return true;
     } catch (pushError) {
       console.error('❌ Database push also failed:', pushError.message);
-      console.log('⚠️  Continuing with application start (migrations may be applied later)...\n');
+      console.log('⚠️  Continuing with application start...\n');
       return false;
     }
   }
