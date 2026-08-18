@@ -6,10 +6,9 @@
     "libjpeg-dev",
     "libgif-dev",
     "librsvg2-dev",
-    "fontconfig",
-    "ffmpeg"
+    "fontconfig"
   ],
   "deploy": {
-    "aptPackages": ["ffmpeg"]
+    "aptPackages": []
   }
 }

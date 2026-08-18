@@ -4,6 +4,7 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: "standalone",
   images: {
     remotePatterns: [
       {
@@ -28,18 +29,16 @@ const nextConfig = {
     },
     // Optimize prefetching for faster navigation
     optimizePackageImports: ["lucide-react", "framer-motion"],
-    // Disabled optimizeCss - requires 'critters' package and causes build errors
-    // optimizeCss: true,
+    // Keep native canvas bindings out of the webpack graph (API routes only).
+    serverComponentsExternalPackages: ["canvas", "@napi-rs/canvas"],
   },
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
   },
   reactStrictMode: true,
-  // Keep native canvas bindings out of the webpack graph (API routes only).
-  serverComponentsExternalPackages: ["canvas", "@napi-rs/canvas"],
-  // Optimize page loading and prefetching
   poweredByHeader: false,
   compress: true,
+
   async headers() {
     return [
       {

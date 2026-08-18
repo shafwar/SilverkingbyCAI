@@ -682,6 +682,29 @@ async function buildOneZipChunk(
   const totalToProcess = validProducts.length;
   const logEvery = totalToProcess > 50 ? Math.max(1, Math.floor(totalToProcess / 10)) : 1;
 
+  // Batch pre-fetch all root keys in 1 single database query instead of querying sequentially inside the loop
+  const rootKeyMap = new Map<string, string>();
+  if (includeRootKey && (isGramRequest || validProducts.some((p) => (p as any).isGram))) {
+    const codes = validProducts
+      .map((p) => (p.serialCode ? String(p.serialCode).trim().toUpperCase() : ""))
+      .filter(Boolean);
+    if (codes.length > 0) {
+      try {
+        const dbItems = await prisma.gramProductItem.findMany({
+          where: { uniqCode: { in: codes } },
+          select: { uniqCode: true, rootKey: true },
+        });
+        for (const it of dbItems) {
+          if (it.rootKey?.trim()) {
+            rootKeyMap.set(it.uniqCode.toUpperCase(), it.rootKey.trim());
+          }
+        }
+      } catch (e) {
+        console.warn("[QR Multiple] batch rootKey lookup error:", (e as Error)?.message);
+      }
+    }
+  }
+
   for (let idx = 0; idx < validProducts.length; idx++) {
     const product = validProducts[idx];
     const shouldLog = idx === 0 || idx === totalToProcess - 1 || (idx + 1) % logEvery === 0;
@@ -711,27 +734,13 @@ async function buildOneZipChunk(
           if (fromPayload) {
             rootKeyForPill = normalizeRootKeyForPill(fromPayload);
           } else if (productIsGram) {
-            let gramItem = await prisma.gramProductItem.findFirst({
-              where: {
-                uniqCode: productSerialCode,
-                ...(product.id != null && Number.isFinite(Number(product.id))
-                  ? { id: Math.floor(Number(product.id)) }
-                  : {}),
-              },
-              select: { rootKey: true },
-            });
-            if (!gramItem?.rootKey?.trim()) {
-              gramItem = await prisma.gramProductItem.findFirst({
-                where: { uniqCode: productSerialCode },
-                orderBy: { id: "asc" },
-                select: { rootKey: true },
-              });
-            }
-            if (gramItem?.rootKey?.trim()) {
-              rootKeyForPill = normalizeRootKeyForPill(gramItem.rootKey.trim());
+            const cachedRootKey = rootKeyMap.get(productSerialCode);
+            if (cachedRootKey) {
+              rootKeyForPill = normalizeRootKeyForPill(cachedRootKey);
             }
           }
         }
+
 
         if (includeRootKey && productIsGram && !rootKeyForPill) {
           verification.warnings.push({
@@ -1070,10 +1079,10 @@ async function executeZipGeneration(
         );
       }
       const zipBuffer = await chunkResult.zip.generateAsync({
-      type: "nodebuffer",
-      compression: "DEFLATE",
-      compressionOptions: { level: 9 },
-    });
+        type: "nodebuffer",
+        compression: "DEFLATE",
+        compressionOptions: { level: 1 },
+      });
       // Satu folder induk (batch-{num}-{date}), tiap batch 100 = subfolder sendiri; bisa selesai bertahap
       const batchFolder = `batch-${c + 1}-of-${totalChunks}`;
       const zipTpl =
@@ -1168,7 +1177,7 @@ async function executeZipGeneration(
   const zipBuffer = await chunkResult.zip.generateAsync({
     type: "nodebuffer",
     compression: "DEFLATE",
-    compressionOptions: { level: 9 },
+    compressionOptions: { level: 1 },
   });
     const dateStr = new Date().toISOString().split("T")[0];
     const zipTplSingle =
