@@ -118,17 +118,14 @@ export default function ProductCard({ product, onProductSelect, index = 0 }: Pro
                     alt={`${product.name} - Image ${idx + 1}`}
                     fill
                     sizes={responsiveSizes}
-                    className="object-cover"
-                    priority={idx === 0 && index < 2}
-                    placeholder="blur"
-                    blurDataURL={PLACEHOLDER_BLUR}
-                    unoptimized={true} // Offload heavy resizing from Next.js to Cloudflare Edge
-                    onLoadingComplete={() => handleImageLoaded(idx)}
+                    className={`object-cover transition-opacity duration-300 ${
+                      loadedFlags[idx] ? "opacity-100" : "opacity-90"
+                    }`}
+                    priority={idx === 0 && index < 4}
+                    unoptimized={true}
+                    onLoad={() => handleImageLoaded(idx)}
                     loading={idx === currentImageIndex ? "eager" : "lazy"}
                   />
-                  {!loadedFlags[idx] && (
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#0f0f0f] via-[#161616] to-[#0b0b0b] animate-pulse" />
-                  )}
                 </motion.div>
               )
           )}
