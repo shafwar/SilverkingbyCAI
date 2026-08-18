@@ -283,30 +283,32 @@ export async function resolveZipBundleStatus(
   }
 
   const partByIndex = new Map(parts.map((p) => [p.batchIndex, p]));
-  const batches: ZipBundleBatchRow[] = [];
-
-  for (let i = 1; i <= totalBatches; i++) {
-    const part = partByIndex.get(i);
-    const r2Key = part?.r2Key;
-    let onR2 = false;
-    if (r2Key) {
-      const exists = await headR2Exists(r2Key);
-      onR2 = exists === true;
-    }
-    const audit = r2Key ? auditByR2.get(r2Key) : undefined;
-    const downloaded =
-      (audit?.count ?? 0) > 0 || bundleDownloadedSet.has(i);
-    batches.push({
-      batchIndex: i,
-      totalBatches,
-      fileCount: part?.fileCount,
-      r2Key,
-      downloadUrl: part?.downloadUrl,
-      onR2,
-      downloaded,
-      lastDownloadedAt: audit?.lastAt?.toISOString() ?? null,
-    });
-  }
+  
+  // Parallelize R2 HEAD checks across all chunks
+  const batchIndices = Array.from({ length: totalBatches }, (_, i) => i + 1);
+  const batches: ZipBundleBatchRow[] = await Promise.all(
+    batchIndices.map(async (i) => {
+      const part = partByIndex.get(i);
+      const r2Key = part?.r2Key;
+      let onR2 = false;
+      if (r2Key) {
+        const exists = await headR2Exists(r2Key);
+        onR2 = exists === true;
+      }
+      const audit = r2Key ? auditByR2.get(r2Key) : undefined;
+      const downloaded = (audit?.count ?? 0) > 0 || bundleDownloadedSet.has(i);
+      return {
+        batchIndex: i,
+        totalBatches,
+        fileCount: part?.fileCount,
+        r2Key,
+        downloadUrl: part?.downloadUrl,
+        onR2,
+        downloaded,
+        lastDownloadedAt: audit?.lastAt?.toISOString() ?? null,
+      };
+    })
+  );
 
   const batchesOnR2Count = batches.filter((b) => b.onR2).length;
   const batchesDownloadedCount = batches.filter((b) => b.downloaded).length;
