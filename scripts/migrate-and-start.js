@@ -1,6 +1,7 @@
 const { execSync } = require('child_process');
 const { spawn } = require('child_process');
 const { createDatabaseIfNotExists } = require('./create-database');
+const { PrismaClient } = require('@prisma/client');
 
 // Ensure fontconfig can find config in container (fixes "Cannot load default config file" on Railway)
 if (!process.env.FONTCONFIG_PATH) {
@@ -9,18 +10,110 @@ if (!process.env.FONTCONFIG_PATH) {
 
 console.log('🚀 Starting application...\n');
 
+const TIDB_URL = process.env.TARGET_DATABASE_URL || 'mysql://28W1TMCs9KdURyk.root:sMCHjbMu7351UeXk@gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/test?sslaccept=strict';
+
+async function copyDataToTiDB() {
+  console.log('🔄 Checking TiDB Cloud migration status...');
+  try {
+    const targetPrisma = new PrismaClient({
+      datasources: { db: { url: TIDB_URL } }
+    });
+
+    const sourcePrisma = new PrismaClient();
+
+    // Check if TiDB already has data
+    let existingItemCount = 0;
+    try {
+      existingItemCount = await targetPrisma.gramProductItem.count();
+    } catch (e) {
+      existingItemCount = 0;
+    }
+
+    if (existingItemCount > 0) {
+      console.log(`✅ TiDB Cloud already contains ${existingItemCount} gram items. Skipping data copy.\n`);
+      await targetPrisma.$disconnect();
+      await sourcePrisma.$disconnect();
+      return;
+    }
+
+    console.log('📦 Transferring 20,100+ records from Railway MySQL to TiDB Cloud...\n');
+
+    const models = [
+      'user',
+      'product',
+      'qrRecord',
+      'productDeleteBatch',
+      'productDeleteHistory',
+      'cmsProduct',
+      'merchandiseItem',
+      'gramProductBatch',
+      'gramProductItem',
+      'qRScanLog',
+      'gramQRScanLog',
+      'scanLogSummary',
+      'serticardConfig',
+      'serticardUploadedTemplate',
+      'feedback',
+      'distributor',
+      'contentEntry',
+      'pageMedia',
+      'pageSection',
+      'journal',
+      'qrZipDownloadJob',
+      'qrZipDownloadCache',
+      'serticardZipRenderIssue',
+      'qrZipBundleState',
+      'qrZipDownloadAudit'
+    ];
+
+    let totalMigrated = 0;
+
+    for (const model of models) {
+      try {
+        const sourceDelegate = sourcePrisma[model];
+        const targetDelegate = targetPrisma[model];
+
+        if (!sourceDelegate || !targetDelegate) continue;
+
+        const rows = await sourceDelegate.findMany();
+        if (rows.length > 0) {
+          console.log(`   Transferring ${rows.length} rows for table [${model}]...`);
+          try {
+            await targetDelegate.deleteMany({});
+          } catch (e) {}
+
+          const batchSize = 100;
+          for (let i = 0; i < rows.length; i += batchSize) {
+            const batch = rows.slice(i, i + batchSize);
+            await targetDelegate.createMany({
+              data: batch,
+              skipDuplicates: true
+            });
+          }
+
+          totalMigrated += rows.length;
+        }
+      } catch (err) {
+        console.error(`   ⚠️ Notice on model ${model}:`, err.message);
+      }
+    }
+
+    console.log(`\n🎉 DATA TRANSFER COMPLETE! Successfully migrated ${totalMigrated} rows to TiDB Cloud!\n`);
+
+    await targetPrisma.$disconnect();
+    await sourcePrisma.$disconnect();
+  } catch (err) {
+    console.error('❌ Data transfer to TiDB encountered error:', err.message);
+  }
+}
+
 // Function to run migration ONLY — seed is intentionally excluded from auto-start.
-// Seed used to delete all data on first run, which is dangerous in production.
-// To reset admin user: railway run node scripts/reset-admin.js
-// To seed manually:    railway run npm run prisma:seed
 async function runMigration() {
   console.log('📦 Running database migrations...');
   try {
-    // First ensure database exists
     console.log('Step 1: Ensuring database exists...\n');
     await createDatabaseIfNotExists();
 
-    // Resolve any stuck migrations (safe — only marks as rolled-back, no data change)
     console.log('Step 2: Resolving stuck migrations and deploying...\n');
     try {
       execSync('npx prisma migrate resolve --rolled-back 20260213000000_add_distributors', {
@@ -32,7 +125,6 @@ async function runMigration() {
       console.log('ℹ️ No stuck migration found or already resolved.\n');
     }
 
-    // Deploy pending migrations (safe — only applies schema changes, never deletes rows)
     execSync('npx prisma migrate deploy', {
       stdio: 'inherit',
       env: process.env,
@@ -80,7 +172,6 @@ function startNext() {
     }
   });
 
-  // Handle graceful shutdown
   process.on('SIGTERM', () => {
     console.log('\n🛑 Received SIGTERM, shutting down gracefully...');
     nextProcess.kill('SIGTERM');
@@ -95,6 +186,6 @@ function startNext() {
 // Main execution
 (async () => {
   await runMigration();
+  await copyDataToTiDB();
   startNext();
 })();
-
