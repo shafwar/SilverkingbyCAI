@@ -2,7 +2,7 @@
  * /api/health/database
  *
  * GET: Health check status
- * POST: Automatic DB migration from Railway MySQL to TiDB Cloud
+ * POST: Fast chunked DB migration from Railway MySQL to TiDB Cloud
  */
 
 import { NextResponse } from "next/server";
@@ -10,9 +10,13 @@ import { prisma } from "@/lib/prisma";
 import { PrismaClient } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300; // 5 minutes max duration for Vercel/Railway
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    const url = new URL(request.url);
+    const targetTable = url.searchParams.get("table"); // optional single table mode
+
     const targetPrisma = new PrismaClient({
       datasources: {
         db: {
@@ -23,10 +27,16 @@ export async function POST() {
       },
     });
 
-    const results: Record<string, { found: number; migrated: number; error?: string }> = {};
-
-    const models = [
+    const allModels = [
       "user",
+      "serticardConfig",
+      "serticardUploadedTemplate",
+      "contentEntry",
+      "pageMedia",
+      "pageSection",
+      "journal",
+      "distributor",
+      "feedback",
       "product",
       "qrRecord",
       "productDeleteBatch",
@@ -38,21 +48,10 @@ export async function POST() {
       "qRScanLog",
       "gramQRScanLog",
       "scanLogSummary",
-      "serticardConfig",
-      "serticardUploadedTemplate",
-      "feedback",
-      "distributor",
-      "contentEntry",
-      "pageMedia",
-      "pageSection",
-      "journal",
-      "qrZipDownloadJob",
-      "qrZipDownloadCache",
-      "serticardZipRenderIssue",
-      "qrZipBundleState",
-      "qrZipDownloadAudit",
     ];
 
+    const models = targetTable ? [targetTable] : allModels;
+    const results: Record<string, { found: number; migrated: number; error?: string }> = {};
     let totalMigrated = 0;
 
     for (const model of models) {
@@ -62,27 +61,36 @@ export async function POST() {
 
         if (!sourceDelegate || !targetDelegate) continue;
 
-        const rows = await sourceDelegate.findMany();
-        results[model] = { found: rows.length, migrated: 0 };
+        const totalRows = await sourceDelegate.count();
+        results[model] = { found: totalRows, migrated: 0 };
 
-        if (rows.length > 0) {
+        if (totalRows > 0) {
+          // Clear target table
           try {
             await targetDelegate.deleteMany({});
-          } catch (e) {
-            // ignore
-          }
+          } catch (e) {}
 
-          const batchSize = 100;
-          for (let i = 0; i < rows.length; i += batchSize) {
-            const batch = rows.slice(i, i + batchSize);
-            await targetDelegate.createMany({
-              data: batch,
-              skipDuplicates: true,
+          // Chunked fetch & insert in batches of 500
+          const chunkSize = 500;
+          let migratedForModel = 0;
+
+          for (let skip = 0; skip < totalRows; skip += chunkSize) {
+            const chunk = await sourceDelegate.findMany({
+              take: chunkSize,
+              skip: skip,
             });
+
+            if (chunk.length > 0) {
+              await targetDelegate.createMany({
+                data: chunk,
+                skipDuplicates: true,
+              });
+              migratedForModel += chunk.length;
+            }
           }
 
-          results[model].migrated = rows.length;
-          totalMigrated += rows.length;
+          results[model].migrated = migratedForModel;
+          totalMigrated += migratedForModel;
         }
       } catch (err: any) {
         results[model] = { found: 0, migrated: 0, error: err.message };
@@ -126,7 +134,7 @@ export async function GET() {
       prisma.qRScanLog.count().catch(() => 0),
       prisma.gramProductBatch.count().catch(() => 0),
       prisma.gramProductItem.count().catch(() => 0),
-      prisma.gramQRScanLog.count().catch(() => 0),
+      prisma.gramQRScanLog.catch ? prisma.gramQRScanLog.count().catch(() => 0) : 0,
       prisma.user.count().catch(() => 0),
       prisma.feedback.count().catch(() => 0),
       prisma.serticardConfig.count().catch(() => 0),
