@@ -2,18 +2,109 @@
  * GET /api/health/database
  *
  * Health check endpoint untuk memverifikasi status database dan data integrity.
- * Tidak memerlukan autentikasi untuk memudahkan monitoring.
- *
- * Returns:
- * - Connection status
- * - Table counts (untuk verifikasi data tidak terhapus)
- * - Database health status
+ * Juga mendukung trigger migrasi data otomatis ke TiDB Cloud dengan ?migrate=true
  */
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { PrismaClient } from "@prisma/client";
 
-export async function GET() {
+export const dynamic = "force-dynamic";
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const shouldMigrate = searchParams.get("migrate") === "true";
+
+  if (shouldMigrate) {
+    try {
+      const targetPrisma = new PrismaClient({
+        datasources: {
+          db: {
+            url:
+              process.env.TARGET_DATABASE_URL ||
+              "mysql://28W1TMCs9KdURyk.root:sMCHjbMu7351UeXk@gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/test?sslaccept=strict",
+          },
+        },
+      });
+
+      const results: Record<string, { found: number; migrated: number; error?: string }> = {};
+
+      const models = [
+        "user",
+        "product",
+        "qrRecord",
+        "productDeleteBatch",
+        "productDeleteHistory",
+        "cmsProduct",
+        "merchandiseItem",
+        "gramProductBatch",
+        "gramProductItem",
+        "qRScanLog",
+        "gramQRScanLog",
+        "scanLogSummary",
+        "serticardConfig",
+        "serticardUploadedTemplate",
+        "feedback",
+        "distributor",
+        "contentEntry",
+        "pageMedia",
+        "pageSection",
+        "journal",
+        "qrZipDownloadJob",
+        "qrZipDownloadCache",
+        "serticardZipRenderIssue",
+        "qrZipBundleState",
+        "qrZipDownloadAudit",
+      ];
+
+      let totalMigrated = 0;
+
+      for (const model of models) {
+        try {
+          const sourceDelegate = (prisma as any)[model];
+          const targetDelegate = (targetPrisma as any)[model];
+
+          if (!sourceDelegate || !targetDelegate) continue;
+
+          const rows = await sourceDelegate.findMany();
+          results[model] = { found: rows.length, migrated: 0 };
+
+          if (rows.length > 0) {
+            try {
+              await targetDelegate.deleteMany({});
+            } catch (e) {
+              // ignore
+            }
+
+            const batchSize = 100;
+            for (let i = 0; i < rows.length; i += batchSize) {
+              const batch = rows.slice(i, i + batchSize);
+              await targetDelegate.createMany({
+                data: batch,
+                skipDuplicates: true,
+              });
+            }
+
+            results[model].migrated = rows.length;
+            totalMigrated += rows.length;
+          }
+        } catch (err: any) {
+          results[model] = { found: 0, migrated: 0, error: err.message };
+        }
+      }
+
+      await targetPrisma.$disconnect();
+
+      return NextResponse.json({
+        migration: "completed",
+        totalMigrated,
+        details: results,
+      });
+    } catch (migErr: any) {
+      return NextResponse.json({ migration: "failed", error: migErr.message }, { status: 500 });
+    }
+  }
+
   try {
     // Test database connection
     await prisma.$queryRaw`SELECT 1`;
@@ -63,25 +154,21 @@ export async function GET() {
           health: isHealthy ? "healthy" : "degraded",
         },
         counts: {
-          // Page 1 (Product-based)
           products: {
             total: productCount,
             withQR: qrRecordCount,
             scanLogs: page1ScanLogCount,
           },
-          // Page 2 (Gram-based)
           gramProducts: {
             batches: gramBatchCount,
             items: gramItemCount,
             scanLogs: page2ScanLogCount,
           },
-          // Combined totals
           totals: {
             products: totalProducts,
             qrRecords: totalQRRecords,
             scanLogs: totalScanLogs,
           },
-          // System tables
           system: {
             users: userCount,
             feedback: feedbackCount,
@@ -95,11 +182,8 @@ export async function GET() {
       { status: 200 }
     );
   } catch (error: any) {
-    // Database connection failed
     const errorMessage = error.message || "Unknown error";
     const errorCode = error.code || "UNKNOWN";
-
-    // Check for specific error types
     const isConnectionError =
       errorCode === "P1001" ||
       errorMessage.includes("Can't reach database") ||
@@ -124,15 +208,6 @@ export async function GET() {
         message: isConnectionError
           ? "Database service is down. Please restart MySQL service in Railway. Data is safe in persistent volume."
           : "Database query failed. Check error details.",
-        troubleshooting: isConnectionError
-          ? {
-              step1: "Go to Railway Dashboard",
-              step2: "Select MySQL service",
-              step3: "Click Settings → Restart",
-              step4: "Wait for status to become 'Online'",
-              note: "Data is safe - shutdown does not delete data. Only restarts the service.",
-            }
-          : null,
       },
       { status: 503 }
     );
