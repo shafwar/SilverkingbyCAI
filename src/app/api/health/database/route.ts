@@ -2,20 +2,17 @@
  * GET /api/health/database
  *
  * Health check endpoint untuk memverifikasi status database dan data integrity.
- * Juga mendukung trigger migrasi data otomatis ke TiDB Cloud dengan ?migrate=true atau header x-migrate: true
+ * Juga mendukung trigger migrasi data otomatis ke TiDB Cloud dengan ?migrate=1
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PrismaClient } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const migrateQuery = url.searchParams.get("migrate") === "true";
-  const migrateHeader = request.headers.get("x-migrate") === "true";
-  const shouldMigrate = migrateQuery || migrateHeader;
+export async function GET(request: NextRequest) {
+  const shouldMigrate = request.nextUrl.searchParams.has("migrate");
 
   if (shouldMigrate) {
     try {
