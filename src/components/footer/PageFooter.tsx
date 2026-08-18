@@ -37,12 +37,6 @@ export function PageFooter() {
   const tFooter = useTranslations("footer");
   const footerRef = useRef<HTMLElement>(null);
   const isInView = useInView(footerRef, { once: true, amount: 0.2 });
-
-  const bgImageUrl =
-    typeof process !== "undefined" && process.env.NEXT_PUBLIC_FOOTER_BG_IMAGE_URL?.trim()
-      ? process.env.NEXT_PUBLIC_FOOTER_BG_IMAGE_URL.trim()
-      : DEFAULT_HERO_POSTER;
-
   const instagramHref = getSilverKingInstagramUrl();
   const whatsappHref = getSilverKingWhatsAppUrl();
 
@@ -52,20 +46,11 @@ export function PageFooter() {
       initial={{ opacity: 0 }}
       animate={isInView ? { opacity: 1 } : { opacity: 0 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className="relative overflow-hidden border-t border-white/5"
+      className="relative overflow-hidden border-t border-white/10 bg-[#050505]"
     >
-      {/* Optional photo layer — dark overlay keeps text readable */}
+      {/* Subtle luxury glow without background image asset */}
       <div
-        className="absolute inset-0 pointer-events-none bg-cover bg-center bg-no-repeat scale-105"
-        style={{ backgroundImage: `url(${bgImageUrl})` }}
-        aria-hidden
-      />
-      <div
-        className="absolute inset-0 pointer-events-none bg-gradient-to-b from-[#050505]/92 via-[#080808]/88 to-[#030303]/95"
-        aria-hidden
-      />
-      <div
-        className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_90%_60%_at_50%_0%,rgba(212,175,55,0.07)_0%,transparent_55%)]"
+        className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_90%_60%_at_50%_0%,rgba(212,175,55,0.05)_0%,transparent_60%)]"
         aria-hidden
       />
       <div
@@ -73,6 +58,7 @@ export function PageFooter() {
         style={{ boxShadow: "inset 0 1px 0 0 rgba(212,175,55,0.05)" }}
         aria-hidden
       />
+
 
       <div className="relative z-10 mx-auto max-w-[1320px] px-5 py-14 sm:px-6 md:px-8 md:py-16 lg:px-12 lg:py-20">
         <div
