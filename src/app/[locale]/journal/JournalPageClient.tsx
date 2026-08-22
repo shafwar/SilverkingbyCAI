@@ -50,13 +50,6 @@ type JournalItem = {
 
 const LATEST_ARTICLES_LIMIT = 3;
 
-type JournalPageClientProps = {
-  /** Fallback hero media type when no CMS section. */
-  initialHeroMediaType: "IMAGE" | "VIDEO";
-  /** Fallback hero URL when no CMS section (same-origin). */
-  initialHeroUrl: string;
-};
-
 type AdminJournalItem = {
   id: number;
   slug: string;
@@ -68,7 +61,7 @@ type AdminJournalItem = {
   publishedAt: string | null;
 };
 
-export default function JournalPageClient(_props: JournalPageClientProps) {
+export default function JournalPageClient() {
   const t = useTranslations("journal");
   const locale = useLocale();
   const isAdmin = useIsAdmin();

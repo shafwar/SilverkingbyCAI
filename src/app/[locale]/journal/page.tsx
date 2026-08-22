@@ -1,16 +1,8 @@
 import { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { generatePageMetadata } from "@/lib/seo";
+import { ServerHeroSeo } from "@/components/seo/ServerHeroSeo";
 import JournalPageClient from "./JournalPageClient";
-
-/** Fallback hero for Journal when CMS media is not set. */
-const JOURNAL_HERO_FALLBACK = {
-  type: "VIDEO" as const,
-  // Use the bundled lightweight hero video (local public asset).
-  url: "/videos/hero/Jurnal%20Silverking.mp4",
-};
-
-export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -21,19 +13,31 @@ export async function generateMetadata({
   const t = await getTranslations({ locale, namespace: "journal" });
 
   return generatePageMetadata({
-    title: t("meta.title"),
-    description: t("meta.description"),
+    title: t("meta.title") || "Journal",
+    description: t("meta.description") || "Updates, news, and education from Silver King",
     path: "/journal",
     locale,
     keywords: ["journal", "artikel", "berita", "edukasi", "Silver King"],
   });
 }
 
-export default async function JournalPage() {
+export default async function JournalPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
   return (
-    <JournalPageClient
-      initialHeroMediaType={JOURNAL_HERO_FALLBACK.type}
-      initialHeroUrl={JOURNAL_HERO_FALLBACK.url}
-    />
+    <>
+      <link
+        rel="preload"
+        href="/images/journal/journal-hero-poster.webp"
+        as="image"
+        fetchPriority="high"
+      />
+      <ServerHeroSeo locale={locale} namespace="journal" />
+      <JournalPageClient />
+    </>
   );
 }
+
