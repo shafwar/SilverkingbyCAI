@@ -13,7 +13,5 @@ export const prisma =
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 
-// Cache in development only
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-}
+// Cache in global to prevent connection leaks during server runtime
+globalForPrisma.prisma = prisma;

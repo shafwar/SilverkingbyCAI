@@ -536,7 +536,9 @@
     "hero": {
       "eyebrow": "News & Insights",
       "title": "Journal",
-      "subtitle": "Updates, news, and education from Silver King by CAI."
+      "subtitle": "Updates, news, and education from Silver King by CAI.",
+      "secondarySubtitle": "Explore the latest insights on precious metals and smart investments.",
+      "tagline": "Knowledge is the greatest asset."
     },
     "meta": {
       "title": "Journal",

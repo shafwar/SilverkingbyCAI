@@ -536,7 +536,9 @@
     "hero": {
       "eyebrow": "Berita & Wawasan",
       "title": "Jurnal",
-      "subtitle": "Update, berita, dan edukasi dari Silver King by CAI."
+      "subtitle": "Update, berita, dan edukasi dari Silver King by CAI.",
+      "secondarySubtitle": "Temukan wawasan terkini seputar logam mulia dan investasi cerdas.",
+      "tagline": "Pengetahuan adalah aset berharga."
     },
     "meta": {
       "title": "Jurnal",

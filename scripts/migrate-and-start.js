@@ -26,10 +26,11 @@ async function runMigration() {
 
 // Function to start Next.js
 function startNext() {
-  console.log('🌐 Starting Next.js server with 2GB heap allocation...\n');
+  const maxMemory = process.env.NODE_MAX_OLD_SPACE_SIZE || '512';
+  console.log(`🌐 Starting Next.js server with optimized memory allocation (${maxMemory}MB heap)...\n`);
   const env = {
     ...process.env,
-    NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --max-old-space-size=2048`.trim(),
+    NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --max-old-space-size=${maxMemory}`.trim(),
   };
 
   const nextProcess = spawn('npm', ['run', 'start:next'], {
