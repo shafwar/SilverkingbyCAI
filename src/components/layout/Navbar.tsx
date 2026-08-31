@@ -153,21 +153,17 @@ export default function Navbar() {
               // Direct navigation - no transition
             }}
           >
-            <div className="relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-[8deg]">
+            <div className="relative flex items-center justify-center h-8 w-12 sm:h-10 sm:w-14 md:h-11 md:w-16 transition-all duration-300 ease-out group-hover:scale-105">
               <Image
                 src={getR2UrlClient("/images/cai-logo.png")}
-                alt="Silver King by CAI"
+                alt="Cahaya Silver King"
                 fill
-                sizes="(max-width: 640px) 40px, (max-width: 768px) 48px, 56px"
-                className="object-contain brightness-0 invert transition-all duration-500"
-                style={{
-                  filter:
-                    "brightness(0) invert(1) contrast(1.1) drop-shadow(0 0 12px rgba(255, 255, 255, 0.2))",
-                }}
+                sizes="(max-width: 640px) 48px, (max-width: 768px) 56px, 64px"
+                className="object-contain drop-shadow-[0_2px_10px_rgba(255,255,255,0.2)] transition-all duration-300"
                 priority
               />
-              {/* Powerful glow on hover */}
-              <div className="absolute inset-0 scale-150 rounded-full bg-gradient-to-r from-luxury-gold via-luxury-lightGold to-luxury-gold opacity-0 blur-2xl transition-all duration-500 group-hover:opacity-30" />
+              {/* Subtle luxury glow on hover */}
+              <div className="absolute inset-0 scale-125 rounded-full bg-gradient-to-r from-luxury-gold/20 via-luxury-lightGold/30 to-luxury-gold/20 opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-100 pointer-events-none" />
             </div>
           </Link>
 
@@ -347,21 +343,18 @@ export default function Navbar() {
                       }}
                       className="flex items-center"
                     >
-                      <div className="relative w-10 h-10 sm:w-12 sm:h-12">
+                      <div className="relative flex items-center justify-center h-8 w-12 sm:h-9 sm:w-14">
                         <Image
                           src={getR2UrlClient("/images/cai-logo.png")}
-                          alt="Silver King by CAI"
+                          alt="Cahaya Silver King"
                           fill
-                          sizes="(max-width: 640px) 40px, 48px"
-                          className="object-contain brightness-0 invert"
-                          style={{
-                            filter: "brightness(0) invert(1)",
-                          }}
+                          sizes="(max-width: 640px) 48px, 56px"
+                          className="object-contain"
                           priority
                         />
                       </div>
                       <span className="ml-3 font-sans text-lg sm:text-xl font-medium text-white">
-                        Silver King
+                        Cahaya Silver King
                       </span>
                     </Link>
                     <button

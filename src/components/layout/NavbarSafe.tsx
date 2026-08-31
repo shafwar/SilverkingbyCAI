@@ -134,20 +134,16 @@ export default function NavbarSafe() {
       <nav className="mx-auto max-w-[1440px] px-4 sm:px-6 md:px-10 lg:px-16 xl:px-20">
         <div className="flex items-center justify-between h-[4.5rem] sm:h-[5rem] md:h-[5.5rem]">
           <Link href={locale === routing.defaultLocale ? '/' : `/${locale}`} className="group relative flex items-center">
-            <div className="relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-[8deg]">
+            <div className="relative flex items-center justify-center h-8 w-12 sm:h-10 sm:w-14 md:h-11 md:w-16 transition-all duration-300 ease-out group-hover:scale-105">
               <Image
                 src={getR2UrlClient("/images/cai-logo.png")}
-                alt="Silver King by CAI"
+                alt="Cahaya Silver King"
                 fill
-                sizes="(max-width: 640px) 40px, (max-width: 768px) 48px, 56px"
-                className="object-contain brightness-0 invert transition-all duration-500"
-                style={{
-                  filter:
-                    "brightness(0) invert(1) contrast(1.1) drop-shadow(0 0 12px rgba(255, 255, 255, 0.2))",
-                }}
+                sizes="(max-width: 640px) 48px, (max-width: 768px) 56px, 64px"
+                className="object-contain drop-shadow-[0_2px_10px_rgba(255,255,255,0.2)] transition-all duration-300"
                 priority
               />
-              <div className="absolute inset-0 scale-150 rounded-full bg-gradient-to-r from-luxury-gold via-luxury-lightGold to-luxury-gold opacity-0 blur-2xl transition-all duration-500 group-hover:opacity-30" />
+              <div className="absolute inset-0 scale-125 rounded-full bg-gradient-to-r from-luxury-gold/20 via-luxury-lightGold/30 to-luxury-gold/20 opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-100 pointer-events-none" />
             </div>
           </Link>
 
@@ -234,16 +230,13 @@ export default function NavbarSafe() {
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="flex items-center"
                   >
-                    <div className="relative w-10 h-10 sm:w-12 sm:h-12">
+                    <div className="relative flex items-center justify-center h-8 w-12 sm:h-9 sm:w-14">
                       <Image
                         src={getR2UrlClient("/images/cai-logo.png")}
-                        alt="Silver King by CAI"
+                        alt="Cahaya Silver King"
                         fill
-                        sizes="(max-width: 640px) 40px, 48px"
-                        className="object-contain brightness-0 invert"
-                        style={{
-                          filter: "brightness(0) invert(1)",
-                        }}
+                        sizes="(max-width: 640px) 48px, 56px"
+                        className="object-contain"
                         priority
                       />
                     </div>
