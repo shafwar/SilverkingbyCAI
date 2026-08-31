@@ -16,10 +16,10 @@ export async function generateMetadata({
   const t = await getTranslations({ locale, namespace: "home" });
 
   return generatePageMetadata({
-    title: t("title") || "Silver King by CAI",
+    title: t("title") || "Cahaya Silver King",
     description:
       t("hero.subtitle") ||
-      "Expert manufacturing of gold, silver, and palladium products. Custom bar fabrication, uncompromising purity, and QR verified authenticity, redefining trust in precious metals.",
+      "Manufaktur resmi emas, perak, dan paladium batangan bersertifikat ISO 9001 dengan jaminan kemurnian 99.99% dan sistem verifikasi QR code instan.",
     path: "",
     locale,
     keywords: [

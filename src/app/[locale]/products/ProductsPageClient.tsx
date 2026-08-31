@@ -259,7 +259,11 @@ const CategoryGridItem = ({
   );
 };
 
-export default function ProductsPageClient() {
+export default function ProductsPageClient({
+  initialProducts,
+}: {
+  initialProducts?: ProductWithPricing[];
+} = {}) {
   const t = useTranslations("products");
   const tNav = useTranslations("nav");
   const tCommon = useTranslations("common");
@@ -347,7 +351,7 @@ export default function ProductsPageClient() {
   );
 
   // All products with translations - Grouped products with multiple images
-  const [cmsProducts, setCmsProducts] = useState<ProductWithPricing[] | null>(null);
+  const [cmsProducts, setCmsProducts] = useState<ProductWithPricing[] | null>(initialProducts ?? null);
   const isAdmin = useIsAdmin();
 
   type CmsEditingProduct = {

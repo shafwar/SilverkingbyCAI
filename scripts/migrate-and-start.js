@@ -27,16 +27,21 @@ async function runMigration() {
 // Function to start Next.js
 function startNext() {
   const maxMemory = process.env.NODE_MAX_OLD_SPACE_SIZE || '512';
-  console.log(`🌐 Starting Next.js server with optimized memory allocation (${maxMemory}MB heap)...\n`);
-  const env = {
-    ...process.env,
-    NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --max-old-space-size=${maxMemory}`.trim(),
-  };
+  // Build NODE_OPTIONS: pass heap limit + expose-gc so routes can trigger GC after large allocations
+  const baseNodeOptions = (process.env.NODE_OPTIONS || '').replace(/--max-old-space-size=\d+/g, '').trim();
+  const nodeOptions = `${baseNodeOptions} --max-old-space-size=${maxMemory} --expose-gc`.trim();
 
-  const nextProcess = spawn('npm', ['run', 'start:next'], {
+  console.log(`🌐 Starting Next.js server (${maxMemory}MB heap, expose-gc enabled)...\n`);
+
+  const env = { ...process.env, NODE_OPTIONS: nodeOptions };
+
+  // Spawn node directly to ensure NODE_OPTIONS is inherited by the Next.js process.
+  // Using 'npm run start:next' via shell can silently drop the env in some Railway/nixpacks setups.
+  const nextBin = require('path').join(process.cwd(), 'node_modules', '.bin', 'next');
+  const nextProcess = spawn(process.execPath, [nextBin, 'start'], {
     stdio: 'inherit',
     env,
-    shell: true,
+    shell: false,
   });
 
   nextProcess.on('error', (error) => {

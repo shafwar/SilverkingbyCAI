@@ -13,7 +13,7 @@ export const ROLES = {
   STAFF: "STAFF",
 } as const;
 
-export const APP_NAME = "Silver King by CAI";
+export const APP_NAME = "Cahaya Silver King";
 
 /** Public Instagram (footer, contact). Override with NEXT_PUBLIC_INSTAGRAM_URL. */
 export function getSilverKingInstagramUrl(): string {
@@ -40,16 +40,19 @@ export function getSilverKingWhatsAppUrl(): string {
 }
 
 export const APP_DESCRIPTION =
-  "Expert manufacturing of premium gold, silver, and palladium bars with QR-verified authenticity. ISO 9001 certified precious metals manufacturer offering investment-grade bullion from 5gr to 500gr, featuring 99.99% purity guarantee, advanced spectrometry testing, and blockchain-ready traceability. Custom bar fabrication, uncompromising quality standards, and instant QR code verification system for complete product provenance and anti-counterfeit protection.";
+  "Official manufacturer of ISO 9001 certified gold, silver, and palladium bullion bars. Guaranteed 99.99% purity with instant QR code authenticity verification.";
+
+export const APP_DESCRIPTION_ID =
+  "Manufaktur resmi emas, perak, dan paladium batangan bersertifikat ISO 9001 dengan jaminan kemurnian 99.99% dan sistem verifikasi QR code instan.";
 
 /**
  * Get the base URL for the application
- * In production, defaults to https://www.cahayasilverking.id/
+ * In production, defaults to https://cahayasilverking.id (non-www canonical)
  * Falls back to environment variables or localhost for development
  */
 export function getBaseUrl(): string {
-  // Production domain - CRITICAL: This is the canonical domain for QR codes
-  const PRODUCTION_DOMAIN = "https://www.cahayasilverking.id";
+  // Production domain - CRITICAL: Canonical domain for SEO & QR codes
+  const PRODUCTION_DOMAIN = "https://cahayasilverking.id";
   
   // Check if we're in production
   const isProduction = 
@@ -58,17 +61,11 @@ export function getBaseUrl(): string {
     process.env.VERCEL;
   
   // In production, ALWAYS use production domain for QR codes
-  // This ensures QR codes work even if env vars are misconfigured
   if (isProduction) {
-    // Prioritize NEXT_PUBLIC_APP_URL if it matches production domain
     const envUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
-    
-    // If env URL matches production domain, use it; otherwise use production domain
-    if (envUrl && (envUrl.includes("cahayasilverking.id") || envUrl.includes("www.cahayasilverking.id"))) {
+    if (envUrl && (envUrl.includes("cahayasilverking.id"))) {
       return envUrl.replace(/\/$/, "");
     }
-    
-    // Always fallback to production domain for QR code stability
     return PRODUCTION_DOMAIN;
   }
   

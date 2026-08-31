@@ -20,9 +20,21 @@ const logoUrl = getAbsoluteImageUrl("/images/cai-logo.png", metadataBase);
 
 export const metadata: Metadata = {
   metadataBase: new URL(metadataBase),
-  title: APP_NAME,
+  title: {
+    default: APP_NAME,
+    template: `%s | ${APP_NAME}`,
+  },
   description: APP_DESCRIPTION,
-  keywords: ["silver", "gold", "precious metals", "luxury", "verification", "authenticity"],
+  keywords: [
+    "Cahaya Silver King",
+    "emas batangan",
+    "perak batangan",
+    "gold bullion",
+    "silver bullion",
+    "palladium",
+    "ISO 9001",
+    "QR authenticity verification",
+  ],
   icons: {
     icon: logoUrl,
     apple: logoUrl,
@@ -34,12 +46,13 @@ export const metadata: Metadata = {
     type: "website",
     url: metadataBase,
     siteName: APP_NAME,
+    locale: "en_US",
     images: [
       {
         url: logoUrl,
         width: 1200,
         height: 630,
-        alt: "CAI Logo - Silver King by CAI",
+        alt: `${APP_NAME} Crown Logo`,
         type: "image/png",
       },
     ],
@@ -49,14 +62,19 @@ export const metadata: Metadata = {
     title: APP_NAME,
     description: APP_DESCRIPTION,
     images: [logoUrl],
-    creator: "@silverking",
+    creator: "@silverkingofc",
+    site: "@silverkingofc",
   },
   verification: {
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || "",
   },
-  // Additional metadata for better Google indexing
   alternates: {
     canonical: metadataBase,
+    languages: {
+      en: metadataBase,
+      id: `${metadataBase}/id`,
+      "x-default": metadataBase,
+    },
   },
 };
 

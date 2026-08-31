@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import JSZip from "jszip";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { r2Client, BUCKET_NAME } from "@/lib/r2-client";
+
 import { promises as fs } from "fs";
 import path from "path";
 import { PDFDocument } from "pdf-lib";
@@ -973,30 +975,12 @@ async function executeZipGeneration(
       chunks.push(validProducts.slice(i, i + ZIP_CHUNK_SIZE));
     const dateStr = new Date().toISOString().split("T")[0];
     const batchNum = batchNumber || Math.floor(Date.now() / 1000);
-    const R2_ENDPOINT = process.env.R2_ENDPOINT;
-    const R2_BUCKET = process.env.R2_BUCKET || process.env.R2_BUCKET_NAME;
-    const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
-    const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
     const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL;
-    const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
-    let normalizedR2Endpoint: string | null = null;
-    if (R2_ENDPOINT) normalizedR2Endpoint = R2_ENDPOINT.replace(/\/[^/]+$/, "").replace(/\/$/, "");
-    else if (R2_ACCOUNT_ID) normalizedR2Endpoint = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-    const r2Available =
-      !!normalizedR2Endpoint &&
-      !!R2_BUCKET &&
-      !!R2_ACCESS_KEY_ID &&
-      !!R2_SECRET_ACCESS_KEY &&
-      !!R2_PUBLIC_URL;
-    if (!r2Available || !normalizedR2Endpoint)
+    const r2Available = !!R2_PUBLIC_URL;
+    if (!r2Available)
       throw new Error("R2 required for chunked ZIP. Set env vars.");
-    const r2Client = new S3Client({
-      region: "auto",
-      endpoint: normalizedR2Endpoint,
-      credentials: { accessKeyId: R2_ACCESS_KEY_ID!, secretAccessKey: R2_SECRET_ACCESS_KEY! },
-      forcePathStyle: true,
-      maxAttempts: 3,
-    });
+    // Use shared r2Client singleton and BUCKET_NAME — no new S3Client per request
+    const R2_BUCKET = BUCKET_NAME;
     type ZipDlPart = {
       batchIndex: number;
       totalBatches: number;
@@ -1104,6 +1088,8 @@ async function executeZipGeneration(
           CacheControl: "public, max-age=86400",
         })
       );
+      // Explicit GC hint: release large ZIP buffer after upload to prevent heap accumulation
+      (global as any).gc?.();
       const base = R2_PUBLIC_URL!.endsWith("/") ? R2_PUBLIC_URL!.slice(0, -1) : R2_PUBLIC_URL!;
       const firstProduct = chunkResult.firstProduct;
       downloads.push({
@@ -1232,19 +1218,9 @@ async function executeZipGeneration(
       !!R2_SECRET_ACCESS_KEY &&
       !!R2_PUBLIC_URL;
 
-    if (r2Available && normalizedR2Endpoint) {
+    if (r2Available) {
       try {
-        // Create R2 client with proper configuration (forcePathStyle is required for R2)
-        const r2Client = new S3Client({
-          region: "auto",
-          endpoint: normalizedR2Endpoint, // Now guaranteed to be string, not null
-          credentials: {
-            accessKeyId: R2_ACCESS_KEY_ID!,
-            secretAccessKey: R2_SECRET_ACCESS_KEY!,
-          },
-          forcePathStyle: true, // CRITICAL: Required for R2
-          maxAttempts: 3, // Retry up to 3 times
-        });
+        // Use shared r2Client singleton — no new S3Client per request
 
         // Create R2 key with folder structure: qr-batches/batch-{number}-{date}/filename.zip
         // Use provided batchNumber or generate based on timestamp
@@ -1276,6 +1252,8 @@ async function executeZipGeneration(
           });
 
           await r2Client.send(uploadCommand);
+          // Explicit GC hint: release large ZIP buffer immediately after upload
+          (global as any).gc?.();
         if (jobId) {
           await updateJobProgress(
             jobId,

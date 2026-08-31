@@ -10,8 +10,8 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-// Initialize R2 client
-const r2Client = new S3Client({
+// Initialize R2 client — singleton shared across all API routes to prevent per-request instantiation
+export const r2Client = new S3Client({
   region: "auto",
   endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
   credentials: {
@@ -22,7 +22,7 @@ const r2Client = new S3Client({
   maxAttempts: 3, // Retry up to 3 times for failed requests
 });
 
-const BUCKET_NAME = process.env.R2_BUCKET || process.env.R2_BUCKET_NAME || "silverking-assets";
+export const BUCKET_NAME = process.env.R2_BUCKET || process.env.R2_BUCKET_NAME || "silverking-assets";
 const PUBLIC_URL = process.env.R2_PUBLIC_URL || "";
 
 /**

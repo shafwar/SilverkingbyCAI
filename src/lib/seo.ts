@@ -72,18 +72,21 @@ export function generatePageMetadata({
         },
     alternates: {
       canonical: canonicalUrl,
-      languages: Object.fromEntries(
-        routing.locales.map((loc) => [
-          loc,
-          loc === routing.defaultLocale
-            ? `${baseUrl}${path}`
-            : `${baseUrl}/${loc}${path}`,
-        ])
-      ),
+      languages: {
+        ...Object.fromEntries(
+          routing.locales.map((loc) => [
+            loc,
+            loc === routing.defaultLocale
+              ? `${baseUrl}${path}`
+              : `${baseUrl}/${loc}${path}`,
+          ])
+        ),
+        'x-default': `${baseUrl}${path}`,
+      },
     },
     openGraph: {
       type: 'website',
-      locale: locale,
+      locale: locale === 'id' ? 'id_ID' : 'en_US',
       url: canonicalUrl,
       title: fullTitle,
       description,
@@ -102,7 +105,8 @@ export function generatePageMetadata({
       title: fullTitle,
       description,
       images: [logoUrl],
-      creator: '@silverking',
+      creator: '@silverkingofc',
+      site: '@silverkingofc',
     },
     verification: {
       google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || '',

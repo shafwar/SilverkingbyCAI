@@ -6,6 +6,8 @@ import { HeadObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { prisma } from "@/lib/prisma";
 import { SERTICARD_ZIP_CHUNK_SIZE } from "@/lib/serticard-zip-result";
 import { r2KeyFromDownloadUrl } from "@/lib/zip-r2-key";
+import { r2Client, BUCKET_NAME } from "@/lib/r2-client";
+
 
 export type ZipBundlePhase =
   | "NOT_STARTED"
@@ -49,43 +51,9 @@ export type ZipBundleStatus = {
   partialDownloads?: ZipBundleBatchRow[];
 };
 
-function getR2Client(): { client: S3Client; bucket: string } | null {
-  const R2_ENDPOINT = process.env.R2_ENDPOINT;
-  const R2_BUCKET = process.env.R2_BUCKET || process.env.R2_BUCKET_NAME;
-  const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
-  const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
-  const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
-
-  let normalizedR2Endpoint: string | null = null;
-  if (R2_ENDPOINT) normalizedR2Endpoint = R2_ENDPOINT.replace(/\/[^/]+$/, "").replace(/\/$/, "");
-  else if (R2_ACCOUNT_ID) normalizedR2Endpoint = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-
-  if (
-    !normalizedR2Endpoint ||
-    !R2_BUCKET ||
-    !R2_ACCESS_KEY_ID ||
-    !R2_SECRET_ACCESS_KEY
-  ) {
-    return null;
-  }
-
-  return {
-    client: new S3Client({
-      region: "auto",
-      endpoint: normalizedR2Endpoint,
-      credentials: { accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY },
-      forcePathStyle: true,
-      maxAttempts: 2,
-    }),
-    bucket: R2_BUCKET,
-  };
-}
-
 async function headR2Exists(r2Key: string): Promise<boolean | null> {
-  const r2 = getR2Client();
-  if (!r2) return null;
   try {
-    await r2.client.send(new HeadObjectCommand({ Bucket: r2.bucket, Key: r2Key }));
+    await r2Client.send(new HeadObjectCommand({ Bucket: BUCKET_NAME, Key: r2Key }));
     return true;
   } catch (e: unknown) {
     const err = e as { name?: string; $metadata?: { httpStatusCode?: number } };

@@ -1,33 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { HeadObjectCommand, S3Client } from "@aws-sdk/client-s3";
-
-function getR2Client() {
-  const R2_ENDPOINT = process.env.R2_ENDPOINT;
-  const R2_BUCKET = process.env.R2_BUCKET || process.env.R2_BUCKET_NAME;
-  const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
-  const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
-  const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
-
-  let normalizedR2Endpoint: string | null = null;
-  if (R2_ENDPOINT) normalizedR2Endpoint = R2_ENDPOINT.replace(/\/[^/]+$/, "").replace(/\/$/, "");
-  else if (R2_ACCOUNT_ID) normalizedR2Endpoint = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-
-  const ready =
-    !!normalizedR2Endpoint && !!R2_BUCKET && !!R2_ACCESS_KEY_ID && !!R2_SECRET_ACCESS_KEY;
-  if (!ready || !normalizedR2Endpoint) return null;
-
-  const client = new S3Client({
-    region: "auto",
-    endpoint: normalizedR2Endpoint,
-    credentials: { accessKeyId: R2_ACCESS_KEY_ID!, secretAccessKey: R2_SECRET_ACCESS_KEY! },
-    forcePathStyle: true,
-    maxAttempts: 2,
-  });
-
-  return { client, bucket: R2_BUCKET! };
-}
+import { HeadObjectCommand } from "@aws-sdk/client-s3";
+import { r2Client, BUCKET_NAME } from "@/lib/r2-client";
 
 function r2KeyFromUrl(downloadUrl: string): string | null {
   try {
@@ -80,26 +55,21 @@ export async function GET(request: NextRequest) {
     })
     .filter(Boolean) as Array<{ batchIndex: number; totalBatches: number; r2Key: string }>;
 
-  const r2 = getR2Client();
   const existsByKey: Record<string, boolean | null> = {};
-  if (!r2) {
-    for (const it of items) existsByKey[it.r2Key] = null;
-  } else {
-    await Promise.all(
-      items.map(async (it) => {
-        try {
-          await r2.client.send(new HeadObjectCommand({ Bucket: r2.bucket, Key: it.r2Key }));
-          existsByKey[it.r2Key] = true;
-        } catch (e: any) {
-          // NotFound / 404 => false; other errors => null (unknown)
-          const name = e?.name || "";
-          const code = e?.$metadata?.httpStatusCode;
-          if (name === "NotFound" || code === 404) existsByKey[it.r2Key] = false;
-          else existsByKey[it.r2Key] = null;
-        }
-      })
-    );
-  }
+  await Promise.all(
+    items.map(async (it) => {
+      try {
+        await r2Client.send(new HeadObjectCommand({ Bucket: BUCKET_NAME, Key: it.r2Key }));
+        existsByKey[it.r2Key] = true;
+      } catch (e: any) {
+        // NotFound / 404 => false; other errors => null (unknown)
+        const name = e?.name || "";
+        const code = e?.$metadata?.httpStatusCode;
+        if (name === "NotFound" || code === 404) existsByKey[it.r2Key] = false;
+        else existsByKey[it.r2Key] = null;
+      }
+    })
+  );
 
   const audit = await prisma.qrZipDownloadAudit.groupBy({
     by: ["r2Key"],

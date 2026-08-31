@@ -61,13 +61,17 @@ type AdminJournalItem = {
   publishedAt: string | null;
 };
 
-export default function JournalPageClient() {
+export default function JournalPageClient({
+  initialItems,
+}: {
+  initialItems?: JournalItem[];
+} = {}) {
   const t = useTranslations("journal");
   const locale = useLocale();
   const isAdmin = useIsAdmin();
-  const [items, setItems] = useState<JournalItem[]>([]);
+  const [items, setItems] = useState<JournalItem[]>(initialItems ?? []);
   const [adminItems, setAdminItems] = useState<AdminJournalItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(initialItems ? false : true);
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
