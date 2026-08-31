@@ -136,7 +136,7 @@ export default function NavbarSafe() {
           <Link href={locale === routing.defaultLocale ? '/' : `/${locale}`} className="group relative flex items-center">
             <div className="relative flex items-center justify-center h-8 w-12 sm:h-10 sm:w-14 md:h-11 md:w-16 transition-all duration-300 ease-out group-hover:scale-105">
               <Image
-                src={getR2UrlClient("/images/cai-logo.png")}
+                src={getR2UrlClient("/images/sk-crown-logo.png")}
                 alt="Cahaya Silver King"
                 fill
                 sizes="(max-width: 640px) 48px, (max-width: 768px) 56px, 64px"
@@ -232,7 +232,7 @@ export default function NavbarSafe() {
                   >
                     <div className="relative flex items-center justify-center h-8 w-12 sm:h-9 sm:w-14">
                       <Image
-                        src={getR2UrlClient("/images/cai-logo.png")}
+                        src={getR2UrlClient("/images/sk-crown-logo.png")}
                         alt="Cahaya Silver King"
                         fill
                         sizes="(max-width: 640px) 48px, 56px"

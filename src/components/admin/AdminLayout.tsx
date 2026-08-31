@@ -447,13 +447,10 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
         >
           <div className="relative h-9 w-9 shrink-0 transition-transform duration-200 ease-out group-hover:scale-105">
             <Image
-              src={getR2UrlClient("/images/cai-logo.png")}
-              alt="CAI Logo - Silver King by CAI"
+              src={getR2UrlClient("/images/sk-crown-logo.png")}
+              alt="Cahaya Silver King"
               fill
-              className="object-contain"
-              style={{
-                filter: "brightness(0) invert(1) drop-shadow(0 0 8px rgba(255, 255, 255, 0.2))",
-              }}
+              className="object-contain drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]"
               priority
               unoptimized
             />
@@ -503,14 +500,10 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
               >
                 <div className="relative h-7 w-7 sm:h-8 sm:w-8 transition-transform duration-300 group-hover:scale-110">
                   <Image
-                    src={getR2UrlClient("/images/cai-logo.png")}
-                    alt="CAI Logo - Silver King by CAI"
+                    src={getR2UrlClient("/images/sk-crown-logo.png")}
+                    alt="Cahaya Silver King"
                     fill
-                    className="object-contain"
-                    style={{
-                      filter:
-                        "brightness(0) invert(1) drop-shadow(0 0 8px rgba(255, 255, 255, 0.2))",
-                    }}
+                    className="object-contain drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]"
                     priority
                     unoptimized
                   />
@@ -602,14 +595,10 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
               >
                 <div className="relative h-10 w-10 shrink-0 transition-transform duration-200 ease-out group-hover:scale-105">
                   <Image
-                    src={getR2UrlClient("/images/cai-logo.png")}
-                    alt="CAI Logo - Silver King by CAI"
+                    src={getR2UrlClient("/images/sk-crown-logo.png")}
+                    alt="Cahaya Silver King"
                     fill
-                    className="object-contain"
-                    style={{
-                      filter:
-                        "brightness(0) invert(1) drop-shadow(0 0 8px rgba(255, 255, 255, 0.2))",
-                    }}
+                    className="object-contain drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]"
                     priority
                     unoptimized
                   />

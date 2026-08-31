@@ -15,8 +15,10 @@ const playfair = Playfair_Display({
 
 const metadataBase = getBaseUrl();
 
-// Get absolute URL for logo (ensures Google can access it)
-const logoUrl = getAbsoluteImageUrl("/images/cai-logo.png", metadataBase);
+// Search-specific logo for Google crawlers (white background square)
+const searchLogoUrl = getAbsoluteImageUrl("/images/sk-search-logo.jpg", metadataBase);
+// Transparent crown logo for site UI & metadata
+const crownLogoUrl = getAbsoluteImageUrl("/images/sk-crown-logo.png", metadataBase);
 
 export const metadata: Metadata = {
   metadataBase: new URL(metadataBase),
@@ -36,9 +38,14 @@ export const metadata: Metadata = {
     "QR authenticity verification",
   ],
   icons: {
-    icon: logoUrl,
-    apple: logoUrl,
-    shortcut: logoUrl,
+    icon: [
+      { url: "/icon.png?v=2", type: "image/png", sizes: "512x512" },
+      { url: "/favicon.ico?v=2", sizes: "32x32" },
+    ],
+    apple: [
+      { url: "/apple-icon.png?v=2", sizes: "180x180", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico?v=2",
   },
   openGraph: {
     title: APP_NAME,
@@ -49,11 +56,11 @@ export const metadata: Metadata = {
     locale: "en_US",
     images: [
       {
-        url: logoUrl,
-        width: 1200,
-        height: 630,
-        alt: `${APP_NAME} Crown Logo`,
-        type: "image/png",
+        url: searchLogoUrl,
+        width: 512,
+        height: 512,
+        alt: `${APP_NAME} Logo`,
+        type: "image/jpeg",
       },
     ],
   },
@@ -61,7 +68,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: APP_NAME,
     description: APP_DESCRIPTION,
-    images: [logoUrl],
+    images: [searchLogoUrl],
     creator: "@silverkingofc",
     site: "@silverkingofc",
   },

@@ -37,7 +37,8 @@ export function StructuredData({
   locale = 'en',
 }: StructuredDataProps) {
   const baseUrl = getBaseUrl();
-  const logoUrl = getAbsoluteImageUrl('/images/cai-logo.png', baseUrl);
+  const searchLogoUrl = getAbsoluteImageUrl('/images/sk-search-logo.jpg', baseUrl);
+  const logoUrl = getAbsoluteImageUrl('/images/sk-crown-logo.png', baseUrl);
   const instagramUrl = getSilverKingInstagramUrl();
   const whatsappUrl = getSilverKingWhatsAppUrl();
   const description = locale === 'id' ? APP_DESCRIPTION_ID : APP_DESCRIPTION;
@@ -49,8 +50,8 @@ export function StructuredData({
     alternateName: ['CAI', 'Cahaya Silver King Precious Metals'],
     description: description,
     url: baseUrl,
-    logo: logoUrl,
-    image: logoUrl,
+    logo: searchLogoUrl,
+    image: searchLogoUrl,
     sameAs: [
       instagramUrl,
       whatsappUrl,

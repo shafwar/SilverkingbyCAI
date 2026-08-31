@@ -4,7 +4,8 @@ import { getAbsoluteImageUrl } from '@/utils/r2-url';
 import { routing } from '@/i18n/routing';
 
 const baseUrl = getBaseUrl();
-const logoUrl = getAbsoluteImageUrl('/images/cai-logo.png', baseUrl);
+const searchLogoUrl = getAbsoluteImageUrl('/images/sk-search-logo.jpg', baseUrl);
+const crownLogoUrl = getAbsoluteImageUrl('/images/sk-crown-logo.png', baseUrl);
 
 interface PageMetadataOptions {
   title: string;
@@ -93,9 +94,9 @@ export function generatePageMetadata({
       siteName: APP_NAME,
       images: [
         {
-          url: logoUrl,
-          width: 1200,
-          height: 630,
+          url: searchLogoUrl,
+          width: 512,
+          height: 512,
           alt: `${APP_NAME} - ${title}`,
         },
       ],
@@ -104,7 +105,7 @@ export function generatePageMetadata({
       card: 'summary_large_image',
       title: fullTitle,
       description,
-      images: [logoUrl],
+      images: [searchLogoUrl],
       creator: '@silverkingofc',
       site: '@silverkingofc',
     },
