@@ -35,13 +35,11 @@ function startNext() {
 
   const env = { ...process.env, NODE_OPTIONS: nodeOptions };
 
-  // Spawn node directly to ensure NODE_OPTIONS is inherited by the Next.js process.
-  // Using 'npm run start:next' via shell can silently drop the env in some Railway/nixpacks setups.
-  const nextBin = require('path').join(process.cwd(), 'node_modules', '.bin', 'next');
+  // Resolve the actual JS binary of Next.js to avoid executing the shell script wrapper
+  const nextBin = require.resolve('next/dist/bin/next');
   const nextProcess = spawn(process.execPath, [nextBin, 'start'], {
     stdio: 'inherit',
     env,
-    shell: false,
   });
 
   nextProcess.on('error', (error) => {
