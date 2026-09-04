@@ -3,7 +3,7 @@
  * Chunked multi-ZIP only when item count exceeds SERTICARD_ZIP_CHUNK_SIZE (100).
  */
 
-export const SERTICARD_ZIP_CHUNK_SIZE = 100;
+export const SERTICARD_ZIP_CHUNK_SIZE = 50;
 
 export type SerticardZipDownloadPart = {
   batchIndex?: number;

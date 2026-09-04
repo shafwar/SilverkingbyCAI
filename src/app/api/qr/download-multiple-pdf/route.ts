@@ -33,11 +33,33 @@ import { findLatestActiveZipJobForCacheKey } from "@/lib/qr-zip-job-gram-lookup"
 import { SERTICARD_ZIP_CHUNK_SIZE } from "@/lib/serticard-zip-result";
 import { getZipCacheTemplateSegment } from "@/utils/serticard-templates";
 
-/** Request dengan product count di atas ini diproses di background (hindari timeout 524). */
-const ZIP_JOB_THRESHOLD = 25;
+/**
+ * Request dengan product count di atas ini diproses di background (hindari timeout 524).
+ * Nilai rendah (10) agar background job aktif lebih awal — request sync tetap ringan.
+ */
+const ZIP_JOB_THRESHOLD = 10;
 
 /** Maksimal file per satu ZIP; jika lebih maka dipecah jadi beberapa ZIP (batch 1, 2, ...) agar cepat & aman dari timeout. */
 const ZIP_CHUNK_SIZE = SERTICARD_ZIP_CHUNK_SIZE;
+
+/**
+ * Guard: mencegah job yang sama diproses dua kali dalam instance Node.js yang sama.
+ * Penting ketika user menekan tombol download dua kali sebelum respons pertama tiba.
+ */
+const _activeBackgroundJobs = new Set<number>();
+
+/**
+ * Yield kontrol ke Node.js event loop agar request HTTP lain bisa dilayani.
+ * Harus dipanggil di antara iterasi berat (canvas render, PDF embed).
+ */
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
+/** Non-blocking sleep tanpa memblokir event loop. */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 // Loaded dynamically at request-time to avoid build-time native bindings requirement.
 let CANVAS_MOD: any | null = null;
@@ -707,8 +729,10 @@ async function buildOneZipChunk(
     }
   }
 
-  // Process items in concurrent batches of 8 parallel workers for 5x-8x faster rendering
-  const CONCURRENCY = 8;
+  // Concurrent workers per batch.
+  // 4 = sweet spot antara kecepatan dan tekanan memori (heap ~60-80 MB per batch vs 150+ MB di CONCURRENCY=8).
+  // Jangan naikan di atas 6 kecuali Railway instance memory > 1.5 GB.
+  const CONCURRENCY = 4;
   let processedCount = 0;
 
   for (let startIdx = 0; startIdx < validProducts.length; startIdx += CONCURRENCY) {
@@ -852,6 +876,10 @@ async function buildOneZipChunk(
         }
       })
     );
+
+    // ⚡ Yield ke event loop setelah setiap batch concurrent.
+    // Tanpa ini, server tidak bisa melayani request HTTP lain selama proses canvas berjalan.
+    await yieldToEventLoop();
 
     processedCount = Math.min(startIdx + CONCURRENCY, totalToProcess);
     if (onProgress && (processedCount % 5 === 0 || processedCount === totalToProcess)) {
@@ -1088,8 +1116,12 @@ async function executeZipGeneration(
           CacheControl: "public, max-age=86400",
         })
       );
-      // Explicit GC hint: release large ZIP buffer after upload to prevent heap accumulation
+      // ♻️ GC hint: lepaskan buffer ZIP besar setelah upload agar heap segera dibersihkan.
       (global as any).gc?.();
+      // ⏸️ Inter-chunk pause: beri waktu GC untuk reclaim memori sebelum chunk berikutnya.
+      // Tanpa ini, chunk N+1 mulai sebelum GC chunk N selesai → heap menumpuk.
+      await yieldToEventLoop();
+      if (c < totalChunks - 1) await sleep(200);
       const base = R2_PUBLIC_URL!.endsWith("/") ? R2_PUBLIC_URL!.slice(0, -1) : R2_PUBLIC_URL!;
       const firstProduct = chunkResult.firstProduct;
       downloads.push({
@@ -1331,9 +1363,17 @@ async function executeZipGeneration(
 }
 
 async function processZipJobInBackground(jobId: number): Promise<void> {
+  // 🔒 Guard: tolak jika job yang sama sudah berjalan di instance ini.
+  // Terjadi ketika user klik download dua kali sebelum respons pertama tiba.
+  if (_activeBackgroundJobs.has(jobId)) {
+    console.warn(`[QR Multiple] Job ${jobId} sudah aktif — skip panggilan duplikat.`);
+    return;
+  }
+
   const job = await prisma.qrZipDownloadJob.findUnique({ where: { id: jobId } });
   if (!job || job.status !== "PENDING") return;
 
+  _activeBackgroundJobs.add(jobId);
   await prisma.qrZipDownloadJob.update({
     where: { id: jobId },
     data: { status: "PROCESSING", updatedAt: new Date() },
@@ -1485,5 +1525,8 @@ async function processZipJobInBackground(jobId: number): Promise<void> {
         updatedAt: new Date(),
       },
     });
+  } finally {
+    // 🔓 Selalu lepaskan guard — memungkinkan retry jika dibutuhkan.
+    _activeBackgroundJobs.delete(jobId);
   }
 }
