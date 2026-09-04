@@ -35,9 +35,10 @@ function startNext() {
 
   const env = { ...process.env, NODE_OPTIONS: nodeOptions };
 
-  // Resolve the actual JS binary of Next.js to avoid executing the shell script wrapper
-  const nextBin = require.resolve('next/dist/bin/next');
-  const nextProcess = spawn(process.execPath, [nextBin, 'start'], {
+  // When output: "standalone" is set in next.config.js, use the standalone server binary directly.
+  // "next start" does NOT work with standalone output — it causes a silent hang under traffic.
+  const standaloneServer = require('path').join(process.cwd(), '.next', 'standalone', 'server.js');
+  const nextProcess = spawn(process.execPath, [standaloneServer], {
     stdio: 'inherit',
     env,
   });
