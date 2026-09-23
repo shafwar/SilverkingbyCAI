@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "./Modal";
-import { SerticardPreviewModal, prefetchSerticardTemplate } from "./SerticardPreviewModal";
 import {
   Search,
   X,
@@ -1101,51 +1100,6 @@ export function QrPreviewGridGram({ batches }: Props) {
     link.click();
     link.remove();
     window.URL.revokeObjectURL(url);
-  };
-
-  const handlePreview = (
-    product: {
-      id: number;
-      name: string;
-      weight: number;
-      uniqCode: string;
-      serialCode?: string;
-      qrImageUrl: string | null;
-      weightGroup: string | null;
-      hasRootKey?: boolean;
-    },
-    templateVariant: SerticardVariantId | "custom"
-  ) => {
-    setPreviewProduct({
-      id: product.id,
-      name: product.name,
-      uniqCode: product.uniqCode,
-      serialCode: product.serialCode,
-      qrImageUrl: product.qrImageUrl,
-    });
-    setPreviewTemplateVariant(templateVariant);
-    setPreviewModalOpen(true);
-    setDownloadDropdownOpen(null); // Close dropdown
-  };
-
-  const handleDownloadFromPreview = async (_adjustment: SerticardAdjustmentData) => {
-    if (!previewProduct) return;
-
-    const batch = filteredBatches.find((b) => b.firstItem.id === previewProduct.id);
-    if (!batch) return;
-
-    const product = {
-      id: batch.firstItem.id,
-      name: batch.name,
-      weight: batch.weight,
-      uniqCode: batch.firstItem.uniqCode,
-      serialCode: batch.firstItem.serialCode,
-      qrImageUrl: batch.firstItem.qrImageUrl,
-      weightGroup: batch.weightGroup,
-      hasRootKey: batch.firstItem.hasRootKey,
-    };
-
-    await handleDownloadSingle(product, previewTemplateVariant as SerticardVariantId | "custom");
   };
 
   const handleDownloadSingle = async (

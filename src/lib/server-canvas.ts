@@ -39,6 +39,7 @@ async function tryLoadNodeCanvas(): Promise<ServerCanvasModule | null> {
 
 async function tryLoadNapiCanvas(): Promise<ServerCanvasModule | null> {
   try {
+    // @ts-ignore -- optional runtime subpath in some environments
     const mod = await import(/* webpackIgnore: true */ "@napi-rs/canvas/node-canvas");
     const parsed = asCanvasModule(mod);
     if (parsed) return parsed;
