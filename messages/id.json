@@ -38,7 +38,7 @@
     "tryAgain": "Silakan coba lagi"
   },
   "home": {
-    "title": "Silver King by CAI",
+    "title": "Cahaya Silver King",
     "tagline": "Keunggulan Logam Mulia",
     "hero": {
       "headline1": "Logam",
@@ -48,6 +48,7 @@
       "headline5": "Presisi",
       "headline6": "murni.",
       "subtitle": "Pembuatan ahli dari produk <gold>emas, perak, dan paladium</gold>. <custom>Fabrikasi batangan khusus</custom>, kemurnian tanpa kompromi, dan <qr>keaslian terverifikasi QR</qr>, mendefinisikan ulang kepercayaan dalam logam mulia.",
+      "secondarySubtitle": "Dari pemurnian dan pengecoran hingga pengkodean serial, QR, dan verifikasi.",
       "features": {
         "chainOfCustody": {
           "label": "Rantai Kepemilikan",
@@ -81,9 +82,10 @@
     "title": "Membuat dari bullion mentah",
     "description": "Kami mengubah emas, perak, dan paladium yang bersumber secara bertanggung jawab menjadi batangan kelas investasi menggunakan jalur pemurnian dan pengecoran yang dikontrol ketat.",
     "hero": {
-      "title": "Merekayasa siklus hidup",
-      "titleBold": "dari setiap batangan Silver King.",
-      "subtitle": "Dari pemilihan bijih dan pemurnian hingga pengkodean serial, penyegelan QR, dan verifikasi, kami mengkoreografikan setiap langkah sehingga setiap batangan membawa cerita yang dapat diverifikasi tentang asal usul dan kepemilikan."
+      "title": "Apa Yang Kami Lakukan",
+      "subtitle": "Siklus hidup penuh setiap batangan Silver King",
+      "secondarySubtitle": "Dari pemurnian dan pengecoran hingga pengkodean serial, QR, dan verifikasi.",
+      "tagline": "Presisi yang dapat dilacak. Kepercayaan yang dapat diverifikasi."
     },
     "card1": {
       "label": "Jalur fabrikasi emas",
@@ -154,6 +156,13 @@
     "authenticateYour": "Verifikasi",
     "silverKingBar": "Batangan Silver King Anda",
     "heroDescription": "Pindai kode QR atau masukkan nomor seri untuk memverifikasi keaslian dan melihat detail asal usul",
+    "hero": {
+      "title": "Verifikasi",
+      "titleBold": "Batangan Silver King Anda",
+      "subtitle": "Pindai kode QR atau masukkan nomor seri Anda",
+      "secondarySubtitle": "untuk memverifikasi keaslian dan melihat detail asal usul.",
+      "tagline": "Verifikasi instan. Pelacakan lengkap."
+    },
     "scanQR": "Pindai Kode QR",
     "or": "atau",
     "enterSerial": "Masukkan Nomor Seri",
@@ -207,9 +216,10 @@
     "title": "Produk",
     "description": "Jelajahi koleksi produk logam mulia premium kami.",
     "hero": {
-      "title": "Logam Mulia",
-      "titleBold": "Premium",
-      "subtitle": "Batangan kelas investasi yang dibuat dengan presisi tanpa kompromi dan keaslian terverifikasi."
+      "title": "Produk",
+      "subtitle": "Batangan logam mulia kelas investasi",
+      "secondarySubtitle": "Emas, perak, dan paladium, bersertifikat, bernomor seri, dan terverifikasi QR.",
+      "tagline": "Kualitas premium. Keaslian terverifikasi."
     },
     "explore": "Jelajahi koleksi kami",
     "hoverToView": "Arahkan untuk melihat produk",
@@ -367,6 +377,7 @@
           "Desain minimalis & modern",
           "Nyaman dipakai sehari-hari"
         ],
+        "colorsLabel": "Pilihan Warna",
         "colorsTshirt": "Kaos: Hitam • Putih • Abu-abu • Navy",
         "colorsCap": "Topi: Hitam & Putih"
       },
@@ -405,7 +416,9 @@
     "hero": {
       "badge": "Didirikan 2024",
       "title": "Warisan",
-      "subtitle": "Menciptakan keunggulan dalam logam mulia sejak 2024 dengan presisi tanpa kompromi dan teknologi verifikasi yang revolusioner."
+      "subtitle": "Menciptakan keunggulan dalam logam mulia sejak 2024",
+      "secondarySubtitle": "Presisi tanpa kompromi dan teknologi verifikasi yang revolusioner.",
+      "tagline": "Didirikan 2024"
     },
     "whyChoose": {
       "title": "Mengapa Memilih",
@@ -524,7 +537,9 @@
     "hero": {
       "eyebrow": "Berita & Wawasan",
       "title": "Jurnal",
-      "subtitle": "Update, berita, dan edukasi dari Silver King by CAI."
+      "subtitle": "Update, berita, dan edukasi dari Silver King by CAI.",
+      "secondarySubtitle": "Temukan wawasan terkini seputar logam mulia dan investasi cerdas.",
+      "tagline": "Pengetahuan adalah aset berharga."
     },
     "meta": {
       "title": "Jurnal",
@@ -571,6 +586,7 @@
     "products": "Produk",
     "distributor": "Distributor",
     "content": "Konten",
+    "heroAssetsNav": "Aset hero",
     "journalNav": "Berita & jurnal",
     "serticardNav": "Serticard",
     "qrPreview": "Pratinjau QR",
@@ -604,10 +620,17 @@
       "totalQrCodes": "Total Kode QR",
       "totalScans": "Total Pemindaian",
       "scansToday": "Pemindaian Hari Ini",
+      "scansLast7Days": "Pemindaian (7 Hari)",
+      "scansLast30Days": "Pemindaian (30 Hari)",
+      "scansThisMonth": "Pemindaian Bulan Ini",
       "curatedBars": "+ batangan SK kurasi",
       "mirroredSecure": "Tercermin & aman",
       "lifetimeVerifications": "Verifikasi seumur hidup",
       "liveInteractions": "Interaksi langsung",
+      "rollingSevenDays": "Total 7 hari terakhir",
+      "rollingThirtyDays": "Total 30 hari terakhir",
+      "monthToDate": "Bulan berjalan",
+      "scanPeriodHint": "Ketuk untuk ganti: hari ini → 7h → 30h",
       "unableToLoad": "Tidak dapat memuat metrik dasbor."
     },
     "dashboard": {
@@ -664,11 +687,13 @@
       "verificationHeat": "Panas verifikasi",
       "realTimeFeed": "Umpan waktu nyata",
       "viewMode": {
+        "today": "Hari Ini",
         "7d": "7 Hari",
         "30d": "30 Hari",
         "month": "Bulan",
         "current": "Saat Ini"
-      }
+      },
+      "scansLabel": "Pemindaian"
     },
     "activity": {
       "liveFeed": "Umpan langsung",
@@ -857,6 +882,38 @@
       "saving": "Menyimpan…",
       "saveFailed": "Gagal menyimpan",
       "deleteFailed": "Gagal menghapus"
+    },
+    "heroAssets": {
+      "eyebrow": "Media website",
+      "title": "Aset hero",
+      "description": "Unggah video atau foto hero per halaman. File dikompresi, disimpan di Cloudflare R2, dan disajikan via CDN. Situs publik tetap cepat dengan fallback statis sampai media CMS dimuat.",
+      "hint": "Video maks 1 menit (ukuran upload fleksibel). Video hero dipotong jadi 15 detik lalu dioptimasi ke HD H.264 ~6 MB (1080p, standar Merchandise) dengan poster WebP. Foto diubah ke WebP HD dengan kompresi ringan. Gunakan “Jadikan default situs” untuk menetapkan hero CMS saat ini sebagai default bawaan. “Pulihkan default” kembali ke file default tersebut.",
+      "refresh": "Muat ulang",
+      "loading": "Memuat aset hero…",
+      "loadError": "Gagal memuat aset hero.",
+      "uploadVideo": "Unggah video",
+      "uploadPhoto": "Unggah foto",
+      "uploading": "Mengunggah…",
+      "progressUploading": "Mengunggah file…",
+      "progressProcessingVideo": "Mengoptimasi video (potong, transcode, poster)…",
+      "progressProcessingImage": "Mengompresi dan menyimpan…",
+      "uploadTimeout": "Unggah timeout. Coba file lebih kecil atau ulangi.",
+      "uploadSuccess": "Aset hero diunggah ke R2.",
+      "uploadError": "Unggah gagal. Periksa ukuran dan format file.",
+      "promoteDefault": "Jadikan default situs",
+      "promoting": "Menyimpan default…",
+      "promoteSuccess": "Hero saat ini disimpan sebagai default situs.",
+      "promoteError": "Gagal menyimpan sebagai default.",
+      "promoteConfirm": "Salin hero CMS ini ke path default bawaan dan hapus override CMS? “Pulihkan default” nanti akan memakai versi ini.",
+      "restoreDefault": "Pulihkan default",
+      "restoring": "Memulihkan…",
+      "restoreSuccess": "Kembali ke hero default bawaan.",
+      "restoreError": "Gagal memulihkan default.",
+      "restoreConfirm": "Hapus override CMS dan gunakan file hero default bawaan?",
+      "badgeCms": "CMS aktif",
+      "badgeDefault": "Default",
+      "typeVideo": "Hero video",
+      "typeImage": "Hero foto"
     },
     "contentDetail": {
       "title": "Konten (Bilingual)",

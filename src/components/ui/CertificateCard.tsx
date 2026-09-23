@@ -22,17 +22,23 @@ const CertificateCard: React.FC = () => {
     return typeof raw === "string" && raw.trim().startsWith("http") ? raw.trim() : null;
   }, []);
 
-  /** R2 first (production), then same-origin /public paths — covers “not migrated to R2 yet” and Docker without public asset. */
+  /** Same-origin first (Railway bundles sertificate.jpeg), then R2 CDN. */
   const candidateUrls = useMemo(() => {
     if (explicitUrl) return [explicitUrl];
-    const r2Primary = getR2UrlClient(CERT_IMAGE_PRIMARY);
-    const r2Alt = getR2UrlClient(CERT_IMAGE_FALLBACK);
+    const paths = [CERT_IMAGE_PRIMARY, CERT_IMAGE_FALLBACK];
     const seen = new Set<string>();
     const out: string[] = [];
-    for (const u of [r2Primary, r2Alt, CERT_IMAGE_PRIMARY, CERT_IMAGE_FALLBACK]) {
-      if (!seen.has(u)) {
-        seen.add(u);
-        out.push(u);
+    for (const p of paths) {
+      if (!seen.has(p)) {
+        seen.add(p);
+        out.push(p);
+      }
+    }
+    for (const p of paths) {
+      const r2 = getR2UrlClient(p);
+      if (!seen.has(r2)) {
+        seen.add(r2);
+        out.push(r2);
       }
     }
     return out;

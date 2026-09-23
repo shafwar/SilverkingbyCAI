@@ -11,8 +11,16 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json({ products });
+    return NextResponse.json(
+      { products },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+        },
+      }
+    );
   } catch (error) {
+
     console.error("[CMS_PRODUCTS_GET]", error);
     return NextResponse.json({ error: "Failed to load CMS products" }, { status: 500 });
   }

@@ -4,7 +4,8 @@ import { getAbsoluteImageUrl } from '@/utils/r2-url';
 import { routing } from '@/i18n/routing';
 
 const baseUrl = getBaseUrl();
-const logoUrl = getAbsoluteImageUrl('/images/cai-logo.png', baseUrl);
+const searchLogoUrl = getAbsoluteImageUrl('/images/sk-search-logo.jpg', baseUrl);
+const crownLogoUrl = getAbsoluteImageUrl('/images/sk-crown-logo.png', baseUrl);
 
 interface PageMetadataOptions {
   title: string;
@@ -72,27 +73,30 @@ export function generatePageMetadata({
         },
     alternates: {
       canonical: canonicalUrl,
-      languages: Object.fromEntries(
-        routing.locales.map((loc) => [
-          loc,
-          loc === routing.defaultLocale
-            ? `${baseUrl}${path}`
-            : `${baseUrl}/${loc}${path}`,
-        ])
-      ),
+      languages: {
+        ...Object.fromEntries(
+          routing.locales.map((loc) => [
+            loc,
+            loc === routing.defaultLocale
+              ? `${baseUrl}${path}`
+              : `${baseUrl}/${loc}${path}`,
+          ])
+        ),
+        'x-default': `${baseUrl}${path}`,
+      },
     },
     openGraph: {
       type: 'website',
-      locale: locale,
+      locale: locale === 'id' ? 'id_ID' : 'en_US',
       url: canonicalUrl,
       title: fullTitle,
       description,
       siteName: APP_NAME,
       images: [
         {
-          url: logoUrl,
-          width: 1200,
-          height: 630,
+          url: searchLogoUrl,
+          width: 512,
+          height: 512,
           alt: `${APP_NAME} - ${title}`,
         },
       ],
@@ -101,8 +105,9 @@ export function generatePageMetadata({
       card: 'summary_large_image',
       title: fullTitle,
       description,
-      images: [logoUrl],
-      creator: '@silverking',
+      images: [searchLogoUrl],
+      creator: '@silverkingofc',
+      site: '@silverkingofc',
     },
     verification: {
       google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || '',

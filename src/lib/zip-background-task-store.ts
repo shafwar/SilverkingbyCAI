@@ -6,10 +6,28 @@ export type ZipTaskDownload = {
   download_url: string;
   r2Key?: string;
   fileCount?: number;
+  /** Admin confirmed file is on device (after proceed prompt). */
   downloaded?: boolean;
+  /** File sent to browser; waiting admin to confirm before marking downloaded. */
+  pendingSaveConfirm?: boolean;
   autoDownloadFailed?: boolean;
   /** Set after user was notified (toast) so we do not spam. */
   autoDownloadFailNotified?: boolean;
+  /** Prevents duplicate concurrent download for this batch part. */
+  downloadInFlight?: boolean;
+  /** Browser auto-download already triggered once for this batch. */
+  autoDownloadTriggered?: boolean;
+};
+
+/** Pause after a batch save — admin must confirm before next batch downloads. */
+export type ZipAwaitingProceed = {
+  completedBatchIndex: number;
+  nextBatchIndex: number | null;
+  totalBatches: number;
+  savedVia: "save-picker" | "blob";
+  savedBytes: number;
+  /** Tombol konfirmasi aktif setelah unduh otomatis dikirim + jeda singkat. */
+  readyForConfirmAt?: number;
 };
 
 export type ZipBackgroundTask = {
@@ -19,14 +37,30 @@ export type ZipBackgroundTask = {
   templateId: string;
   cacheKey?: string;
   status: "pending" | "processing" | "completed" | "failed";
+  /** Server indicated multi-ZIP batch (>100 items). */
+  chunked?: boolean;
   progressPercent: number;
   progressLabel: string;
   totalFiles?: number;
   download_url?: string;
   downloads?: ZipTaskDownload[];
   singleDownloaded?: boolean;
+  /** Lock: single ZIP auto-download already in progress (prevents duplicate file save). */
+  singleDownloadInFlight?: boolean;
   singleAutoDownloadFailed?: boolean;
   singleAutoDownloadFailNotified?: boolean;
+  /** Auto-download exhausted — user can unduh manual dari kotak ZIP siap di modal batch. */
+  manualDownloadRequired?: boolean;
+  /** Prevents duplicate concurrent download attempts for the same task tick. */
+  downloadInFlight?: boolean;
+  /** Auto-download retry counter (transient R2 / browser blocks). */
+  downloadAttempts?: number;
+  /** Batch N saved — waiting admin to confirm before batch N+1. */
+  awaitingProceed?: ZipAwaitingProceed;
+  /** Admin chose "nanti dulu" — no further auto-download until resume. */
+  downloadsPaused?: boolean;
+  /** Batch index currently being saved to device (only one at a time). */
+  activeDeviceBatchIndex?: number;
   lastError?: string;
   createdAt: number;
   updatedAt: number;

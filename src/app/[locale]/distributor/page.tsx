@@ -4,9 +4,6 @@ import { generatePageMetadata } from "@/lib/seo";
 import { prisma } from "@/lib/prisma";
 import DistributorPageClient from "./DistributorPageClient";
 
-/** Hero section selalu menggunakan gambar ini (public/images/DSC02998.JPG). */
-const HERO_IMAGE_PATH = "/images/DSC02998.JPG";
-
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
@@ -62,14 +59,7 @@ export default async function DistributorPage() {
     console.error("[DistributorPage] Failed to load distributors:", e);
   }
 
-  // Use same-origin public asset for faster LCP (R2 can be slower to handshake on some devices).
-  // CMS can still override after sections load in the client.
-  const heroImageUrl = HERO_IMAGE_PATH;
-
   return (
-    <DistributorPageClient
-      initialDistributors={initialDistributors}
-      heroImageUrl={heroImageUrl}
-    />
+    <DistributorPageClient initialDistributors={initialDistributors} />
   );
 }

@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { generatePageMetadata } from "@/lib/seo";
+import { ServerHeroSeo } from "@/components/seo/ServerHeroSeo";
 import AuthenticityPageClient from "./AuthenticityPageClient";
 
 export async function generateMetadata({
@@ -30,6 +31,17 @@ export async function generateMetadata({
   });
 }
 
-export default function AuthenticityPage() {
-  return <AuthenticityPageClient />;
+export default async function AuthenticityPage({ params }: { params: { locale: string } }) {
+  const { locale } = params;
+  return (
+    <>
+      <ServerHeroSeo
+        locale={locale}
+        namespace="authenticity"
+        subtitleKey="hero.subtitle"
+        titleBoldKey="hero.titleBold"
+      />
+      <AuthenticityPageClient />
+    </>
+  );
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { endOfLocalDay, rollingWindowStart, startOfLocalDay } from "@/lib/scan-period-utils";
 
 // Launch date: November 2025
 const LAUNCH_YEAR = 2025;
@@ -27,6 +28,7 @@ export async function GET(request: Request) {
     let startDate: Date;
     let endDate: Date;
     let isMonthView = false;
+    let isTodayView = false;
 
     const now = new Date();
 
@@ -57,16 +59,17 @@ export async function GET(request: Request) {
         // Last day of the selected month
         endDate = new Date(year, month + 1, 0, 23, 59, 59, 999);
       }
+    } else if (rangeParam === "today") {
+      isTodayView = true;
+      startDate = startOfLocalDay(now);
+      endDate = endOfLocalDay(now);
     } else if (rangeParam) {
-      // Legacy range-based view (for backward compatibility)
+      // Rolling day window ending today (7d = today + prior 6 days, etc.)
       const range = Number(rangeParam);
       const validRange = Number.isNaN(range) ? 7 : Math.min(Math.max(range, 1), 60);
 
-      endDate = new Date();
-      endDate.setHours(23, 59, 59, 999);
-      startDate = new Date(endDate);
-      startDate.setDate(endDate.getDate() - (validRange - 1));
-      startDate.setHours(0, 0, 0, 0);
+      endDate = endOfLocalDay(now);
+      startDate = rollingWindowStart(now, validRange);
     } else {
       // Default: current month
       isMonthView = true;
@@ -165,7 +168,7 @@ export async function GET(request: Request) {
       gramScanLogs = page2;
     }
 
-    // Create buckets for each day
+    // Create buckets for each day or hour
     const buckets: Array<{
       key: string;
       label: string;
@@ -173,9 +176,22 @@ export async function GET(request: Request) {
       page1Count: number;
       page2Count: number;
       date: Date;
+      hour?: number;
     }> = [];
 
-    if (isMonthView) {
+    if (isTodayView) {
+      for (let hour = 0; hour < 24; hour++) {
+        buckets.push({
+          key: `hour-${hour}`,
+          label: `${String(hour).padStart(2, "0")}:00`,
+          count: 0,
+          page1Count: 0,
+          page2Count: 0,
+          date: new Date(startDate),
+          hour,
+        });
+      }
+    } else if (isMonthView) {
       // Month view: create buckets for each day from day 1 to end date
       const currentDate = new Date(startDate);
       while (currentDate <= endDate) {
@@ -215,32 +231,36 @@ export async function GET(request: Request) {
     // Map scan logs to buckets
     const bucketMap = new Map(buckets.map((bucket) => [bucket.key, bucket]));
 
-    // Count Page 1 scans
-    scanLogs.forEach((log) => {
+    const assignLog = (log: { scannedAt: Date }, page: 1 | 2) => {
+      if (isTodayView) {
+        const hour = log.scannedAt.getHours();
+        const bucket = bucketMap.get(`hour-${hour}`);
+        if (!bucket) return;
+        if (page === 1) bucket.page1Count += 1;
+        else bucket.page2Count += 1;
+        bucket.count += 1;
+        return;
+      }
       const key = log.scannedAt.toISOString().slice(0, 10);
       const bucket = bucketMap.get(key);
-      if (bucket) {
-        bucket.page1Count += 1;
-        bucket.count += 1;
-      }
-    });
+      if (!bucket) return;
+      if (page === 1) bucket.page1Count += 1;
+      else bucket.page2Count += 1;
+      bucket.count += 1;
+    };
 
-    // Count Page 2 scans
-    gramScanLogs.forEach((log) => {
-      const key = log.scannedAt.toISOString().slice(0, 10);
-      const bucket = bucketMap.get(key);
-      if (bucket) {
-        bucket.page2Count += 1;
-        bucket.count += 1;
-      }
-    });
+    scanLogs.forEach((log) => assignLog(log, 1));
+    gramScanLogs.forEach((log) => assignLog(log, 2));
 
     return NextResponse.json({
       range: buckets.length,
       month: isMonthView ? startDate.getMonth() + 1 : null,
       year: isMonthView ? startDate.getFullYear() : null,
+      view: isTodayView ? "today" : isMonthView ? "month" : "range",
       data: buckets.map((bucket) => ({
         date: bucket.label,
+        isoDate: isTodayView ? startDate.toISOString().slice(0, 10) : bucket.key,
+        hour: bucket.hour,
         count: bucket.count,
         page1Count: bucket.page1Count,
         page2Count: bucket.page2Count,

@@ -4,6 +4,7 @@ import { addProductInfoToQR } from "@/lib/qr";
 import { getVerifyUrl } from "@/utils/constants";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { getServerCanvasModule } from "@/lib/server-canvas";
 
 /**
  * Generate single PNG image with selected QR codes in a grid layout
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const canvasMod = await import("canvas").catch(() => null);
+    const canvasMod = await getServerCanvasModule();
     if (!canvasMod) {
       return NextResponse.json(
         { error: "QR PNG export is unavailable in this environment (canvas native bindings missing)." },

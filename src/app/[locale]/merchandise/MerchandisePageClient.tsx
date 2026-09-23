@@ -11,10 +11,15 @@ import Image from "next/image";
 import { Plus, Pencil, Trash2, X, Phone } from "lucide-react";
 import { ModalPortal } from "@/components/ui/ModalPortal";
 import { getR2UrlClient } from "@/utils/r2-url";
-import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
 import { VideoLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
 import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
+import { PageHeroSection } from "@/components/hero/PageHeroSection";
+import {
+  FOOTER_VIDEO_MERCH_PATTERN,
+  resolveHeroPoster,
+} from "@/lib/hero-media-defaults";
 import { Plus_Jakarta_Sans } from "next/font/google";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -108,9 +113,6 @@ const FALLBACK_IMAGE_PATHS: Record<MerchandiseCategory, string[]> = {
   ],
 };
 
-/** Bump after replacing MP4/WebP on R2 so clients flush decoder/cache-bust via VideoLoadGuard. */
-const MERCH_HERO_VIDEO_ASSET_VERSION = 2;
-
 /** Centered product copy: larger type, subtle gradient, no box. Optional second colors line. */
 function DetailBlockCentered({
   tagline,
@@ -193,13 +195,12 @@ export default function MerchandisePageClient() {
   const pageRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
   const footerVideoRef = useRef<HTMLVideoElement | null>(null);
-  const heroVideoRef = useRef<HTMLVideoElement | null>(null);
   const [byCategory, setByCategory] = useState<Record<string, MerchandiseItemType[]>>({
     polo: [],
     knitware: [],
     tshirt_cap: [],
   });
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = useIsAdmin();
   const [editing, setEditing] = useState<MerchandiseItemType | null>(null);
   const [addingCategory, setAddingCategory] = useState<MerchandiseCategory | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -210,18 +211,9 @@ export default function MerchandisePageClient() {
   const addFileInputRef = useRef<HTMLInputElement>(null);
   const [isMounted, setIsMounted] = useState(false);
   const shouldLoadHeroVideo = useShouldLoadHeroVideo();
-
-  const merchHeroMediaUrl = useMemo(
-    () => getR2UrlClient("/videos/hero/merchandise-hero.mp4"),
+  const merchFooterPosterUrl = useMemo(
+    () => getR2UrlClient("/images/hero-fallback.jpg"),
     []
-  );
-  const merchHeroPosterUrl = useMemo(
-    () => getR2UrlClient("/images/merchandise/merch-hero-poster.webp"),
-    []
-  );
-  const merchHeroVideoPlayUrl = useMemo(
-    () => proxiedHeroVideoSrc(merchHeroMediaUrl),
-    [merchHeroMediaUrl]
   );
 
   useEffect(() => {
@@ -236,36 +228,6 @@ export default function MerchandisePageClient() {
     }, 400);
     return () => clearTimeout(t);
   }, [editing]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const checkAdmin = async () => {
-      try {
-        const res = await fetch("/api/admin/me", { credentials: "include" });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled && data?.isAdmin) setIsAdmin(true);
-      } catch {
-        // Retry once after delay (e.g. session not ready on first paint)
-        if (!cancelled) {
-          setTimeout(async () => {
-            try {
-              const res = await fetch("/api/admin/me", { credentials: "include" });
-              if (!res.ok) return;
-              const data = await res.json();
-              if (!cancelled && data?.isAdmin) setIsAdmin(true);
-            } catch {
-              // silent
-            }
-          }, 500);
-        }
-      }
-    };
-    checkAdmin();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -311,10 +273,6 @@ export default function MerchandisePageClient() {
     return () => ctx.revert();
   }, [isMounted, byCategory]);
 
-  useReliableVideoAutoplay(heroVideoRef, {
-    mode: "background",
-    reattachKey: merchHeroVideoPlayUrl,
-  });
   useReliableVideoAutoplay(footerVideoRef, { mode: "background" });
 
   const openAdd = (category: MerchandiseCategory) => {
@@ -484,47 +442,7 @@ export default function MerchandisePageClient() {
       <Navbar />
 
       {/* Hero: full-viewport (100dvh), 15s loop MP4 + WebP poster; R2 via proxiedHeroVideoSrc */}
-      <section className="relative isolate min-h-[100dvh] overflow-hidden">
-        <div
-          className="absolute inset-0 overflow-hidden"
-          style={{ transform: "translateZ(0)", WebkitBackfaceVisibility: "hidden" }}
-        >
-          <VideoLoadGuard
-            key={`merch-hero-${merchHeroVideoPlayUrl}-${MERCH_HERO_VIDEO_ASSET_VERSION}`}
-            ref={heroVideoRef}
-            url={merchHeroVideoPlayUrl}
-            version={MERCH_HERO_VIDEO_ASSET_VERSION}
-            posterUrl={merchHeroPosterUrl}
-            posterVersion={MERCH_HERO_VIDEO_ASSET_VERSION}
-            forcePoster={!shouldLoadHeroVideo}
-            posterPriority
-            lcpFriendlyPoster
-            optimizeGpu
-            lightVideoFade
-            containerClassName="absolute inset-0 h-full w-full"
-            className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
-            style={{
-              pointerEvents: "none",
-              outline: "none",
-              WebkitTapHighlightColor: "transparent",
-              userSelect: "none",
-            }}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            disablePictureInPicture
-            disableRemotePlayback
-            onContextMenu={(e) => e.preventDefault()}
-          />
-          <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-luxury-black via-luxury-black/60 to-luxury-black/40" />
-        </div>
-        {/* Seam cover: hides subpixel line at hero bottom (flicker fix) */}
-        <div
-          className="absolute bottom-0 left-0 right-0 z-[1] h-[3px] bg-luxury-black pointer-events-none"
-          aria-hidden
-        />
+      <PageHeroSection page="merchandise" showScrollIndicator={false}>
         <div className="relative z-10 flex min-h-[100dvh] flex-col items-center justify-center px-6 pb-[max(5rem,env(safe-area-inset-bottom))] pt-[max(5rem,env(safe-area-inset-top))] text-center font-[family-name:var(--font-merch)]">
           <motion.h1
             className="text-4xl font-semibold tracking-tight text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.5)] md:text-5xl lg:text-6xl xl:text-7xl"
@@ -559,7 +477,7 @@ export default function MerchandisePageClient() {
             {t("hero.tagline")}
           </motion.p>
         </div>
-      </section>
+      </PageHeroSection>
 
       <div className="mx-auto max-w-7xl px-4 pb-24 md:px-6">
         {CATEGORY_ORDER.map((category, sectionIndex) => {
@@ -1007,11 +925,9 @@ export default function MerchandisePageClient() {
             key="merch-footer-gold-footage"
             ref={footerVideoRef}
             url={getR2UrlClient("/videos/hero/gold-footage.mp4")}
+            posterUrl={resolveHeroPoster(merchFooterPosterUrl)}
             forcePoster={!shouldLoadHeroVideo}
-            lazyAttach
-            deferAttachUntilIdle
-            idleAttachTimeoutMs={720}
-            optimizeGpu
+            {...FOOTER_VIDEO_MERCH_PATTERN}
             containerClassName="absolute inset-0 w-full h-full"
             className="absolute inset-0 w-full h-full object-cover"
             style={{

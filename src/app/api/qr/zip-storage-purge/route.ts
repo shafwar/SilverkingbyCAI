@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
 
   await prisma.$transaction([
     prisma.qrZipDownloadAudit.deleteMany({ where: { cacheKey: { in: keysToClearDb } } }),
+    prisma.qrZipBundleState.deleteMany({ where: { cacheKey: { in: keysToClearDb } } }),
     prisma.qrZipDownloadCache.deleteMany({ where: { cacheKey: { in: keysToClearDb } } }),
     prisma.qrZipDownloadJob.deleteMany({ where: { cacheKey: { in: keysToClearDb } } }),
   ]);

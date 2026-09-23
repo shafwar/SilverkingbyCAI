@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Build 15s 1080p loop-friendly merchandise hero + WebP poster (local assets).
+# Output matches HERO_CMS_VIDEO in src/lib/hero-cms-spec.ts (~15s, ~5–6 MB).
 # Source: public/videos/hero/VIDEO MERCHANDISE SILVER KING.mp4 (gitignored if large).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

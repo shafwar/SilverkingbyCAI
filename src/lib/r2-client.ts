@@ -6,11 +6,12 @@ import {
   GetObjectCommand,
   ListObjectsV2Command,
   HeadObjectCommand,
+  CopyObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-// Initialize R2 client
-const r2Client = new S3Client({
+// Initialize R2 client — singleton shared across all API routes to prevent per-request instantiation
+export const r2Client = new S3Client({
   region: "auto",
   endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
   credentials: {
@@ -21,7 +22,7 @@ const r2Client = new S3Client({
   maxAttempts: 3, // Retry up to 3 times for failed requests
 });
 
-const BUCKET_NAME = process.env.R2_BUCKET || process.env.R2_BUCKET_NAME || "silverking-assets";
+export const BUCKET_NAME = process.env.R2_BUCKET || process.env.R2_BUCKET_NAME || "silverking-assets";
 const PUBLIC_URL = process.env.R2_PUBLIC_URL || "";
 
 /**
@@ -59,6 +60,22 @@ export async function uploadToR2(
     console.error("Error uploading to R2:", error);
     throw new Error(
       `Failed to upload file to R2: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+  }
+}
+
+export async function copyInR2(sourceKey: string, destKey: string): Promise<void> {
+  try {
+    const command = new CopyObjectCommand({
+      Bucket: BUCKET_NAME,
+      CopySource: `${BUCKET_NAME}/${sourceKey}`,
+      Key: destKey,
+    });
+    await r2Client.send(command);
+  } catch (error) {
+    console.error("Error copying in R2:", error);
+    throw new Error(
+      `Failed to copy file in R2: ${error instanceof Error ? error.message : "Unknown error"}`
     );
   }
 }

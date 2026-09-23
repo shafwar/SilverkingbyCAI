@@ -1,36 +1,60 @@
 /**
- * Script to upload ALL Serticard templates to R2 (01-02 + 03-18)
+ * Script to upload ALL Serticard templates to R2 (01-02 + 03-18 + packages)
  * Run: npx ts-node --project tsconfig.scripts.json scripts/upload-all-serticard-templates.ts
  *
  * Uploads templates following the pattern:
  * - 01-02: Serticard A (png)
  * - 03-04: Serticard B (jpeg)
  * - 05-06 through 17-18: Serticard C-I (jpeg)
+ * - packages-01/02: Serticard Packages (jpeg)
  */
 
 import { promises as fs } from "fs";
 import path from "path";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
-// Inline config - matches src/utils/serticard-templates.ts (no import to avoid ts-node ESM issues)
-const SERTICARD_VARIANTS = [
-  { id: "01", label: "Serticard A", frontNum: "01", backNum: "02", ext: "png" as const },
-  { id: "03", label: "Serticard B", frontNum: "03", backNum: "04", ext: "jpeg" as const },
-  { id: "05", label: "Serticard C", frontNum: "05", backNum: "06", ext: "jpeg" as const },
-  { id: "07", label: "Serticard D", frontNum: "07", backNum: "08", ext: "jpeg" as const },
-  { id: "09", label: "Serticard E", frontNum: "09", backNum: "10", ext: "jpeg" as const },
-  { id: "11", label: "Serticard F", frontNum: "11", backNum: "12", ext: "jpeg" as const },
-  { id: "13", label: "Serticard G", frontNum: "13", backNum: "14", ext: "jpeg" as const },
-  { id: "15", label: "Serticard H", frontNum: "15", backNum: "16", ext: "jpeg" as const },
-  { id: "17", label: "Serticard I", frontNum: "17", backNum: "18", ext: "jpeg" as const },
+type Variant = {
+  id: string;
+  label: string;
+  frontNum: string;
+  backNum: string;
+  ext: "png" | "jpeg";
+};
+
+const SERTICARD_STANDARD_VARIANTS: Variant[] = [
+  { id: "01", label: "Serticard A", frontNum: "01", backNum: "02", ext: "png" },
+  { id: "03", label: "Serticard B", frontNum: "03", backNum: "04", ext: "jpeg" },
+  { id: "05", label: "Serticard C", frontNum: "05", backNum: "06", ext: "jpeg" },
+  { id: "07", label: "Serticard D", frontNum: "07", backNum: "08", ext: "jpeg" },
+  { id: "09", label: "Serticard E", frontNum: "09", backNum: "10", ext: "jpeg" },
+  { id: "11", label: "Serticard F", frontNum: "11", backNum: "12", ext: "jpeg" },
+  { id: "13", label: "Serticard G", frontNum: "13", backNum: "14", ext: "jpeg" },
+  { id: "15", label: "Serticard H", frontNum: "15", backNum: "16", ext: "jpeg" },
+  { id: "17", label: "Serticard I", frontNum: "17", backNum: "18", ext: "jpeg" },
 ];
 
+const SERTICARD_PACKAGES_VARIANTS: Variant[] = [
+  {
+    id: "packages",
+    label: "Serticard Packages",
+    frontNum: "packages-01",
+    backNum: "packages-02",
+    ext: "jpeg",
+  },
+];
+
+const SERTICARD_VARIANTS = [...SERTICARD_STANDARD_VARIANTS, ...SERTICARD_PACKAGES_VARIANTS];
+
 function getLocalTemplateFilename(num: string, ext: "png" | "jpeg"): string {
+  if (num === "packages-01") return "Serticard Packages-01.jpeg";
+  if (num === "packages-02") return "Serticard Packages-02.jpeg";
   const prefix = num === "03" ? "serticard" : "Serticard";
   return `${prefix}-${num}.${ext}`;
 }
 
 function getR2TemplateKey(num: string, ext: "png" | "jpeg"): string {
+  if (num === "packages-01") return "templates/serticard-packages-01.jpeg";
+  if (num === "packages-02") return "templates/serticard-packages-02.jpeg";
   return `templates/serticard-${num}.${ext}`;
 }
 
@@ -63,7 +87,7 @@ const r2Client = r2Available
     })
   : null;
 
-async function uploadTemplatePair(variant: (typeof SERTICARD_VARIANTS)[0]): Promise<boolean> {
+async function uploadTemplatePair(variant: Variant): Promise<boolean> {
   if (!r2Client || !R2_BUCKET) return false;
 
   const publicDir = path.join(process.cwd(), "public", "images", "serticard");
@@ -125,11 +149,13 @@ async function main() {
   console.log("🚀 Uploading ALL Serticard templates to R2...\n");
 
   if (!r2Available) {
-    console.error("❌ R2 not configured. Set R2_ACCOUNT_ID, R2_BUCKET (or R2_BUCKET_NAME), R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY");
+    console.error(
+      "❌ R2 not configured. Set R2_ACCOUNT_ID, R2_BUCKET (or R2_BUCKET_NAME), R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY"
+    );
     process.exit(1);
   }
 
-  console.log("📤 Uploading all template pairs (01-02 through 17-18)...\n");
+  console.log("📤 Uploading all template pairs (01-02 through 17-18 + packages)...\n");
   let successCount = 0;
   for (const variant of SERTICARD_VARIANTS) {
     const ok = await uploadTemplatePair(variant);

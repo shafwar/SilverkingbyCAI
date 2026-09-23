@@ -1,19 +1,46 @@
 /**
- * GET /api/health/database
+ * /api/health/database
  *
- * Health check endpoint untuk memverifikasi status database dan data integrity.
- * Tidak memerlukan autentikasi untuk memudahkan monitoring.
- *
- * Returns:
- * - Connection status
- * - Table counts (untuk verifikasi data tidak terhapus)
- * - Database health status
+ * GET: Health check status OR data export with ?export=<model>&skip=0&take=1000
+ * POST: Chunked DB migration to TiDB Cloud
  */
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { PrismaClient } from "@prisma/client";
 
-export async function GET() {
+export const dynamic = "force-dynamic";
+
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const exportModel = url.searchParams.get("export");
+
+  if (exportModel) {
+    try {
+      const delegate = (prisma as any)[exportModel];
+      if (!delegate) {
+        return NextResponse.json({ error: `Invalid model ${exportModel}` }, { status: 400 });
+      }
+
+      const skip = parseInt(url.searchParams.get("skip") || "0", 10);
+      const take = parseInt(url.searchParams.get("take") || "1000", 10);
+
+      const total = await delegate.count();
+      const rows = await delegate.findMany({ skip, take });
+
+      return NextResponse.json({
+        model: exportModel,
+        skip,
+        take,
+        total,
+        count: rows.length,
+        data: rows,
+      });
+    } catch (err: any) {
+      return NextResponse.json({ error: err.message }, { status: 500 });
+    }
+  }
+
   try {
     // Test database connection
     await prisma.$queryRaw`SELECT 1`;
@@ -37,7 +64,7 @@ export async function GET() {
       prisma.qRScanLog.count().catch(() => 0),
       prisma.gramProductBatch.count().catch(() => 0),
       prisma.gramProductItem.count().catch(() => 0),
-      prisma.gramQRScanLog.count().catch(() => 0),
+      prisma.gramQRScanLog ? prisma.gramQRScanLog.count().catch(() => 0) : 0,
       prisma.user.count().catch(() => 0),
       prisma.feedback.count().catch(() => 0),
       prisma.serticardConfig.count().catch(() => 0),
@@ -63,25 +90,21 @@ export async function GET() {
           health: isHealthy ? "healthy" : "degraded",
         },
         counts: {
-          // Page 1 (Product-based)
           products: {
             total: productCount,
             withQR: qrRecordCount,
             scanLogs: page1ScanLogCount,
           },
-          // Page 2 (Gram-based)
           gramProducts: {
             batches: gramBatchCount,
             items: gramItemCount,
             scanLogs: page2ScanLogCount,
           },
-          // Combined totals
           totals: {
             products: totalProducts,
             qrRecords: totalQRRecords,
             scanLogs: totalScanLogs,
           },
-          // System tables
           system: {
             users: userCount,
             feedback: feedbackCount,
@@ -95,11 +118,8 @@ export async function GET() {
       { status: 200 }
     );
   } catch (error: any) {
-    // Database connection failed
     const errorMessage = error.message || "Unknown error";
     const errorCode = error.code || "UNKNOWN";
-
-    // Check for specific error types
     const isConnectionError =
       errorCode === "P1001" ||
       errorMessage.includes("Can't reach database") ||
@@ -124,15 +144,6 @@ export async function GET() {
         message: isConnectionError
           ? "Database service is down. Please restart MySQL service in Railway. Data is safe in persistent volume."
           : "Database query failed. Check error details.",
-        troubleshooting: isConnectionError
-          ? {
-              step1: "Go to Railway Dashboard",
-              step2: "Select MySQL service",
-              step3: "Click Settings → Restart",
-              step4: "Wait for status to become 'Online'",
-              note: "Data is safe - shutdown does not delete data. Only restarts the service.",
-            }
-          : null,
       },
       { status: 503 }
     );

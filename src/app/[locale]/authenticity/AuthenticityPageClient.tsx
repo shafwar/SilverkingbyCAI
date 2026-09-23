@@ -25,14 +25,8 @@ import Navbar from "@/components/layout/Navbar";
 import { Scanner } from "@/components/shared/Scanner";
 import { useRouter } from "next/navigation";
 import { APP_NAME } from "@/utils/constants";
-import { getR2UrlClient } from "@/utils/r2-url";
-import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
-import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
-import { usePageSections } from "@/hooks/usePageSections";
-import { usePageMedia } from "@/hooks/usePageMedia";
-import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
-import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
-import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
+import { PageHeroSection } from "@/components/hero/PageHeroSection";
+import { MerchStyleHeroCopy } from "@/components/layout/MerchStyleHeroCopy";
 import { ModalPortal } from "@/components/ui/ModalPortal";
 
 // workflowSteps will be created inside AuthenticityPage component using translations
@@ -290,17 +284,8 @@ export default function AuthenticityPageClient() {
   const [showScanner, setShowScanner] = useState(false);
   const [showManualInput, setShowManualInput] = useState(false);
   const [serialNumber, setSerialNumber] = useState("");
-  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
-  const heroRef = useRef<HTMLDivElement | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const particlesRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
-  const { sections: pageSections, refetch: refetchPageSections } = usePageSections("authenticity");
-  const { data: pageMediaAuthenticity } = usePageMedia("authenticity");
-  const heroMediaType = pageSections.hero?.mediaType?.toUpperCase() ?? "VIDEO";
-  const heroMediaUrl =
-    pageSections.hero?.url ?? getR2UrlClient("/videos/hero/mobile scanning qr.mp4");
-  const heroVideoPlayUrl = useMemo(() => proxiedHeroVideoSrc(heroMediaUrl), [heroMediaUrl]);
-  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
   // Register ScrollTrigger only on the client to avoid SSR/window issues
   useEffect(() => {
@@ -312,29 +297,13 @@ export default function AuthenticityPageClient() {
     }
   }, []);
 
-  // Ensure authenticity hero background video always autoplays reliably
-  useReliableVideoAutoplay(videoRef, { mode: "background" });
-
   useGSAP(
     () => {
-      if (!heroRef.current) return;
+      if (!particlesRef.current) return;
 
       try {
         const ctx = gsap.context(() => {
-          gsap.fromTo(
-            heroRef.current?.querySelectorAll("[data-hero]") || [],
-            { opacity: 0, y: 40 },
-            {
-              opacity: 1,
-              y: 0,
-              duration: 1,
-              stagger: 0.1,
-              ease: "power2.out",
-            }
-          );
-
-          // Minimal floating particles animation
-          const particles = heroRef.current?.querySelectorAll("[data-particle]");
+          const particles = particlesRef.current?.querySelectorAll("[data-particle]");
           if (particles) {
             particles.forEach((particle, index) => {
               gsap.to(particle, {
@@ -348,49 +317,15 @@ export default function AuthenticityPageClient() {
               });
             });
           }
-        }, heroRef);
+        }, particlesRef);
 
         return () => ctx.revert();
       } catch (error) {
         console.error("GSAP animation error:", error);
       }
     },
-    { scope: heroRef }
+    { scope: particlesRef }
   );
-
-  // Video loaded state - autoplay is handled by useReliableVideoAutoplay hook
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const handleCanPlay = () => {
-      setIsVideoLoaded(true);
-    };
-
-    const handleLoadedData = () => {
-      setIsVideoLoaded(true);
-    };
-
-    const handleError = () => {
-      setIsVideoLoaded(false);
-      console.warn("[AuthenticityPage] Video error occurred");
-    };
-
-    // Check if video is already loaded
-    if (video.readyState >= 2) {
-      setIsVideoLoaded(true);
-    }
-
-    video.addEventListener("canplay", handleCanPlay);
-    video.addEventListener("loadeddata", handleLoadedData);
-    video.addEventListener("error", handleError);
-
-    return () => {
-      video.removeEventListener("canplay", handleCanPlay);
-      video.removeEventListener("loadeddata", handleLoadedData);
-      video.removeEventListener("error", handleError);
-    };
-  }, []);
 
   const handleScanSuccess = async (decodedText: string) => {
     try {
@@ -499,153 +434,78 @@ export default function AuthenticityPageClient() {
 
   return (
     <div ref={pageRef} className="min-h-screen bg-luxury-black text-white">
-      <div className="pointer-events-none fixed inset-0 bg-luxury-black" />
-
       <Navbar />
 
-      {/* Hero background media — fixed behind content */}
-      <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
-        <div className="absolute inset-0 bg-luxury-black z-0" />
-        {heroMediaType === "VIDEO" ? (
-          <VideoLoadGuard
-            key={`auth-hero-${heroVideoPlayUrl}-${pageSections.hero?.version ?? 0}`}
-            ref={videoRef}
-            url={heroVideoPlayUrl}
-            version={pageSections.hero?.version}
-            posterUrl={pageMediaAuthenticity?.heroImageUrl ?? null}
-            forcePoster={!shouldLoadHeroVideo}
-            posterPriority
-            optimizeGpu
-            lightVideoFade
-            containerClassName="absolute inset-0 h-full w-full z-10"
-            className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
-            style={{
-              pointerEvents: "none",
-              outline: "none",
-              WebkitTapHighlightColor: "transparent",
-              userSelect: "none",
-            }}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            disablePictureInPicture
-            disableRemotePlayback
-            onContextMenu={(e) => e.preventDefault()}
-          />
-        ) : (
-          <ImageLoadGuard
-            url={heroMediaUrl}
-            version={pageSections.hero?.version}
-            containerClassName="absolute inset-0 h-full w-full z-10"
-            className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
-            style={{ pointerEvents: "none" }}
-            alt=""
-            priority
-          />
-        )}
-        {/* Multi-layer overlays for text readability */}
-        <div className="absolute inset-0 z-[11] pointer-events-none" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 35%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.35) 75%, rgba(0,0,0,0.7) 100%)" }} />
-        <div className="absolute inset-0 z-[12] pointer-events-none" style={{ background: "linear-gradient(90deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.15) 50%, transparent 100%)" }} />
-        {/* Subtle gold particles */}
-        <div className="absolute inset-0 pointer-events-none z-[15]">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <motion.div
-              key={i}
-              data-particle
-              className="absolute h-1 w-1 rounded-full bg-luxury-gold/20"
+      <PageHeroSection
+        sectionRef={(element) => {
+          sectionsRef.current[0] = element as HTMLDivElement | null;
+        }}
+        page="authenticity"
+        objectPosition="center 32%"
+        overlay={
+          <>
+            <div
+              className="pointer-events-none absolute inset-0 z-[1]"
               style={{
-                left: `${((i * 17) % 85) + 8}%`,
-                top: `${((i * 23) % 75) + 12}%`,
+                background:
+                  "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 35%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.35) 75%, rgba(0,0,0,0.7) 100%)",
               }}
             />
-          ))}
-        </div>
-      </div>
-
-      {/* Hero edit button */}
-      <HeroEditPortal
-        page="authenticity"
-        section="hero"
-        type="video"
-        onUploadDone={refetchPageSections}
-        editLabel="Edit video"
-      />
-
-      {/* Hero Section */}
-      <section
-        ref={(element) => {
-          const divElement = element as HTMLDivElement | null;
-          sectionsRef.current[0] = divElement;
-          heroRef.current = divElement;
-        }}
-        className="relative flex min-h-screen flex-col justify-center overflow-hidden"
-      >
-        <div className="relative z-20 mx-auto w-full max-w-[1400px] px-6 sm:px-8 md:px-12 lg:px-16 xl:px-20">
-          <motion.div data-hero className="max-w-2xl space-y-7">
-            {/* Refined badge */}
-            <div data-hero className="inline-flex items-center gap-3 rounded-full border border-luxury-gold/20 bg-black/30 px-4 py-2 backdrop-blur-sm">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-luxury-gold/15">
-                <QrCode className="h-4 w-4 text-luxury-gold" />
-              </div>
-              <span className="text-[11px] font-medium uppercase tracking-[0.25em] text-luxury-gold/80">
-                {t("authenticateYour")}
-              </span>
+            <div
+              className="pointer-events-none absolute inset-0 z-[1]"
+              style={{
+                background:
+                  "linear-gradient(90deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.15) 50%, transparent 100%)",
+              }}
+            />
+            <div ref={particlesRef} className="pointer-events-none absolute inset-0 z-[2]">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <motion.div
+                  key={i}
+                  data-particle
+                  className="absolute h-1 w-1 rounded-full bg-luxury-gold/20"
+                  style={{
+                    left: `${((i * 17) % 85) + 8}%`,
+                    top: `${((i * 23) % 75) + 12}%`,
+                  }}
+                />
+              ))}
             </div>
+          </>
+        }
+      >
+        <MerchStyleHeroCopy
+          title={t("hero.title")}
+          titleBold={t("hero.titleBold")}
+          subtitle={t("hero.subtitle")}
+          secondarySubtitle={t("hero.secondarySubtitle")}
+          tagline={t("hero.tagline")}
+        >
+          <motion.button
+            type="button"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={handleOpenScanner}
+            className="group relative inline-flex items-center justify-center gap-2.5 overflow-hidden rounded-xl bg-gradient-to-r from-luxury-gold to-luxury-lightGold px-8 py-3.5 text-sm font-bold tracking-wide text-black transition-shadow duration-300 hover:shadow-[0_12px_32px_-8px_rgba(212,175,55,0.45)] cursor-pointer"
+          >
+            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700 pointer-events-none" />
+            <QrCode className="relative z-10 h-4 w-4" />
+            <span className="relative z-10">{t("scanQR")}</span>
+          </motion.button>
 
-            {/* Headline */}
-            <motion.h1
-              data-hero
-              className="text-4xl sm:text-5xl md:text-6xl lg:text-[4.25rem] font-sans font-bold leading-[1.08] tracking-tight text-white"
-            >
-              {t("authenticateYour")}{" "}
-              <span className="bg-gradient-to-r from-luxury-gold via-luxury-lightGold to-luxury-gold bg-clip-text text-transparent">
-                {t("silverKingBar")}
-              </span>
-            </motion.h1>
+          <span className="text-xs font-light text-white/30">{t("or")}</span>
 
-            {/* Description */}
-            <motion.p
-              data-hero
-              className="text-base sm:text-lg font-light leading-[1.75] text-white/70 max-w-xl"
-            >
-              {t("heroDescription")}
-            </motion.p>
-
-            {/* Action buttons */}
-            <motion.div
-              data-hero
-              className="flex flex-col items-start gap-3 pt-1 sm:flex-row sm:items-center sm:gap-4"
-            >
-              <motion.button
-                type="button"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={handleOpenScanner}
-                className="group relative inline-flex items-center justify-center gap-2.5 overflow-hidden rounded-xl bg-gradient-to-r from-luxury-gold to-luxury-lightGold px-8 py-3.5 text-sm font-bold tracking-wide text-black transition-shadow duration-300 hover:shadow-[0_12px_32px_-8px_rgba(212,175,55,0.45)] cursor-pointer"
-              >
-                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700 pointer-events-none" />
-                <QrCode className="relative z-10 h-4 w-4" />
-                <span className="relative z-10">{t("scanQR")}</span>
-              </motion.button>
-
-              <span className="hidden sm:inline text-xs text-white/30 font-light">{t("or")}</span>
-              <span className="sm:hidden text-xs text-white/30 font-light pl-1">{t("or")}</span>
-
-              <motion.button
-                type="button"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={handleOpenManualInput}
-                className="inline-flex items-center justify-center gap-2.5 rounded-xl border border-white/15 bg-white/[0.06] px-8 py-3.5 text-sm font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:border-white/25 hover:bg-white/[0.1] cursor-pointer"
-              >
-                <Search className="h-4 w-4" />
-                {t("enterSerial")}
-              </motion.button>
-            </motion.div>
-          </motion.div>
-        </div>
+          <motion.button
+            type="button"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={handleOpenManualInput}
+            className="inline-flex items-center justify-center gap-2.5 rounded-xl border border-white/15 bg-white/[0.06] px-8 py-3.5 text-sm font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:border-white/25 hover:bg-white/[0.1] cursor-pointer"
+          >
+            <Search className="h-4 w-4" />
+            {t("enterSerial")}
+          </motion.button>
+        </MerchStyleHeroCopy>
 
         {/* Bottom area: scroll indicator + "Learn process" */}
         <div className="absolute bottom-10 inset-x-0 z-30 flex flex-col items-center gap-3 pointer-events-auto">
@@ -666,7 +526,7 @@ export default function AuthenticityPageClient() {
 
         {/* Bottom gradient fade */}
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-luxury-black via-luxury-black/60 to-transparent pointer-events-none z-20" />
-      </section>
+      </PageHeroSection>
 
       {/* Verification Workflow Section - ALWAYS VISIBLE */}
       <section

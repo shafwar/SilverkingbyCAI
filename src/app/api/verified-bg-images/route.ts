@@ -1,15 +1,15 @@
 /**
- * Returns up to 7 product image URLs from CMS (same images as Products page, in R2).
- * Used as verified-success background options. No auth required (public).
+ * Returns verified-success background URLs (lightweight WebP posters first).
+ * Used on /verify after product verified. No auth required (public).
  * GET /api/verified-bg-images
  */
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getR2Url } from "@/utils/r2-url";
-import { VERIFIED_BG_IMAGES } from "@/assets/verified-bg";
+import { VERIFIED_BG_IMAGES, VERIFIED_BG_MAX_IMAGES } from "@/assets/verified-bg";
 
-const MAX_IMAGES = 7;
+const MAX_IMAGES = VERIFIED_BG_MAX_IMAGES;
 
 function toAbsoluteUrl(url: string): string {
   if (typeof url !== "string" || !url.trim()) return "";
@@ -31,22 +31,23 @@ export async function GET() {
     const urls: string[] = [];
     const seen = new Set<string>();
 
-    for (const p of products) {
+    // Lightweight static posters first (15–72 KB WebP) — primary verify success backgrounds.
+    for (const p of VERIFIED_BG_IMAGES) {
       if (urls.length >= MAX_IMAGES) break;
-      const images = Array.isArray(p?.images) ? p.images : [];
-      const first = images[0];
-      if (first == null) continue;
-      const resolved = toAbsoluteUrl(String(first));
+      const resolved = toAbsoluteUrl(p);
       if (resolved && !seen.has(resolved)) {
         seen.add(resolved);
         urls.push(resolved);
       }
     }
 
-    // Always include static fallbacks so this API never returns empty.
-    for (const p of VERIFIED_BG_IMAGES) {
+    // Optional CMS product images only if slots remain (often larger; not required).
+    for (const p of products) {
       if (urls.length >= MAX_IMAGES) break;
-      const resolved = toAbsoluteUrl(p);
+      const images = Array.isArray(p?.images) ? p.images : [];
+      const first = images[0];
+      if (first == null) continue;
+      const resolved = toAbsoluteUrl(String(first));
       if (resolved && !seen.has(resolved)) {
         seen.add(resolved);
         urls.push(resolved);

@@ -38,7 +38,7 @@
     "tryAgain": "Please try again"
   },
   "home": {
-    "title": "Silver King by CAI",
+    "title": "Cahaya Silver King",
     "tagline": "Precious Metals Excellence",
     "hero": {
       "headline1": "Precious",
@@ -47,22 +47,23 @@
       "headline4": "value.",
       "headline5": "Pure",
       "headline6": "precision.",
-      "subtitle": "Expert manufacturing of <gold>gold, silver, and palladium</gold> products. <custom>Custom bar fabrication</custom>, uncompromising purity, and <qr>QR-verified authenticity</qr>, redefining trust in precious metals.",
+      "subtitle": "Expert manufacturing of <gold>gold, silver, and palladium</gold> products. <custom>Custom bar fabrication</custom>, uncompromising purity, and <qr>QR verified authenticity</qr>, redefining trust in precious metals.",
+      "secondarySubtitle": "From refining and casting to serial coding, QR sealing, and verification.",
       "features": {
         "chainOfCustody": {
-          "label": "Chain-of-Custody",
-          "title": "Ledger-locked traceability",
+          "label": "Chain of Custody",
+          "title": "Ledger locked traceability",
           "body": "Every gram is recorded with encrypted QR seals and mirrored audit trails."
         },
         "purityLab": {
           "label": "Purity Lab",
-          "title": "Spectrometry-backed assurance",
-          "body": "In-house molecular testing calibrates bullion batches to bespoke tolerances."
+          "title": "Spectrometry backed assurance",
+          "body": "In house molecular testing calibrates bullion batches to bespoke tolerances."
         },
         "globalTrust": {
           "label": "Global Trust",
           "title": "ISO 9001",
-          "body": "Audited facilities, transparent compliance, concierge-level documentation."
+          "body": "Audited facilities, transparent compliance, concierge level documentation."
         }
       },
       "qrCard": {
@@ -81,9 +82,10 @@
     "title": "Craft from raw bullion",
     "description": "We transform responsibly sourced gold, silver, and palladium into investment-grade bars using tightly controlled refining and casting lines.",
     "hero": {
-      "title": "Engineering the lifecycle",
-      "titleBold": "of every Silver King bar.",
-      "subtitle": "From ore selection and purification to serial coding, QR sealing, and verification, we choreograph each step so every bar carries a verifiable story of origin and custody."
+      "title": "What We Do",
+      "subtitle": "The full lifecycle of every Silver King bar",
+      "secondarySubtitle": "From refining and casting to serial coding, QR sealing, and verification.",
+      "tagline": "Precision you can trace. Trust you can verify."
     },
     "card1": {
       "label": "Gold fabrication lines",
@@ -154,6 +156,13 @@
     "authenticateYour": "Authenticate Your",
     "silverKingBar": "Silver King Bar",
     "heroDescription": "Scan the QR code or enter serial number to verify authenticity and view provenance details",
+    "hero": {
+      "title": "Authenticate Your",
+      "titleBold": "Silver King Bar",
+      "subtitle": "Scan the QR code or enter your serial number",
+      "secondarySubtitle": "to verify authenticity and view provenance details.",
+      "tagline": "Instant verification. Complete traceability."
+    },
     "scanQR": "Scan QR Code",
     "or": "or",
     "enterSerial": "Enter Serial",
@@ -207,9 +216,10 @@
     "title": "Products",
     "description": "Browse our collection of premium precious metal products.",
     "hero": {
-      "title": "Premium",
-      "titleBold": "Precious Metals",
-      "subtitle": "Investment-grade bars crafted with uncompromising precision and verified authenticity."
+      "title": "Products",
+      "subtitle": "Investment grade precious metal bars",
+      "secondarySubtitle": "Gold, silver, and palladium, certified, serialized, and QR verified.",
+      "tagline": "Premium quality. Verified authenticity."
     },
     "explore": "Explore our collection",
     "hoverToView": "Hover to view products",
@@ -313,7 +323,7 @@
     "hero": {
       "title": "Merchandise",
       "subtitle": "Official Silver King by CAI apparel",
-      "subtitleProducts": "Polo, Knitware, T-Shirts & Caps.",
+      "subtitleProducts": "Polo, Knitware, T Shirts & Caps.",
       "tagline": "Premium quality, timeless style."
     },
     "sections": {
@@ -367,6 +377,7 @@
           "Minimalist & modern design",
           "Daily wear friendly"
         ],
+        "colorsLabel": "Available Colors",
         "colorsTshirt": "T-Shirt: Black • White • Grey • Navy",
         "colorsCap": "Cap: Black & White"
       },
@@ -405,7 +416,9 @@
     "hero": {
       "badge": "Est. 2024",
       "title": "The Legacy",
-      "subtitle": "Crafting excellence in precious metals since 2024 with uncompromising precision and ground-breaking verification technology."
+      "subtitle": "Crafting excellence in precious metals since 2024",
+      "secondarySubtitle": "Uncompromising precision and groundbreaking verification technology.",
+      "tagline": "Est. 2024"
     },
     "whyChoose": {
       "title": "Why Choose",
@@ -524,7 +537,9 @@
     "hero": {
       "eyebrow": "News & Insights",
       "title": "Journal",
-      "subtitle": "Updates, news, and education from Silver King by CAI."
+      "subtitle": "Updates, news, and education from Silver King by CAI.",
+      "secondarySubtitle": "Explore the latest insights on precious metals and smart investments.",
+      "tagline": "Knowledge is the greatest asset."
     },
     "meta": {
       "title": "Journal",
@@ -571,6 +586,7 @@
     "products": "Products",
     "distributor": "Distributor",
     "content": "Content",
+    "heroAssetsNav": "Hero assets",
     "journalNav": "News & journal",
     "serticardNav": "Serticard",
     "logout": "Logout",
@@ -600,10 +616,17 @@
       "totalQrCodes": "Total QR Codes",
       "totalScans": "Total Scans",
       "scansToday": "Scans Today",
+      "scansLast7Days": "Scans (7 Days)",
+      "scansLast30Days": "Scans (30 Days)",
+      "scansThisMonth": "Scans This Month",
       "curatedBars": "+ curated SK bars",
       "mirroredSecure": "Mirrored & secure",
       "lifetimeVerifications": "Lifetime verifications",
       "liveInteractions": "Live interactions",
+      "rollingSevenDays": "Last 7 days total",
+      "rollingThirtyDays": "Last 30 days total",
+      "monthToDate": "Month to date",
+      "scanPeriodHint": "Tap to cycle: today → 7d → 30d",
       "unableToLoad": "Unable to load dashboard metrics."
     },
     "dashboard": {
@@ -660,11 +683,13 @@
       "verificationHeat": "Verification heat",
       "realTimeFeed": "Real-time feed",
       "viewMode": {
+        "today": "Today",
         "7d": "7 Days",
         "30d": "30 Days",
         "month": "Month",
         "current": "Current"
-      }
+      },
+      "scansLabel": "Scans"
     },
     "activity": {
       "liveFeed": "Live feed",
@@ -853,6 +878,38 @@
       "saving": "Saving…",
       "saveFailed": "Failed to save",
       "deleteFailed": "Failed to delete"
+    },
+    "heroAssets": {
+      "eyebrow": "Website media",
+      "title": "Hero assets",
+      "description": "Upload hero video or photo per page. Files are compressed, stored on Cloudflare R2, and served via CDN. The public site keeps fast static fallbacks until CMS media loads.",
+      "hint": "Video max 1 minute (flexible upload size). Heroes are trimmed to 15 seconds and optimized to ~6 MB HD H.264 (1080p, Merchandise standard) with a WebP poster. Photos are converted to HD WebP with gentle compression. Use “Set as site default” to pin the current CMS hero as the built-in default. “Restore default” reverts to that pinned file.",
+      "refresh": "Refresh",
+      "loading": "Loading hero assets…",
+      "loadError": "Could not load hero assets.",
+      "uploadVideo": "Upload video",
+      "uploadPhoto": "Upload photo",
+      "uploading": "Uploading…",
+      "progressUploading": "Uploading file…",
+      "progressProcessingVideo": "Optimizing video (trim, transcode, poster)…",
+      "progressProcessingImage": "Compressing and saving…",
+      "uploadTimeout": "Upload timed out. Try a smaller file or try again.",
+      "uploadSuccess": "Hero asset uploaded to R2.",
+      "uploadError": "Upload failed. Check file size and format.",
+      "promoteDefault": "Set as site default",
+      "promoting": "Saving default…",
+      "promoteSuccess": "Current hero saved as site default.",
+      "promoteError": "Could not save as default.",
+      "promoteConfirm": "Copy this CMS hero to the built-in default path and clear the CMS override? Future “Restore default” will use this version.",
+      "restoreDefault": "Restore default",
+      "restoring": "Restoring…",
+      "restoreSuccess": "Reverted to built-in default hero.",
+      "restoreError": "Could not restore default.",
+      "restoreConfirm": "Remove CMS override and use the built-in default hero file?",
+      "badgeCms": "CMS active",
+      "badgeDefault": "Default",
+      "typeVideo": "Video hero",
+      "typeImage": "Photo hero"
     },
     "contentDetail": {
       "title": "Content (Bilingual)",

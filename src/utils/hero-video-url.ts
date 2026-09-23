@@ -11,11 +11,10 @@ export function r2KeyFromPublicUrl(url: string): string | null {
   return idx >= 0 ? url.slice(idx + 1) : null;
 }
 
-/** If URL is on R2/static, return proxied path; otherwise return url as-is (e.g. local /videos/...). */
+/** If URL is on R2/static, return url as-is to utilize Cloudflare CDN directly and avoid egress costs. */
 export function proxiedHeroVideoSrc(url: string): string {
-  const key = r2KeyFromPublicUrl(url);
-  if (key) {
-    return `/api/hero-video?key=${encodeURIComponent(key)}`;
-  }
+  // Option B: Serve files via Cloudflare CDN (R2_PUBLIC_URL), NOT direct proxy via /api/hero-video
+  // By returning the URL directly, we allow the browser to hit the Edge CDN
+  // which saves egress and avoids the Next.js API bottleneck.
   return url;
 }

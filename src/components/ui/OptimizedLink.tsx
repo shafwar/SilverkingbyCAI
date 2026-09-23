@@ -17,7 +17,7 @@ interface OptimizedLinkProps extends Omit<ComponentProps<typeof Link>, "prefetch
 export function OptimizedLink({
   href,
   children,
-  prefetch = true,
+  prefetch = false,
   prefetchOnHover = true,
   prefetchDelay = 0,
   className,

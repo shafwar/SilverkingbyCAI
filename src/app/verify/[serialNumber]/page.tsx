@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -18,8 +18,6 @@ import {
   Banknote,
   KeyRound,
 } from "lucide-react";
-import { VERIFIED_BG_IMAGES } from "@/assets/verified-bg";
-import { getR2UrlClient } from "@/utils/r2-url";
 
 interface VerificationResult {
   verified: boolean;
@@ -35,6 +33,44 @@ interface VerificationResult {
     createdAt: string;
   };
   error?: string;
+}
+
+async function fetchVerifyResult(
+  serial: string,
+  signal?: AbortSignal
+): Promise<VerificationResult> {
+  const normalizedSerial =
+    serial?.trim().toUpperCase().replace(/[^A-Z0-9]/g, "") || "";
+
+  if (!normalizedSerial || normalizedSerial.length < 3 || normalizedSerial.length > 50) {
+    return { verified: false, error: "Invalid serial number format" };
+  }
+
+  const response = await fetch(`/api/verify/${encodeURIComponent(normalizedSerial)}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    signal,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+    return {
+      verified: false,
+      error: errorData.error || `Verification failed: ${response.status}`,
+    };
+  }
+
+  const data = await response.json();
+  if (!data || typeof data !== "object" || !("verified" in data)) {
+    return { verified: false, error: "Invalid response from server" };
+  }
+
+  if (data.verified && data.product && (!data.product.serialCode || !data.product.name)) {
+    return { verified: false, error: "Invalid product data received" };
+  }
+
+  return data as VerificationResult;
 }
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
@@ -114,7 +150,16 @@ function InfoRow({
   );
 }
 
-function VerifiedBackgroundSvg({ seed }: { seed: string }) {
+/** Force viewport to top — mobile Safari may keep prior scroll after QR / SPA nav. */
+function scrollVerifyPageToTop() {
+  if (typeof window === "undefined") return;
+  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+}
+
+/** Soft gradient backdrop only — no photo/image layer. */
+function VerifiedAmbientBackdrop({ seed }: { seed: string }) {
   const s = seed.slice(0, 10);
   return (
     <svg
@@ -126,45 +171,20 @@ function VerifiedBackgroundSvg({ seed }: { seed: string }) {
     >
       <defs>
         <linearGradient id="verify_g1" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#050505" />
-          <stop offset="0.55" stopColor="#0b0b0b" />
-          <stop offset="1" stopColor="#050505" />
+          <stop offset="0" stopColor="#070707" />
+          <stop offset="0.5" stopColor="#0c0c0c" />
+          <stop offset="1" stopColor="#060606" />
         </linearGradient>
-        <radialGradient id="verify_glow" cx="50%" cy="18%" r="62%">
-          <stop offset="0" stopColor="#22c55e" stopOpacity="0.12" />
-          <stop offset="0.55" stopColor="#d4af37" stopOpacity="0.08" />
+        <radialGradient id="verify_glow" cx="50%" cy="20%" r="58%">
+          <stop offset="0" stopColor="#22c55e" stopOpacity="0.11" />
+          <stop offset="0.45" stopColor="#d4af37" stopOpacity="0.05" />
           <stop offset="1" stopColor="#000000" stopOpacity="0" />
         </radialGradient>
-        <filter id="verify_noise">
-          <feTurbulence
-            type="fractalNoise"
-            baseFrequency="0.9"
-            numOctaves="2"
-            stitchTiles="stitch"
-            seed="7"
-          />
-          <feColorMatrix
-            type="matrix"
-            values="
-              0 0 0 0 0.60
-              0 0 0 0 0.52
-              0 0 0 0 0.10
-              0 0 0 0.18 0
-            "
-          />
-        </filter>
-        <filter id="verify_blur">
-          <feGaussianBlur stdDeviation="22" />
-        </filter>
       </defs>
       <rect width="1600" height="900" fill="url(#verify_g1)" />
       <rect width="1600" height="900" fill="url(#verify_glow)" />
-      <g opacity="0.55" filter="url(#verify_blur)">
-        <circle cx="240" cy="760" r="220" fill="#d4af37" fillOpacity="0.10" />
-        <circle cx="1340" cy="720" r="260" fill="#22c55e" fillOpacity="0.08" />
-        <circle cx="860" cy="130" r="220" fill="#d4af37" fillOpacity="0.06" />
-      </g>
-      <rect width="1600" height="900" filter="url(#verify_noise)" opacity="0.9" />
+      <circle cx="220" cy="780" r="200" fill="#d4af37" fillOpacity="0.04" />
+      <circle cx="1360" cy="720" r="220" fill="#22c55e" fillOpacity="0.035" />
       <text
         x="1500"
         y="860"
@@ -172,7 +192,7 @@ function VerifiedBackgroundSvg({ seed }: { seed: string }) {
         fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
         fontSize="18"
         fill="#ffffff"
-        opacity="0.06"
+        opacity="0.04"
       >
         {s}
       </text>
@@ -190,124 +210,29 @@ export default function VerifyPage() {
   const [verifyingRootKey, setVerifyingRootKey] = useState(false);
   const [rootKeyError, setRootKeyError] = useState<string | null>(null);
 
-  /** Guaranteed pool: static URLs always included so we never have empty; try next on error until one loads. */
-  const staticUrls = useMemo(
-    () => VERIFIED_BG_IMAGES.map((p) => getR2UrlClient(p)),
-    []
-  );
-
-  const [verifiedBgDisplayUrl, setVerifiedBgDisplayUrl] = useState<string | null>(null);
-  const [verifiedBgError, setVerifiedBgError] = useState(false);
-  const verifiedBgFallbackUrls = useRef<string[]>([]);
-  const preloadSeqIdRef = useRef(0);
-  const currentVerifiedBgUrlRef = useRef<string | null>(null);
-
-  // Background image: load ONLY after "Product Verified" text has painted (deferred). Prefer static URLs first (easiest/closest).
+  // Always start at top when opening / changing a serial (QR scan, SPA nav).
   useEffect(() => {
-    if (!result?.verified) {
-      setVerifiedBgDisplayUrl(null);
-      setVerifiedBgError(false);
-      verifiedBgFallbackUrls.current = [];
-      return;
-    }
-    // Do NOT set any image here — first paint is text + SVG only (sacred for client).
-    setVerifiedBgDisplayUrl(null);
-    setVerifiedBgError(false);
-    verifiedBgFallbackUrls.current = [];
-    const mySeq = ++preloadSeqIdRef.current;
+    scrollVerifyPageToTop();
+    const raf = requestAnimationFrame(scrollVerifyPageToTop);
+    return () => cancelAnimationFrame(raf);
+  }, [serialNumber]);
 
-    const preloadAndSwap = async (pool: string[]) => {
-      const seen = new Set<string>();
-      const ordered = pool.filter((u) => (u ? !seen.has(u) && (seen.add(u), true) : false));
-      for (const url of ordered) {
-        if (preloadSeqIdRef.current !== mySeq) return;
-        if (url === currentVerifiedBgUrlRef.current) continue;
-        try {
-          await new Promise<void>((resolve, reject) => {
-            const img = new window.Image();
-            const t = window.setTimeout(() => reject(new Error("timeout")), 8000);
-            img.onload = () => {
-              window.clearTimeout(t);
-              resolve();
-            };
-            img.onerror = () => {
-              window.clearTimeout(t);
-              reject(new Error("error"));
-            };
-            img.decoding = "async";
-            img.src = url;
-          });
-          if (preloadSeqIdRef.current !== mySeq) return;
-          currentVerifiedBgUrlRef.current = url;
-          setVerifiedBgDisplayUrl(url);
-          setVerifiedBgError(false);
-          verifiedBgFallbackUrls.current = ordered.filter((u) => u !== url);
-          return;
-        } catch {
-          // try next
-        }
-      }
-      if (preloadSeqIdRef.current === mySeq) setVerifiedBgError(true);
-    };
-
-    // Defer so "Product Verified" text and table paint first; then load image (static first = easiest).
-    const deferMs = 180;
-    const tid = window.setTimeout(() => {
-      if (preloadSeqIdRef.current !== mySeq) return;
-      // Static list first (closest / easiest to load), then API adds more options
-      void preloadAndSwap(staticUrls);
-    }, deferMs);
-
-    let cancelled = false;
-    const apiTid = window.setTimeout(() => {
-      if (cancelled) return;
-      fetch("/api/verified-bg-images")
-        .then((r) => r.json())
-        .then((data: { urls?: string[] }) => {
-          if (cancelled || preloadSeqIdRef.current !== mySeq) return;
-          const apiList = Array.isArray(data?.urls) ? data.urls.filter((u) => u && u.startsWith("http")) : [];
-          const seen = new Set<string>();
-          const merged: string[] = [];
-          for (const u of [...apiList, ...staticUrls]) {
-            if (u && !seen.has(u)) {
-              seen.add(u);
-              merged.push(u);
-            }
-          }
-          if (merged.length === 0) return;
-          void preloadAndSwap(merged);
-        })
-        .catch(() => {});
-    }, deferMs + 80);
-
+  // Product Verified: pin to top after result paints (content height change can leave scroll at bottom).
+  useEffect(() => {
+    if (loading || !result?.verified || result.requiresRootKey) return;
+    scrollVerifyPageToTop();
+    const raf = requestAnimationFrame(scrollVerifyPageToTop);
+    const t = window.setTimeout(scrollVerifyPageToTop, 80);
     return () => {
-      cancelled = true;
-      window.clearTimeout(tid);
-      window.clearTimeout(apiTid);
+      cancelAnimationFrame(raf);
+      window.clearTimeout(t);
     };
-  }, [result?.verified, staticUrls]);
-
-  const effectiveVerifiedBgUrl = verifiedBgDisplayUrl;
-
-  const handleVerifiedBgError = () => {
-    const fallbacks = verifiedBgFallbackUrls.current;
-    if (fallbacks.length > 0) {
-      verifiedBgFallbackUrls.current = fallbacks.slice(1);
-      setVerifiedBgDisplayUrl(fallbacks[0]);
-    } else {
-      setVerifiedBgError(true);
-    }
-  };
+  }, [loading, result?.verified, result?.requiresRootKey, serialNumber]);
 
   // ---------- Verification: reset on serial change so new QR scan gets fresh UI (no stale root key / buffering) ----------
 
   useEffect(() => {
-    // Hard reset when serial changes: show loading and clear previous result/background (no stale root key / buffering)
-    setVerifiedBgDisplayUrl(null);
-    setVerifiedBgError(false);
-    verifiedBgFallbackUrls.current = [];
-    currentVerifiedBgUrlRef.current = null;
-    preloadSeqIdRef.current += 1;
+    // Hard reset when serial changes: show loading and clear previous result (no stale root key / buffering)
     recoveryRetryRef.current = null;
 
     if (!serialNumber) {
@@ -322,84 +247,21 @@ export default function VerifyPage() {
 
     async function verifyProduct() {
       try {
-        const normalizedSerial =
-          serialNumber
-            ?.trim()
-            .toUpperCase()
-            .replace(/[^A-Z0-9]/g, "") || "";
-
-        if (!normalizedSerial || normalizedSerial.length < 3 || normalizedSerial.length > 50) {
-          if (isMounted) {
-            setResult({
-              verified: false,
-              error: "Invalid serial number format",
-            });
-            setLoading(false);
-          }
-          return;
-        }
-
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-        const response = await fetch(`/api/verify/${encodeURIComponent(normalizedSerial)}`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
-          if (isMounted) {
-            setResult({
-              verified: false,
-              error: errorData.error || `Verification failed: ${response.status}`,
-            });
-            setLoading(false);
-          }
-          return;
-        }
-
-        const data = await response.json();
-
-        if (!data || typeof data !== "object" || !("verified" in data)) {
-          if (isMounted) {
-            setResult({
-              verified: false,
-              error: "Invalid response from server",
-            });
-            setLoading(false);
-          }
-          return;
-        }
-
-        if (data.verified && data.product) {
-          if (!data.product.serialCode || !data.product.name) {
-            if (isMounted) {
-              setResult({
-                verified: false,
-                error: "Invalid product data received",
-              });
-              setLoading(false);
-            }
-            return;
-          }
-        }
+        const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+        const data = await fetchVerifyResult(serialNumber, controller.signal);
+        window.clearTimeout(timeoutId);
 
         if (isMounted) {
           setResult(data);
           setLoading(false);
         }
-      } catch (error: any) {
-        if (error.name === "AbortError") {
+      } catch (error: unknown) {
+        if (error instanceof Error && error.name === "AbortError") {
           if (isMounted) {
             setResult({
               verified: false,
-              error: "Request timeout. Please try again.",
+              error: "Jaringan lambat — coba lagi.",
             });
             setLoading(false);
           }
@@ -410,7 +272,10 @@ export default function VerifyPage() {
         if (isMounted) {
           setResult({
             verified: false,
-            error: error?.message || "Failed to verify product. Please try again.",
+            error:
+              error instanceof Error
+                ? error.message
+                : "Failed to verify product. Please try again.",
           });
           setLoading(false);
         }
@@ -509,8 +374,12 @@ export default function VerifyPage() {
       }
 
       if (data.serialCode) {
-        console.log("[VerifyPage] Root key verified, redirecting to:", data.serialCode);
-        window.location.href = `/verify/${encodeURIComponent(data.serialCode)}`;
+        const serialCode = String(data.serialCode);
+        window.history.replaceState(null, "", `/verify/${encodeURIComponent(serialCode)}`);
+        const verified = await fetchVerifyResult(serialCode);
+        setResult(verified);
+        setRootKey("");
+        setVerifyingRootKey(false);
       } else {
         console.error("[VerifyPage] Verification successful but serialCode missing:", data);
         setRootKeyError(
@@ -527,7 +396,7 @@ export default function VerifyPage() {
 
   // ---------- END UNCHANGED LOGIC ----------
 
-  const showVerifiedBackground = Boolean(result?.verified && !result?.requiresRootKey);
+  const showVerifiedSuccess = Boolean(result?.verified && !result?.requiresRootKey);
 
   const showRootKeyMode = Boolean(result?.requiresRootKey);
 
@@ -539,60 +408,17 @@ export default function VerifyPage() {
           : "bg-[#050505]"
       }`}
     >
-      {/* Background only when product is verified (not on root-key input screen). */}
-      {showVerifiedBackground && (
-        <>
-          <VerifiedBackgroundSvg seed={serialNumber || "SK"} />
+      {/* Soft gradient only — no photo background */}
+      {showVerifiedSuccess && <VerifiedAmbientBackdrop seed={serialNumber || "SK"} />}
 
-          {!verifiedBgError && effectiveVerifiedBgUrl ? (
-            <div
-              key={effectiveVerifiedBgUrl}
-              className="pointer-events-none fixed inset-0 z-[1] overflow-hidden bg-[#0a0a0a]"
-              aria-hidden
-            >
-              {/* Use a real <img> (not CSS background-image) for deterministic loading + onError across browsers */}
-              <img
-                key={effectiveVerifiedBgUrl}
-                src={effectiveVerifiedBgUrl}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover"
-                loading="eager"
-                decoding="async"
-                onError={handleVerifiedBgError}
-                aria-hidden
-                fetchPriority="high"
-              />
-            </div>
-          ) : !verifiedBgError ? null : (
-            <div
-              className="pointer-events-none fixed inset-0 z-[1] bg-[#0a0a0a]"
-              style={{
-                background:
-                  "linear-gradient(180deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.78) 50%, rgba(0,0,0,0.9) 100%)",
-              }}
-              aria-hidden
-            />
-          )}
-          {/* Overlay: darker so Product Verified text and table stay readable on all devices */}
-          <div
-            className="pointer-events-none fixed inset-0 z-[2] min-h-full"
-            style={{
-              background:
-                "linear-gradient(180deg, rgba(0,0,0,0.70) 0%, rgba(0,0,0,0.64) 50%, rgba(0,0,0,0.74) 100%)",
-            }}
-            aria-hidden
-          />
-        </>
-      )}
-
-      {/* Background ambient — only tint when verified success; root key stays clean */}
+      {/* Ambient tint by state */}
       <div
-        className="pointer-events-none fixed inset-0 z-[3]"
+        className="pointer-events-none fixed inset-0 z-[1]"
         style={{
           background: result?.requiresRootKey
             ? "none"
-            : showVerifiedBackground
-              ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(34,197,94,0.04) 0%, transparent 60%), radial-gradient(ellipse 50% 35% at 50% 80%, rgba(212,175,55,0.03) 0%, transparent 50%)"
+            : showVerifiedSuccess
+              ? "radial-gradient(ellipse 55% 38% at 50% 18%, rgba(34,197,94,0.06) 0%, transparent 62%), radial-gradient(ellipse 48% 32% at 50% 82%, rgba(212,175,55,0.04) 0%, transparent 55%)"
               : result && !result.verified && !result.requiresRootKey
                 ? "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(239,68,68,0.04) 0%, transparent 60%)"
                 : "radial-gradient(ellipse 60% 40% at 50% 20%, rgba(212,175,55,0.04) 0%, transparent 60%)",
@@ -733,33 +559,34 @@ export default function VerifyPage() {
                   >
                     <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-[200%] group-hover:translate-x-[200%] transition-transform duration-700 pointer-events-none" />
                     <span className="relative z-10">
-                      {verifyingRootKey ? "Verifying..." : "Verify Root Key"}
+                      {verifyingRootKey ? "Memverifikasi root key..." : "Verify Root Key"}
                     </span>
                   </button>
                 </form>
               </motion.div>
             </motion.div>
           ) : result?.verified ? (
-            /* ---------- VERIFIED SUCCESS ---------- */
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              className="space-y-5"
-            >
-              {/* Success header — strong contrast so "Product Verified" never clashes with bg */}
-              <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0} className="text-center pt-2 pb-1">
-                <div className="relative mx-auto mb-6 h-28 w-28 sm:h-32 sm:w-32">
+            /* ---------- VERIFIED SUCCESS (classic layout, no photo background) ---------- */
+            <motion.div initial="hidden" animate="visible" className="space-y-5">
+              <motion.div
+                variants={fadeUp}
+                initial="hidden"
+                animate="visible"
+                custom={0}
+                className="text-center pt-2 pb-1"
+              >
+                <div className="relative mx-auto mb-6 h-24 w-24 sm:h-28 sm:w-28">
                   <motion.div
-                    className="absolute inset-0 rounded-full border-2 border-emerald-500/30"
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: [0.8, 1.2, 1.2], opacity: [0, 0.5, 0] }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
+                    className="absolute inset-0 rounded-full border border-emerald-400/25"
+                    initial={{ scale: 0.85, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                   />
                   <motion.div
                     className="absolute inset-0 flex items-center justify-center rounded-full"
                     style={{
                       background:
-                        "radial-gradient(circle, rgba(34,197,94,0.12) 0%, rgba(34,197,94,0.03) 70%, transparent 100%)",
+                        "radial-gradient(circle, rgba(34,197,94,0.14) 0%, rgba(34,197,94,0.04) 65%, transparent 100%)",
                     }}
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
@@ -768,61 +595,51 @@ export default function VerifyPage() {
                     <motion.div
                       initial={{ scale: 0, rotate: -45 }}
                       animate={{ scale: 1, rotate: 0 }}
-                      transition={{ duration: 0.4, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                      transition={{ duration: 0.4, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
                     >
-                      <CheckCircle2 className="h-20 w-20 sm:h-24 sm:w-24 text-emerald-500" />
+                      <CheckCircle2 className="h-16 w-16 sm:h-20 sm:w-20 text-emerald-400" strokeWidth={1.5} />
                     </motion.div>
                   </motion.div>
                 </div>
 
-                {/* Title + subtitle on dark bar — readable on any background; responsive */}
-                <div className="mx-auto inline-block max-w-[90vw] rounded-xl bg-black/60 px-4 py-3 shadow-lg ring-1 ring-white/10 backdrop-blur-sm sm:max-w-none sm:rounded-2xl sm:px-6 sm:py-4">
-                  <motion.h1
-                    className="font-serif text-[1.9rem] sm:text-[2.25rem] font-extrabold tracking-tight text-white"
-                    style={{
-                      textShadow:
-                        "0 0 20px rgba(0,0,0,0.9), 0 2px 4px rgba(0,0,0,0.8), 0 1px 2px rgba(0,0,0,0.9)",
-                    }}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                  >
-                    Product Verified
-                  </motion.h1>
-                  <motion.p
-                    className="mt-2 text-sm font-semibold text-white/95"
-                    style={{
-                      textShadow: "0 1px 8px rgba(0,0,0,0.85), 0 1px 2px rgba(0,0,0,0.8)",
-                    }}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.5, delay: 0.45 }}
-                  >
-                    This product is officially verified by Silver King by CAI
-                  </motion.p>
-                </div>
+                <motion.h1
+                  className="font-serif text-[1.9rem] font-semibold tracking-tight text-white sm:text-[2.25rem]"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.45, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  Product Verified
+                </motion.h1>
+                <motion.p
+                  className="mx-auto mt-2.5 max-w-md text-sm font-medium leading-relaxed text-white/70"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.45, delay: 0.35 }}
+                >
+                  This product is officially verified by Silver King by CAI
+                </motion.p>
 
                 <motion.div
                   className="mx-auto mt-5 flex items-center justify-center gap-2.5"
                   initial={{ opacity: 0, scaleX: 0 }}
                   animate={{ opacity: 1, scaleX: 1 }}
-                  transition={{ duration: 0.6, delay: 0.5 }}
+                  transition={{ duration: 0.5, delay: 0.4 }}
                 >
-                  <div className="h-px w-10 bg-gradient-to-r from-transparent to-emerald-500/20" />
-                  <div className="h-1 w-1 rounded-full bg-emerald-500/30" />
-                  <div className="h-px w-10 bg-gradient-to-l from-transparent to-emerald-500/20" />
+                  <div className="h-px w-10 bg-gradient-to-r from-transparent to-emerald-400/30" />
+                  <div className="h-1 w-1 rounded-full bg-emerald-400/50" />
+                  <div className="h-px w-10 bg-gradient-to-l from-transparent to-emerald-400/30" />
                 </motion.div>
               </motion.div>
 
-              {/* Product info card — bold panel so text is clear over background image */}
+              {/* Product Information — classic two-card layout */}
               <motion.div
                 variants={fadeUp}
                 initial="hidden"
                 animate="visible"
-                custom={0.25}
-                className="rounded-2xl border-2 border-white/30 bg-black/98 shadow-2xl shadow-black/60 p-6 sm:p-7"
+                custom={0.2}
+                className="rounded-2xl border border-white/12 bg-white/[0.04] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)] sm:p-7"
               >
-                <div className="flex items-center gap-2.5 mb-5">
+                <div className="mb-5 flex items-center gap-2.5">
                   <Shield className="h-[18px] w-[18px] text-luxury-gold" />
                   <h2 className="text-[13px] font-bold uppercase tracking-[0.15em] text-luxury-gold">
                     Product Information
@@ -843,14 +660,13 @@ export default function VerifyPage() {
                 </motion.div>
               </motion.div>
 
-              {/* Serial & Price card */}
               {!result.requiresRootKey && (
                 <motion.div
                   variants={fadeUp}
                   initial="hidden"
                   animate="visible"
-                  custom={0.4}
-                  className="rounded-2xl border-2 border-white/30 bg-black/98 shadow-2xl shadow-black/60 p-6 sm:p-7"
+                  custom={0.35}
+                  className="rounded-2xl border border-white/12 bg-white/[0.04] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)] sm:p-7"
                 >
                   <motion.div variants={staggerContainer} initial="hidden" animate="visible">
                     <InfoRow
@@ -872,17 +688,16 @@ export default function VerifyPage() {
                 </motion.div>
               )}
 
-              {/* Back button */}
               <motion.div
                 variants={fadeUp}
                 initial="hidden"
                 animate="visible"
-                custom={0.55}
+                custom={0.5}
                 className="flex justify-center pt-2"
               >
                 <Link
                   href="/"
-                  className="group inline-flex items-center gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-7 py-3 text-[13px] font-medium text-white/60 transition-all duration-300 hover:border-white/[0.15] hover:text-white hover:bg-white/[0.06]"
+                  className="group inline-flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.03] px-7 py-3 text-[13px] font-medium text-white/65 transition-all duration-300 hover:border-luxury-gold/30 hover:bg-white/[0.06] hover:text-white"
                 >
                   <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-0.5" />
                   Back to Home

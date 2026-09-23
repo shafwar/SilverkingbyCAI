@@ -5,18 +5,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getSerticardConfig } from "@/lib/serticard-config";
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { r2Client, BUCKET_NAME } from "@/lib/r2-client";
 
-const r2Client = new S3Client({
-  region: "auto",
-  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID || "",
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || "",
-  },
-  forcePathStyle: true,
-});
-const BUCKET = process.env.R2_BUCKET || process.env.R2_BUCKET_NAME || "silverking-assets";
+const BUCKET = BUCKET_NAME;
 
 export async function GET(request: Request) {
   try {

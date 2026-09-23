@@ -14,7 +14,7 @@ const adminTitle = Outfit({
   display: "swap",
 });
 
-const LOGO_SRC = getR2UrlClient("/images/cai-logo.png");
+const LOGO_SRC = getR2UrlClient("/images/sk-crown-logo.png");
 
 export function AdminLoginPageClient() {
   const t = useTranslations("admin");

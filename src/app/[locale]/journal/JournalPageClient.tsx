@@ -1,17 +1,11 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Navbar from "@/components/layout/Navbar";
-import { usePageSections } from "@/hooks/usePageSections";
-import { usePageMedia } from "@/hooks/usePageMedia";
-import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
-import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
-import { proxiedHeroVideoSrc } from "@/utils/hero-video-url";
-import { VideoLoadGuard, ImageLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
-import { HeroEditPortal } from "@/components/layout/HeroEditPortal";
+import { PageHeroSection } from "@/components/hero/PageHeroSection";
 import { ScrollRevealSection } from "@/components/shared/ScrollRevealSection";
 import { motion } from "framer-motion";
 import { ArrowRight, BookOpen, Pencil, Plus, Trash2 } from "lucide-react";
@@ -56,13 +50,6 @@ type JournalItem = {
 
 const LATEST_ARTICLES_LIMIT = 3;
 
-type JournalPageClientProps = {
-  /** Fallback hero media type when no CMS section. */
-  initialHeroMediaType: "IMAGE" | "VIDEO";
-  /** Fallback hero URL when no CMS section (same-origin). */
-  initialHeroUrl: string;
-};
-
 type AdminJournalItem = {
   id: number;
   slug: string;
@@ -74,75 +61,18 @@ type AdminJournalItem = {
   publishedAt: string | null;
 };
 
-export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl }: JournalPageClientProps) {
+export default function JournalPageClient({
+  initialItems,
+}: {
+  initialItems?: JournalItem[];
+} = {}) {
   const t = useTranslations("journal");
   const locale = useLocale();
   const isAdmin = useIsAdmin();
-  const [items, setItems] = useState<JournalItem[]>([]);
+  const [items, setItems] = useState<JournalItem[]>(initialItems ?? []);
   const [adminItems, setAdminItems] = useState<AdminJournalItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [heroImageError, setHeroImageError] = useState(false);
-  const [heroVideoError, setHeroVideoError] = useState(false);
+  const [loading, setLoading] = useState(initialItems ? false : true);
   const listRef = useRef<HTMLDivElement>(null);
-  const journalHeroVideoRef = useRef<HTMLVideoElement>(null);
-  useReliableVideoAutoplay(journalHeroVideoRef, { mode: "background" });
-  const { sections: pageSections, refetch: refetchPageSections } = usePageSections("journal");
-  const { data: pageMediaJournal } = usePageMedia("journal");
-  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
-
-  const heroMediaType = (pageSections.hero?.mediaType?.toUpperCase() ?? initialHeroMediaType) as "IMAGE" | "VIDEO";
-  const heroUrl = heroImageError ? initialHeroUrl : (pageSections.hero?.url ?? initialHeroUrl);
-  const heroVersion = pageSections.hero?.version;
-  const isFallbackHero = !pageSections.hero?.url;
-
-  // Default fallback video: bundled local mp4.
-  // This guarantees playback even if R2 isn't synced yet.
-  const fallbackLocalVideoUrl = "/videos/hero/Jurnal%20Silverking.mp4";
-  const cmsHeroUrl = pageSections.hero?.url ?? initialHeroUrl;
-  const cmsHeroMediaType = pageSections.hero?.mediaType?.toUpperCase();
-  const shouldUseCmsVideo = cmsHeroMediaType === "VIDEO" || cmsHeroUrl.includes(".mp4");
-
-  const resolvedHeroVideoSrc = useMemo(() => {
-    if (!shouldUseCmsVideo || !cmsHeroUrl) return fallbackLocalVideoUrl;
-    return proxiedHeroVideoSrc(cmsHeroUrl);
-  }, [shouldUseCmsVideo, cmsHeroUrl]);
-
-  // If we're using the bundled fallback, always bust the cache after re-encode.
-  const effectiveHeroVideoVersion = resolvedHeroVideoSrc === fallbackLocalVideoUrl ? 2 : heroVersion;
-
-  const shouldRenderVideo = !heroVideoError;
-
-  /**
-   * Poster (same pattern as What we do / Authenticity):
-   * - IMAGE hero: the CMS image URL.
-   * - VIDEO hero: optional PageMedia hero image only — never /api/hero-image?page=journal (that file is a
-   *   fixed legacy silver-bar JPEG and looks like “CMS didn’t update” when the real hero is video).
-   */
-  const posterUrl = useMemo(() => {
-    if (heroMediaType === "IMAGE" && heroUrl) return heroUrl;
-    if (heroMediaType === "VIDEO") return pageMediaJournal?.heroImageUrl ?? null;
-    return null;
-  }, [heroMediaType, heroUrl, pageMediaJournal?.heroImageUrl]);
-
-  // Note: effectiveHeroVideoVersion is computed above from resolvedHeroVideoUrl.
-
-  // Preload hero image for faster LCP when using fallback (same-origin URL we display)
-  useEffect(() => {
-    if (!isFallbackHero || heroMediaType !== "IMAGE") return;
-    const link = document.createElement("link");
-    link.rel = "preload";
-    link.as = "image";
-    link.href = initialHeroUrl;
-    document.head.appendChild(link);
-    return () => link.remove();
-  }, [isFallbackHero, heroMediaType, initialHeroUrl]);
-
-  // When hero media changes (admin edit), reset error flags so new asset can show.
-  useEffect(() => {
-    setHeroImageError(false);
-    setHeroVideoError(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageSections.hero?.url, pageSections.hero?.mediaType, pageSections.hero?.version]);
 
   useEffect(() => {
     let cancelled = false;
@@ -235,81 +165,30 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
       className={`min-h-screen w-full overflow-x-hidden bg-[#050505] text-white ${fontJournal.variable}`}
       style={{ fontFamily: "var(--font-journal), system-ui, sans-serif" }}
     >
-      {/* Hero background — always show base gradient so never plain black; asset loads on top */}
-      <div className="fixed inset-0 z-0 h-screen w-full overflow-hidden">
-        <div
-          className="absolute inset-0 z-0"
-          style={{
-            background:
-              "linear-gradient(180deg, #080808 0%, #050505 50%, #030303 100%), radial-gradient(ellipse 80% 60% at 50% 40%, rgba(212,175,55,0.04) 0%, transparent 55%)",
-          }}
-        />
-        <div className="absolute inset-0 z-10 overflow-hidden">
-          {shouldRenderVideo ? (
-            <div className="absolute inset-0">
-              <VideoLoadGuard
-                ref={journalHeroVideoRef}
-                key={`journal-hero-${resolvedHeroVideoSrc}-${effectiveHeroVideoVersion ?? 0}`}
-                url={resolvedHeroVideoSrc}
-                version={effectiveHeroVideoVersion}
-                posterUrl={posterUrl}
-                posterPriority
-                forcePoster={!shouldLoadHeroVideo}
-                optimizeGpu
-                lightVideoFade
-                containerClassName="absolute inset-0 h-full w-full"
-                className="absolute inset-0 h-full w-full object-cover"
-                style={{ objectFit: "cover" }}
-                autoPlay
-                loop
-                muted
-                playsInline
-                preload="auto"
-                onError={() => setHeroVideoError(true)}
-              />
-            </div>
-          ) : heroMediaType === "IMAGE" ? (
-            <ImageLoadGuard
-              key={heroUrl}
-              url={heroUrl}
-              version={heroVersion}
-              containerClassName="absolute inset-0 h-full w-full"
-              className="absolute inset-0 h-full w-full object-cover"
-              style={{ objectFit: "cover" }}
-              alt=""
-              priority
-              onError={() => setHeroImageError(true)}
-            />
-          ) : null}
-        </div>
-        <div
-          className="absolute inset-0 z-[11] pointer-events-none"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.6) 100%)",
-          }}
-        />
-        <div
-          className="absolute inset-0 z-[11] pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(ellipse 70% 50% at 50% 40%, rgba(212,175,55,0.07) 0%, transparent 60%)",
-          }}
-        />
-      </div>
-
       <Navbar />
 
-      <HeroEditPortal
+      <PageHeroSection
         page="journal"
-        section="hero"
-        type="video"
-        onUploadDone={refetchPageSections}
-        editLabel="Edit hero"
-      />
-
-      {/* Hero section */}
-      <section className="relative flex min-h-screen flex-col justify-center px-4 pt-24 pb-16 sm:px-6 md:px-8">
+        overlay={
+          <>
+            <div
+              className="pointer-events-none absolute inset-0 z-[1]"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.6) 100%)",
+              }}
+            />
+            <div
+              className="pointer-events-none absolute inset-0 z-[1]"
+              style={{
+                background:
+                  "radial-gradient(ellipse 70% 50% at 50% 40%, rgba(212,175,55,0.07) 0%, transparent 60%)",
+              }}
+            />
+          </>
+        }
+      >
+      <div className="relative z-10 flex min-h-[100dvh] flex-col justify-center px-4 pt-24 pb-16 sm:px-6 md:px-8">
         <motion.div
           initial={{ opacity: 0, y: 32 }}
           animate={{ opacity: 1, y: 0 }}
@@ -338,7 +217,8 @@ export default function JournalPageClient({ initialHeroMediaType, initialHeroUrl
             <div className="h-1.5 w-1 rounded-full bg-white/70" />
           </motion.div>
         </div>
-      </section>
+      </div>
+      </PageHeroSection>
 
       {/* Journal list — featured + asymmetric grid */}
       <section

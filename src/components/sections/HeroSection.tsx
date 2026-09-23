@@ -1,248 +1,19 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
-import { motion, useScroll, useTransform, type Variants } from "framer-motion";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { gsap } from "gsap";
 import { QrCode, BookOpen } from "lucide-react";
-import { getR2UrlClient } from "@/utils/r2-url";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import { OptimizedLink } from "@/components/ui/OptimizedLink";
-import { useReliableVideoAutoplay } from "@/hooks/useReliableVideoAutoplay";
-import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
+import { PageHeroSection } from "@/components/hero/PageHeroSection";
+import { HOME_HERO_VIGNETTE_BG } from "@/lib/hero-media-defaults";
 
 interface HeroSectionProps {
   shouldAnimate?: boolean;
-  /** When true, video is rendered by layout (PersistentHomeHeroVideo) — no duplicate video, avoids re-mount on navigation */
-  skipVideo?: boolean;
-  /** Home LCP: no GSAP hiding headline on first paint; overlays animate without delaying text */
+  /** Home LCP: no GSAP hiding headline on first paint */
   priorityLcp?: boolean;
-}
-
-const videoIntroVariants: Variants = {
-  hidden: { opacity: 0, scale: 1.12, filter: "blur(16px)", rotateX: -8 },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    filter: "blur(0px)",
-    rotateX: 0,
-    transition: { duration: 1.6, ease: [0.16, 1, 0.3, 1] },
-  },
-};
-
-const bubbleLayerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { duration: 1.1, delay: 0.8, ease: "easeOut" },
-  },
-};
-
-const bubbleVariants: Variants = {
-  hidden: { opacity: 0, scale: 0.6, y: 12, filter: "blur(18px)" },
-  visible: (custom?: { delay?: number; duration?: number }) => {
-    const delay = custom?.delay ?? 0;
-    const duration = custom?.duration ?? 8;
-    return {
-      opacity: [0.15, 0.4, 0.18],
-      scale: [0.85, 1.05, 0.92],
-      y: [0, -16, 0],
-      transition: {
-        delay: 0.6 + delay,
-        duration,
-        ease: "easeInOut",
-        repeat: Infinity,
-      },
-    };
-  },
-};
-
-const bubbleOrbs = [
-  {
-    id: "orb-1",
-    size: 220,
-    top: "4%",
-    left: "10%",
-    delay: 0,
-    duration: 9,
-    gradient:
-      "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.45), rgba(255,255,255,0.05) 65%)",
-  },
-  {
-    id: "orb-2",
-    size: 180,
-    top: "28%",
-    left: "5%",
-    delay: 0.3,
-    duration: 7.5,
-    gradient: "radial-gradient(circle at 60% 40%, rgba(255,215,0,0.35), rgba(255,215,0,0.05) 70%)",
-  },
-  {
-    id: "orb-3",
-    size: 260,
-    top: "36%",
-    left: "32%",
-    delay: 0.5,
-    duration: 8.5,
-    gradient:
-      "radial-gradient(circle at 40% 40%, rgba(255,255,255,0.35), rgba(255,255,255,0.05) 70%)",
-  },
-  {
-    id: "orb-4",
-    size: 140,
-    top: "62%",
-    left: "18%",
-    delay: 0.2,
-    duration: 7,
-    gradient: "radial-gradient(circle at 50% 50%, rgba(255,215,0,0.25), rgba(255,215,0,0.04) 70%)",
-  },
-];
-
-/** Persistent home video: CSS orbs only — avoids mix-blend + Framer infinite loops over decoded video */
-const lightHomeOrbs = [
-  {
-    id: "light-1",
-    size: 176,
-    top: "5%",
-    left: "10%",
-    orbClass: "sk-home-orb",
-    gradient:
-      "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.38), rgba(255,255,255,0.04) 68%)",
-  },
-  {
-    id: "light-2",
-    size: 148,
-    top: "26%",
-    left: "6%",
-    orbClass: "sk-home-orb sk-home-orb-d1",
-    gradient: "radial-gradient(circle at 60% 40%, rgba(255,215,0,0.28), rgba(255,215,0,0.04) 70%)",
-  },
-  {
-    id: "light-3",
-    size: 200,
-    top: "38%",
-    left: "34%",
-    orbClass: "sk-home-orb sk-home-orb-d2",
-    gradient:
-      "radial-gradient(circle at 40% 40%, rgba(255,255,255,0.28), rgba(255,255,255,0.04) 70%)",
-  },
-] as const;
-
-/**
- * Framer scroll + inline video path for non-home heroes only.
- * Home uses `skipVideo` + PersistentHomeHeroVideo — skipping this subtree avoids scroll-linked MotionValue work on every frame.
- */
-function HeroScrollDrivenVideoLayer({
-  containerRef,
-  shouldLoadHeroVideo,
-  isLoaded,
-  animationState,
-}: {
-  containerRef: RefObject<HTMLDivElement | null>;
-  shouldLoadHeroVideo: boolean;
-  isLoaded: boolean;
-  animationState: "visible" | "hidden";
-}) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [videoError, setVideoError] = useState(false);
-
-  useReliableVideoAutoplay(videoRef, { mode: "background" });
-
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end start"],
-  });
-  const scale = useTransform(scrollYProgress, [0, 0.5], [1, 1.05]);
-  const videoOpacity = useTransform(scrollYProgress, [0, 0.3], [1, 0.3]);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    const handleError = () => {
-      console.warn("[HeroSection] Video error occurred");
-    };
-    video.addEventListener("error", handleError);
-    return () => video.removeEventListener("error", handleError);
-  }, []);
-
-  return (
-    <motion.div
-      style={{ opacity: isLoaded ? videoOpacity : 0, scale }}
-      className="absolute inset-0 z-0 will-change-transform overflow-hidden"
-    >
-      <motion.div
-        className="absolute inset-0"
-        variants={videoIntroVariants}
-        initial="hidden"
-        animate={animationState}
-      >
-        {shouldLoadHeroVideo ? (
-          <video
-            ref={videoRef}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            disablePictureInPicture
-            disableRemotePlayback
-            className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none"
-            style={{
-              pointerEvents: "none",
-              outline: "none",
-              WebkitTapHighlightColor: "transparent",
-              WebkitTouchCallout: "none",
-              userSelect: "none",
-            }}
-            onContextMenu={(e) => e.preventDefault()}
-            onError={() => setVideoError(true)}
-            onPlay={(e) => {
-              const video = e.currentTarget;
-              if (video.paused) video.play().catch(() => {});
-            }}
-          >
-            <source src={getR2UrlClient("/videos/hero/hero-background.mp4")} type="video/mp4" />
-          </video>
-        ) : (
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(180deg, #080808 0%, #050505 50%, #030303 100%), radial-gradient(ellipse 80% 60% at 50% 40%, rgba(212,175,55,0.05) 0%, transparent 55%)",
-            }}
-            aria-hidden
-          />
-        )}
-        {videoError && <div className="absolute inset-0 bg-black" />}
-      </motion.div>
-
-      <motion.div
-        className="absolute inset-0 pointer-events-none z-[1]"
-        variants={bubbleLayerVariants}
-        initial="hidden"
-        animate={animationState}
-      >
-        {bubbleOrbs.map((orb) => (
-          <motion.span
-            key={orb.id}
-            className="absolute rounded-full blur-3xl opacity-70"
-            style={{
-              width: orb.size,
-              height: orb.size,
-              top: orb.top,
-              left: orb.left,
-              background: orb.gradient,
-              mixBlendMode: "screen",
-            }}
-            variants={bubbleVariants}
-            custom={{ delay: orb.delay, duration: orb.duration }}
-            initial="hidden"
-            animate={animationState}
-          />
-        ))}
-      </motion.div>
-    </motion.div>
-  );
 }
 
 function HeroQrScanCardLink({ t }: { t: (key: string) => string }) {
@@ -271,18 +42,15 @@ function HeroQrScanCardLink({ t }: { t: (key: string) => string }) {
 
 export default function HeroSection({
   shouldAnimate = true,
-  skipVideo = false,
   priorityLcp = false,
 }: HeroSectionProps) {
   const t = useTranslations("home.hero");
   const tJournal = useTranslations("home.journalTeaser");
   const pathname = usePathname();
-  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
   const containerRef = useRef<HTMLDivElement>(null);
   const headlineRef = useRef<HTMLHeadingElement>(null);
   const subtitleRef = useRef<HTMLParagraphElement>(null);
   const statsRef = useRef<HTMLDivElement>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
 
   /** Keep hero shell cheap on SPA route changes — previous GSAP+blur here cost hundreds of ms main-thread (bad INP). */
   useEffect(() => {
@@ -310,13 +78,6 @@ export default function HeroSection({
     },
   ];
 
-  useEffect(() => {
-    setIsLoaded(true);
-  }, []);
-
-  const animationState = priorityLcp || shouldAnimate ? "visible" : "hidden";
-  /** Home + persistent video: vignette/orbs must wait for splash — do not tie to priorityLcp or they never animate */
-  const skipVideoOverlayState = skipVideo ? (shouldAnimate ? "visible" : "hidden") : animationState;
   const [animationsReady, setAnimationsReady] = useState(false);
 
   // Defer heavy animations until after initial page load
@@ -486,77 +247,24 @@ export default function HeroSection({
   }, [shouldAnimate, animationsReady, priorityLcp]);
 
   return (
-    <section
-      ref={containerRef}
-      className={`relative h-screen w-full overflow-hidden hero-section-transition ${skipVideo ? "bg-transparent" : "bg-black"}`}
-      style={{
-        pointerEvents: "auto",
-      }}
-    >
-      {/* Video Background — skip when PersistentHomeHeroVideo in layout is used (skipVideo); on slow connection show poster only */}
-      {!skipVideo && (
-        <HeroScrollDrivenVideoLayer
-          containerRef={containerRef}
-          shouldLoadHeroVideo={shouldLoadHeroVideo}
-          isLoaded={isLoaded}
-          animationState={animationState}
+    <PageHeroSection
+      page="home"
+      sectionRef={containerRef}
+      showScrollIndicator={false}
+      className="bg-transparent"
+      overlay={
+        <div
+          className="pointer-events-none absolute inset-0 z-[1]"
+          style={{ backgroundImage: HOME_HERO_VIGNETTE_BG }}
+          aria-hidden
         />
-      )}
-
-      {/* When skipVideo: overlays only (video from PersistentHomeHeroVideo) + vignette dark motif */}
-      {skipVideo && (
-        <>
-          {/* CSS-only fades: Framer on full-viewport layers + video caused main-thread jank */}
-          <div
-            className={`absolute inset-0 z-0 pointer-events-none hidden md:block transition-opacity duration-[440ms] ease-out motion-reduce:transition-none motion-reduce:opacity-100 ${
-              skipVideoOverlayState === "visible" ? "opacity-100" : "opacity-0"
-            }`}
-            style={{
-              transitionDelay: skipVideoOverlayState === "visible" ? "40ms" : "0ms",
-              backgroundImage:
-                "linear-gradient(to bottom, rgba(0,0,0,0.55), rgba(0,0,0,0.25) 50%, rgba(0,0,0,0.6)), linear-gradient(to right, rgba(0,0,0,0.65), transparent 50%, rgba(0,0,0,0.4))",
-            }}
-            aria-hidden
-          />
-          <div
-            className={`absolute inset-0 z-0 pointer-events-none md:hidden transition-opacity duration-[440ms] ease-out motion-reduce:transition-none motion-reduce:opacity-100 ${
-              skipVideoOverlayState === "visible" ? "opacity-100" : "opacity-0"
-            }`}
-            style={{
-              transitionDelay: skipVideoOverlayState === "visible" ? "40ms" : "0ms",
-              backgroundImage:
-                "linear-gradient(to bottom, rgba(0,0,0,0.38), rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.45)), linear-gradient(to right, rgba(0,0,0,0.45), transparent 50%, rgba(0,0,0,0.28))",
-            }}
-            aria-hidden
-          />
-          <div
-            className={`absolute inset-0 pointer-events-none z-[1] overflow-hidden transition-opacity duration-[480ms] ease-out motion-reduce:transition-none motion-reduce:opacity-100 ${
-              skipVideoOverlayState === "visible" ? "opacity-100" : "opacity-0"
-            }`}
-            style={{
-              transitionDelay: skipVideoOverlayState === "visible" ? "100ms" : "0ms",
-            }}
-            aria-hidden
-          >
-            {lightHomeOrbs.map((orb) => (
-              <div
-                key={orb.id}
-                className={`absolute rounded-full blur-2xl opacity-60 ${orb.orbClass}`}
-                style={{
-                  width: orb.size,
-                  height: orb.size,
-                  top: orb.top,
-                  left: orb.left,
-                  background: orb.gradient,
-                }}
-              />
-            ))}
-          </div>
-        </>
-      )}
-
+      }
+    >
       {/* Content - UNIVERSAL untuk SEMUA device mobile */}
-      <div className="relative z-10 flex h-full items-center pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:pt-8 md:pt-0 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-16 md:pb-0 pointer-events-none">
+      <div
+        className="relative z-10 flex min-h-[100dvh] items-center pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:pt-8 md:pt-0 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-16 md:pb-0 pointer-events-none"
+        style={{ pointerEvents: "auto" }}
+      >
         <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 md:px-10 lg:px-14 xl:px-20 pointer-events-none">
           {/* Main content - Optimized untuk semua mobile */}
           <div className="max-w-[900px] -translate-y-2 sm:-translate-y-3 md:translate-y-0 pointer-events-auto">
@@ -720,6 +428,6 @@ export default function HeroSection({
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-black" aria-hidden />
       </motion.div>
-    </section>
+    </PageHeroSection>
   );
 }

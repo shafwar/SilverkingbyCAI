@@ -1,12 +1,13 @@
 /**
  * Admin API: restore section to default (remove custom media).
  * POST body: { page: string, section: string }
- * Deletes the PageSection row so GET returns no url and frontend uses fallback.
+ * Restoring hero also removes hero_poster.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { HERO_POSTER_SECTION_KEY } from "@/lib/page-hero-cms-config";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -26,10 +27,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const keysToDelete =
+      section.toLowerCase() === "hero" ? ["hero", HERO_POSTER_SECTION_KEY] : [section];
+
     await prisma.pageSection.deleteMany({
       where: {
         pageName: page,
-        sectionKey: section,
+        sectionKey: { in: keysToDelete },
       },
     });
 

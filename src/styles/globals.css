@@ -160,23 +160,61 @@ html[data-window-blurred] .sk-home-orb-d2 {
   [data-splash-screen] .letter {
     opacity: 0;
   }
+  [data-splash-screen] .splash-tagline,
+  [data-splash-screen] .splash-line {
+    opacity: 0;
+    animation: splash-tagline-in 0.75s ease-out 0.85s forwards;
+  }
+  [data-splash-screen] .splash-line {
+    animation-delay: 1s;
+    transform: scaleX(0);
+    animation-name: splash-line-in;
+  }
+  @keyframes splash-tagline-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 0.85;
+      transform: translateY(0);
+    }
+  }
+  @keyframes splash-line-in {
+    from {
+      opacity: 0;
+      transform: scaleX(0);
+    }
+    to {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+  }
   /* Home page content: Geist only */
   body.home-page main,
   body.home-page [data-home-content] {
     font-family: var(--font-geist-sans), sans-serif;
   }
 
-  /* Hide body content until splash screen completes - REMOVED: Too aggressive, blocks interactions */
-  /* body:not(.splash-complete) > *:not([data-splash-screen]) {
+  /* Splash first: hide home shell until splash completes, then fade in */
+  body.home-page:not(.splash-complete) .home-page-shell {
     opacity: 0;
     visibility: hidden;
+    pointer-events: none;
   }
 
-  body.splash-complete > *:not([data-splash-screen]) {
+  body.home-page.splash-complete .home-page-shell {
     opacity: 1;
     visibility: visible;
-    transition: opacity 0.3s ease-in, visibility 0.3s ease-in;
-  } */
+    pointer-events: auto;
+    transition:
+      opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  body.home-page:not(.splash-complete) {
+    background-color: #000;
+  }
 
   body::-webkit-scrollbar {
     /* Chrome, Safari, Opera, Edge */

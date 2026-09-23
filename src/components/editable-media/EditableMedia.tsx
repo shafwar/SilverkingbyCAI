@@ -7,13 +7,19 @@ import { Pencil, RotateCcw } from "lucide-react";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { usePageSections, getCacheBustedMediaUrl } from "@/hooks/usePageSections";
 import { getR2UrlClient } from "@/utils/r2-url";
-import { useHomeHeroSectionsContext } from "@/components/layout/HomeHeroSectionsContext";
+import { VideoLoadGuard } from "@/components/section-media/SectionMediaLoadGuard";
+import { useShouldLoadHeroVideo } from "@/hooks/useShouldLoadHeroVideo";
+import {
+  DEFAULT_HERO_POSTER,
+  HERO_PLACEHOLDER_BG,
+  SECTION_VIDEO_MERCH_PATTERN,
+  resolveHeroPoster,
+} from "@/lib/hero-media-defaults";
 
-const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
-const MAX_VIDEO_BYTES = 20 * 1024 * 1024; // 20 MB
+const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
 const UPLOAD_PROGRESS_CAP = 90; // 100% only after server confirms success
 const IMAGE_UPLOAD_TIMEOUT_MS = 90_000; // 90s
-const VIDEO_UPLOAD_TIMEOUT_MS = 120_000; // 120s
+const VIDEO_UPLOAD_TIMEOUT_MS = 300_000; // 300s
 const UPLOAD_MAX_ATTEMPTS = 3; // initial + 2 retries
 const UPLOAD_RETRY_DELAY_MS = 1500;
 
@@ -65,15 +71,8 @@ export function EditableMedia({
   reduceOverlayChromeCost = false,
 }: EditableMediaProps) {
   const isAdmin = useIsAdmin();
-  const homeHeroCtx = useHomeHeroSectionsContext();
-  const skipInternalPageFetch = Boolean(
-    overlayOnly && page === "home" && homeHeroCtx != null
-  );
-  const pageKeyForSections = skipInternalPageFetch ? "" : page;
-  const { sections: hookSections, loading: sectionsLoading, refetch: hookRefetch } =
-    usePageSections(pageKeyForSections);
-  const sections = skipInternalPageFetch && homeHeroCtx ? homeHeroCtx.sections : hookSections;
-  const refetchPageSections = skipInternalPageFetch && homeHeroCtx ? homeHeroCtx.refetch : hookRefetch;
+  const { sections, loading: sectionsLoading, refetch: refetchPageSections } =
+    usePageSections(page);
   const refetchAll = async () => {
     await refetchPageSections();
     onUploadDone?.();
@@ -84,6 +83,7 @@ export function EditableMedia({
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const shouldLoadHeroVideo = useShouldLoadHeroVideo();
 
   const rawUrl = sections[section]?.url ?? fallbackUrl ?? (type === "image" ? getR2UrlClient("/images/placeholder-hero.jpg") : undefined);
   const url = rawUrl != null ? getCacheBustedMediaUrl(rawUrl, sections[section]?.version) : undefined;
@@ -175,9 +175,8 @@ export function EditableMedia({
       }
       return;
     }
-    const limit = uploadType === "image" ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
-    if (file.size > limit) {
-      setError(uploadType === "image" ? "Image max 3 MB." : "Video max 20 MB.");
+    if (uploadType === "image" && file.size > MAX_IMAGE_BYTES) {
+      setError("Image max 25 MB.");
       e.target.value = "";
       if (autoOpenFilePicker) {
         setModalOpenAttribute();
@@ -472,7 +471,7 @@ export function EditableMedia({
   return (
     <div className="relative">
       {sectionsLoading ? (
-        <div className="absolute inset-0 bg-luxury-black" aria-hidden />
+        <div className="absolute inset-0" style={{ background: HERO_PLACEHOLDER_BG }} aria-hidden />
       ) : (
         <>
           {displayType === "image" && url &&
@@ -492,11 +491,15 @@ export function EditableMedia({
                 className={className}
               />
             ))}
-          {displayType === "video" && url && (
-            <video
-              src={url}
+          {displayType === "video" && rawUrl && (
+            <VideoLoadGuard
+              url={rawUrl}
+              version={sections[section]?.version}
+              posterUrl={resolveHeroPoster(poster ?? DEFAULT_HERO_POSTER)}
+              forcePoster={!shouldLoadHeroVideo}
+              {...SECTION_VIDEO_MERCH_PATTERN}
+              containerClassName="absolute inset-0 w-full h-full"
               className={className}
-              poster={poster}
               autoPlay
               loop
               muted
@@ -670,7 +673,7 @@ function EditableMediaModal({
         {!progressOnly && (
           <>
             <p className="text-sm text-white/50 mb-4">
-              Pilih foto atau video yang ingin ditampilkan. Image: JPEG, PNG, WebP (maks. 3 MB). Video: MP4, WebM (maks. 20 MB).
+              Pilih foto atau video yang ingin ditampilkan. Image: JPEG, PNG, WebP (maks. 25 MB, dikonversi ke WebP HD). Video hero: MP4, WebM (maks. 1 menit, dipotong 15 detik, dioptimasi ~6 MB H.264 1080p — standar Merchandise).
             </p>
             <input
               ref={fileInputRef as React.RefObject<HTMLInputElement>}

@@ -13,8 +13,8 @@ export default getRequestConfig(async ({ requestLocale }) => {
     locale = routing.defaultLocale;
   }
 
-  // Check cache first for faster response
-  if (messageCache.has(locale)) {
+  // Check cache first for faster response (skip in dev so message edits apply immediately)
+  if (process.env.NODE_ENV !== "development" && messageCache.has(locale)) {
     return {
       locale,
       messages: messageCache.get(locale)

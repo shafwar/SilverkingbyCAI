@@ -4,6 +4,7 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: "standalone",
   images: {
     remotePatterns: [
       {
@@ -28,17 +29,16 @@ const nextConfig = {
     },
     // Optimize prefetching for faster navigation
     optimizePackageImports: ["lucide-react", "framer-motion"],
-    // Disabled optimizeCss - requires 'critters' package and causes build errors
-    // optimizeCss: true,
+    // Keep native canvas bindings out of the webpack graph (API routes only).
+    serverComponentsExternalPackages: ["canvas", "@napi-rs/canvas"],
   },
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
   },
-  swcMinify: true,
   reactStrictMode: true,
-  // Optimize page loading and prefetching
   poweredByHeader: false,
   compress: true,
+
   async headers() {
     return [
       {
@@ -57,9 +57,16 @@ const nextConfig = {
   },
   webpack: (config, { isServer }) => {
     if (isServer) {
+      const nativeCanvasPackages = [
+        "canvas",
+        "@napi-rs/canvas",
+        "@napi-rs/canvas/node-canvas",
+      ];
       config.externals = config.externals || [];
-      if (!config.externals.includes("@napi-rs/canvas")) {
-        config.externals.push("@napi-rs/canvas");
+      for (const pkg of nativeCanvasPackages) {
+        if (!config.externals.includes(pkg)) {
+          config.externals.push(pkg);
+        }
       }
     }
     return config;

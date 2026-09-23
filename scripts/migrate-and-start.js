@@ -1,87 +1,46 @@
 const { execSync } = require('child_process');
 const { spawn } = require('child_process');
-const { createDatabaseIfNotExists } = require('./create-database');
 
-// Ensure fontconfig can find config in container (fixes "Cannot load default config file" on Railway)
+// Ensure fontconfig can find config in container
 if (!process.env.FONTCONFIG_PATH) {
   process.env.FONTCONFIG_PATH = '/etc/fonts';
 }
 
 console.log('🚀 Starting application...\n');
 
-// Function to run seed
-async function runSeed() {
-  console.log('🌱 Running database seed...');
-  try {
-    execSync('npm run prisma:seed', {
-      stdio: 'inherit',
-      env: process.env,
-      cwd: process.cwd(),
-    });
-    console.log('✅ Database seed completed successfully!\n');
-    return true;
-  } catch (error) {
-    console.error('❌ Seed failed:', error.message);
-    console.log('⚠️  Continuing without seed (database may already be seeded)...\n');
-    // Don't exit - seed failure should not prevent app from starting
-    return false;
-  }
-}
-
-// Function to run migration
+// Function to ensure database schema is in sync (safe on TiDB Cloud)
 async function runMigration() {
-  console.log('📦 Running database migrations...');
+  console.log('📦 Verifying TiDB database schema...');
   try {
-    // First ensure database exists
-    console.log('Step 1: Ensuring database exists...\n');
-    await createDatabaseIfNotExists();
-    
-    // Run Prisma migration
-    console.log('Step 2: Running Prisma migrations...\n');
-    execSync('npx prisma migrate deploy', {
+    execSync('npx prisma db push --skip-generate', {
       stdio: 'inherit',
       env: process.env,
     });
-    console.log('✅ Database migrations completed successfully!\n');
-    
-    // Run seed after migration
-    console.log('Step 3: Seeding database...\n');
-    await runSeed();
-    
+    console.log('✅ Database schema verified!\n');
     return true;
   } catch (error) {
-    console.error('❌ Migration failed:', error.message);
-    console.log('⚠️  Attempting to create database and retry migration...\n');
-    
-    // Try to create database and retry
-    try {
-      // Use db push as fallback to create schema
-      console.log('🔄 Trying Prisma db push as fallback...');
-      execSync('npx prisma db push --accept-data-loss', {
-        stdio: 'inherit',
-        env: process.env,
-      });
-      console.log('✅ Database schema created successfully!\n');
-      
-      // Try to seed after push
-      await runSeed();
-      
-      return true;
-    } catch (pushError) {
-      console.error('❌ Database push also failed:', pushError.message);
-      console.log('⚠️  Continuing with application start (migrations may be applied later)...\n');
-      return false;
-    }
+    console.error('⚠️ Schema verification notice:', error.message);
+    return false;
   }
 }
 
 // Function to start Next.js
 function startNext() {
-  console.log('🌐 Starting Next.js server...\n');
-  const nextProcess = spawn('npm', ['run', 'start:next'], {
+  const maxMemory = process.env.NODE_MAX_OLD_SPACE_SIZE || '512';
+  // Build NODE_OPTIONS: pass heap limit + expose-gc so routes can trigger GC after large allocations
+  const baseNodeOptions = (process.env.NODE_OPTIONS || '').replace(/--max-old-space-size=\d+/g, '').trim();
+  const nodeOptions = `${baseNodeOptions} --max-old-space-size=${maxMemory} --expose-gc`.trim();
+
+  console.log(`🌐 Starting Next.js server (${maxMemory}MB heap, expose-gc enabled)...\n`);
+
+  const env = { ...process.env, NODE_OPTIONS: nodeOptions };
+
+  // When output: "standalone" is set in next.config.js, use the standalone server binary directly.
+  // "next start" does NOT work with standalone output — it causes a silent hang under traffic.
+  const standaloneServer = require('path').join(process.cwd(), '.next', 'standalone', 'server.js');
+  const nextProcess = spawn(process.execPath, [standaloneServer], {
     stdio: 'inherit',
-    env: process.env,
-    shell: true,
+    env,
   });
 
   nextProcess.on('error', (error) => {
@@ -96,7 +55,6 @@ function startNext() {
     }
   });
 
-  // Handle graceful shutdown
   process.on('SIGTERM', () => {
     console.log('\n🛑 Received SIGTERM, shutting down gracefully...');
     nextProcess.kill('SIGTERM');
@@ -113,4 +71,3 @@ function startNext() {
   await runMigration();
   startNext();
 })();
-

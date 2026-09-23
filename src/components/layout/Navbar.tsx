@@ -10,6 +10,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/routing";
 import { routing } from "@/i18n/routing";
 import LanguageSwitcher from "./LanguageSwitcher";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -17,7 +18,7 @@ export default function Navbar() {
   const [isVisible, setIsVisible] = useState(true);
   /** Ref avoids re-subscribing scroll listener on every pixel scrolled (was killing INP / main thread). */
   const lastScrollYRef = useRef(0);
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const isAdmin = useIsAdmin();
   const t = useTranslations("nav");
   const locale = useLocale();
   const pathname = usePathname();
@@ -84,46 +85,6 @@ export default function Navbar() {
     return () => observer.disconnect();
   }, []);
 
-  // Check if user is admin - ultra-optimized with instant cache + deferred background refresh
-  useEffect(() => {
-    // IMMEDIATE: Check cache first (synchronous, instant, 0ms delay)
-    const cached = sessionStorage.getItem("isAdmin");
-    if (cached !== null) {
-      setIsAdmin(cached === "true");
-    }
-
-    // DEFERRED: Refresh admin status in idle time (non-blocking, low priority)
-    const checkAdmin = async () => {
-      try {
-        const res = await fetch("/api/admin/me", {
-          cache: "no-store",
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const adminStatus = data?.isAdmin === true;
-          
-          // Always update state and cache
-          setIsAdmin(adminStatus);
-          sessionStorage.setItem("isAdmin", String(adminStatus));
-        } else {
-          setIsAdmin(false);
-          sessionStorage.setItem("isAdmin", "false");
-        }
-      } catch (error) {
-        // Silently fail - user is not admin
-        setIsAdmin(false);
-        sessionStorage.setItem("isAdmin", "false");
-      }
-    };
-    
-    // Defer check to idle time using requestIdleCallback or setTimeout fallback
-    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-      requestIdleCallback(() => checkAdmin(), { timeout: 2000 });
-    } else {
-      setTimeout(checkAdmin, 100);
-    }
-  }, []);
-
   // Lock body scroll when mobile menu is open - PRODUCTION-SAFE
   useEffect(() => {
     // PRODUCTION-SAFE: Ensure document exists
@@ -152,36 +113,6 @@ export default function Navbar() {
     ],
     [t]
   );
-
-  /** One idle pass of router.prefetch — avoids triple DOM prefetch + duplicate <link> tags (better INP). */
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const allLinks = [...navLinks, { name: "contact", href: "/contact" as const }];
-    const run = () => {
-      allLinks.forEach((link) => {
-        try {
-          router.prefetch(link.href);
-        } catch {
-          /* ignore */
-        }
-      });
-    };
-
-    const w = window;
-    let ricId: number | undefined;
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    if ("requestIdleCallback" in w) {
-      ricId = w.requestIdleCallback(run, { timeout: 2200 });
-    } else {
-      timeoutId = setTimeout(run, 600);
-    }
-
-    return () => {
-      if (ricId != null) w.cancelIdleCallback(ricId);
-      if (timeoutId != null) clearTimeout(timeoutId);
-    };
-  }, [locale, router, navLinks]);
 
   const handleNavClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
     // Allow default navigation for special keys (open in new tab, etc.)
@@ -222,21 +153,17 @@ export default function Navbar() {
               // Direct navigation - no transition
             }}
           >
-            <div className="relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-[8deg]">
+            <div className="relative flex items-center justify-center h-8 w-12 sm:h-10 sm:w-14 md:h-11 md:w-16 transition-all duration-300 ease-out group-hover:scale-105">
               <Image
-                src={getR2UrlClient("/images/cai-logo.png")}
-                alt="Silver King by CAI"
+                src={getR2UrlClient("/images/sk-crown-logo.png")}
+                alt="Cahaya Silver King"
                 fill
-                sizes="(max-width: 640px) 40px, (max-width: 768px) 48px, 56px"
-                className="object-contain brightness-0 invert transition-all duration-500"
-                style={{
-                  filter:
-                    "brightness(0) invert(1) contrast(1.1) drop-shadow(0 0 12px rgba(255, 255, 255, 0.2))",
-                }}
+                sizes="(max-width: 640px) 48px, (max-width: 768px) 56px, 64px"
+                className="object-contain drop-shadow-[0_2px_10px_rgba(255,255,255,0.2)] transition-all duration-300"
                 priority
               />
-              {/* Powerful glow on hover */}
-              <div className="absolute inset-0 scale-150 rounded-full bg-gradient-to-r from-luxury-gold via-luxury-lightGold to-luxury-gold opacity-0 blur-2xl transition-all duration-500 group-hover:opacity-30" />
+              {/* Subtle luxury glow on hover */}
+              <div className="absolute inset-0 scale-125 rounded-full bg-gradient-to-r from-luxury-gold/20 via-luxury-lightGold/30 to-luxury-gold/20 opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-100 pointer-events-none" />
             </div>
           </Link>
 
@@ -416,21 +343,18 @@ export default function Navbar() {
                       }}
                       className="flex items-center"
                     >
-                      <div className="relative w-10 h-10 sm:w-12 sm:h-12">
+                      <div className="relative flex items-center justify-center h-8 w-12 sm:h-9 sm:w-14">
                         <Image
-                          src={getR2UrlClient("/images/cai-logo.png")}
-                          alt="Silver King by CAI"
+                          src={getR2UrlClient("/images/sk-crown-logo.png")}
+                          alt="Cahaya Silver King"
                           fill
-                          sizes="(max-width: 640px) 40px, 48px"
-                          className="object-contain brightness-0 invert"
-                          style={{
-                            filter: "brightness(0) invert(1)",
-                          }}
+                          sizes="(max-width: 640px) 48px, 56px"
+                          className="object-contain"
                           priority
                         />
                       </div>
                       <span className="ml-3 font-sans text-lg sm:text-xl font-medium text-white">
-                        Silver King
+                        Cahaya Silver King
                       </span>
                     </Link>
                     <button
