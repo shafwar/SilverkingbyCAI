@@ -26,7 +26,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const sitemapEntries: MetadataRoute.Sitemap = [];
 
-  // Generate canonical English entries with multilingual hreflang alternates
+  // Generate clean standard XML entries (English canonical + Indonesian)
+  // Omitting 'alternates' prevents Next.js from injecting 'xmlns:xhtml',
+  // which causes Google Chrome to misinterpret the XML as unstyled HTML text.
   for (const page of staticPages) {
     const enUrl = `${baseUrl}${page.path}`;
     const idUrl = `${baseUrl}/id${page.path}`;
@@ -36,13 +38,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: currentDate,
       changeFrequency: page.changeFrequency,
       priority: page.priority,
-      alternates: {
-        languages: {
-          en: enUrl,
-          id: idUrl,
-          'x-default': enUrl,
-        },
-      },
+    });
+
+    sitemapEntries.push({
+      url: idUrl,
+      lastModified: currentDate,
+      changeFrequency: page.changeFrequency,
+      priority: page.priority,
     });
   }
 
@@ -71,13 +73,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: articleDate,
         changeFrequency: 'weekly',
         priority: 0.8,
-        alternates: {
-          languages: {
-            en: enUrl,
-            id: idUrl,
-            'x-default': enUrl,
-          },
-        },
+      });
+
+      sitemapEntries.push({
+        url: idUrl,
+        lastModified: articleDate,
+        changeFrequency: 'weekly',
+        priority: 0.8,
       });
     }
   } catch (error) {
