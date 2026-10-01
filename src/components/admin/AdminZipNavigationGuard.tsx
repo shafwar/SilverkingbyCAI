@@ -76,7 +76,7 @@ export function AdminZipNavigationGuard({ isBlocking }: Props) {
     });
     cancelZipBackgroundMonitoring();
     resetDownload();
-    window.location.replace("/admin/qr-preview/page2");
+    window.location.replace("/admin/qr-preview");
   }, [pathname, isBlocking, resetDownload]);
 
   return null;

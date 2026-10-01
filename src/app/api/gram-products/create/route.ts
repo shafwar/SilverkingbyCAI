@@ -11,7 +11,7 @@ import {
 } from "@/lib/serial";
 import { generateAndStoreQR } from "@/lib/qr";
 import { getVerifyUrl } from "@/utils/constants";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 // Folder in R2 for the new gram-based QR assets
 const GRAM_QR_FOLDER = "qr-gram";

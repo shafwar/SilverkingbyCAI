@@ -4,6 +4,8 @@ import { generatePageMetadata } from "@/lib/seo";
 import { ServerHeroSeo } from "@/components/seo/ServerHeroSeo";
 import WhatWeDoPageClient from "./WhatWeDoPageClient";
 
+export const revalidate = 300;
+
 export async function generateMetadata({
   params,
 }: {

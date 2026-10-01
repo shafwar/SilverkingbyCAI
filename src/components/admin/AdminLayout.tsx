@@ -159,6 +159,7 @@ export function AdminLayout({ children, email }: AdminLayoutProps) {
       "/admin",
       "/admin/products",
       "/admin/qr-preview",
+      "/admin/qr-preview/satuan",
       "/admin/qr-preview/page2",
       "/admin/qr-preview/zip-issues",
       "/admin/serticard",

@@ -1,76 +1,88 @@
 /**
- * Server-side canvas for QR / Serticard rasterization.
+ * Unified server-side canvas adapter for QR / Serticard rasterization.
  *
- * Production (Railway): uses node-canvas when native bindings are present — unchanged.
- * Local dev only: falls back to @napi-rs/canvas when node-canvas bindings are missing.
+ * Prioritizes @napi-rs/canvas (Rust Skia engine) for:
+ * 1. Superior memory efficiency (zero Cairo C++ heap fragmentation).
+ * 2. Cross-platform support (Railway, Vercel Serverless, and local dev).
  *
- * Native modules are loaded with webpackIgnore so Next.js does not try to bundle .node binaries.
+ * Gracefully falls back to node-canvas if @napi-rs/canvas is unavailable.
+ * Native modules are loaded with webpackIgnore so Next.js does not bundle .node binaries.
  */
 
-/** Minimal canvas surface shared by node-canvas and @napi-rs/canvas (dev fallback). */
 export type ServerCanvasModule = {
   createCanvas: (width: number, height: number) => any;
   loadImage: (src: string | Buffer) => Promise<any>;
-  registerFont?: (path: string, meta: { family: string }) => void;
+  registerFont?: (path: string, meta: { family: string } | string) => boolean | void;
+  backendName: "napi-rs" | "node-canvas";
 };
 
 let modulePromise: Promise<ServerCanvasModule | null> | null = null;
 
-function asCanvasModule(mod: unknown): ServerCanvasModule | null {
-  if (
-    mod &&
-    typeof mod === "object" &&
-    typeof (mod as ServerCanvasModule).createCanvas === "function" &&
-    typeof (mod as ServerCanvasModule).loadImage === "function"
-  ) {
-    return mod as ServerCanvasModule;
-  }
-  return null;
-}
-
-async function tryLoadNodeCanvas(): Promise<ServerCanvasModule | null> {
+async function tryLoadNapiCanvas(): Promise<ServerCanvasModule | null> {
   try {
-    const mod = await import(/* webpackIgnore: true */ "canvas");
-    return asCanvasModule(mod);
+    const mod = (await import(/* webpackIgnore: true */ "@napi-rs/canvas")) as any;
+    if (mod && typeof mod.createCanvas === "function" && typeof mod.loadImage === "function") {
+      return {
+        createCanvas: (w: number, h: number) => mod.createCanvas(w, h),
+        loadImage: (src: string | Buffer) => mod.loadImage(src),
+        registerFont: (fontPath: string, meta: { family: string } | string) => {
+          const family = typeof meta === "string" ? meta : meta?.family;
+          if (mod.GlobalFonts && typeof mod.GlobalFonts.registerFromPath === "function") {
+            return mod.GlobalFonts.registerFromPath(fontPath, family);
+          }
+          return false;
+        },
+        backendName: "napi-rs",
+      };
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
-async function tryLoadNapiCanvas(): Promise<ServerCanvasModule | null> {
+async function tryLoadNodeCanvas(): Promise<ServerCanvasModule | null> {
   try {
-    const mod = await import(/* webpackIgnore: true */ "@napi-rs/canvas/node-canvas");
-    const parsed = asCanvasModule(mod);
-    if (parsed) return parsed;
-  } catch {
-    // try main entry below
-  }
-  try {
-    const mod = await import(/* webpackIgnore: true */ "@napi-rs/canvas");
-    return asCanvasModule(mod);
+    const mod = (await import(/* webpackIgnore: true */ "canvas")) as any;
+    if (mod && typeof mod.createCanvas === "function" && typeof mod.loadImage === "function") {
+      return {
+        createCanvas: (w: number, h: number) => mod.createCanvas(w, h),
+        loadImage: (src: string | Buffer) => mod.loadImage(src),
+        registerFont: (fontPath: string, meta: { family: string } | string) => {
+          const familyMeta = typeof meta === "string" ? { family: meta } : meta;
+          if (typeof mod.registerFont === "function") {
+            mod.registerFont(fontPath, familyMeta);
+            return true;
+          }
+          return false;
+        },
+        backendName: "node-canvas",
+      };
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
 /**
- * Resolve a canvas implementation for server-side image/PDF generation.
- * Prefers node-canvas; uses @napi-rs/canvas only in development when node-canvas is unavailable.
+ * Resolve canvas implementation.
+ * Prioritizes @napi-rs/canvas for optimal memory usage and Vercel compatibility,
+ * with automatic fallback to node-canvas.
  */
 export async function getServerCanvasModule(): Promise<ServerCanvasModule | null> {
   if (!modulePromise) {
     modulePromise = (async () => {
-      const primary = await tryLoadNodeCanvas();
-      if (primary) return primary;
+      // 1. Primary: @napi-rs/canvas (lightweight Rust/Skia engine, low RAM footprint)
+      const napi = await tryLoadNapiCanvas();
+      if (napi) {
+        return napi;
+      }
 
-      if (process.env.NODE_ENV === "development") {
-        const fallback = await tryLoadNapiCanvas();
-        if (fallback) {
-          console.warn(
-            "[ServerCanvas] node-canvas unavailable in development; using @napi-rs/canvas fallback."
-          );
-          return fallback;
-        }
+      // 2. Fallback: node-canvas (standard Cairo engine)
+      const nodeCanvas = await tryLoadNodeCanvas();
+      if (nodeCanvas) {
+        return nodeCanvas;
       }
 
       return null;
@@ -78,3 +90,4 @@ export async function getServerCanvasModule(): Promise<ServerCanvasModule | null
   }
   return modulePromise;
 }
+

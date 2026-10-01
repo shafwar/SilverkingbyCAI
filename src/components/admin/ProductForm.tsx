@@ -138,8 +138,8 @@ export function ProductForm({ defaultValues }: ProductFormProps) {
         });
       }
 
-      // Redirect to QR Preview Page 1 after create/update
-      router.push("/admin/qr-preview");
+      // Redirect to QR Preview Produk Satuan after create/update
+      router.push("/admin/qr-preview/satuan");
     } catch (error: any) {
       console.error(error);
       toast.error(t("saveFailed"), {

@@ -38,12 +38,16 @@ export async function ServerHeroSeo({
 }: ServerHeroSeoProps) {
   const t = await getTranslations({ locale, namespace });
 
+  let brandTitle: string | null = null;
+  let headlineSubtitle: string | null = null;
   let title: string | null = null;
+
   if (homeHeadlines) {
+    brandTitle = "Cahaya Silver King";
     const parts = [1, 2, 3, 4, 5, 6]
       .map((n) => t(`hero.headline${n}` as "hero.headline1"))
       .filter(isRealMessage);
-    title = parts.length > 0 ? parts.join(" ") : isRealMessage(t("title")) ? t("title") : null;
+    headlineSubtitle = parts.length > 0 ? parts.join(" ") : null;
   } else {
     const primary = t(titleKey);
     title = isRealMessage(primary) ? primary : null;
@@ -54,13 +58,18 @@ export async function ServerHeroSeo({
   const secondary = secondarySubtitleKey ? t(secondarySubtitleKey) : null;
   const tagline = taglineKey ? t(taglineKey) : null;
 
-  if (!title && !isRealMessage(subtitle) && !isRealMessage(tagline)) {
+  if (!brandTitle && !title && !isRealMessage(subtitle) && !isRealMessage(tagline)) {
     return null;
   }
 
   return (
     <header className="sr-only" aria-label="Page introduction">
-      {title ? (
+      {homeHeadlines ? (
+        <>
+          <h1>{brandTitle}</h1>
+          {headlineSubtitle ? <h2>{headlineSubtitle}</h2> : null}
+        </>
+      ) : title ? (
         <h1>
           {title}
           {isRealMessage(titleBold) ? ` ${titleBold}` : null}

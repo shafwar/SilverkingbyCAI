@@ -28,6 +28,9 @@ import { isSerticardPackagesVariant } from "@/utils/serticard-templates";
  *   "includeRootKey": boolean  // default false: single PDF tanpa pill root key (ZIP bulk bisa true)
  * }
  */
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();

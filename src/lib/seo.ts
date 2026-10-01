@@ -24,7 +24,8 @@ export function generatePageMetadata({
   keywords = [],
   noindex = false,
 }: PageMetadataOptions): Metadata {
-  const fullTitle = `${title} | ${APP_NAME}`;
+  const isHome = path === "" || path === "/" || title === APP_NAME;
+  const fullTitle = isHome ? APP_NAME : `${title} | ${APP_NAME}`;
   const canonicalUrl = locale === routing.defaultLocale
     ? `${baseUrl}${path}`
     : `${baseUrl}/${locale}${path}`;
@@ -49,7 +50,7 @@ export function generatePageMetadata({
   const allKeywords = [...new Set([...defaultKeywords, ...keywords])];
 
   return {
-    title: fullTitle,
+    title: isHome ? { absolute: APP_NAME } : fullTitle,
     description,
     keywords: allKeywords,
     authors: [{ name: APP_NAME }],

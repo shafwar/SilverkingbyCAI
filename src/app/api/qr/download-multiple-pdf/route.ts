@@ -33,6 +33,9 @@ import { findLatestActiveZipJobForCacheKey } from "@/lib/qr-zip-job-gram-lookup"
 import { SERTICARD_ZIP_CHUNK_SIZE } from "@/lib/serticard-zip-result";
 import { getZipCacheTemplateSegment } from "@/utils/serticard-templates";
 
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
 /**
  * Request dengan product count di atas ini diproses di background (hindari timeout 524).
  * Nilai rendah (10) agar background job aktif lebih awal — request sync tetap ringan.
@@ -752,7 +755,8 @@ async function buildOneZipChunk(
             return;
           }
           const productIsGram = (product as any).isGram === true || isGramRequest;
-          const qrBuffer = await getQrOnlyPngBufferForZip(productSerialCode, productIsGram);
+          // ⚡ skipDbCheck = true: item sudah divalidasi; hindari N+1 query individual ke TiDB Cloud
+          const qrBuffer = await getQrOnlyPngBufferForZip(productSerialCode, productIsGram, true);
           if (!qrBuffer?.length) {
             failCount++;
             return;

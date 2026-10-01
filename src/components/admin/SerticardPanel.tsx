@@ -33,8 +33,8 @@ const stepBadgeClass =
 
 type ConfirmDialog = null | "deletePersisted" | "deleteFront" | "deleteBack";
 
-/** QR Preview → tab “Batch Gram” (same route as sidebar Batch per gramasi). */
-const QR_PREVIEW_BATCH_GRAM_HREF = "/admin/qr-preview/page2";
+/** QR Preview → tab “Batch Gram” (halaman utama). */
+const QR_PREVIEW_BATCH_GRAM_HREF = "/admin/qr-preview";
 
 /** After Save settings: hide upload-zone previews so “truth” is only in Saved custom pair; cleared on upload/delete/edit. */
 const SERTICARD_UPLOAD_ZONE_HIDDEN_KEY = "sk_serticard_hide_upload_previews";

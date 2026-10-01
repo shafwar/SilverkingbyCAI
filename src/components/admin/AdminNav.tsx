@@ -22,10 +22,8 @@ export function AdminNav({ email }: { email?: string | null }) {
       // Page 2 – gram-based inventory
       { label: `${t("products")} 2`, href: "/admin/products/page2" },
       { label: t("distributor"), href: "/admin/distributors" },
-      { label: t("heroAssetsNav"), href: "/admin/hero-assets" },
-      { label: t("qrPreview"), href: "/admin/qr-preview" },
-      // Page 2 – gram-based QR preview
-      { label: `${t("qrPreview")} 2`, href: "/admin/qr-preview/page2" },
+      { label: `${t("qrPreview")} (Batch Gram)`, href: "/admin/qr-preview" },
+      { label: `${t("qrPreview")} (Satuan)`, href: "/admin/qr-preview/satuan" },
       { label: t("zipIssuesNav"), href: "/admin/qr-preview/zip-issues" },
       { label: t("logs"), href: "/admin/logs" },
       { label: tExport("label"), href: "/admin/export" },

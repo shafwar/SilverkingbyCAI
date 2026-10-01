@@ -18,8 +18,8 @@ export async function generateMetadata({
   return generatePageMetadata({
     title: t("title") || "Cahaya Silver King",
     description:
-      t("hero.subtitle") ||
-      "Manufaktur resmi emas, perak, dan paladium batangan bersertifikat ISO 9001 dengan jaminan kemurnian 99.99% dan sistem verifikasi QR code instan.",
+      (t("hero.subtitle") || "").replace(/<[^>]+>/g, "").trim() ||
+      "Official manufacturer of ISO 9001 certified gold, silver, and palladium bullion bars. Guaranteed 99.99% purity with instant QR code authenticity verification.",
     path: "",
     locale,
     keywords: [

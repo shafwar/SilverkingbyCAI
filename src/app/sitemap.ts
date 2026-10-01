@@ -26,31 +26,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const sitemapEntries: MetadataRoute.Sitemap = [];
 
-  // Generate sitemap entries for each locale across all static pages
+  // Generate canonical English entries with multilingual hreflang alternates
   for (const page of staticPages) {
-    for (const locale of routing.locales) {
-      const url =
-        locale === routing.defaultLocale
-          ? `${baseUrl}${page.path}`
-          : `${baseUrl}/${locale}${page.path}`;
+    const enUrl = `${baseUrl}${page.path}`;
+    const idUrl = `${baseUrl}/id${page.path}`;
 
-      const enUrl = `${baseUrl}${page.path}`;
-      const idUrl = `${baseUrl}/id${page.path}`;
-
-      sitemapEntries.push({
-        url,
-        lastModified: currentDate,
-        changeFrequency: page.changeFrequency,
-        priority: locale === routing.defaultLocale ? page.priority : Math.max(0.6, page.priority - 0.05),
-        alternates: {
-          languages: {
-            en: enUrl,
-            id: idUrl,
-            'x-default': enUrl,
-          },
+    sitemapEntries.push({
+      url: enUrl,
+      lastModified: currentDate,
+      changeFrequency: page.changeFrequency,
+      priority: page.priority,
+      alternates: {
+        languages: {
+          en: enUrl,
+          id: idUrl,
+          'x-default': enUrl,
         },
-      });
-    }
+      },
+    });
   }
 
   // Dynamically include published Journal articles from database
@@ -70,29 +63,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     for (const article of articles) {
       const articleDate = article.updatedAt || article.publishedAt || currentDate;
-      for (const locale of routing.locales) {
-        const url =
-          locale === routing.defaultLocale
-            ? `${baseUrl}/journal/${article.slug}`
-            : `${baseUrl}/${locale}/journal/${article.slug}`;
+      const enUrl = `${baseUrl}/journal/${article.slug}`;
+      const idUrl = `${baseUrl}/id/journal/${article.slug}`;
 
-        const enUrl = `${baseUrl}/journal/${article.slug}`;
-        const idUrl = `${baseUrl}/id/journal/${article.slug}`;
-
-        sitemapEntries.push({
-          url,
-          lastModified: articleDate,
-          changeFrequency: 'weekly',
-          priority: 0.8,
-          alternates: {
-            languages: {
-              en: enUrl,
-              id: idUrl,
-              'x-default': enUrl,
-            },
+      sitemapEntries.push({
+        url: enUrl,
+        lastModified: articleDate,
+        changeFrequency: 'weekly',
+        priority: 0.8,
+        alternates: {
+          languages: {
+            en: enUrl,
+            id: idUrl,
+            'x-default': enUrl,
           },
-        });
-      }
+        },
+      });
     }
   } catch (error) {
     console.warn('[Sitemap] Could not fetch dynamic journal articles for sitemap:', error);

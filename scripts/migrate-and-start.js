@@ -26,7 +26,7 @@ async function runMigration() {
 
 // Function to start Next.js
 function startNext() {
-  const maxMemory = process.env.NODE_MAX_OLD_SPACE_SIZE || '512';
+  const maxMemory = process.env.NODE_MAX_OLD_SPACE_SIZE || '384';
   // Build NODE_OPTIONS: pass heap limit + expose-gc so routes can trigger GC after large allocations
   const baseNodeOptions = (process.env.NODE_OPTIONS || '').replace(/--max-old-space-size=\d+/g, '').trim();
   const nodeOptions = `${baseNodeOptions} --max-old-space-size=${maxMemory} --expose-gc`.trim();

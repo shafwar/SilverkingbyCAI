@@ -153,10 +153,68 @@ export function StructuredData({
       }
     : null;
 
+  const siteNavigationSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Official Silver King Navigation',
+    itemListElement: [
+      {
+        '@type': 'SiteNavigationElement',
+        position: 1,
+        name: 'Products',
+        description: 'Gold, silver, and palladium precious metal bars certified ISO 9001 with verified QR code.',
+        url: `${baseUrl}/products`,
+      },
+      {
+        '@type': 'SiteNavigationElement',
+        position: 2,
+        name: 'About Us',
+        description: 'Crafting excellence in precious metals with uncompromising precision and authentic verification.',
+        url: `${baseUrl}/about`,
+      },
+      {
+        '@type': 'SiteNavigationElement',
+        position: 3,
+        name: 'Official Distributors',
+        description: 'Find Silver King official distributors across various cities for authentic bullion.',
+        url: `${baseUrl}/distributor`,
+      },
+      {
+        '@type': 'SiteNavigationElement',
+        position: 4,
+        name: 'Authenticity',
+        description: 'Instant QR verification system and ISO 9001 certified purity assurance.',
+        url: `${baseUrl}/authenticity`,
+      },
+      {
+        '@type': 'SiteNavigationElement',
+        position: 5,
+        name: 'What We Do',
+        description: 'Precious metals fabrication, custom bar manufacturing, and advanced purity assaying.',
+        url: `${baseUrl}/what-we-do`,
+      },
+      {
+        '@type': 'SiteNavigationElement',
+        position: 6,
+        name: 'Contact Us',
+        description: 'Customer service, corporate inquiries, and official support for Silver King products.',
+        url: `${baseUrl}/contact`,
+      },
+      {
+        '@type': 'SiteNavigationElement',
+        position: 7,
+        name: 'Journal',
+        description: 'Insights, market updates, and educational articles on precious metals investment.',
+        url: `${baseUrl}/journal`,
+      },
+    ],
+  };
+
   const schemas: any[] = [];
   if (type === 'Organization' || type === 'Website') {
     schemas.push(organizationSchema);
     schemas.push(websiteSchema);
+    schemas.push(siteNavigationSchema);
   }
   if (breadcrumbSchema) {
     schemas.push(breadcrumbSchema);

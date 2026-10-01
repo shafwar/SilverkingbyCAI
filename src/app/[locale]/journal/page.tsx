@@ -7,6 +7,8 @@ import { prisma } from "@/lib/prisma";
 import { getPublicUrl } from "@/lib/r2-client";
 import JournalPageClient from "./JournalPageClient";
 
+export const revalidate = 300;
+
 export async function generateMetadata({
   params,
 }: {

@@ -3,8 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { getVerifyUrl } from "@/utils/constants";
 
 /** Matches GET /api/qr-gram/.../qr-only and /api/qr/.../qr-only PNG settings. */
+/**
+ * Optimized QR PNG options for Serticard.
+ * 512px renders at >300 DPI on physical Serticard panel while saving ~75% uncompressed RAM vs 2048px.
+ */
 const QR_ONLY_OPTIONS = {
-  width: 2048,
+  width: 512,
   errorCorrectionLevel: "H" as const,
   color: { dark: "#0c0c0c", light: "#ffffff" },
   margin: 2,
@@ -13,13 +17,23 @@ const QR_ONLY_OPTIONS = {
 /**
  * QR-only PNG bytes in-process (no same-origin HTTP). Used by multi-PDF ZIP and single PDF
  * so large batches do not depend on NEXTAUTH_URL / self-fetch reliability.
+ *
+ * @param productSerialCode Serial code or unique code to encode.
+ * @param isGram Whether the item is from gram products.
+ * @param skipDbCheck If true, skips individual database query (essential for large batch jobs to prevent TiDB connection pool exhaustion).
  */
 export async function getQrOnlyPngBufferForZip(
   productSerialCode: string,
-  isGram: boolean
+  isGram: boolean,
+  skipDbCheck: boolean = false
 ): Promise<Buffer | null> {
   const code = String(productSerialCode || "").trim().toUpperCase();
   if (!code || code === "0000" || code.length < 3) return null;
+
+  if (skipDbCheck) {
+    const verifyUrl = getVerifyUrl(code);
+    return await QRCode.toBuffer(verifyUrl, QR_ONLY_OPTIONS);
+  }
 
   if (isGram) {
     const gramItem = await prisma.gramProductItem.findFirst({

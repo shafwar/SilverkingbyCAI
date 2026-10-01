@@ -239,8 +239,8 @@ export function GramProductForm({ defaultValues }: GramProductFormProps) {
         });
         }
 
-        // Redirect to QR Preview Page 2
-        router.push("/admin/qr-preview/page2");
+        // Redirect to QR Preview Batch Gram (halaman utama)
+        router.push("/admin/qr-preview");
         return;
       }
     } catch (error: any) {

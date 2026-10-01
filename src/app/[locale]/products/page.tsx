@@ -7,6 +7,8 @@ import { prisma } from "@/lib/prisma";
 import ProductsPageClient from "./ProductsPageClient";
 import type { ProductWithPricing } from "@/components/ui/ProductCard";
 
+export const revalidate = 300;
+
 export async function generateMetadata({
   params,
 }: {

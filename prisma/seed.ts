@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { generateAndStoreQR } from "../src/lib/qr";
 import { getVerifyUrl } from "../src/utils/constants";
 

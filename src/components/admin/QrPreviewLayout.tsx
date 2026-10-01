@@ -13,11 +13,11 @@ export function QrPreviewLayout({ children }: QrPreviewLayoutProps) {
   const t = useTranslations("admin.zipIssues");
   const pathname = usePathname();
   const isZipIssues = pathname.includes("/qr-preview/zip-issues");
-  const isPage2 = pathname.includes("/qr-preview/page2");
-  const isPage1 =
+  const isSatuan = pathname.includes("/qr-preview/satuan");
+  const isBatchGram =
     !isZipIssues &&
-    !isPage2 &&
-    (pathname === "/admin/qr-preview" || pathname.endsWith("/qr-preview"));
+    !isSatuan &&
+    (pathname === "/admin/qr-preview" || pathname.endsWith("/qr-preview") || pathname.includes("/qr-preview/page2"));
 
   return (
     <div className="flex flex-col bg-gradient-to-b from-white/[0.02] to-black/[0.15]">
@@ -43,27 +43,27 @@ export function QrPreviewLayout({ children }: QrPreviewLayoutProps) {
               <Link
                 href="/admin/qr-preview"
                 className={`flex flex-col rounded-xl px-5 py-3 text-left transition-all sm:min-w-[140px] ${
-                  isPage1
-                    ? "bg-white text-black shadow-sm"
-                    : "text-white/70 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                <span className="text-sm font-semibold">Produk Satuan</span>
-                <span className={`mt-0.5 text-[10px] ${isPage1 ? "text-black/60" : "text-white/50"}`}>
-                  QR per item
-                </span>
-              </Link>
-              <Link
-                href="/admin/qr-preview/page2"
-                className={`flex flex-col rounded-xl px-5 py-3 text-left transition-all sm:min-w-[140px] ${
-                  isPage2
+                  isBatchGram
                     ? "bg-white text-black shadow-sm"
                     : "text-white/70 hover:bg-white/10 hover:text-white"
                 }`}
               >
                 <span className="text-sm font-semibold">Batch Gram</span>
-                <span className={`mt-0.5 text-[10px] ${isPage2 ? "text-black/60" : "text-white/50"}`}>
+                <span className={`mt-0.5 text-[10px] ${isBatchGram ? "text-black/60" : "text-white/50"}`}>
                   Batch per gramasi
+                </span>
+              </Link>
+              <Link
+                href="/admin/qr-preview/satuan"
+                className={`flex flex-col rounded-xl px-5 py-3 text-left transition-all sm:min-w-[140px] ${
+                  isSatuan
+                    ? "bg-white text-black shadow-sm"
+                    : "text-white/70 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                <span className="text-sm font-semibold">Produk Satuan</span>
+                <span className={`mt-0.5 text-[10px] ${isSatuan ? "text-black/60" : "text-white/50"}`}>
+                  QR per item
                 </span>
               </Link>
               <Link

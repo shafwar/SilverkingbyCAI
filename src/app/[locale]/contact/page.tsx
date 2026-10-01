@@ -3,6 +3,8 @@ import { getTranslations } from "next-intl/server";
 import { generatePageMetadata } from "@/lib/seo";
 import ContactPageClient from "./ContactPageClient";
 
+export const revalidate = 300;
+
 export async function generateMetadata({
   params,
 }: {
