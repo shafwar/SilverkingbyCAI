@@ -111,11 +111,44 @@ function runMigrationAsync() {
   });
 }
 
+// Ensure Next.js standalone server has static and public files available
+function ensureStandaloneAssets() {
+  const rootDir = process.cwd();
+  const standaloneDir = path.join(rootDir, '.next', 'standalone');
+  if (!fs.existsSync(standaloneDir)) return;
+
+  const destStatic = path.join(standaloneDir, '.next', 'static');
+  const srcStatic = path.join(rootDir, '.next', 'static');
+  if (!fs.existsSync(destStatic) && fs.existsSync(srcStatic)) {
+    console.log('📦 Linking .next/static into standalone build...');
+    try {
+      fs.mkdirSync(path.dirname(destStatic), { recursive: true });
+      fs.symlinkSync(srcStatic, destStatic, 'junction');
+    } catch {
+      try { fs.cpSync(srcStatic, destStatic, { recursive: true }); } catch (e) {}
+    }
+  }
+
+  const destPublic = path.join(standaloneDir, 'public');
+  const srcPublic = path.join(rootDir, 'public');
+  if (!fs.existsSync(destPublic) && fs.existsSync(srcPublic)) {
+    console.log('📦 Linking public into standalone build...');
+    try {
+      fs.symlinkSync(srcPublic, destPublic, 'junction');
+    } catch {
+      try { fs.cpSync(srcPublic, destPublic, { recursive: true }); } catch (e) {}
+    }
+  }
+}
+
 // Main execution:
-// 1. Start Next.js immediately to open HTTP port in < 300ms (zero-downtime, no 502)
+// 1. Ensure static assets are linked in standalone directory
+ensureStandaloneAssets();
+
+// 2. Start Next.js immediately to open HTTP port in < 300ms (zero-downtime, no 502)
 startNext();
 
-// 2. Run schema verification asynchronously in the background after server is listening
+// 3. Run schema verification asynchronously in the background after server is listening
 setTimeout(() => {
   runMigrationAsync();
 }, 1500);

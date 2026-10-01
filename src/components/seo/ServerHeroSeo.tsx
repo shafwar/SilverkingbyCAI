@@ -63,7 +63,21 @@ export async function ServerHeroSeo({
   }
 
   return (
-    <header className="sr-only" aria-label="Page introduction">
+    <header
+      className="sr-only"
+      aria-label="Page introduction"
+      style={{
+        position: "absolute",
+        width: "1px",
+        height: "1px",
+        padding: 0,
+        margin: "-1px",
+        overflow: "hidden",
+        clip: "rect(0, 0, 0, 0)",
+        whiteSpace: "nowrap",
+        border: 0,
+      }}
+    >
       {homeHeadlines ? (
         <>
           <h1>{brandTitle}</h1>
