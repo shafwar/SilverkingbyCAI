@@ -55,7 +55,7 @@ export function generatePageMetadata({
   const allKeywords = [...new Set([...defaultKeywords, ...keywords])];
 
   return {
-    title: isHome ? { absolute: fullTitle } : fullTitle,
+    title: { absolute: fullTitle },
     description,
     keywords: allKeywords,
     authors: [{ name: APP_NAME }],
