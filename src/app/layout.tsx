@@ -23,7 +23,7 @@ const crownLogoUrl = getAbsoluteImageUrl("/images/sk-crown-logo.png", metadataBa
 export const metadata: Metadata = {
   metadataBase: new URL(metadataBase),
   title: {
-    default: APP_NAME,
+    default: `${APP_NAME} - Official Bullion Manufacturer & Authenticity Verification`,
     template: `%s | ${APP_NAME}`,
   },
   description: APP_DESCRIPTION,
@@ -39,13 +39,13 @@ export const metadata: Metadata = {
   ],
   icons: {
     icon: [
-      { url: "/icon.png?v=4", type: "image/png", sizes: "512x512" },
-      { url: "/favicon.ico?v=4", sizes: "32x32" },
+      { url: "/icon.png?v=5", type: "image/png", sizes: "512x512" },
+      { url: "/favicon.ico?v=5", sizes: "32x32" },
     ],
     apple: [
-      { url: "/apple-icon.png?v=4", sizes: "180x180", type: "image/png" },
+      { url: "/apple-icon.png?v=5", sizes: "180x180", type: "image/png" },
     ],
-    shortcut: "/favicon.ico?v=4",
+    shortcut: "/favicon.ico?v=5",
   },
   openGraph: {
     title: APP_NAME,

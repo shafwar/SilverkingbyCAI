@@ -94,6 +94,12 @@ public/images/**/*.png
 !public/images/hero-fallback.jpg
 !public/images/DSC02998.JPG
 !public/images/merchandise-hero.png
+!public/images/sk-search-logo.jpg
+!public/images/sk-crown-logo.png
+!public/images/sk-crown-logo.webp
+!public/icon.png
+!public/apple-icon.png
+!public/favicon.ico
 
 # Temporary files
 tmp/

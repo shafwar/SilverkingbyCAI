@@ -1,13 +1,13 @@
 {
   "nav": {
-    "whatWeDo": "Apa yang kami lakukan",
+    "whatWeDo": "Layanan Kami",
     "authenticity": "Keaslian",
     "products": "Produk",
     "merchandise": "Merchandise",
     "distributor": "Distributor",
     "journal": "Jurnal",
-    "aboutUs": "Tentang kami",
-    "getInTouch": "Hubungi kami"
+    "aboutUs": "Tentang Kami",
+    "getInTouch": "Hubungi Kami"
   },
   "footer": {
     "instagramAria": "Silver King di Instagram",
@@ -38,7 +38,7 @@
     "tryAgain": "Silakan coba lagi"
   },
   "home": {
-    "title": "Cahaya Silver King",
+    "title": "Cahaya Silver King - Manufaktur Resmi Logam Mulia & Verifikasi QR",
     "tagline": "Keunggulan Logam Mulia",
     "hero": {
       "headline1": "Logam",
@@ -79,7 +79,7 @@
     }
   },
   "whatWeDo": {
-    "title": "Membuat dari bullion mentah",
+    "title": "Layanan Manufaktur & Pemurnian Logam Mulia",
     "description": "Kami mengubah emas, perak, dan paladium yang bersumber secara bertanggung jawab menjadi batangan kelas investasi menggunakan jalur pemurnian dan pengecoran yang dikontrol ketat.",
     "hero": {
       "title": "Apa Yang Kami Lakukan",
@@ -415,7 +415,7 @@
     "description": "Pelajari lebih lanjut tentang Silver King by CAI.",
     "hero": {
       "badge": "Didirikan 2024",
-      "title": "Warisan",
+      "title": "Tentang Cahaya Silver King",
       "subtitle": "Menciptakan keunggulan dalam logam mulia sejak 2024",
       "secondarySubtitle": "Presisi tanpa kompromi dan teknologi verifikasi yang revolusioner.",
       "tagline": "Didirikan 2024"

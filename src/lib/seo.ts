@@ -25,7 +25,12 @@ export function generatePageMetadata({
   noindex = false,
 }: PageMetadataOptions): Metadata {
   const isHome = path === "" || path === "/" || title === APP_NAME;
-  const fullTitle = isHome ? APP_NAME : `${title} | ${APP_NAME}`;
+  const defaultHomeTitle = locale === 'id'
+    ? 'Cahaya Silver King - Manufaktur Resmi Logam Mulia & Verifikasi QR'
+    : 'Cahaya Silver King - Official Bullion Manufacturer & Authenticity Verification';
+  const fullTitle = isHome
+    ? (title && title !== APP_NAME ? title : defaultHomeTitle)
+    : `${title} | ${APP_NAME}`;
   const canonicalUrl = locale === routing.defaultLocale
     ? `${baseUrl}${path}`
     : `${baseUrl}/${locale}${path}`;
@@ -50,7 +55,7 @@ export function generatePageMetadata({
   const allKeywords = [...new Set([...defaultKeywords, ...keywords])];
 
   return {
-    title: isHome ? { absolute: APP_NAME } : fullTitle,
+    title: isHome ? { absolute: fullTitle } : fullTitle,
     description,
     keywords: allKeywords,
     authors: [{ name: APP_NAME }],

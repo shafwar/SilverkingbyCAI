@@ -109,12 +109,17 @@ public/images/**/*.png
 # Verified-success background images (verify page; only these exist in repo)
 !public/images/merchandise-hero.png
 !public/images/hero-fallback.jpg
+!public/images/sk-search-logo.jpg
+!public/images/sk-crown-logo.png
+!public/images/sk-crown-logo.webp
 
 # Keep fonts (needed for QR code generation)
 !public/fonts/**
 
-# Keep favicon
+# Keep favicon & icons
 !public/favicon.ico
+!public/icon.png
+!public/apple-icon.png
 
 # Temporary files
 tmp/

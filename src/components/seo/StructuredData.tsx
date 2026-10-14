@@ -153,61 +153,116 @@ export function StructuredData({
       }
     : null;
 
+  const isIndonesian = locale === 'id';
+  const localizedPath = (p: string) => isIndonesian ? `${baseUrl}/id${p}` : `${baseUrl}${p}`;
+
   const siteNavigationSchema = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    name: 'Official Silver King Navigation',
-    itemListElement: [
-      {
-        '@type': 'SiteNavigationElement',
-        position: 1,
-        name: 'Products',
-        description: 'Gold, silver, and palladium precious metal bars certified ISO 9001 with verified QR code.',
-        url: `${baseUrl}/products`,
-      },
-      {
-        '@type': 'SiteNavigationElement',
-        position: 2,
-        name: 'About Us',
-        description: 'Crafting excellence in precious metals with uncompromising precision and authentic verification.',
-        url: `${baseUrl}/about`,
-      },
-      {
-        '@type': 'SiteNavigationElement',
-        position: 3,
-        name: 'Official Distributors',
-        description: 'Find Silver King official distributors across various cities for authentic bullion.',
-        url: `${baseUrl}/distributor`,
-      },
-      {
-        '@type': 'SiteNavigationElement',
-        position: 4,
-        name: 'Authenticity',
-        description: 'Instant QR verification system and ISO 9001 certified purity assurance.',
-        url: `${baseUrl}/authenticity`,
-      },
-      {
-        '@type': 'SiteNavigationElement',
-        position: 5,
-        name: 'What We Do',
-        description: 'Precious metals fabrication, custom bar manufacturing, and advanced purity assaying.',
-        url: `${baseUrl}/what-we-do`,
-      },
-      {
-        '@type': 'SiteNavigationElement',
-        position: 6,
-        name: 'Contact Us',
-        description: 'Customer service, corporate inquiries, and official support for Silver King products.',
-        url: `${baseUrl}/contact`,
-      },
-      {
-        '@type': 'SiteNavigationElement',
-        position: 7,
-        name: 'Journal',
-        description: 'Insights, market updates, and educational articles on precious metals investment.',
-        url: `${baseUrl}/journal`,
-      },
-    ],
+    name: isIndonesian ? 'Navigasi Resmi Silver King' : 'Official Silver King Navigation',
+    itemListElement: isIndonesian
+      ? [
+          {
+            '@type': 'SiteNavigationElement',
+            position: 1,
+            name: 'Produk',
+            description: 'Emas, perak, dan paladium batangan bersertifikat ISO 9001 dengan kode QR terverifikasi.',
+            url: localizedPath('/products'),
+          },
+          {
+            '@type': 'SiteNavigationElement',
+            position: 2,
+            name: 'Tentang Kami',
+            description: 'Keunggulan manufaktur logam mulia dengan presisi tanpa kompromi dan autentikasi terverifikasi.',
+            url: localizedPath('/about'),
+          },
+          {
+            '@type': 'SiteNavigationElement',
+            position: 3,
+            name: 'Distributor Resmi',
+            description: 'Temukan mitra distributor resmi Silver King di berbagai kota untuk bullion asli.',
+            url: localizedPath('/distributor'),
+          },
+          {
+            '@type': 'SiteNavigationElement',
+            position: 4,
+            name: 'Keaslian & Verifikasi QR',
+            description: 'Sistem verifikasi QR instan dan jaminan kemurnian bersertifikat ISO 9001.',
+            url: localizedPath('/authenticity'),
+          },
+          {
+            '@type': 'SiteNavigationElement',
+            position: 5,
+            name: 'Layanan Manufaktur',
+            description: 'Fabrikasi logam mulia, pencetakan batangan khusus, dan uji kemurnian laboratorium presisi.',
+            url: localizedPath('/what-we-do'),
+          },
+          {
+            '@type': 'SiteNavigationElement',
+            position: 6,
+            name: 'Hubungi Kami',
+            description: 'Layanan pelanggan, kerja sama korporat, dan dukungan resmi produk Silver King.',
+            url: localizedPath('/contact'),
+          },
+          {
+            '@type': 'SiteNavigationElement',
+            position: 7,
+            name: 'Jurnal',
+            description: 'Wawasan pasar, edukasi, dan berita terbaru seputar investasi logam mulia.',
+            url: localizedPath('/journal'),
+          },
+        ]
+      : [
+          {
+            '@type': 'SiteNavigationElement',
+            position: 1,
+            name: 'Products',
+            description: 'Gold, silver, and palladium precious metal bars certified ISO 9001 with verified QR code.',
+            url: localizedPath('/products'),
+          },
+          {
+            '@type': 'SiteNavigationElement',
+            position: 2,
+            name: 'About Us',
+            description: 'Crafting excellence in precious metals with uncompromising precision and authentic verification.',
+            url: localizedPath('/about'),
+          },
+          {
+            '@type': 'SiteNavigationElement',
+            position: 3,
+            name: 'Official Distributors',
+            description: 'Find Silver King official distributors across various cities for authentic bullion.',
+            url: localizedPath('/distributor'),
+          },
+          {
+            '@type': 'SiteNavigationElement',
+            position: 4,
+            name: 'Authenticity & QR Verification',
+            description: 'Instant QR verification system and ISO 9001 certified purity assurance.',
+            url: localizedPath('/authenticity'),
+          },
+          {
+            '@type': 'SiteNavigationElement',
+            position: 5,
+            name: 'What We Do',
+            description: 'Precious metals fabrication, custom bar manufacturing, and advanced purity assaying.',
+            url: localizedPath('/what-we-do'),
+          },
+          {
+            '@type': 'SiteNavigationElement',
+            position: 6,
+            name: 'Contact Us',
+            description: 'Customer service, corporate inquiries, and official support for Silver King products.',
+            url: localizedPath('/contact'),
+          },
+          {
+            '@type': 'SiteNavigationElement',
+            position: 7,
+            name: 'Journal',
+            description: 'Insights, market updates, and educational articles on precious metals investment.',
+            url: localizedPath('/journal'),
+          },
+        ],
   };
 
   const schemas: any[] = [];
